@@ -9,10 +9,47 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   REGISTER: '/register',
+
+  // Dashboard
   DASHBOARD: '/dashboard',
-  USERS: '/users',
-  PRODUCTS: '/products',
-  ORDERS: '/orders',
+  DASHBOARD_OVERVIEW: '/dashboard/overview',
+  DASHBOARD_ANALYTICS: '/dashboard/analytics',
+
+  // Catalog Management - Equipment
+  EQUIPMENT: '/equipment',
+  EQUIPMENT_MAIN_CATEGORIES: '/equipment/main-categories',
+  EQUIPMENT_SUB_CATEGORIES: '/equipment/sub-categories',
+  EQUIPMENT_MODELS: '/equipment/models',
+
+  // Catalog Management - Attachments
+  ATTACHMENTS: '/attachments',
+  ATTACHMENT_CATEGORIES: '/attachments/categories',
+  ATTACHMENT_MODELS: '/attachments/models',
+
+  // Catalog Management - Others
+  BRANDS: '/brands',
+  LOCATIONS: '/locations',
+
+  // Marketplace
+  LISTINGS: '/listings',
+  LISTINGS_FOR_SALE: '/listings/for-sale',
+  LISTINGS_FOR_RENT: '/listings/for-rent',
+  ENQUIRIES: '/enquiries',
+
+  // Users
+  CUSTOMERS: '/customers',
+  PARTNERS: '/partners',
+
+  // Content
+  ARTICLES: '/articles',
+  ARTICLE_CATEGORIES: '/article-categories',
+  POSTS: '/posts',
+  CAROUSEL_IMAGES: '/carousel-images',
+  ANNOUNCEMENT_BAR: '/announcement-bar',
+
+  // Settings
+  ADMINS: '/admins',
+  ROLES_PERMISSIONS: '/roles-permissions',
   SETTINGS: '/settings',
 } as const;
 

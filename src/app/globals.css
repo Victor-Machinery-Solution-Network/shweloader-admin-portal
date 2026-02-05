@@ -13,6 +13,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--primary-foreground);
   --color-sidebar-accent: var(--primary);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -73,7 +75,7 @@
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 0.75rem;
   --card: oklch(1.0000 0 0);
   --card-foreground: oklch(0.2686 0 0);
   --popover: oklch(1.0000 0 0);
@@ -101,6 +103,8 @@
   --sidebar-primary-foreground: oklch(1.0000 0 0);
   --sidebar-accent: oklch(0.9869 0.0214 95.2774);
   --sidebar-accent-foreground: oklch(0.4732 0.1247 46.2007);
+  --sidebar-hover: hsl(0 0% 92%);
+  --sidebar-hover-foreground: oklch(0.2686 0 0);
   --sidebar-border: oklch(0.9276 0.0058 264.5313);
   --sidebar-ring: oklch(0.7686 0.1647 70.0804);
   --destructive-foreground: oklch(1.0000 0 0);
@@ -155,6 +159,8 @@
   --sidebar-primary-foreground: oklch(1.0000 0 0);
   --sidebar-accent: oklch(0.4732 0.1247 46.2007);
   --sidebar-accent-foreground: oklch(0.9243 0.1151 95.7459);
+  --sidebar-hover: hsl(0 0% 20%);
+  --sidebar-hover-foreground: oklch(0.9219 0 0);
   --sidebar-border: oklch(0.3715 0 0);
   --sidebar-ring: oklch(0.7686 0.1647 70.0804);
   --destructive-foreground: oklch(1.0000 0 0);
@@ -187,5 +193,32 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Sidebar hover state - more subtle than active state */
+  [data-sidebar="menu-button"]:hover:not([data-active="true"]),
+  [data-sidebar="menu-sub-button"]:hover:not([data-active="true"]) {
+    background-color: var(--sidebar-hover) !important;
+    color: var(--sidebar-hover-foreground) !important;
+  }
+
+  /* Active state uses primary color with dark text */
+  [data-sidebar="menu-button"][data-active="true"],
+  [data-sidebar="menu-sub-button"][data-active="true"] {
+    background-color: var(--primary) !important;
+    color: hsl(0 0% 10%) !important;
+  }
+
+  /* Align menu buttons with group labels - both use px-2 (8px) */
+  [data-sidebar="menu-button"] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  /* Profile dropdown menu items use same hover color as sidebar */
+  [data-sidebar="footer"] [role="menuitem"]:hover {
+    background-color: var(--sidebar-hover) !important;
   }
 }
