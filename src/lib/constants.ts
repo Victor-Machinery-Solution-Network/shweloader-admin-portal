@@ -8,7 +8,6 @@ export const APP_DESCRIPTION = 'Admin portal for managing application resources'
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
-  REGISTER: '/register',
 
   // Dashboard
   DASHBOARD: '/dashboard',
@@ -41,9 +40,8 @@ export const ROUTES = {
   PARTNERS: '/partners',
 
   // Content
-  ARTICLES: '/articles',
-  ARTICLE_CATEGORIES: '/article-categories',
-  POSTS: '/posts',
+  ARTICLE_CATEGORIES: '/articles/categories',
+  POSTS: '/articles/posts',
   CAROUSEL_IMAGES: '/carousel-images',
   ANNOUNCEMENT_BAR: '/announcement-bar',
 

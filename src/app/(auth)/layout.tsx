@@ -1,5 +1,5 @@
 /**
- * Auth layout - centered layout for login/register pages
+ * Auth layout - centered layout for login page
  * Route group (auth) doesn't affect URLs
  */
 

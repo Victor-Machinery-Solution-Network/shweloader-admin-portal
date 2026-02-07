@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -21,7 +21,6 @@ import {
   MessageSquare,
   UserCheck,
   FileText,
-  FolderTree,
   Image,
   Megaphone,
   Shield,
@@ -51,26 +50,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, User, CreditCard, LogOut, Bell } from 'lucide-react';
+import { MoreVertical, User, LogOut, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function AppSidebar() {
   const pathname = usePathname();
 
-  // Collapsible state for each section
-  const [isEquipmentOpen, setIsEquipmentOpen] = useState(false);
-  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
-  const [isListingsOpen, setIsListingsOpen] = useState(false);
-  const [isArticlesOpen, setIsArticlesOpen] = useState(false);
+  // Auto-open collapsible sections based on current route
+  const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
+  const isAttachmentsActive = pathname.startsWith(ROUTES.ATTACHMENTS);
+  const isListingsActive = pathname.startsWith(ROUTES.LISTINGS);
+  const isArticlesActive = pathname.startsWith('/articles');
 
-  // Active state helpers - parent items are never active, only submenu items
-  const isEquipmentActive = false; // Submenu items handle their own active state
+  const [isEquipmentOpen, setIsEquipmentOpen] = useState(isEquipmentActive);
+  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(isAttachmentsActive);
+  const [isListingsOpen, setIsListingsOpen] = useState(isListingsActive);
+  const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
 
-  const isAttachmentsActive = false; // Submenu items handle their own active state
-
-  const isListingsActive = false; // Submenu items handle their own active state
-
-  const isArticlesActive = false; // Submenu items handle their own active state
+  // Keep collapsibles in sync when navigating via links
+  useEffect(() => {
+    if (isEquipmentActive) setIsEquipmentOpen(true);
+    if (isAttachmentsActive) setIsAttachmentsOpen(true);
+    if (isListingsActive) setIsListingsOpen(true);
+    if (isArticlesActive) setIsArticlesOpen(true);
+  }, [pathname, isEquipmentActive, isAttachmentsActive, isListingsActive, isArticlesActive]);
 
   return (
     <Sidebar variant="inset">
@@ -121,7 +124,6 @@ export function AppSidebar() {
               {/* Equipment */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isEquipmentActive}
                   onClick={() => setIsEquipmentOpen(!isEquipmentOpen)}
                 >
                   <Wrench />
@@ -160,7 +162,6 @@ export function AppSidebar() {
               {/* Attachments */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isAttachmentsActive}
                   onClick={() => setIsAttachmentsOpen(!isAttachmentsOpen)}
                 >
                   <Package />
@@ -220,7 +221,6 @@ export function AppSidebar() {
               {/* Listings */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isListingsActive}
                   onClick={() => setIsListingsOpen(!isListingsOpen)}
                 >
                   <ShoppingCart />
@@ -296,7 +296,6 @@ export function AppSidebar() {
               {/* Articles */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isArticlesActive}
                   onClick={() => setIsArticlesOpen(!isArticlesOpen)}
                 >
                   <FileText />
@@ -420,20 +419,16 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground">
                   <User className="mr-2 h-4 w-4" />
                   Account
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground">
                   <Bell className="mr-2 h-4 w-4" />
                   Notifications
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>

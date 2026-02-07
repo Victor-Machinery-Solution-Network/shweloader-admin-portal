@@ -2,6 +2,19 @@
  * Shared TypeScript types and interfaces
  */
 
+// Re-export D1 types for convenience
+export type {
+  D1Response,
+  D1ErrorResponse,
+  D1ApiResponse,
+  D1Meta,
+  D1QueryParams,
+  D1RawQueryRequest,
+  D1CreatePayload,
+  D1UpdatePayload,
+  WithId,
+} from './d1';
+
 export interface User {
   id: string;
   name: string;

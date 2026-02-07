@@ -63,7 +63,10 @@ src/
 │   │   └── example-actions.ts   # Example server actions (CRUD operations)
 │   │
 │   ├── api/                      # API client utilities
-│   │   ├── client.ts            # API client functions (GET, POST, PUT, DELETE)
+│   │   ├── index.ts             # Barrel exports for all API utilities
+│   │   ├── client.ts            # Legacy API client (GET, POST, PUT, DELETE)
+│   │   ├── d1-client.ts         # Cloudflare D1 REST API client
+│   │   ├── create-service.ts    # Service factory for type-safe CRUD
 │   │   └── endpoints/           # API endpoint definitions (ready for use)
 │   │       ├── users.ts         # User API endpoints
 │   │       └── products.ts      # Product API endpoints
@@ -85,7 +88,8 @@ src/
 │
 ├── types/                        # TypeScript type definitions
 │   ├── index.ts                  # Core type definitions
-│   └── api.ts                    # API-related types
+│   ├── api.ts                    # API-related types
+│   └── d1.ts                     # Cloudflare D1 API types
 │
 └── middleware.ts                 # Request middleware (auth, redirects)
 ```
@@ -321,7 +325,7 @@ const navigation = [
 - Page title display
 - Notification bell
 - User profile button
-- Fixed height (h-16)
+- Fixed height (h-12)
 
 **Props**: None
 
@@ -564,6 +568,114 @@ try {
 
 ---
 
+#### `src/lib/api/d1-client.ts`
+**Purpose**: Cloudflare D1 REST API client
+**Type**: TypeScript module
+**Features**:
+- Full CRUD operations for D1 database
+- Query parameters (filtering, sorting, pagination)
+- Raw SQL query support
+- Bearer token authentication
+- Type-safe responses with metadata
+
+**Exports**:
+- `d1` - Main client object with list, get, create, update, delete, query methods
+- `D1Error` - Custom error class for D1 API errors
+
+**Usage**:
+```typescript
+import { d1, D1Error } from '@/lib/api';
+
+// List with filters
+const { results } = await d1.list('brands', {
+  limit: 10,
+  sort_by: 'name',
+  order: 'asc',
+  status: 'active',
+});
+
+// Get single record
+const { results: [brand] } = await d1.get('brands', 123);
+
+// Create
+const { results: [newBrand] } = await d1.create('brands', {
+  name: 'CAT',
+  logo_url: 'https://...',
+});
+
+// Update
+await d1.update('brands', 123, { name: 'Caterpillar' });
+
+// Delete
+await d1.delete('brands', 123);
+
+// Raw SQL
+const { results } = await d1.query(
+  'SELECT * FROM brands WHERE status = ? LIMIT ?',
+  ['active', 10]
+);
+```
+
+---
+
+#### `src/lib/api/create-service.ts`
+**Purpose**: Factory for creating type-safe CRUD services
+**Type**: TypeScript module
+**Features**:
+- Generic service creation for any table
+- Simplified API compared to raw d1 client
+- Automatic type inference
+- Helper methods (exists, count, getByIdOrThrow)
+
+**Exports**:
+- `createService<T>(table, options?)` - Creates a typed service
+- `Service<T>` - Service interface type
+
+**Usage**:
+```typescript
+import { createService } from '@/lib/api';
+
+// Define entity type
+interface Brand {
+  id: number;
+  name: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+}
+
+// Create service
+export const brandService = createService<Brand>('brands');
+
+// Use in components/actions
+const brands = await brandService.list({ limit: 10 });
+const brand = await brandService.getById(1);
+const newBrand = await brandService.create({ name: 'CAT', status: 'active' });
+await brandService.update(1, { name: 'Caterpillar' });
+await brandService.delete(1);
+
+// Helper methods
+const exists = await brandService.exists(1);
+const count = await brandService.count({ status: 'active' });
+```
+
+---
+
+#### `src/lib/api/index.ts`
+**Purpose**: Barrel exports for API utilities
+**Type**: TypeScript module
+**Features**:
+- Clean imports from single location
+- Re-exports all API utilities and types
+
+**Usage**:
+```typescript
+// Import everything from one place
+import { d1, D1Error, createService } from '@/lib/api';
+import type { D1Response, D1QueryParams } from '@/lib/api';
+```
+
+---
+
 #### `src/lib/utils.ts`
 **Purpose**: Utility functions
 **Type**: TypeScript module
@@ -648,6 +760,44 @@ export interface QueryParams {
 
 ---
 
+#### `src/types/d1.ts`
+**Purpose**: Cloudflare D1 REST API type definitions
+**Type**: TypeScript module
+**Features**:
+- D1 response types with metadata
+- Query parameter types
+- Payload helper types
+
+**Exports**:
+```typescript
+// Response types
+export interface D1Response<T> {
+  success: true;
+  meta: D1Meta;
+  results: T[];
+}
+
+export interface D1ErrorResponse {
+  success: false;
+  error: string;
+}
+
+// Query parameters
+export interface D1QueryParams {
+  sort_by?: string;
+  order?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+  [key: string]: string | number | undefined;
+}
+
+// Helper types
+export type D1CreatePayload<T> = Omit<T, 'id' | 'created_at' | 'updated_at'>;
+export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
+```
+
+---
+
 ## 🔄 Common Patterns
 
 ### Creating a New Page
@@ -694,11 +844,12 @@ export interface QueryParams {
 
 ## 🎯 Next Steps
 
-1. **Connect Database**: Add Prisma or Drizzle ORM
+1. ~~**Connect Database**~~: ✅ Cloudflare D1 REST API configured
 2. **Add Authentication**: Implement NextAuth.js v5
-3. **Implement Features**: Build out user, product, order management
-4. **Add Testing**: Set up Vitest or Jest
-5. **Add Validation**: Implement Zod schemas
-6. **Add State Management**: Use React Context or Zustand if needed
-7. **Add Forms**: Implement React Hook Form
-8. **Add Tables**: Build data table components with sorting/filtering
+3. **Create Entity Services**: Define services in `src/lib/services/` for each table
+4. **Implement Features**: Build out brand, category, product management
+5. **Add Testing**: Set up Vitest or Jest
+6. **Add Validation**: Implement Zod schemas
+7. **Add State Management**: Use React Context or Zustand if needed
+8. **Add Forms**: Implement React Hook Form
+9. **Add Tables**: Build data table components with sorting/filtering
