@@ -1,247 +1,109 @@
 # Shweloader Admin Portal
 
-A modern, production-ready admin portal built with Next.js 16, React 19, TypeScript, and Tailwind CSS.
+Admin dashboard for the Shweloader heavy equipment marketplace. Built with Next.js 16, React 19, TypeScript, and Tailwind CSS 4. Data is stored in Cloudflare D1 (accessed via REST API).
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# Run development server
+cp .env.example .env.local   # then fill in your keys
+npm run seed:admin            # create the first admin user
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the admin portal.
+Open [http://localhost:3000](http://localhost:3000) — redirects to login.
 
-## ✨ Features
+## Tech Stack
 
-- ✅ **Next.js 16** with App Router and React 19
-- ✅ **TypeScript** for complete type safety
-- ✅ **Tailwind CSS 4** with modern styling
-- ✅ **shadcn/ui** component library
-- ✅ **Server Components & Actions** for optimal performance
-- ✅ **Route Groups** for organized layouts
-- ✅ **Authentication-ready** middleware
-- ✅ **Production-optimized** build configuration
-- ✅ **Comprehensive documentation** (100+ KB)
+| Technology | Purpose |
+|------------|---------|
+| Next.js 16 + React 19 | App Router, Server Components & Actions |
+| TypeScript 5 | Type safety |
+| Tailwind CSS 4 + shadcn/ui | Styling & component library |
+| Cloudflare D1 | Database (via REST API worker) |
+| Auth.js v5 (next-auth) | Authentication (Credentials + JWT) |
+| Cloudflare Turnstile | Bot protection on login |
+| bcryptjs | Password hashing |
 
-## 📁 Project Structure
+## Architecture
 
 ```
 src/
-├── app/                      # Next.js App Router
-│   ├── (auth)/              # Authentication pages
-│   │   ├── login/           # Login page
-│   │   └── layout.tsx       # Auth layout (centered)
-│   ├── (dashboard)/         # Admin pages
-│   │   ├── dashboard/       # Main dashboard
-│   │   ├── users/           # User management
-│   │   └── layout.tsx       # Dashboard layout (sidebar)
-│   ├── page.tsx             # Root page (redirect)
-│   ├── error.tsx            # Error boundary
-│   └── not-found.tsx        # 404 page
-│
-├── components/              # React components
-│   ├── ui/                 # shadcn/ui base components
-│   ├── layout/             # Layout components (sidebar, header)
-│   ├── features/           # Feature-specific components
-│   └── shared/             # Reusable components
-│
-├── lib/                    # Core application logic
-│   ├── actions/            # Server Actions
-│   ├── api/                # API client
-│   ├── constants.ts        # App constants
-│   └── utils.ts            # Utility functions
-│
-├── types/                  # TypeScript type definitions
-│   ├── index.ts           # Core types
-│   └── api.ts             # API types
-│
-└── middleware.ts          # Request middleware (auth)
+├── app/
+│   ├── (auth)/login/         # Login page
+│   ├── (dashboard)/          # Admin pages (sidebar layout)
+│   │   └── dashboard/        # Overview, future feature pages
+│   ├── api/auth/[...nextauth]/ # Auth.js API route
+│   └── page.tsx              # Root redirect
+├── components/
+│   ├── auth/                 # Login form, Turnstile widget
+│   ├── layout/               # Sidebar, header
+│   ├── providers/            # SessionProvider wrapper
+│   └── ui/                   # shadcn/ui components
+├── lib/
+│   ├── actions/              # Server actions (auth, etc.)
+│   ├── api/                  # D1 REST client & service factory
+│   ├── auth.ts               # Auth.js config (providers, callbacks, rate limiting)
+│   └── constants.ts          # Routes, app name
+├── types/                    # TypeScript types (AdminUser, D1 types)
+└── middleware.ts              # Auth.js route protection
 ```
 
-## 📚 Documentation
+## Authentication
 
-Comprehensive documentation is available in the [`docs/`](./docs/) directory:
+Fully implemented with Auth.js v5:
 
-### Core Guides
-- **[Getting Started](./docs/GETTING-STARTED.md)** - Setup and quick start
-- **[Architecture](./docs/ARCHITECTURE.md)** - Project architecture and design decisions
-- **[File Reference](./docs/FILE-REFERENCE.md)** - Complete file-by-file documentation
-- **[Components](./docs/COMPONENTS.md)** - All components with usage examples
-- **[Routing](./docs/ROUTING.md)** - Routing patterns and navigation
-- **[Data Fetching](./docs/DATA-FETCHING.md)** - Server Components, Actions, and API patterns
-- **[Deployment](./docs/DEPLOYMENT.md)** - Production deployment guide
+- **Credentials provider** — email/password verified against `admin_user` table via D1
+- **JWT sessions** — 8-hour expiry, HttpOnly cookies
+- **Rate limiting** — in-memory, 5 failed attempts per email = 15 min lockout
+- **Turnstile** — Cloudflare bot protection on the login form
+- **bcrypt** — cost factor 12 for password hashing
+- **Route protection** — middleware redirects unauthenticated users to `/login`
 
-📖 **[View Full Documentation Index →](./docs/README.md)**
+## Environment Variables
 
-## 🎯 Tech Stack
+See [.env.example](.env.example) for all required variables:
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 16.1.6 | React framework |
-| **React** | 19.2.3 | UI library |
-| **TypeScript** | 5 | Type safety |
-| **Tailwind CSS** | 4 | Styling |
-| **shadcn/ui** | Latest | Component library |
-| **Lucide Icons** | Latest | Icon library |
+- `NEXT_PUBLIC_D1_API_URL` / `D1_API_TOKEN` — Cloudflare D1 REST API
+- `AUTH_SECRET` / `AUTH_URL` — Auth.js v5
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` — Cloudflare Turnstile
 
-## 🏗️ Key Features
-
-### Route Organization
-- **Route Groups**: `(auth)` and `(dashboard)` for different layouts
-- **Dynamic Routes**: User detail pages with `[id]` segments
-- **Loading States**: Automatic loading UI with `loading.tsx`
-- **Error Boundaries**: Error handling with `error.tsx`
-
-### Component Architecture
-- **Server Components**: Default for data fetching
-- **Client Components**: Interactive elements with `'use client'`
-- **Shared Components**: Reusable UI elements
-- **Feature Components**: Domain-specific logic
-
-### Data Patterns
-- **Server Actions**: Form submissions and mutations
-- **Server Components**: Direct database access
-- **API Routes**: External webhooks and APIs
-- **Caching**: Built-in Next.js caching with revalidation
-
-## 🚀 Available Scripts
+## Scripts
 
 ```bash
-npm run dev       # Start development server
-npm run build     # Build for production
-npm run start     # Start production server
-npm run lint      # Run ESLint
+npm run dev          # Development server
+npm run build        # Production build
+npm run start        # Production server
+npm run lint         # ESLint
+npm run seed:admin   # Seed first admin user into D1
 ```
 
-## 🔧 Development Workflow
+## Hosting
 
-### Adding a New Page
-1. Create `src/app/(dashboard)/[page-name]/page.tsx`
-2. Add route to sidebar navigation
-3. Create feature components
-4. Add Server Actions if needed
+- **Vercel** (free tier) for hosting
+- **Cloudflare** (free tier) for DNS proxy + DDoS protection
 
-### Adding a New Feature
-1. Create directory in `src/components/features/[feature]/`
-2. Add Server Actions in `src/lib/actions/[feature].ts`
-3. Define types in `src/types/`
-4. Create page in app router
+## Documentation
 
-## 🔐 Authentication
+Detailed guides in [`docs/`](./docs/):
 
-The project includes authentication-ready middleware in `src/middleware.ts`:
-- Route protection
-- Redirect logic
-- Auth state management
+- [Getting Started](./docs/GETTING-STARTED.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Components](./docs/COMPONENTS.md)
+- [Routing](./docs/ROUTING.md)
+- [Data Fetching](./docs/DATA-FETCHING.md)
+- [Deployment](./docs/DEPLOYMENT.md)
+- [Development Plan](./docs/DEVELOPMENT-PLAN.md)
+- [File Reference](./docs/FILE-REFERENCE.md)
 
-**Recommended**: Integrate with [NextAuth.js v5](https://authjs.dev) (Auth.js)
+## Development Status
 
-```bash
-npm install next-auth@beta
-```
+See [Development Plan](./docs/DEVELOPMENT-PLAN.md) for the full roadmap.
 
-## 💾 Database
-
-Ready to connect with your preferred database:
-
-### Prisma (Recommended)
-```bash
-npm install prisma @prisma/client
-npx prisma init
-```
-
-### Drizzle ORM
-```bash
-npm install drizzle-orm postgres
-npm install -D drizzle-kit
-```
-
-## 🌐 Deployment
-
-### Vercel (Recommended)
-```bash
-npm i -g vercel
-vercel
-```
-
-### Docker
-```bash
-docker build -t admin-portal .
-docker run -p 3000:3000 admin-portal
-```
-
-See the **[Deployment Guide](./docs/DEPLOYMENT.md)** for complete instructions.
-
-## 📊 Project Statistics
-
-- **38 TypeScript files** with complete type safety
-- **6 comprehensive documentation files** (100+ KB)
-- **Production-ready** structure and configuration
-- **100% documented** core features
-
-## 🎓 Learning Resources
-
-- [Next.js 16 Documentation](https://nextjs.org/docs)
-- [React 19 Documentation](https://react.dev)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [shadcn/ui Components](https://ui.shadcn.com)
-
-## 📝 Code Examples
-
-### Server Component with Data Fetching
-```typescript
-// app/(dashboard)/users/page.tsx
-export default async function UsersPage() {
-  const users = await db.user.findMany();
-  return <UserTable users={users} />;
-}
-```
-
-### Server Action for Mutations
-```typescript
-// lib/actions/users.ts
-'use server'
-export async function createUser(formData: FormData) {
-  await db.user.create({ data: formData });
-  revalidatePath('/users');
-}
-```
-
-### Client Component with Interactivity
-```typescript
-// components/features/users/user-form.tsx
-'use client'
-export function UserForm() {
-  return <form action={createUser}>...</form>;
-}
-```
-
-## 🤝 Contributing
-
-1. Follow the architecture patterns in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
-2. Refer to [`docs/COMPONENTS.md`](./docs/COMPONENTS.md) for component guidelines
-3. Follow Next.js best practices from [`docs/`](./docs/) guides
-
-## 📞 Support
-
-- 📖 Check the [Documentation](./docs/README.md)
-- 🐛 Report issues on GitHub
-- 💬 Ask questions in discussions
-
-## 📄 License
-
-This project is built with open-source technologies. See individual package licenses for details.
-
----
-
-**Built with ❤️ using Next.js 16, React 19, and TypeScript**
-
-[View Documentation](./docs/README.md) | [Getting Started](./docs/GETTING-STARTED.md) | [Architecture](./docs/ARCHITECTURE.md)
+- [x] Phase 1 — Authentication
+- [ ] Phase 2 — Lookup Tables + Brands + Locations
+- [ ] Phase 3 — Catalog (Categories, Sub-categories, Models)
+- [ ] Phase 4 — Business (Customers, Partners, Products, Listings)
+- [ ] Phase 5 — CMS (Articles, Carousel, Announcements)
+- [ ] Phase 6 — Admin User Management
+- [ ] Phase 7 — Dashboard Overview & Analytics
