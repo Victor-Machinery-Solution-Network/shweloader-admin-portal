@@ -15,10 +15,25 @@ src/
 │   ├── (dashboard)/              # Dashboard route group
 │   │   ├── layout.tsx           # Dashboard layout (sidebar + header)
 │   │   ├── dashboard/
-│   │   │   └── page.tsx         # Main dashboard (/dashboard)
-│   │   └── users/
-│   │       ├── page.tsx         # Users list (/users)
-│   │       └── loading.tsx      # Loading state for users page
+│   │   │   ├── page.tsx         # Dashboard redirect (/dashboard)
+│   │   │   ├── overview/
+│   │   │   │   └── page.tsx     # Overview page (/dashboard/overview)
+│   │   │   └── analytics/
+│   │   │       └── page.tsx     # Analytics page (/dashboard/analytics)
+│   │   ├── admins/              # Admin management
+│   │   ├── announcement-bar/    # Announcement bar management
+│   │   ├── articles/            # Article management
+│   │   ├── attachments/         # Attachment management
+│   │   ├── brands/              # Brand management
+│   │   ├── carousel-images/     # Carousel image management
+│   │   ├── customers/           # Customer management
+│   │   ├── enquiries/           # Enquiry management
+│   │   ├── equipment/           # Equipment management
+│   │   ├── listings/            # Listing management
+│   │   ├── locations/           # Location management
+│   │   ├── partners/            # Partner management
+│   │   ├── roles-permissions/   # Roles & permissions management
+│   │   └── settings/            # Settings page
 │   │
 │   ├── layout.tsx                # Root layout
 │   ├── page.tsx                  # Root page (redirects to dashboard)
@@ -28,20 +43,34 @@ src/
 │
 ├── components/
 │   ├── ui/                       # shadcn/ui primitive components
-│   │   ├── alert-dialog.tsx     # Alert dialog component
+│   │   ├── alert-dialog.tsx     # Alert dialog (frosted glass backdrop)
+│   │   ├── avatar.tsx           # Avatar component
 │   │   ├── badge.tsx            # Badge component
 │   │   ├── button.tsx           # Button component
 │   │   ├── card.tsx             # Card component
+│   │   ├── checkbox.tsx         # Checkbox component
 │   │   ├── combobox.tsx         # Combobox/autocomplete
+│   │   ├── command.tsx          # Command palette (cmdk)
+│   │   ├── data-table.tsx       # DataTable (TanStack Table + search/sort/pagination/bulk select)
+│   │   ├── dialog.tsx           # Dialog component
 │   │   ├── dropdown-menu.tsx    # Dropdown menu
 │   │   ├── field.tsx            # Form field wrapper
 │   │   ├── input.tsx            # Input component
 │   │   ├── input-group.tsx      # Input group component
 │   │   ├── label.tsx            # Label component
+│   │   ├── multi-select.tsx     # Multi-select with search (Popover + Command)
+│   │   ├── popover.tsx          # Popover component
 │   │   ├── select.tsx           # Select component
 │   │   ├── separator.tsx        # Separator/divider
+│   │   ├── sheet.tsx            # Sheet/drawer component
+│   │   ├── sidebar.tsx          # Sidebar component
 │   │   ├── skeleton.tsx         # Loading skeleton
-│   │   └── textarea.tsx         # Textarea component
+│   │   ├── sonner.tsx           # Toast notifications (Sonner)
+│   │   ├── spinner.tsx          # Loading spinner (SVG arc)
+│   │   ├── table.tsx            # Table primitive
+│   │   ├── tabs.tsx             # Tabs component
+│   │   ├── textarea.tsx         # Textarea component
+│   │   └── tooltip.tsx          # Tooltip component
 │   │
 │   ├── layout/                   # Layout components
 │   │   ├── app-sidebar.tsx      # Main sidebar navigation
@@ -154,57 +183,21 @@ src/
 ---
 
 #### `src/app/(dashboard)/dashboard/page.tsx`
-**Purpose**: Main dashboard page
+**Purpose**: Dashboard index — redirects to `/dashboard/overview`
 **Route**: `/dashboard`
-**Type**: Server Component (async)
-**Features**:
-- Dashboard statistics cards
-- Recent activity sections
-- Placeholder for data fetching
-
-**Usage**:
-```typescript
-// Replace TODO comments with real data fetching:
-export default async function DashboardPage() {
-  const stats = await fetchDashboardStats();
-  return <Dashboard stats={stats} />;
-}
-```
 
 ---
 
-#### `src/app/(dashboard)/users/page.tsx`
-**Purpose**: Users list page
-**Route**: `/users`
-**Type**: Server Component (async)
-**Features**:
-- Page header with "Add User" button
-- Ready for user table implementation
-- Placeholder for data fetching
-
-**Usage**:
-```typescript
-// Fetch users and display in table:
-export default async function UsersPage() {
-  const users = await db.user.findMany();
-  return <UserTable users={users} />;
-}
-```
+#### `src/app/(dashboard)/dashboard/overview/page.tsx`
+**Purpose**: Overview page with UI component showcase (26 components)
+**Route**: `/dashboard/overview`
+**Type**: Client Component
 
 ---
 
-#### `src/app/(dashboard)/users/loading.tsx`
-**Purpose**: Loading state for users page
-**Type**: Server Component
-**Features**:
-- Automatically shown while page loads
-- Uses PageSkeleton component
-
-**Usage**:
-```typescript
-// Automatically used by Next.js
-// No need to import or call manually
-```
+#### `src/app/(dashboard)/dashboard/analytics/page.tsx`
+**Purpose**: Analytics dashboard
+**Route**: `/dashboard/analytics`
 
 ---
 
@@ -213,8 +206,7 @@ export default async function UsersPage() {
 **Route**: `/`
 **Type**: Server Component
 **Features**:
-- Redirects to dashboard
-- TODO: Add authentication check
+- Auth-aware: redirects to `/dashboard` if session exists, `/login` if not
 
 **Usage**:
 ```typescript
@@ -852,4 +844,4 @@ export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 6. **Add Validation**: Implement Zod schemas
 7. **Add State Management**: Use React Context or Zustand if needed
 8. **Add Forms**: Implement React Hook Form
-9. **Add Tables**: Build data table components with sorting/filtering
+9. ~~**Add Tables**~~: ✅ DataTable built with TanStack Table (search, sort, pagination, bulk select)

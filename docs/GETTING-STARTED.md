@@ -47,13 +47,15 @@ src/
 
 ### ✅ Route Structure
 - `/login` - Login page with centered layout
-- `/dashboard` - Main dashboard with stats
-- `/users` - Users list (ready for data integration)
+- `/dashboard` - Redirects to `/dashboard/overview`
+- `/dashboard/overview` - Overview page with UI component showcase
+- `/dashboard/analytics` - Analytics dashboard
+- `/admins`, `/brands`, `/customers`, `/equipment`, `/listings`, `/locations`, `/partners`, `/articles`, `/enquiries`, `/attachments`, `/carousel-images`, `/announcement-bar`, `/roles-permissions`, `/settings` - Feature pages
 
 ### ✅ Components
 - **Layout**: Sidebar navigation, header, auth layout
 - **Shared**: Page header, empty state, loading skeletons
-- **UI**: shadcn/ui components (button, card, input, etc.)
+- **UI**: 28 shadcn/ui components (button, card, input, data-table, multi-select, sonner, spinner, etc.)
 
 ### ✅ Patterns
 - Server Components for data fetching

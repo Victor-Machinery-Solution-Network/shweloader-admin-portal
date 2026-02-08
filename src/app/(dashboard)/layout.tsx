@@ -7,6 +7,7 @@
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { AuthSessionProvider } from '@/components/providers/session-provider';
 
 export default function DashboardLayout({
   children,
@@ -14,14 +15,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <AppHeader />
-        <main className="flex-1 p-6">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <AuthSessionProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <AppHeader />
+          <main className="flex-1 p-6">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </AuthSessionProvider>
   );
 }

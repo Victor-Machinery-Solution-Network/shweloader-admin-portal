@@ -136,7 +136,7 @@
   --card-foreground: #262626;
   --popover: #ffffff;
   --popover-foreground: #262626;
-  --primary: #ffb22c;
+  --primary: #fbb811;
   --primary-foreground: #000000;
   --secondary: #4b5563;
   --secondary-foreground: #ffffff;
@@ -148,22 +148,22 @@
   --destructive-foreground: #ffffff;
   --border: #e5e7eb;
   --input: #e5e7eb;
-  --ring: #f59e0b;
-  --chart-1: #f59e0b;
+  --ring: #fbb811;
+  --chart-1: #fbb811;
   --chart-2: #d97706;
   --chart-3: #b45309;
   --chart-4: #92400e;
   --chart-5: #78350f;
   --sidebar: #f9fafb;
   --sidebar-foreground: #262626;
-  --sidebar-primary: #f59e0b;
+  --sidebar-primary: #fbb811;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #fffbeb;
   --sidebar-accent-foreground: #92400e;
   --sidebar-hover: #ebebeb;
   --sidebar-hover-foreground: #262626;
   --sidebar-border: #e5e7eb;
-  --sidebar-ring: #f59e0b;
+  --sidebar-ring: #fbb811;
   --font-sans: Albert Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: Abhaya Libre, ui-serif, serif;
   --font-mono: Anonymous Pro, ui-monospace, monospace;
@@ -272,8 +272,6 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-hover: var(--sidebar-hover);
-  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 

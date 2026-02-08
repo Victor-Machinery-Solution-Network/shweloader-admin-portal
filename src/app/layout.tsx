@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Albert_Sans, Abhaya_Libre, Anonymous_Pro } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const albertSans = Albert_Sans({
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={`${albertSans.variable} ${abhayaLibre.variable} ${anonymousPro.variable}`}>
       <body className="antialiased">
         {children}
+        <Toaster position="top-center" />
       </body>
     </html>
   );

@@ -52,9 +52,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, User, LogOut, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSession } from 'next-auth/react';
+import { logoutAction } from '@/lib/actions/auth-actions';
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  const userName = session?.user?.name ?? 'Admin User';
+  const userEmail = session?.user?.email ?? '';
+  const initials = userName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   // Auto-open collapsible sections based on current route
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
@@ -390,12 +402,12 @@ export function AppSidebar() {
                   size="lg"
                 >
                   <Avatar className="h-8 w-8 rounded-full">
-                    <AvatarImage src="/avatars/user.png" alt="User" />
-                    <AvatarFallback className="rounded-full">AD</AvatarFallback>
+                    <AvatarImage src="/avatars/user.png" alt={userName} />
+                    <AvatarFallback className="rounded-full">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Admin User</span>
-                    <span className="truncate text-xs text-muted-foreground">admin@shweloader.com</span>
+                    <span className="truncate font-semibold">{userName}</span>
+                    <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
                   </div>
                   <MoreVertical className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -409,12 +421,12 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-full">
-                      <AvatarImage src="/avatars/user.png" alt="User" />
-                      <AvatarFallback className="rounded-full">AD</AvatarFallback>
+                      <AvatarImage src="/avatars/user.png" alt={userName} />
+                      <AvatarFallback className="rounded-full">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-foreground">Admin User</span>
-                      <span className="truncate text-xs text-muted-foreground">admin@shweloader.com</span>
+                      <span className="truncate font-semibold text-foreground">{userName}</span>
+                      <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -428,7 +440,10 @@ export function AppSidebar() {
                   Notifications
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onClick={() => logoutAction()}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>

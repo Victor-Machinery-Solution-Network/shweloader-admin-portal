@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import {
   Mail,
   Search,
@@ -78,6 +79,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AlertDialogMedia,
 } from '@/components/ui/alert-dialog';
 // 12. Dropdown Menu
 import {
@@ -151,6 +153,18 @@ import {
   InputGroupTextarea,
 } from '@/components/ui/input-group';
 // 19. Avatar
+import { Checkbox } from '@/components/ui/checkbox';
+// 20. DataTable
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import type { ColumnDef } from '@tanstack/react-table';
+// 21. Sonner
+import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'sonner';
+// 22. Spinner
+import { Spinner } from '@/components/ui/spinner';
+// 23. MultiSelect
+import { MultiSelect } from '@/components/ui/multi-select';
+// 24. Avatar (renumbered)
 import {
   Avatar,
   AvatarImage,
@@ -159,6 +173,60 @@ import {
   AvatarGroupCount,
   AvatarBadge,
 } from '@/components/ui/avatar';
+
+// --- DataTable demo data ---
+type DemoUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: 'active' | 'inactive';
+};
+
+const demoUsers: DemoUser[] = [
+  { id: '1', name: 'Alice Johnson', email: 'alice@example.com', role: 'Admin', status: 'active' },
+  { id: '2', name: 'Bob Smith', email: 'bob@example.com', role: 'Editor', status: 'active' },
+  { id: '3', name: 'Charlie Brown', email: 'charlie@example.com', role: 'Viewer', status: 'inactive' },
+  { id: '4', name: 'Diana Prince', email: 'diana@example.com', role: 'Admin', status: 'active' },
+  { id: '5', name: 'Eve Wilson', email: 'eve@example.com', role: 'Editor', status: 'active' },
+  { id: '6', name: 'Frank Miller', email: 'frank@example.com', role: 'Viewer', status: 'inactive' },
+  { id: '7', name: 'Grace Lee', email: 'grace@example.com', role: 'Editor', status: 'active' },
+  { id: '8', name: 'Hank Green', email: 'hank@example.com', role: 'Viewer', status: 'active' },
+  { id: '9', name: 'Iris Chen', email: 'iris@example.com', role: 'Admin', status: 'active' },
+  { id: '10', name: 'Jack Davis', email: 'jack@example.com', role: 'Editor', status: 'inactive' },
+  { id: '11', name: 'Karen White', email: 'karen@example.com', role: 'Viewer', status: 'active' },
+  { id: '12', name: 'Leo Martinez', email: 'leo@example.com', role: 'Editor', status: 'active' },
+];
+
+const demoColumns: ColumnDef<DemoUser>[] = [
+  {
+    accessorKey: 'name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+  },
+  {
+    accessorKey: 'email',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+  },
+  {
+    accessorKey: 'role',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string;
+      return (
+        <span className={cn(
+          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+          status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700',
+        )}>
+          {status}
+        </span>
+      );
+    },
+  },
+];
 
 // --- Section wrapper ---
 function Section({
@@ -210,7 +278,7 @@ export default function DashboardOverviewPage() {
         <div>
           <h1 className="text-2xl font-bold">UI Component Showcase</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            All 20 shadcn/ui primitives with every variant
+            All 26 shadcn/ui primitives with every variant
           </p>
         </div>
 
@@ -488,13 +556,16 @@ export default function DashboardOverviewPage() {
 
         {/* ========== 11. ALERT DIALOG ========== */}
         <Section title="Alert Dialog" number={11}>
-          <SubSection title="Default Size">
+          <SubSection title="Default with Media">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">Delete Account</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
+                  <AlertDialogMedia className="bg-destructive/10">
+                    <Trash2 className="text-destructive" />
+                  </AlertDialogMedia>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete your account
@@ -509,13 +580,16 @@ export default function DashboardOverviewPage() {
             </AlertDialog>
           </SubSection>
 
-          <SubSection title="Small Size">
+          <SubSection title="Small with Media">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline">Confirm Action (Small)</Button>
               </AlertDialogTrigger>
               <AlertDialogContent size="sm">
                 <AlertDialogHeader>
+                  <AlertDialogMedia>
+                    <AlertTriangle className="text-foreground" />
+                  </AlertDialogMedia>
                   <AlertDialogTitle>Confirm?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Are you sure you want to proceed?
@@ -524,6 +598,29 @@ export default function DashboardOverviewPage() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>No</AlertDialogCancel>
                   <AlertDialogAction>Yes</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </SubSection>
+
+          <SubSection title="Info with Media">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="secondary">Show Info</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogMedia className="bg-primary/10">
+                    <Info className="text-primary" />
+                  </AlertDialogMedia>
+                  <AlertDialogTitle>New updates available</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    A new version of the application is available. Would you like to update now?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Later</AlertDialogCancel>
+                  <AlertDialogAction>Update Now</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -987,8 +1084,177 @@ export default function DashboardOverviewPage() {
 
         <Separator />
 
-        {/* ========== 20. SIDEBAR ========== */}
-        <Section title="Sidebar" number={20}>
+        {/* ========== 20. CHECKBOX ========== */}
+        <Section title="Checkbox" number={20}>
+          <SubSection title="States">
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox /> Default
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox defaultChecked /> Checked
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox disabled /> Disabled
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox disabled defaultChecked /> Disabled Checked
+              </label>
+            </div>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 21. DATA TABLE ========== */}
+        <Section title="DataTable" number={21}>
+          <SubSection title="With Search, Sort, Pagination & Bulk Select">
+            <div className="w-full">
+              <DataTable
+                columns={demoColumns}
+                data={demoUsers}
+                searchKey="name"
+                searchPlaceholder="Search by name..."
+                enableSelection
+                enablePagination
+                pageSize={5}
+              />
+            </div>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 22. SONNER ========== */}
+        <Section title="Sonner (Toast)" number={22}>
+          <SubSection title="Toast Types">
+            <Button variant="outline" onClick={() => toast('Default toast notification')}>
+              Default
+            </Button>
+            <Button variant="outline" onClick={() => toast.success('Successfully saved!')}>
+              Success
+            </Button>
+            <Button variant="outline" onClick={() => toast.error('Something went wrong')}>
+              Error
+            </Button>
+            <Button variant="outline" onClick={() => toast.warning('Please check your input')}>
+              Warning
+            </Button>
+            <Button variant="outline" onClick={() => toast.info('New update available')}>
+              Info
+            </Button>
+            <Button variant="outline" onClick={() => toast.loading('Loading data...')}>
+              Loading
+            </Button>
+          </SubSection>
+          <SubSection title="With Description">
+            <Button
+              variant="outline"
+              onClick={() =>
+                toast.success('File uploaded', {
+                  description: 'Your file has been uploaded successfully.',
+                })
+              }
+            >
+              With Description
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                toast('Event created', {
+                  description: 'Monday, January 3rd at 6:00 PM',
+                  action: { label: 'Undo', onClick: () => {} },
+                })
+              }
+            >
+              With Action
+            </Button>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 23. SPINNER ========== */}
+        <Section title="Spinner" number={23}>
+          <SubSection title="Sizes">
+            <Spinner className="size-3" />
+            <Spinner />
+            <Spinner className="size-6" />
+            <Spinner className="size-8" />
+          </SubSection>
+          <SubSection title="In Button">
+            <Button disabled>
+              <Spinner className="mr-1" /> Loading...
+            </Button>
+            <Button variant="outline" disabled>
+              <Spinner className="mr-1" /> Saving
+            </Button>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 24. MULTI SELECT ========== */}
+        <Section title="MultiSelect" number={24}>
+          <SubSection title="Basic">
+            <div className="w-full max-w-sm">
+              <MultiSelect
+                options={[
+                  { label: 'React', value: 'react' },
+                  { label: 'Vue', value: 'vue' },
+                  { label: 'Angular', value: 'angular' },
+                  { label: 'Svelte', value: 'svelte' },
+                  { label: 'Next.js', value: 'nextjs' },
+                  { label: 'Nuxt', value: 'nuxt' },
+                  { label: 'Remix', value: 'remix' },
+                  { label: 'Astro', value: 'astro' },
+                ]}
+                onValueChange={() => {}}
+                placeholder="Select frameworks..."
+              />
+            </div>
+          </SubSection>
+          <SubSection title="With Default Values & Max Count">
+            <div className="w-full max-w-sm">
+              <MultiSelect
+                options={[
+                  { label: 'JavaScript', value: 'js' },
+                  { label: 'TypeScript', value: 'ts' },
+                  { label: 'Python', value: 'python' },
+                  { label: 'Rust', value: 'rust' },
+                  { label: 'Go', value: 'go' },
+                  { label: 'Java', value: 'java' },
+                ]}
+                defaultValue={['js', 'ts', 'python', 'rust']}
+                onValueChange={() => {}}
+                placeholder="Select languages..."
+                maxCount={2}
+              />
+            </div>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 25. POPOVER + COMMAND + DIALOG ========== */}
+        <Section title="Popover / Command / Dialog" number={25}>
+          <SubSection title="(Used internally)">
+            <Card className="w-full max-w-md">
+              <CardContent className="pt-0">
+                <p className="text-muted-foreground text-sm">
+                  Popover, Command (cmdk), and Dialog were installed as dependencies
+                  for the MultiSelect component. They are also available for direct use
+                  in your own components.
+                </p>
+              </CardContent>
+            </Card>
+          </SubSection>
+        </Section>
+
+        <Separator />
+
+        {/* ========== 26. SIDEBAR ========== */}
+        <Section title="Sidebar" number={26}>
           <SubSection title="(See left sidebar)">
             <Card className="w-full max-w-md">
               <CardContent className="pt-0">
@@ -1009,6 +1275,7 @@ export default function DashboardOverviewPage() {
 
         <div className="h-12" />
       </div>
+      <Toaster position="top-center" />
     </TooltipProvider>
   );
 }
