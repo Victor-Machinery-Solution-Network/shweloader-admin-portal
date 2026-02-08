@@ -4,6 +4,7 @@ Complete guide to data fetching patterns in the Next.js admin portal using Serve
 
 ## Table of Contents
 - [Overview](#overview)
+- [Cloudflare D1 REST API](#cloudflare-d1-rest-api)
 - [Server Components](#server-components)
 - [Server Actions](#server-actions)
 - [Client-Side Fetching](#client-side-fetching)
@@ -39,6 +40,196 @@ Need to fetch data?
 │
 └─ For client-side dynamic data?
    └─ Use Client Component with fetch ✅
+```
+
+---
+
+## Cloudflare D1 REST API
+
+**This project uses Cloudflare D1 as the backend database, accessed via a REST API.**
+
+### Configuration
+
+Environment variables (`.env.local`):
+
+```bash
+# Public URL (can be exposed to client)
+NEXT_PUBLIC_D1_API_URL=https://cloudflare-d1-rest-api.shweloader.workers.dev
+
+# API Token (server-side only)
+D1_API_TOKEN=your-secret-token
+```
+
+### D1 Client
+
+The D1 client provides low-level access to all REST API operations.
+
+```typescript
+import { d1 } from '@/lib/api';
+
+// List records with filtering, sorting, pagination
+const { results, meta } = await d1.list('users', {
+  limit: 10,
+  offset: 0,
+  sort_by: 'created_at',
+  order: 'desc',
+  status: 'active',  // Filter by column
+});
+
+// Get single record by ID
+const { results: [user] } = await d1.get('users', 123);
+
+// Create record
+const { results: [newUser] } = await d1.create('users', {
+  name: 'John Doe',
+  email: 'john@example.com',
+});
+
+// Update record
+const { results: [updated] } = await d1.update('users', 123, {
+  name: 'Jane Doe',
+});
+
+// Delete record
+await d1.delete('users', 123);
+
+// Raw SQL query
+const { results } = await d1.query(
+  'SELECT * FROM users WHERE age > ? AND status = ? LIMIT ?',
+  [21, 'active', 10]
+);
+```
+
+### Service Factory (Recommended)
+
+Create type-safe services for each table using the `createService` factory.
+
+```typescript
+// lib/services/brands.ts
+import { createService } from '@/lib/api';
+
+export interface Brand {
+  id: number;
+  name: string;
+  logo_url: string | null;
+  website: string | null;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export const brandService = createService<Brand>('brands');
+```
+
+Usage in Server Components:
+
+```typescript
+// app/(dashboard)/brands/page.tsx
+import { brandService } from '@/lib/services/brands';
+
+export default async function BrandsPage() {
+  const brands = await brandService.list({
+    sort_by: 'name',
+    order: 'asc'
+  });
+
+  return <BrandTable brands={brands} />;
+}
+```
+
+Usage in Server Actions:
+
+```typescript
+// lib/actions/brands.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { brandService } from '@/lib/services/brands';
+
+export async function createBrand(formData: FormData) {
+  const brand = await brandService.create({
+    name: formData.get('name') as string,
+    logo_url: formData.get('logo_url') as string,
+    status: 'active',
+  });
+
+  revalidatePath('/brands');
+  return { success: true, data: brand };
+}
+
+export async function updateBrand(id: number, formData: FormData) {
+  const brand = await brandService.update(id, {
+    name: formData.get('name') as string,
+  });
+
+  revalidatePath('/brands');
+  revalidatePath(`/brands/${id}`);
+  return { success: true, data: brand };
+}
+
+export async function deleteBrand(id: number) {
+  await brandService.delete(id);
+  revalidatePath('/brands');
+  return { success: true };
+}
+```
+
+### Service API Reference
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `list(params?)` | List records with optional filters | `T[]` |
+| `listWithMeta(params?)` | List with D1 metadata | `D1Response<T>` |
+| `getById(id)` | Get single record | `T \| null` |
+| `getByIdOrThrow(id)` | Get record or throw 404 | `T` |
+| `create(data)` | Create new record | `T` |
+| `update(id, data)` | Update existing record | `T` |
+| `delete(id)` | Delete record | `void` |
+| `exists(id)` | Check if record exists | `boolean` |
+| `count(filters?)` | Count matching records | `number` |
+
+### Query Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `sort_by` | Column to sort by | `sort_by: 'name'` |
+| `order` | Sort direction | `order: 'desc'` |
+| `limit` | Max records to return | `limit: 20` |
+| `offset` | Records to skip | `offset: 40` |
+| `[column]` | Filter by column value | `status: 'active'` |
+
+### Error Handling
+
+```typescript
+import { D1Error } from '@/lib/api';
+
+try {
+  const brand = await brandService.getByIdOrThrow(999);
+} catch (error) {
+  if (error instanceof D1Error) {
+    console.error(`D1 Error [${error.status}]: ${error.message}`);
+    // D1 Error [404]: brands with id 999 not found
+  }
+}
+```
+
+### D1 Response Format
+
+All D1 responses include metadata:
+
+```typescript
+interface D1Response<T> {
+  success: true;
+  meta: {
+    served_by: string;
+    served_by_region: string;
+    duration: number;
+    rows_read: number;
+    rows_written: number;
+    // ... more metadata
+  };
+  results: T[];
+}
 ```
 
 ---

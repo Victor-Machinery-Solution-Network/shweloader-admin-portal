@@ -15,10 +15,25 @@ src/
 │   ├── (dashboard)/              # Dashboard route group
 │   │   ├── layout.tsx           # Dashboard layout (sidebar + header)
 │   │   ├── dashboard/
-│   │   │   └── page.tsx         # Main dashboard (/dashboard)
-│   │   └── users/
-│   │       ├── page.tsx         # Users list (/users)
-│   │       └── loading.tsx      # Loading state for users page
+│   │   │   ├── page.tsx         # Dashboard redirect (/dashboard)
+│   │   │   ├── overview/
+│   │   │   │   └── page.tsx     # Overview page (/dashboard/overview)
+│   │   │   └── analytics/
+│   │   │       └── page.tsx     # Analytics page (/dashboard/analytics)
+│   │   ├── admins/              # Admin management
+│   │   ├── announcement-bar/    # Announcement bar management
+│   │   ├── articles/            # Article management
+│   │   ├── attachments/         # Attachment management
+│   │   ├── brands/              # Brand management
+│   │   ├── carousel-images/     # Carousel image management
+│   │   ├── customers/           # Customer management
+│   │   ├── enquiries/           # Enquiry management
+│   │   ├── equipment/           # Equipment management
+│   │   ├── listings/            # Listing management
+│   │   ├── locations/           # Location management
+│   │   ├── partners/            # Partner management
+│   │   ├── roles-permissions/   # Roles & permissions management
+│   │   └── settings/            # Settings page
 │   │
 │   ├── layout.tsx                # Root layout
 │   ├── page.tsx                  # Root page (redirects to dashboard)
@@ -28,20 +43,34 @@ src/
 │
 ├── components/
 │   ├── ui/                       # shadcn/ui primitive components
-│   │   ├── alert-dialog.tsx     # Alert dialog component
+│   │   ├── alert-dialog.tsx     # Alert dialog (frosted glass backdrop)
+│   │   ├── avatar.tsx           # Avatar component
 │   │   ├── badge.tsx            # Badge component
 │   │   ├── button.tsx           # Button component
 │   │   ├── card.tsx             # Card component
+│   │   ├── checkbox.tsx         # Checkbox component
 │   │   ├── combobox.tsx         # Combobox/autocomplete
+│   │   ├── command.tsx          # Command palette (cmdk)
+│   │   ├── data-table.tsx       # DataTable (TanStack Table + search/sort/pagination/bulk select)
+│   │   ├── dialog.tsx           # Dialog component
 │   │   ├── dropdown-menu.tsx    # Dropdown menu
 │   │   ├── field.tsx            # Form field wrapper
 │   │   ├── input.tsx            # Input component
 │   │   ├── input-group.tsx      # Input group component
 │   │   ├── label.tsx            # Label component
+│   │   ├── multi-select.tsx     # Multi-select with search (Popover + Command)
+│   │   ├── popover.tsx          # Popover component
 │   │   ├── select.tsx           # Select component
 │   │   ├── separator.tsx        # Separator/divider
+│   │   ├── sheet.tsx            # Sheet/drawer component
+│   │   ├── sidebar.tsx          # Sidebar component
 │   │   ├── skeleton.tsx         # Loading skeleton
-│   │   └── textarea.tsx         # Textarea component
+│   │   ├── sonner.tsx           # Toast notifications (Sonner)
+│   │   ├── spinner.tsx          # Loading spinner (SVG arc)
+│   │   ├── table.tsx            # Table primitive
+│   │   ├── tabs.tsx             # Tabs component
+│   │   ├── textarea.tsx         # Textarea component
+│   │   └── tooltip.tsx          # Tooltip component
 │   │
 │   ├── layout/                   # Layout components
 │   │   ├── app-sidebar.tsx      # Main sidebar navigation
@@ -63,7 +92,10 @@ src/
 │   │   └── example-actions.ts   # Example server actions (CRUD operations)
 │   │
 │   ├── api/                      # API client utilities
-│   │   ├── client.ts            # API client functions (GET, POST, PUT, DELETE)
+│   │   ├── index.ts             # Barrel exports for all API utilities
+│   │   ├── client.ts            # Legacy API client (GET, POST, PUT, DELETE)
+│   │   ├── d1-client.ts         # Cloudflare D1 REST API client
+│   │   ├── create-service.ts    # Service factory for type-safe CRUD
 │   │   └── endpoints/           # API endpoint definitions (ready for use)
 │   │       ├── users.ts         # User API endpoints
 │   │       └── products.ts      # Product API endpoints
@@ -85,7 +117,8 @@ src/
 │
 ├── types/                        # TypeScript type definitions
 │   ├── index.ts                  # Core type definitions
-│   └── api.ts                    # API-related types
+│   ├── api.ts                    # API-related types
+│   └── d1.ts                     # Cloudflare D1 API types
 │
 └── middleware.ts                 # Request middleware (auth, redirects)
 ```
@@ -150,57 +183,21 @@ src/
 ---
 
 #### `src/app/(dashboard)/dashboard/page.tsx`
-**Purpose**: Main dashboard page
+**Purpose**: Dashboard index — redirects to `/dashboard/overview`
 **Route**: `/dashboard`
-**Type**: Server Component (async)
-**Features**:
-- Dashboard statistics cards
-- Recent activity sections
-- Placeholder for data fetching
-
-**Usage**:
-```typescript
-// Replace TODO comments with real data fetching:
-export default async function DashboardPage() {
-  const stats = await fetchDashboardStats();
-  return <Dashboard stats={stats} />;
-}
-```
 
 ---
 
-#### `src/app/(dashboard)/users/page.tsx`
-**Purpose**: Users list page
-**Route**: `/users`
-**Type**: Server Component (async)
-**Features**:
-- Page header with "Add User" button
-- Ready for user table implementation
-- Placeholder for data fetching
-
-**Usage**:
-```typescript
-// Fetch users and display in table:
-export default async function UsersPage() {
-  const users = await db.user.findMany();
-  return <UserTable users={users} />;
-}
-```
+#### `src/app/(dashboard)/dashboard/overview/page.tsx`
+**Purpose**: Overview page with UI component showcase (26 components)
+**Route**: `/dashboard/overview`
+**Type**: Client Component
 
 ---
 
-#### `src/app/(dashboard)/users/loading.tsx`
-**Purpose**: Loading state for users page
-**Type**: Server Component
-**Features**:
-- Automatically shown while page loads
-- Uses PageSkeleton component
-
-**Usage**:
-```typescript
-// Automatically used by Next.js
-// No need to import or call manually
-```
+#### `src/app/(dashboard)/dashboard/analytics/page.tsx`
+**Purpose**: Analytics dashboard
+**Route**: `/dashboard/analytics`
 
 ---
 
@@ -209,8 +206,7 @@ export default async function UsersPage() {
 **Route**: `/`
 **Type**: Server Component
 **Features**:
-- Redirects to dashboard
-- TODO: Add authentication check
+- Auth-aware: redirects to `/dashboard` if session exists, `/login` if not
 
 **Usage**:
 ```typescript
@@ -321,7 +317,7 @@ const navigation = [
 - Page title display
 - Notification bell
 - User profile button
-- Fixed height (h-16)
+- Fixed height (h-12)
 
 **Props**: None
 
@@ -564,6 +560,114 @@ try {
 
 ---
 
+#### `src/lib/api/d1-client.ts`
+**Purpose**: Cloudflare D1 REST API client
+**Type**: TypeScript module
+**Features**:
+- Full CRUD operations for D1 database
+- Query parameters (filtering, sorting, pagination)
+- Raw SQL query support
+- Bearer token authentication
+- Type-safe responses with metadata
+
+**Exports**:
+- `d1` - Main client object with list, get, create, update, delete, query methods
+- `D1Error` - Custom error class for D1 API errors
+
+**Usage**:
+```typescript
+import { d1, D1Error } from '@/lib/api';
+
+// List with filters
+const { results } = await d1.list('brands', {
+  limit: 10,
+  sort_by: 'name',
+  order: 'asc',
+  status: 'active',
+});
+
+// Get single record
+const { results: [brand] } = await d1.get('brands', 123);
+
+// Create
+const { results: [newBrand] } = await d1.create('brands', {
+  name: 'CAT',
+  logo_url: 'https://...',
+});
+
+// Update
+await d1.update('brands', 123, { name: 'Caterpillar' });
+
+// Delete
+await d1.delete('brands', 123);
+
+// Raw SQL
+const { results } = await d1.query(
+  'SELECT * FROM brands WHERE status = ? LIMIT ?',
+  ['active', 10]
+);
+```
+
+---
+
+#### `src/lib/api/create-service.ts`
+**Purpose**: Factory for creating type-safe CRUD services
+**Type**: TypeScript module
+**Features**:
+- Generic service creation for any table
+- Simplified API compared to raw d1 client
+- Automatic type inference
+- Helper methods (exists, count, getByIdOrThrow)
+
+**Exports**:
+- `createService<T>(table, options?)` - Creates a typed service
+- `Service<T>` - Service interface type
+
+**Usage**:
+```typescript
+import { createService } from '@/lib/api';
+
+// Define entity type
+interface Brand {
+  id: number;
+  name: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+}
+
+// Create service
+export const brandService = createService<Brand>('brands');
+
+// Use in components/actions
+const brands = await brandService.list({ limit: 10 });
+const brand = await brandService.getById(1);
+const newBrand = await brandService.create({ name: 'CAT', status: 'active' });
+await brandService.update(1, { name: 'Caterpillar' });
+await brandService.delete(1);
+
+// Helper methods
+const exists = await brandService.exists(1);
+const count = await brandService.count({ status: 'active' });
+```
+
+---
+
+#### `src/lib/api/index.ts`
+**Purpose**: Barrel exports for API utilities
+**Type**: TypeScript module
+**Features**:
+- Clean imports from single location
+- Re-exports all API utilities and types
+
+**Usage**:
+```typescript
+// Import everything from one place
+import { d1, D1Error, createService } from '@/lib/api';
+import type { D1Response, D1QueryParams } from '@/lib/api';
+```
+
+---
+
 #### `src/lib/utils.ts`
 **Purpose**: Utility functions
 **Type**: TypeScript module
@@ -648,6 +752,44 @@ export interface QueryParams {
 
 ---
 
+#### `src/types/d1.ts`
+**Purpose**: Cloudflare D1 REST API type definitions
+**Type**: TypeScript module
+**Features**:
+- D1 response types with metadata
+- Query parameter types
+- Payload helper types
+
+**Exports**:
+```typescript
+// Response types
+export interface D1Response<T> {
+  success: true;
+  meta: D1Meta;
+  results: T[];
+}
+
+export interface D1ErrorResponse {
+  success: false;
+  error: string;
+}
+
+// Query parameters
+export interface D1QueryParams {
+  sort_by?: string;
+  order?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+  [key: string]: string | number | undefined;
+}
+
+// Helper types
+export type D1CreatePayload<T> = Omit<T, 'id' | 'created_at' | 'updated_at'>;
+export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
+```
+
+---
+
 ## 🔄 Common Patterns
 
 ### Creating a New Page
@@ -694,11 +836,12 @@ export interface QueryParams {
 
 ## 🎯 Next Steps
 
-1. **Connect Database**: Add Prisma or Drizzle ORM
+1. ~~**Connect Database**~~: ✅ Cloudflare D1 REST API configured
 2. **Add Authentication**: Implement NextAuth.js v5
-3. **Implement Features**: Build out user, product, order management
-4. **Add Testing**: Set up Vitest or Jest
-5. **Add Validation**: Implement Zod schemas
-6. **Add State Management**: Use React Context or Zustand if needed
-7. **Add Forms**: Implement React Hook Form
-8. **Add Tables**: Build data table components with sorting/filtering
+3. **Create Entity Services**: Define services in `src/lib/services/` for each table
+4. **Implement Features**: Build out brand, category, product management
+5. **Add Testing**: Set up Vitest or Jest
+6. **Add Validation**: Implement Zod schemas
+7. **Add State Management**: Use React Context or Zustand if needed
+8. **Add Forms**: Implement React Hook Form
+9. ~~**Add Tables**~~: ✅ DataTable built with TanStack Table (search, sort, pagination, bulk select)

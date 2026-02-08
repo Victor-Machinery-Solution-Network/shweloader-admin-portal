@@ -335,6 +335,189 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 ---
 
+### Checkbox
+
+**File**: `src/components/ui/checkbox.tsx`
+
+```typescript
+import { Checkbox } from '@/components/ui/checkbox';
+
+<Checkbox />
+<Checkbox checked={checked} onCheckedChange={setChecked} />
+<Checkbox disabled />
+```
+
+---
+
+### DataTable
+
+**File**: `src/components/ui/data-table.tsx`
+
+Built on TanStack Table (`@tanstack/react-table`) + shadcn Table primitives.
+
+```typescript
+import { DataTable, DataTableColumnHeader, getSelectColumn } from '@/components/ui/data-table';
+import { ColumnDef } from '@tanstack/react-table';
+
+const columns: ColumnDef<User>[] = [
+  getSelectColumn<User>(),
+  {
+    accessorKey: 'name',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+  },
+];
+
+<DataTable
+  columns={columns}
+  data={users}
+  searchKey="name"
+  searchPlaceholder="Search users..."
+  enableSelection
+  enablePagination
+  pageSize={10}
+/>
+```
+
+**Features**: Column sorting, search/filter, pagination with rows-per-page, bulk select with checkboxes.
+
+---
+
+### Dialog
+
+**File**: `src/components/ui/dialog.tsx`
+
+```typescript
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
+<Dialog>
+  <DialogTrigger asChild><Button>Open</Button></DialogTrigger>
+  <DialogContent>
+    <DialogHeader><DialogTitle>Title</DialogTitle></DialogHeader>
+    <p>Content</p>
+  </DialogContent>
+</Dialog>
+```
+
+---
+
+### MultiSelect
+
+**File**: `src/components/ui/multi-select.tsx`
+
+Custom component using Popover + Command (cmdk) for searchable multi-select.
+
+```typescript
+import { MultiSelect } from '@/components/ui/multi-select';
+
+const options = [
+  { label: 'React', value: 'react' },
+  { label: 'Vue', value: 'vue' },
+];
+
+<MultiSelect
+  options={options}
+  defaultValue={['react']}
+  onValueChange={(values) => console.log(values)}
+  placeholder="Select frameworks"
+  maxCount={3}
+  searchable
+/>
+```
+
+**Features**: Search filtering, select all/clear all, badge chips with remove, maxCount limit.
+
+---
+
+### Popover
+
+**File**: `src/components/ui/popover.tsx`
+
+```typescript
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+<Popover>
+  <PopoverTrigger asChild><Button>Open</Button></PopoverTrigger>
+  <PopoverContent>Content here</PopoverContent>
+</Popover>
+```
+
+---
+
+### Command
+
+**File**: `src/components/ui/command.tsx`
+
+Command palette component built on cmdk.
+
+```typescript
+import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandEmpty } from '@/components/ui/command';
+
+<Command>
+  <CommandInput placeholder="Search..." />
+  <CommandList>
+    <CommandEmpty>No results.</CommandEmpty>
+    <CommandGroup>
+      <CommandItem>Item 1</CommandItem>
+    </CommandGroup>
+  </CommandList>
+</Command>
+```
+
+---
+
+### Sonner (Toast)
+
+**File**: `src/components/ui/sonner.tsx`
+
+Toast notification system using Sonner. Add `<Toaster />` to your layout.
+
+```typescript
+import { toast } from 'sonner';
+
+toast.success('Saved successfully');
+toast.error('Something went wrong');
+toast.info('Info message');
+toast.warning('Warning message');
+toast('Default toast', { description: 'With description', action: { label: 'Undo', onClick: () => {} } });
+```
+
+---
+
+### Spinner
+
+**File**: `src/components/ui/spinner.tsx`
+
+SVG arc loading spinner with `animate-spin`.
+
+```typescript
+import { Spinner } from '@/components/ui/spinner';
+
+<Spinner />
+<Spinner className="size-6" />
+<Button disabled><Spinner className="mr-2" /> Loading...</Button>
+```
+
+---
+
+### Tabs
+
+**File**: `src/components/ui/tabs.tsx`
+
+```typescript
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
+<Tabs defaultValue="tab1">
+  <TabsList>
+    <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+    <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+  </TabsList>
+  <TabsContent value="tab1">Content 1</TabsContent>
+  <TabsContent value="tab2">Content 2</TabsContent>
+</Tabs>
+```
+
+---
+
 ## Layout Components
 
 ### AppSidebar

@@ -8,7 +8,7 @@ npm install
 
 # Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your configuration
+# Edit .env.local with your D1 API token
 
 # Run development server
 npm run dev
@@ -47,13 +47,15 @@ src/
 
 ### ✅ Route Structure
 - `/login` - Login page with centered layout
-- `/dashboard` - Main dashboard with stats
-- `/users` - Users list (ready for data integration)
+- `/dashboard` - Redirects to `/dashboard/overview`
+- `/dashboard/overview` - Overview page with UI component showcase
+- `/dashboard/analytics` - Analytics dashboard
+- `/admins`, `/brands`, `/customers`, `/equipment`, `/listings`, `/locations`, `/partners`, `/articles`, `/enquiries`, `/attachments`, `/carousel-images`, `/announcement-bar`, `/roles-permissions`, `/settings` - Feature pages
 
 ### ✅ Components
 - **Layout**: Sidebar navigation, header, auth layout
 - **Shared**: Page header, empty state, loading skeletons
-- **UI**: shadcn/ui components (button, card, input, etc.)
+- **UI**: 28 shadcn/ui components (button, card, input, data-table, multi-select, sonner, spinner, etc.)
 
 ### ✅ Patterns
 - Server Components for data fetching
@@ -64,23 +66,36 @@ src/
 
 ## Next Steps
 
-### 1. Set Up Database
+### 1. ✅ Database Connected
 
-Choose your database solution:
+This project uses **Cloudflare D1** via REST API. Configuration:
 
-**Option A: PostgreSQL with Prisma**
 ```bash
-npm install prisma @prisma/client
-npx prisma init
+# .env.local
+NEXT_PUBLIC_D1_API_URL=https://cloudflare-d1-rest-api.shweloader.workers.dev
+D1_API_TOKEN=your-secret-token
 ```
 
-**Option B: PostgreSQL with Drizzle**
-```bash
-npm install drizzle-orm postgres
-npm install -D drizzle-kit
+### 2. Create Entity Services
+
+Create type-safe services for your database tables:
+
+```typescript
+// src/lib/services/brands.ts
+import { createService } from '@/lib/api';
+
+export interface Brand {
+  id: number;
+  name: string;
+  logo_url: string | null;
+  status: 'active' | 'inactive';
+  created_at: string;
+}
+
+export const brandService = createService<Brand>('brands');
 ```
 
-### 2. Add Authentication
+### 3. Add Authentication
 
 Recommended: NextAuth.js v5 (Auth.js)
 ```bash
@@ -89,12 +104,19 @@ npm install next-auth@beta
 
 Create [src/auth.ts](../src/auth.ts) and configure providers.
 
-### 3. Connect Data
+### 4. Connect Data
 
-Replace TODO comments in:
-- [src/lib/actions/example-actions.ts](../src/lib/actions/example-actions.ts)
-- [src/app/(dashboard)/dashboard/page.tsx](../src/app/(dashboard)/dashboard/page.tsx)
-- [src/app/(dashboard)/users/page.tsx](../src/app/(dashboard)/users/page.tsx)
+Use the D1 client in your pages and actions:
+
+```typescript
+// src/app/(dashboard)/brands/page.tsx
+import { brandService } from '@/lib/services/brands';
+
+export default async function BrandsPage() {
+  const brands = await brandService.list({ sort_by: 'name' });
+  return <BrandTable brands={brands} />;
+}
+```
 
 ### 4. Build Features
 
@@ -145,17 +167,21 @@ export function ProductForm() {
 ### Data Fetching Pattern
 
 ```typescript
-// ✅ Server Component - Direct data access
-export default async function UsersPage() {
-  const users = await db.user.findMany();
-  return <UserList users={users} />;
+// ✅ Server Component - Using D1 service
+import { brandService } from '@/lib/services/brands';
+
+export default async function BrandsPage() {
+  const brands = await brandService.list({ limit: 20 });
+  return <BrandList brands={brands} />;
 }
 
-// ✅ Server Action - Mutations
+// ✅ Server Action - Mutations with D1
 'use server'
-export async function deleteUser(id: string) {
-  await db.user.delete({ where: { id } });
-  revalidatePath('/users');
+import { brandService } from '@/lib/services/brands';
+
+export async function deleteBrand(id: number) {
+  await brandService.delete(id);
+  revalidatePath('/brands');
 }
 ```
 
@@ -199,6 +225,7 @@ const [user, posts] = await Promise.all([
 
 ## Need Help?
 
+- Check [DATA-FETCHING.md](./DATA-FETCHING.md) for D1 API usage
 - Check [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed patterns
 - Review example implementations in `src/app/(dashboard)/`
 - Follow Next.js best practices from the skill documentation

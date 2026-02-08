@@ -1,13 +1,13 @@
-/**
- * Root page - redirect to dashboard
- */
-
 import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { ROUTES } from '@/lib/constants';
 
-export default function HomePage() {
-  // TODO: Check authentication and redirect accordingly
-  // If authenticated, go to dashboard
-  // If not authenticated, go to login
-  redirect(ROUTES.DASHBOARD);
+export default async function HomePage() {
+  const session = await auth();
+
+  if (session) {
+    redirect(ROUTES.DASHBOARD);
+  } else {
+    redirect(ROUTES.LOGIN);
+  }
 }
