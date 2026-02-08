@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Albert_Sans, Abhaya_Libre, Anonymous_Pro } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const albertSans = Albert_Sans({
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <Toaster position="top-center" />
+        <Analytics />
       </body>
     </html>
   );
