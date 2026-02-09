@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Albert_Sans, Abhaya_Libre, Anonymous_Pro } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const albertSans = Albert_Sans({
@@ -37,6 +38,7 @@ export default function RootLayout({
         {children}
         <Toaster position="top-center" />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
