@@ -67,7 +67,7 @@ export function LoginForm() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in to manage your resources2
+          Sign in to manage your resources
         </p>
       </div>
 
