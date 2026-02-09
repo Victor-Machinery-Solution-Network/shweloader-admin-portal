@@ -5,10 +5,10 @@ Admin dashboard for the Shweloader heavy equipment marketplace. Built with Next.
 ## Quick Start
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env.local   # then fill in your keys
-npm run seed:admin            # create the first admin user
-npm run dev
+pnpm seed:admin               # create the first admin user
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to login.
@@ -71,11 +71,11 @@ See [.env.example](.env.example) for all required variables:
 ## Scripts
 
 ```bash
-npm run dev          # Development server
-npm run build        # Production build
-npm run start        # Production server
-npm run lint         # ESLint
-npm run seed:admin   # Seed first admin user into D1
+pnpm dev             # Development server
+pnpm build           # Production build
+pnpm start           # Production server
+pnpm lint            # ESLint
+pnpm seed:admin      # Seed first admin user into D1
 ```
 
 ## Hosting

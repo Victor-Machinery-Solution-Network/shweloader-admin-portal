@@ -4,14 +4,14 @@
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Set up environment variables
 cp .env.example .env.local
 # Edit .env.local with your D1 API token
 
 # Run development server
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
@@ -99,7 +99,7 @@ export const brandService = createService<Brand>('brands');
 
 Recommended: NextAuth.js v5 (Auth.js)
 ```bash
-npm install next-auth@beta
+pnpm add next-auth@beta
 ```
 
 Create [src/auth.ts](../src/auth.ts) and configure providers.

@@ -18,13 +18,13 @@ Complete guide for deploying and running the admin portal in production.
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run production build
-npm run build
+pnpm build
 
 # Start production server
-npm run start
+pnpm start
 ```
 
 ### Build Output
@@ -183,9 +183,9 @@ git push origin main
 ```json
 // vercel.json
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
@@ -844,18 +844,18 @@ export default function RootLayout({ children }) {
 rm -rf .next
 
 # Clear node_modules
-rm -rf node_modules package-lock.json
-npm install
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
 
 # Check for type errors
-npm run build
+pnpm build
 ```
 
 ### Memory Issues
 
 ```bash
 # Increase Node.js memory
-NODE_OPTIONS="--max-old-space-size=4096" npm run build
+NODE_OPTIONS="--max-old-space-size=4096" pnpm build
 ```
 
 ### SSL Certificates

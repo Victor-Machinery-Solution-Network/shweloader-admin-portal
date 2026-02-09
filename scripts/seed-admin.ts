@@ -2,7 +2,7 @@
  * Seed script: Insert the first admin user into D1
  *
  * Usage:
- *   npx tsx scripts/seed-admin.ts
+ *   pnpm tsx scripts/seed-admin.ts
  *
  * Requires D1_API_TOKEN and NEXT_PUBLIC_D1_API_URL in .env.local
  */
