@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { BrandForm } from "./brand-form";
-import {
-  deleteBrand,
-  getLinkedCounts,
-  formatLinkedSummary,
-} from "@/lib/actions/brand";
+import { deleteBrand } from "@/lib/actions/brand";
 import type { ProductBrandWithCategories } from "@/types/brand";
 import type { AttachmentCategory } from "@/types/attachment";
 import type { EquipmentSubCategory } from "@/types/equipment";
@@ -35,27 +31,6 @@ export function RowActions({
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [deleteDescription, setDeleteDescription] = useState("");
-
-  useEffect(() => {
-    if (showDelete) {
-      getLinkedCounts([brand.brand_id]).then(async (counts) => {
-        const c = counts[brand.brand_id];
-        if (c && c.total > 0) {
-          const summary = await formatLinkedSummary(c);
-          setDeleteDescription(
-            `This will permanently delete "${brand.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this brand.`,
-          );
-        } else {
-          setDeleteDescription(
-            `This will permanently delete "${brand.name}". This action cannot be undone.`,
-          );
-        }
-      });
-    } else {
-      setDeleteDescription("");
-    }
-  }, [showDelete, brand.brand_id, brand.name]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -106,7 +81,7 @@ export function RowActions({
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete brand?"
-        description={deleteDescription || "Loading..."}
+        description={`This will permanently delete "${brand.name}". This action cannot be undone.`}
         isPending={isPending}
       />
     </>

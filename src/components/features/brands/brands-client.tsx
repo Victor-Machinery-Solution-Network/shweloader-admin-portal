@@ -9,11 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { BrandForm } from "./brand-form";
 import { createColumns } from "./columns";
-import {
-  deleteBrands,
-  getLinkedCounts,
-  formatLinkedSummary,
-} from "@/lib/actions/brand";
+import { deleteBrands } from "@/lib/actions/brand";
 import type { ProductBrandWithCategories } from "@/types/brand";
 import type { AttachmentCategory } from "@/types/attachment";
 import type { EquipmentSubCategory } from "@/types/equipment";
@@ -36,40 +32,6 @@ export function BrandsClient({
     [categories, subCategories],
   );
 
-  const buildDescription = useCallback(
-    async (selected: ProductBrandWithCategories[]) => {
-      const ids = selected.map((b) => b.brand_id);
-      const counts = await getLinkedCounts(ids);
-
-      const names = selected.map((b) => `"${b.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} brands (${names})`}.`;
-
-      // Aggregate totals across all selected brands
-      const totals = {
-        equipmentModels: 0,
-        attachmentModels: 0,
-        attachmentCategories: 0,
-        equipmentSubCategories: 0,
-        total: 0,
-      };
-      for (const c of Object.values(counts)) {
-        totals.equipmentModels += c.equipmentModels;
-        totals.attachmentModels += c.attachmentModels;
-        totals.attachmentCategories += c.attachmentCategories;
-        totals.equipmentSubCategories += c.equipmentSubCategories;
-        totals.total += c.total;
-      }
-
-      if (totals.total > 0) {
-        const summary = await formatLinkedSummary(totals);
-        msg += ` There ${totals.total === 1 ? "is" : "are"} ${summary} linked to ${selected.length === 1 ? "this brand" : "these brands"}.`;
-      }
-
-      return msg;
-    },
-    [],
-  );
-
   const handleBulkDelete = useCallback(
     async (selected: ProductBrandWithCategories[]) => {
       const ids = selected.map((b) => b.brand_id);
@@ -83,11 +45,10 @@ export function BrandsClient({
       <BulkDeleteButton
         selectedRows={selected}
         onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
         itemLabel="brand"
       />
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete],
   );
 
   return (

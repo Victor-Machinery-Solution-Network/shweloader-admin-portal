@@ -1,28 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
 import { brandService } from "@/lib/services/brand";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
-
-/** Extract a user-friendly error message from D1/API errors */
-function getErrorMessage(error: unknown, fallback: string): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  if (raw.includes("UNIQUE constraint failed")) {
-    return "A brand with that name already exists";
-  }
-  if (raw.includes("FOREIGN KEY constraint failed")) {
-    return "Cannot delete — this brand is referenced by other data";
-  }
-  return fallback;
-}
-
-/** Get current user ID from session */
-async function getCurrentUserId(): Promise<number | null> {
-  const session = await auth();
-  return session?.user?.id ? Number(session.user.id) : null;
-}
+import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
 
@@ -202,7 +184,6 @@ export async function createBrand(formData: FormData) {
     revalidatePath(ROUTES.BRANDS);
     return { success: true };
   } catch (error) {
-    console.error("Brand creation error:", error);
     return {
       success: false,
       error: getErrorMessage(error, "Failed to create brand"),
@@ -238,7 +219,6 @@ export async function updateBrand(id: number, formData: FormData) {
     revalidatePath(ROUTES.BRANDS);
     return { success: true };
   } catch (error) {
-    console.error("Brand update error:", error);
     return {
       success: false,
       error: getErrorMessage(error, "Failed to update brand"),
@@ -281,87 +261,4 @@ export async function deleteBrands(ids: number[]) {
     };
   }
   return { success: true };
-}
-
-export interface BrandLinkedCounts {
-  equipmentModels: number;
-  attachmentModels: number;
-  attachmentCategories: number;
-  equipmentSubCategories: number;
-  total: number;
-}
-
-export async function getLinkedCounts(
-  brandIds: number[],
-): Promise<Record<number, BrandLinkedCounts>> {
-  const counts: Record<number, BrandLinkedCounts> = {};
-  for (const id of brandIds) {
-    const [eqModels, atModels, atCategories, eqSubCategories] =
-      await Promise.all([
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM equipment_model WHERE brand_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM attachment_model WHERE brand_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM attachment_category_brand WHERE brand_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM equipment_sub_category_brand WHERE brand_id = ?",
-          [id],
-        ),
-      ]);
-
-    const equipmentModels = eqModels.results[0]?.count ?? 0;
-    const attachmentModels = atModels.results[0]?.count ?? 0;
-    const attachmentCategories = atCategories.results[0]?.count ?? 0;
-    const equipmentSubCategories = eqSubCategories.results[0]?.count ?? 0;
-
-    counts[id] = {
-      equipmentModels,
-      attachmentModels,
-      attachmentCategories,
-      equipmentSubCategories,
-      total:
-        equipmentModels +
-        attachmentModels +
-        attachmentCategories +
-        equipmentSubCategories,
-    };
-  }
-  return counts;
-}
-
-/** Build a human-readable summary of linked items */
-export async function formatLinkedSummary(
-  c: BrandLinkedCounts,
-): Promise<string> {
-  const parts: string[] = [];
-  if (c.equipmentModels > 0) {
-    parts.push(
-      `${c.equipmentModels} equipment ${c.equipmentModels === 1 ? "model" : "models"}`,
-    );
-  }
-  if (c.attachmentModels > 0) {
-    parts.push(
-      `${c.attachmentModels} attachment ${c.attachmentModels === 1 ? "model" : "models"}`,
-    );
-  }
-  if (c.attachmentCategories > 0) {
-    parts.push(
-      `${c.attachmentCategories} attachment ${c.attachmentCategories === 1 ? "category" : "categories"}`,
-    );
-  }
-  if (c.equipmentSubCategories > 0) {
-    parts.push(
-      `${c.equipmentSubCategories} equipment ${c.equipmentSubCategories === 1 ? "sub-category" : "sub-categories"}`,
-    );
-  }
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0];
-  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
