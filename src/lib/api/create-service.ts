@@ -23,11 +23,11 @@
  * await userService.delete(123);
  */
 
-import { d1, D1Error } from './d1-client';
-import type { D1QueryParams, D1Response } from '@/types/d1';
+import { d1, D1Error } from "./d1-client";
+import type { D1QueryParams, D1Response } from "@/types/d1";
 
 /** Create payload - accepts partial of T without id/timestamps */
-type CreateData<T> = Omit<Partial<T>, 'id' | 'created_at' | 'updated_at'>;
+type CreateData<T> = Omit<Partial<T>, "id" | "created_at" | "updated_at">;
 
 /** Update payload - same as create, all fields optional */
 type UpdateData<T> = CreateData<T>;
@@ -37,6 +37,8 @@ export { D1Error };
 export interface ServiceOptions {
   /** Default query parameters applied to all list requests */
   defaultParams?: D1QueryParams;
+  /** Primary key column name (defaults to 'id'). Used for getById, update, delete. */
+  primaryKey?: string;
 }
 
 export interface Service<T> {
@@ -79,9 +81,10 @@ export interface Service<T> {
  */
 export function createService<T>(
   table: string,
-  options: ServiceOptions = {}
+  options: ServiceOptions = {},
 ): Service<T> {
-  const { defaultParams = {} } = options;
+  const { defaultParams = {}, primaryKey = "id" } = options;
+  const usesCustomPK = primaryKey !== "id";
 
   return {
     table,
@@ -99,6 +102,13 @@ export function createService<T>(
 
     async getById(id: string | number): Promise<T | null> {
       try {
+        if (usesCustomPK) {
+          const response = await d1.query<T>(
+            `SELECT * FROM ${table} WHERE ${primaryKey} = ? LIMIT 1`,
+            [id],
+          );
+          return response.results[0] ?? null;
+        }
         const response = await d1.get<T>(table, id);
         return response.results[0] ?? null;
       } catch (error) {
@@ -118,16 +128,40 @@ export function createService<T>(
     },
 
     async create(data: CreateData<T>): Promise<T> {
-      const response = await d1.create<T>(table, data as Record<string, unknown>);
+      const response = await d1.create<T>(
+        table,
+        data as Record<string, unknown>,
+      );
       return response.results[0];
     },
 
     async update(id: string | number, data: UpdateData<T>): Promise<T> {
-      const response = await d1.update<T>(table, id, data as Record<string, unknown>);
+      if (usesCustomPK) {
+        const entries = Object.entries(data as Record<string, unknown>).filter(
+          ([, v]) => v !== undefined,
+        );
+        const setClauses = entries.map(([key]) => `${key} = ?`).join(", ");
+        const values = entries.map(([, v]) => v as string | number);
+        values.push(id as string | number);
+        const response = await d1.query<T>(
+          `UPDATE ${table} SET ${setClauses} WHERE ${primaryKey} = ? RETURNING *`,
+          values,
+        );
+        return response.results[0];
+      }
+      const response = await d1.update<T>(
+        table,
+        id,
+        data as Record<string, unknown>,
+      );
       return response.results[0];
     },
 
     async delete(id: string | number): Promise<void> {
+      if (usesCustomPK) {
+        await d1.query(`DELETE FROM ${table} WHERE ${primaryKey} = ?`, [id]);
+        return;
+      }
       await d1.delete(table, id);
     },
 
@@ -146,7 +180,7 @@ export function createService<T>(
           params.push(value);
           return `${key} = ?`;
         });
-        sql += ` WHERE ${conditions.join(' AND ')}`;
+        sql += ` WHERE ${conditions.join(" AND ")}`;
       }
 
       const response = await d1.query<{ count: number }>(sql, params);

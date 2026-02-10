@@ -3,6 +3,7 @@
 Complete guide to all components in the admin portal, including usage examples, props, and best practices.
 
 ## Table of Contents
+
 - [UI Components (shadcn/ui)](#ui-components-shadcnui)
 - [Layout Components](#layout-components)
 - [Shared Components](#shared-components)
@@ -21,6 +22,7 @@ Base primitive components from shadcn/ui. These are low-level, highly reusable c
 **File**: `src/components/ui/button.tsx`
 
 **Usage**:
+
 ```typescript
 import { Button } from '@/components/ui/button';
 
@@ -55,10 +57,17 @@ import { Plus } from 'lucide-react';
 ```
 
 **Props**:
+
 ```typescript
 interface ButtonProps {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-  size?: 'default' | 'sm' | 'lg' | 'icon';
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  size?: "default" | "sm" | "lg" | "icon";
   asChild?: boolean;
   // ... extends HTML button attributes
 }
@@ -71,6 +80,7 @@ interface ButtonProps {
 **File**: `src/components/ui/card.tsx`
 
 **Usage**:
+
 ```typescript
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
@@ -113,6 +123,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 **File**: `src/components/ui/input.tsx`
 
 **Usage**:
+
 ```typescript
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,6 +153,7 @@ const [value, setValue] = useState('');
 ```
 
 **Props**:
+
 ```typescript
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   // All standard HTML input attributes
@@ -155,6 +167,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 **File**: `src/components/ui/select.tsx`
 
 **Usage**:
+
 ```typescript
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -197,6 +210,7 @@ const [value, setValue] = useState('');
 **File**: `src/components/ui/dropdown-menu.tsx`
 
 **Usage**:
+
 ```typescript
 import {
   DropdownMenu,
@@ -246,6 +260,7 @@ import {
 **File**: `src/components/ui/alert-dialog.tsx`
 
 **Usage**:
+
 ```typescript
 import {
   AlertDialog,
@@ -287,6 +302,7 @@ import {
 **File**: `src/components/ui/badge.tsx`
 
 **Usage**:
+
 ```typescript
 import { Badge } from '@/components/ui/badge';
 
@@ -315,6 +331,7 @@ import { Badge } from '@/components/ui/badge';
 **File**: `src/components/ui/skeleton.tsx`
 
 **Usage**:
+
 ```typescript
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -472,13 +489,16 @@ import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandE
 Toast notification system using Sonner. Add `<Toaster />` to your layout.
 
 ```typescript
-import { toast } from 'sonner';
+import { toast } from "sonner";
 
-toast.success('Saved successfully');
-toast.error('Something went wrong');
-toast.info('Info message');
-toast.warning('Warning message');
-toast('Default toast', { description: 'With description', action: { label: 'Undo', onClick: () => {} } });
+toast.success("Saved successfully");
+toast.error("Something went wrong");
+toast.info("Info message");
+toast.warning("Warning message");
+toast("Default toast", {
+  description: "With description",
+  action: { label: "Undo", onClick: () => {} },
+});
 ```
 
 ---
@@ -528,12 +548,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 **Purpose**: Main navigation sidebar for the admin portal.
 
 **Features**:
+
 - Route-based active state highlighting
 - Icon-based navigation
 - Responsive design
 - Sticky positioning
 
 **Usage**:
+
 ```typescript
 import { AppSidebar } from '@/components/layout/app-sidebar';
 
@@ -545,6 +567,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 ```
 
 **Customization**:
+
 ```typescript
 // Add new navigation items
 const navigation = [
@@ -567,6 +590,7 @@ const navigation = [
 ```
 
 **Styling**:
+
 - Width: `w-64` (256px)
 - Background: `bg-muted/40`
 - Border: `border-r`
@@ -581,11 +605,13 @@ const navigation = [
 **Purpose**: Top header bar for the admin portal.
 
 **Features**:
+
 - Fixed height layout
 - Right-aligned action buttons
 - Notification and profile icons
 
 **Usage**:
+
 ```typescript
 import { AppHeader } from '@/components/layout/app-header';
 
@@ -597,6 +623,7 @@ import { AppHeader } from '@/components/layout/app-header';
 ```
 
 **Customization**:
+
 ```typescript
 // Add search bar
 export function AppHeader() {
@@ -638,6 +665,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs';
 **Purpose**: Consistent page header with title, description, and actions.
 
 **Props**:
+
 ```typescript
 interface PageHeaderProps {
   title: string;
@@ -647,6 +675,7 @@ interface PageHeaderProps {
 ```
 
 **Usage**:
+
 ```typescript
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -679,6 +708,7 @@ import { Plus } from 'lucide-react';
 ```
 
 **Styling**:
+
 - Bottom border with padding
 - Title: `text-3xl font-bold tracking-tight`
 - Description: `text-muted-foreground`
@@ -693,6 +723,7 @@ import { Plus } from 'lucide-react';
 **Purpose**: Friendly empty state for tables and lists.
 
 **Props**:
+
 ```typescript
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -703,6 +734,7 @@ interface EmptyStateProps {
 ```
 
 **Usage**:
+
 ```typescript
 import { EmptyState } from '@/components/shared/empty-state';
 import { Users, FileX } from 'lucide-react';
@@ -744,6 +776,7 @@ import { Button } from '@/components/ui/button';
 ```
 
 **Best Practices**:
+
 - Use appropriate icons for context
 - Provide clear, actionable messages
 - Include action buttons when relevant
@@ -759,11 +792,13 @@ import { Button } from '@/components/ui/button';
 **Purpose**: Loading state skeletons for different layouts.
 
 **Components**:
+
 - `TableSkeleton` - For table views
 - `CardSkeleton` - For card views
 - `PageSkeleton` - For full pages
 
 **Props**:
+
 ```typescript
 interface TableSkeletonProps {
   rows?: number; // Default: 5
@@ -771,6 +806,7 @@ interface TableSkeletonProps {
 ```
 
 **Usage**:
+
 ```typescript
 import { TableSkeleton, CardSkeleton, PageSkeleton } from '@/components/shared/loading-skeleton';
 
@@ -804,6 +840,7 @@ export default function Loading() {
 ```
 
 **Customization**:
+
 ```typescript
 // Custom skeleton
 export function UserCardSkeleton() {
@@ -827,171 +864,143 @@ export function UserCardSkeleton() {
 
 Feature components are domain-specific components organized by feature area.
 
-### Structure
+### Structure (Actual)
 
 ```
 src/components/features/
-├── users/
-│   ├── user-table.tsx       # User list table
-│   ├── user-form.tsx        # User create/edit form
-│   ├── user-filters.tsx     # User filters
-│   ├── user-actions.tsx     # User action menu
-│   └── user-card.tsx        # User card component
+├── equipment/
+│   ├── main/
+│   │   ├── columns.tsx                  # DataTable column definitions
+│   │   ├── main-categories-client.tsx   # Client component (state, reorder, bulk delete)
+│   │   ├── main-category-form.tsx       # Create/edit dialog form
+│   │   └── row-actions.tsx              # Per-row dropdown (Edit/Delete)
+│   └── sub/
+│       ├── columns.tsx                  # Columns with main category badge
+│       ├── sub-categories-client.tsx    # Client component with linked count bulk delete
+│       ├── sub-category-form.tsx        # Create/edit with category dropdown
+│       └── row-actions.tsx              # Delete with linked count warnings
 │
-├── products/
-│   ├── product-table.tsx
-│   ├── product-form.tsx
-│   └── ...
+├── attachments/
+│   └── categories/
+│       ├── columns.tsx                  # DataTable column definitions
+│       ├── attachment-categories-client.tsx  # Client with bulk delete + linked counts
+│       ├── category-form.tsx            # Create/edit dialog form
+│       └── row-actions.tsx              # Delete with linked count warnings
 │
-└── dashboard/
-    ├── stats-card.tsx
-    ├── recent-activity.tsx
-    └── ...
+└── brands/
+    ├── columns.tsx                      # Columns with BadgeList overflow (+X more tooltip)
+    ├── brands-client.tsx                # Client with multi-junction bulk delete
+    ├── brand-form.tsx                   # Form with 2 MultiSelect (categories + sub-categories)
+    └── row-actions.tsx                  # Delete with detailed linked count breakdown
 ```
 
-### Example: User Table Component
+### Component Pattern Per Feature
+
+Each feature follows a consistent 4-file pattern:
+
+| File              | Purpose                                                 | Type   |
+| ----------------- | ------------------------------------------------------- | ------ |
+| `columns.tsx`     | TanStack Table column definitions                       | Shared |
+| `*-client.tsx`    | Client wrapper (state, reorder, bulk delete, toolbar)   | Client |
+| `*-form.tsx`      | Create/edit dialog with server action submission        | Client |
+| `row-actions.tsx` | Per-row dropdown menu (Edit, Delete) with delete dialog | Client |
+
+### Key Patterns
+
+**Drag-and-Drop Reordering**: All category pages support `@dnd-kit` row reordering via `DataTable`'s `enableDragSort` + `onReorder` callback that calls a server action to update `display_order`.
+
+**Junction Table Management**: Brands link to both attachment categories and equipment sub-categories via many-to-many junction tables (`attachment_category_brand`, `equipment_sub_category_brand`). The brand form uses two `MultiSelect` components and syncs junction tables on create/update.
+
+**Delete Warnings with Linked Counts**: Delete dialogs query linked records before showing the confirmation. For example, deleting a brand shows: _"There are 3 equipment models, 2 attachment categories and 1 equipment sub-category linked to this brand."_
+
+**Badge Overflow with Tooltip**: When a row has more than 2 category badges, a `BadgeList` component renders the first 2 and shows a "+X more" badge. Hovering the overflow badge reveals a `Tooltip` listing all remaining categories.
+
+**Bulk Delete with Async Descriptions**: `BulkDeleteButton` accepts a `buildDescription` callback that aggregates linked counts across all selected rows before showing the delete dialog.
+
+### Example: Row Actions with Linked Count Warnings
 
 ```typescript
-// src/components/features/users/user-table.tsx
-'use client'
+// src/components/features/equipment/sub/row-actions.tsx
+"use client";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { UserActions } from './user-actions';
-import type { User } from '@/types';
+import { useState, useEffect, useTransition } from "react";
+import {
+  deleteSubCategory,
+  getSubCategoryLinkedCounts,
+  formatSubCategoryLinkedSummary,
+} from "@/lib/actions/equipment";
 
-interface UserTableProps {
-  users: User[];
-}
+export function RowActions({ subCategory, categories }: RowActionsProps) {
+  const [deleteDescription, setDeleteDescription] = useState("");
 
-export function UserTable({ users }: UserTableProps) {
-  return (
-    <div className="border rounded-lg">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell className="font-medium">{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                  {user.role}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge variant={user.active ? 'default' : 'secondary'}>
-                  {user.active ? 'Active' : 'Inactive'}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <UserActions user={user} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-```
-
-### Example: User Form Component
-
-```typescript
-// src/components/features/users/user-form.tsx
-'use client'
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createUser, updateUser } from '@/lib/actions/users';
-import type { User } from '@/types';
-
-interface UserFormProps {
-  user?: User; // For edit mode
-}
-
-export function UserForm({ user }: UserFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setIsLoading(true);
-    try {
-      if (user) {
-        await updateUser(user.id, formData);
-      } else {
-        await createUser(formData);
-      }
-      router.push('/users');
-    } catch (error) {
-      console.error('Failed to save user:', error);
-    } finally {
-      setIsLoading(false);
+  // Fetch linked counts when delete dialog opens
+  useEffect(() => {
+    if (showDelete) {
+      getSubCategoryLinkedCounts([subCategory.sub_category_id]).then(
+        async (counts) => {
+          const c = counts[subCategory.sub_category_id];
+          if (c && c.total > 0) {
+            const summary = await formatSubCategoryLinkedSummary(c);
+            setDeleteDescription(
+              `This will permanently delete "${subCategory.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this sub category.`,
+            );
+          } else {
+            setDeleteDescription(
+              `This will permanently delete "${subCategory.name}". This action cannot be undone.`,
+            );
+          }
+        },
+      );
     }
-  }
+  }, [showDelete, subCategory.sub_category_id]);
+  // ...
+}
+```
+
+### Example: Brand Form with Multi-Select Junction Tables
+
+```typescript
+// src/components/features/brands/brand-form.tsx — key pattern
+// Two MultiSelect components for many-to-many relationships:
+<MultiSelect
+  options={categories.map((c) => ({ value: String(c.category_id), label: c.name }))}
+  selected={selectedCategoryIds}
+  onChange={setSelectedCategoryIds}
+  placeholder="Select attachment categories..."
+/>
+<MultiSelect
+  options={subCategories.map((s) => ({ value: String(s.sub_category_id), label: s.name }))}
+  selected={selectedSubCategoryIds}
+  onChange={setSelectedSubCategoryIds}
+  placeholder="Select equipment sub-categories..."
+/>
+// Selected IDs are serialized as JSON in formData and synced via junction table helpers
+```
+
+### Example: Badge Overflow with Tooltip
+
+```typescript
+// src/components/features/brands/columns.tsx
+const MAX_VISIBLE_BADGES = 2;
+
+function BadgeList({ items, variant }: { items: string[]; variant?: BadgeProps['variant'] }) {
+  const visible = items.slice(0, MAX_VISIBLE_BADGES);
+  const overflow = items.slice(MAX_VISIBLE_BADGES);
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={user?.name}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          defaultValue={user?.email}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="role">Role</Label>
-        <Select name="role" defaultValue={user?.role || 'user'}>
-          <SelectTrigger id="role">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="user">User</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : user ? 'Update' : 'Create'}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
+    <div className="flex flex-wrap gap-1">
+      {visible.map((item) => <Badge key={item} variant={variant}>{item}</Badge>)}
+      {overflow.length > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="cursor-default">+{overflow.length} more</Badge>
+            </TooltipTrigger>
+            <TooltipContent>{overflow.join(', ')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
   );
 }
 ```
@@ -1003,6 +1012,7 @@ export function UserForm({ user }: UserFormProps) {
 ### Server vs Client Components
 
 **Server Components** (default):
+
 ```typescript
 // No 'use client' directive
 // Can be async
@@ -1016,6 +1026,7 @@ export default async function UserList() {
 ```
 
 **Client Components**:
+
 ```typescript
 'use client'
 // Must have 'use client' directive
@@ -1090,11 +1101,13 @@ export function UserList({ users }: { users: User[] }) {
    - Feature-specific → `src/components/features/[feature]/`
 
 2. **Create component file**:
+
    ```bash
    touch src/components/features/users/user-card.tsx
    ```
 
 3. **Write component**:
+
    ```typescript
    import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
    import { Avatar } from '@/components/ui/avatar';
@@ -1119,18 +1132,19 @@ export function UserList({ users }: { users: User[] }) {
    ```
 
 4. **Export from index (optional)**:
+
    ```typescript
    // src/components/features/users/index.ts
-   export { UserCard } from './user-card';
-   export { UserTable } from './user-table';
-   export { UserForm } from './user-form';
+   export { UserCard } from "./user-card";
+   export { UserTable } from "./user-table";
+   export { UserForm } from "./user-form";
    ```
 
 5. **Use component**:
    ```typescript
-   import { UserCard } from '@/components/features/users/user-card';
+   import { UserCard } from "@/components/features/users/user-card";
    // or
-   import { UserCard } from '@/components/features/users';
+   import { UserCard } from "@/components/features/users";
    ```
 
 ### Best Practices
@@ -1177,24 +1191,24 @@ describe('UserCard', () => {
 
 ```typescript
 // Layout
-className="flex items-center justify-between"
-className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+className = "flex items-center justify-between";
+className = "grid gap-4 md:grid-cols-2 lg:grid-cols-4";
 
 // Spacing
-className="p-6 space-y-4"
-className="mt-4 mb-6 mx-auto"
+className = "p-6 space-y-4";
+className = "mt-4 mb-6 mx-auto";
 
 // Typography
-className="text-3xl font-bold tracking-tight"
-className="text-sm text-muted-foreground"
+className = "text-3xl font-bold tracking-tight";
+className = "text-sm text-muted-foreground";
 
 // Colors
-className="bg-primary text-primary-foreground"
-className="bg-muted text-muted-foreground"
+className = "bg-primary text-primary-foreground";
+className = "bg-muted text-muted-foreground";
 
 // Interactive
-className="hover:bg-accent hover:text-accent-foreground"
-className="focus:outline-none focus:ring-2 focus:ring-ring"
+className = "hover:bg-accent hover:text-accent-foreground";
+className = "focus:outline-none focus:ring-2 focus:ring-ring";
 ```
 
 ### Using cn() utility

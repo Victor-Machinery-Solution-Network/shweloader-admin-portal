@@ -2,7 +2,7 @@
 
 ## Current State
 
-Solid foundation — layout, sidebar, 30+ UI components, D1 API client, service factory, route scaffolding, and docs. But **zero feature pages are functional**. Every page is an empty placeholder.
+Phases 1–3 are largely complete. Auth is production-ready with Turnstile + rate limiting. Equipment categories, attachment categories, and brands have full CRUD with drag-and-drop reordering, many-to-many junction table management, and detailed delete warnings. The remaining pages (models, customers, partners, listings, CMS, roles, settings) are still placeholders.
 
 ---
 
@@ -34,6 +34,7 @@ CMS (articles, carousel, announcements)
 - Store `user_id` in session for audit fields
 
 **Security hardening (completed):**
+
 - bcrypt password hashing (cost factor 12)
 - In-memory email-based rate limiting (5 attempts / 15 min lockout)
 - Cloudflare Turnstile bot protection on login form
@@ -56,6 +57,18 @@ CMS (articles, carousel, announcements)
 - Then replicate the pattern across all lookup tables
 - This is where the reusable `DataTable` + form patterns get nailed down
 
+**Completed items:**
+
+- `product_brand` — Full CRUD with DataTable, search, pagination, drag-and-drop reordering
+- Brand ↔ Attachment Category many-to-many via `attachment_category_brand` junction table
+- Brand ↔ Equipment Sub-Category many-to-many via `equipment_sub_category_brand` junction table
+- Multi-select UI in brand form for selecting linked categories/sub-categories
+- Badge overflow with "+X more" tooltip when categories exceed 2
+- Detailed delete warnings showing linked equipment models, attachment models, categories, and sub-categories
+- Bulk delete with aggregated linked count descriptions
+
+**Status: BRANDS COMPLETE** — Locations and other lookup tables still pending
+
 ---
 
 ## Phase 3 — Equipment & Attachment Catalog
@@ -63,6 +76,7 @@ CMS (articles, carousel, announcements)
 **Why third:** This is the **core domain** — an equipment marketplace. No listings can exist without models, and no models without categories.
 
 Build in order:
+
 1. `equipment_main_category` (simple CRUD + image)
 2. `equipment_sub_category` (CRUD + parent category dropdown)
 3. `equipment_model` (CRUD + brand + sub-category + PDF upload)
@@ -70,6 +84,17 @@ Build in order:
 5. Then mirror for `attachment_category` → `attachment_model` → `attachment_category_brand`
 
 **This establishes relational UI patterns** — dropdowns that depend on other entities, file uploads, nested navigation.
+
+**Completed items:**
+
+- `equipment_main_category` — Full CRUD, drag-and-drop reordering, linked sub-category count in delete warnings
+- `equipment_sub_category` — Full CRUD with main category dropdown, drag-and-drop reordering, detailed delete warnings (linked equipment models + brands)
+- `attachment_category` — Full CRUD, drag-and-drop reordering, detailed delete warnings (linked attachment models + brands)
+- Junction table management for `equipment_sub_category_brand` and `attachment_category_brand` handled through brand form (Phase 2)
+
+**Still pending:** `equipment_model`, `attachment_model` pages
+
+**Status: CATEGORIES COMPLETE** — Model pages pending
 
 ---
 

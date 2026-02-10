@@ -13,7 +13,21 @@ export type {
   D1CreatePayload,
   D1UpdatePayload,
   WithId,
-} from './d1';
+} from "./d1";
+
+// Re-export equipment types
+export type { EquipmentMainCategory, EquipmentSubCategory } from "./equipment";
+
+// Re-export attachment types
+export type { AttachmentCategory } from "./attachment";
+
+// Re-export brand types
+export type {
+  ProductBrand,
+  AttachmentCategoryBrand,
+  EquipmentSubCategoryBrand,
+  ProductBrandWithCategories,
+} from "./brand";
 
 /** Matches the admin_user table in D1 */
 export interface AdminUser {
@@ -30,7 +44,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,7 +62,7 @@ export interface Product {
 export interface Order {
   id: string;
   userId: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status: "pending" | "processing" | "completed" | "cancelled";
   total: number;
   createdAt: Date;
   updatedAt: Date;

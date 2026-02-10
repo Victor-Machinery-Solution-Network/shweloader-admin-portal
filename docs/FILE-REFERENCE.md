@@ -81,15 +81,20 @@ src/
 │   │   ├── empty-state.tsx      # Empty state placeholder
 │   │   └── loading-skeleton.tsx # Loading skeleton variants
 │   │
-│   └── features/                 # Feature-specific components (ready for use)
-│       ├── users/               # User management components
-│       ├── products/            # Product management components
-│       ├── orders/              # Order management components
-│       └── dashboard/           # Dashboard-specific components
+│   └── features/                 # Feature-specific components
+│       ├── equipment/
+│       │   ├── main/            # Main category CRUD (columns, client, form, row-actions)
+│       │   └── sub/             # Sub category CRUD with linked count warnings
+│       ├── attachments/
+│       │   └── categories/      # Attachment category CRUD with linked count warnings
+│       └── brands/              # Brand CRUD with multi-select junctions, badge overflow
 │
 ├── lib/                          # Core application logic
 │   ├── actions/                  # Server Actions
-│   │   └── example-actions.ts   # Example server actions (CRUD operations)
+│   │   ├── auth-actions.ts      # Login/logout server actions
+│   │   ├── equipment.ts         # Equipment category CRUD + linked count helpers
+│   │   ├── attachment.ts        # Attachment category CRUD + linked count helpers
+│   │   └── brand.ts             # Brand CRUD + junction table sync + linked counts
 │   │
 │   ├── api/                      # API client utilities
 │   │   ├── index.ts             # Barrel exports for all API utilities
@@ -130,14 +135,17 @@ src/
 ### App Router Files
 
 #### `src/app/(auth)/layout.tsx`
+
 **Purpose**: Layout for authentication pages (login, register)
 **Type**: Server Component
 **Features**:
+
 - Centered layout without sidebar
 - Clean, minimal design for auth forms
 - Route group `(auth)` doesn't affect URLs
 
 **Usage**:
+
 ```typescript
 // Wraps all pages in app/(auth)/
 // Provides centered layout for login/register pages
@@ -146,15 +154,18 @@ src/
 ---
 
 #### `src/app/(auth)/login/page.tsx`
+
 **Purpose**: Login page
 **Route**: `/login`
 **Type**: Server Component
 **Features**:
+
 - Email and password form
 - Card-based layout
 - Ready for authentication integration
 
 **Usage**:
+
 ```typescript
 // Add authentication logic with NextAuth.js or custom solution
 // Form submits to Server Action or API endpoint
@@ -163,18 +174,22 @@ src/
 ---
 
 #### `src/app/(dashboard)/layout.tsx`
+
 **Purpose**: Layout for all dashboard pages
 **Type**: Server Component
 **Features**:
+
 - Includes sidebar navigation
 - Includes header bar
 - Wraps all admin pages
 
 **Dependencies**:
+
 - `AppSidebar` component
 - `AppHeader` component
 
 **Usage**:
+
 ```typescript
 // Automatically wraps all pages in (dashboard) route group
 // Provides consistent layout across admin pages
@@ -183,12 +198,14 @@ src/
 ---
 
 #### `src/app/(dashboard)/dashboard/page.tsx`
+
 **Purpose**: Dashboard index — redirects to `/dashboard/overview`
 **Route**: `/dashboard`
 
 ---
 
 #### `src/app/(dashboard)/dashboard/overview/page.tsx`
+
 **Purpose**: Overview page with UI component showcase (26 components)
 **Route**: `/dashboard/overview`
 **Type**: Client Component
@@ -196,40 +213,47 @@ src/
 ---
 
 #### `src/app/(dashboard)/dashboard/analytics/page.tsx`
+
 **Purpose**: Analytics dashboard
 **Route**: `/dashboard/analytics`
 
 ---
 
 #### `src/app/page.tsx`
+
 **Purpose**: Root page that redirects to dashboard
 **Route**: `/`
 **Type**: Server Component
 **Features**:
+
 - Auth-aware: redirects to `/dashboard` if session exists, `/login` if not
 
 **Usage**:
+
 ```typescript
 // Customize redirect logic based on auth status:
 export default function HomePage() {
   const session = await getServerSession();
-  if (!session) redirect('/login');
-  redirect('/dashboard');
+  if (!session) redirect("/login");
+  redirect("/dashboard");
 }
 ```
 
 ---
 
 #### `src/app/error.tsx`
+
 **Purpose**: Global error boundary
 **Type**: Client Component (required)
 **Features**:
+
 - Catches errors in any route
 - Shows error message
 - Provides retry button
 - Logs errors to console
 
 **Usage**:
+
 ```typescript
 // Automatically catches errors
 // Customize error reporting:
@@ -241,14 +265,17 @@ useEffect(() => {
 ---
 
 #### `src/app/not-found.tsx`
+
 **Purpose**: 404 page for non-existent routes
 **Type**: Server Component
 **Features**:
+
 - Friendly 404 message
 - Link back to dashboard
 - Icon illustration
 
 **Usage**:
+
 ```typescript
 // Automatically shown for 404s
 // Can be customized with different messaging
@@ -257,21 +284,24 @@ useEffect(() => {
 ---
 
 #### `src/middleware.ts`
+
 **Purpose**: Request middleware for authentication and redirects
 **Type**: Edge Middleware
 **Features**:
+
 - Runs before every request
 - Checks authentication status
 - Redirects unauthenticated users
 - Prevents authenticated users from accessing auth pages
 
 **Usage**:
+
 ```typescript
 // Configure routes and authentication:
 export function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   if (!token && !isPublicRoute) {
-    return NextResponse.redirect('/login');
+    return NextResponse.redirect("/login");
   }
 }
 ```
@@ -281,9 +311,11 @@ export function middleware(request: NextRequest) {
 ### Component Files
 
 #### `src/components/layout/app-sidebar.tsx`
+
 **Purpose**: Main sidebar navigation
 **Type**: Client Component
 **Features**:
+
 - Navigation links for all main routes
 - Active route highlighting
 - Icon-based navigation
@@ -292,6 +324,7 @@ export function middleware(request: NextRequest) {
 **Props**: None
 
 **Usage**:
+
 ```typescript
 import { AppSidebar } from '@/components/layout/app-sidebar';
 
@@ -300,20 +333,23 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 ```
 
 **Customization**:
+
 ```typescript
 // Add new navigation items in the `navigation` array:
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'New Page', href: '/new-page', icon: NewIcon }, // Add here
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "New Page", href: "/new-page", icon: NewIcon }, // Add here
 ];
 ```
 
 ---
 
 #### `src/components/layout/app-header.tsx`
+
 **Purpose**: Main application header
 **Type**: Client Component
 **Features**:
+
 - Page title display
 - Notification bell
 - User profile button
@@ -322,6 +358,7 @@ const navigation = [
 **Props**: None
 
 **Usage**:
+
 ```typescript
 import { AppHeader } from '@/components/layout/app-header';
 
@@ -330,6 +367,7 @@ import { AppHeader } from '@/components/layout/app-header';
 ```
 
 **Customization**:
+
 ```typescript
 // Add search bar, breadcrumbs, or other header elements
 // Connect notification and profile buttons to real functionality
@@ -338,14 +376,17 @@ import { AppHeader } from '@/components/layout/app-header';
 ---
 
 #### `src/components/shared/page-header.tsx`
+
 **Purpose**: Reusable page header with title and actions
 **Type**: Server Component
 **Features**:
+
 - Title and description
 - Action buttons slot (children)
 - Consistent spacing and borders
 
 **Props**:
+
 ```typescript
 interface PageHeaderProps {
   title: string;
@@ -355,6 +396,7 @@ interface PageHeaderProps {
 ```
 
 **Usage**:
+
 ```typescript
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -370,14 +412,17 @@ import { Button } from '@/components/ui/button';
 ---
 
 #### `src/components/shared/empty-state.tsx`
+
 **Purpose**: Empty state placeholder for tables and lists
 **Type**: Server Component
 **Features**:
+
 - Icon display
 - Title and description
 - Action button slot
 
 **Props**:
+
 ```typescript
 interface EmptyStateProps {
   icon?: LucideIcon;
@@ -388,6 +433,7 @@ interface EmptyStateProps {
 ```
 
 **Usage**:
+
 ```typescript
 import { EmptyState } from '@/components/shared/empty-state';
 import { Users } from 'lucide-react';
@@ -403,19 +449,23 @@ import { Users } from 'lucide-react';
 ---
 
 #### `src/components/shared/loading-skeleton.tsx`
+
 **Purpose**: Loading skeleton components
 **Type**: Server Component
 **Features**:
+
 - Multiple skeleton variants (Table, Card, Page)
 - Customizable row counts
 - Consistent loading states
 
 **Components**:
+
 - `TableSkeleton` - For table loading states
 - `CardSkeleton` - For card loading states
 - `PageSkeleton` - For full page loading states
 
 **Usage**:
+
 ```typescript
 import { TableSkeleton, CardSkeleton } from '@/components/shared/loading-skeleton';
 
@@ -433,29 +483,33 @@ export default function Loading() {
 ### Library Files
 
 #### `src/lib/constants.ts`
+
 **Purpose**: Application-wide constants
 **Type**: TypeScript module
 **Features**:
+
 - Route constants
 - API route constants
 - Configuration values
 - Format strings
 
 **Exports**:
+
 ```typescript
-export const APP_NAME = 'Admin Portal';
+export const APP_NAME = "Admin Portal";
 export const ROUTES = {
-  HOME: '/',
-  LOGIN: '/login',
-  DASHBOARD: '/dashboard',
+  HOME: "/",
+  LOGIN: "/login",
+  DASHBOARD: "/dashboard",
   // ... more routes
 };
 export const ITEMS_PER_PAGE = 20;
 ```
 
 **Usage**:
+
 ```typescript
-import { ROUTES, ITEMS_PER_PAGE } from '@/lib/constants';
+import { ROUTES, ITEMS_PER_PAGE } from "@/lib/constants";
 
 redirect(ROUTES.LOGIN);
 const users = await db.user.findMany({ take: ITEMS_PER_PAGE });
@@ -464,21 +518,25 @@ const users = await db.user.findMany({ take: ITEMS_PER_PAGE });
 ---
 
 #### `src/lib/actions/example-actions.ts`
+
 **Purpose**: Example Server Actions for CRUD operations
 **Type**: Server Actions module
 **Features**:
+
 - Create, update, delete examples
 - Form data handling
 - Path revalidation
 - Error handling patterns
 
 **Exports**:
+
 - `createUser(formData: FormData)` - Create new user
 - `updateUser(id: string, formData: FormData)` - Update user
 - `deleteUser(id: string)` - Delete user
 - `createUserAndRedirect(formData: FormData)` - Create and redirect
 
 **Usage**:
+
 ```typescript
 'use client'
 import { createUser } from '@/lib/actions/example-actions';
@@ -495,8 +553,9 @@ export function UserForm() {
 ```
 
 **Pattern**:
+
 ```typescript
-'use server'
+"use server";
 export async function createResource(formData: FormData) {
   // 1. Extract data
   const data = Object.fromEntries(formData);
@@ -508,7 +567,7 @@ export async function createResource(formData: FormData) {
   const result = await db.insert(validated);
 
   // 4. Revalidate
-  revalidatePath('/resources');
+  revalidatePath("/resources");
 
   // 5. Return result
   return { success: true, data: result };
@@ -518,15 +577,18 @@ export async function createResource(formData: FormData) {
 ---
 
 #### `src/lib/api/client.ts`
+
 **Purpose**: API client for HTTP requests
 **Type**: TypeScript module
 **Features**:
+
 - GET, POST, PUT, DELETE helpers
 - Error handling
 - Type-safe responses
 - Base URL configuration
 
 **Exports**:
+
 - `apiGet<T>(endpoint, options?)` - GET request
 - `apiPost<T>(endpoint, data?, options?)` - POST request
 - `apiPut<T>(endpoint, data?, options?)` - PUT request
@@ -534,23 +596,24 @@ export async function createResource(formData: FormData) {
 - `ApiError` - Custom error class
 
 **Usage**:
+
 ```typescript
-'use client'
-import { apiGet, apiPost } from '@/lib/api/client';
-import type { User } from '@/types';
+"use client";
+import { apiGet, apiPost } from "@/lib/api/client";
+import type { User } from "@/types";
 
 // Fetch data
-const { data } = await apiGet<User[]>('/users');
+const { data } = await apiGet<User[]>("/users");
 
 // Create resource
-const { data: newUser } = await apiPost<User>('/users', {
-  name: 'John',
-  email: 'john@example.com'
+const { data: newUser } = await apiPost<User>("/users", {
+  name: "John",
+  email: "john@example.com",
 });
 
 // Error handling
 try {
-  await apiPost('/users', userData);
+  await apiPost("/users", userData);
 } catch (error) {
   if (error instanceof ApiError) {
     console.error(error.status, error.message);
@@ -561,9 +624,11 @@ try {
 ---
 
 #### `src/lib/api/d1-client.ts`
+
 **Purpose**: Cloudflare D1 REST API client
 **Type**: TypeScript module
 **Features**:
+
 - Full CRUD operations for D1 database
 - Query parameters (filtering, sorting, pagination)
 - Raw SQL query support
@@ -571,110 +636,126 @@ try {
 - Type-safe responses with metadata
 
 **Exports**:
+
 - `d1` - Main client object with list, get, create, update, delete, query methods
 - `D1Error` - Custom error class for D1 API errors
 
 **Usage**:
+
 ```typescript
-import { d1, D1Error } from '@/lib/api';
+import { d1, D1Error } from "@/lib/api";
 
 // List with filters
-const { results } = await d1.list('brands', {
+const { results } = await d1.list("brands", {
   limit: 10,
-  sort_by: 'name',
-  order: 'asc',
-  status: 'active',
+  sort_by: "name",
+  order: "asc",
+  status: "active",
 });
 
 // Get single record
-const { results: [brand] } = await d1.get('brands', 123);
+const {
+  results: [brand],
+} = await d1.get("brands", 123);
 
 // Create
-const { results: [newBrand] } = await d1.create('brands', {
-  name: 'CAT',
-  logo_url: 'https://...',
+const {
+  results: [newBrand],
+} = await d1.create("brands", {
+  name: "CAT",
+  logo_url: "https://...",
 });
 
 // Update
-await d1.update('brands', 123, { name: 'Caterpillar' });
+await d1.update("brands", 123, { name: "Caterpillar" });
 
 // Delete
-await d1.delete('brands', 123);
+await d1.delete("brands", 123);
 
 // Raw SQL
 const { results } = await d1.query(
-  'SELECT * FROM brands WHERE status = ? LIMIT ?',
-  ['active', 10]
+  "SELECT * FROM brands WHERE status = ? LIMIT ?",
+  ["active", 10],
 );
 ```
 
 ---
 
 #### `src/lib/api/create-service.ts`
+
 **Purpose**: Factory for creating type-safe CRUD services
 **Type**: TypeScript module
 **Features**:
+
 - Generic service creation for any table
 - Simplified API compared to raw d1 client
 - Automatic type inference
 - Helper methods (exists, count, getByIdOrThrow)
 
 **Exports**:
+
 - `createService<T>(table, options?)` - Creates a typed service
 - `Service<T>` - Service interface type
 
 **Usage**:
+
 ```typescript
-import { createService } from '@/lib/api';
+import { createService } from "@/lib/api";
 
 // Define entity type
 interface Brand {
   id: number;
   name: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   created_at: string;
 }
 
 // Create service
-export const brandService = createService<Brand>('brands');
+export const brandService = createService<Brand>("brands");
 
 // Use in components/actions
 const brands = await brandService.list({ limit: 10 });
 const brand = await brandService.getById(1);
-const newBrand = await brandService.create({ name: 'CAT', status: 'active' });
-await brandService.update(1, { name: 'Caterpillar' });
+const newBrand = await brandService.create({ name: "CAT", status: "active" });
+await brandService.update(1, { name: "Caterpillar" });
 await brandService.delete(1);
 
 // Helper methods
 const exists = await brandService.exists(1);
-const count = await brandService.count({ status: 'active' });
+const count = await brandService.count({ status: "active" });
 ```
 
 ---
 
 #### `src/lib/api/index.ts`
+
 **Purpose**: Barrel exports for API utilities
 **Type**: TypeScript module
 **Features**:
+
 - Clean imports from single location
 - Re-exports all API utilities and types
 
 **Usage**:
+
 ```typescript
 // Import everything from one place
-import { d1, D1Error, createService } from '@/lib/api';
-import type { D1Response, D1QueryParams } from '@/lib/api';
+import { d1, D1Error, createService } from "@/lib/api";
+import type { D1Response, D1QueryParams } from "@/lib/api";
 ```
 
 ---
 
 #### `src/lib/utils.ts`
+
 **Purpose**: Utility functions
 **Type**: TypeScript module
 **Features**:
+
 - `cn()` - Class name merging with clsx and tailwind-merge
 
 **Usage**:
+
 ```typescript
 import { cn } from '@/lib/utils';
 
@@ -690,20 +771,23 @@ import { cn } from '@/lib/utils';
 ### Type Files
 
 #### `src/types/index.ts`
+
 **Purpose**: Core type definitions
 **Type**: TypeScript module
 **Features**:
+
 - Domain model types (User, Product, Order)
 - Paginated response types
 - Error types
 
 **Exports**:
+
 ```typescript
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -717,8 +801,9 @@ export interface PaginatedResponse<T> {
 ```
 
 **Usage**:
+
 ```typescript
-import type { User, Product } from '@/types';
+import type { User, Product } from "@/types";
 
 const user: User = await fetchUser(id);
 ```
@@ -726,14 +811,17 @@ const user: User = await fetchUser(id);
 ---
 
 #### `src/types/api.ts`
+
 **Purpose**: API-related type definitions
 **Type**: TypeScript module
 **Features**:
+
 - HTTP method types
 - API response types
 - Query parameter types
 
 **Exports**:
+
 ```typescript
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -745,7 +833,7 @@ export interface QueryParams {
   page?: number;
   pageSize?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   query?: string;
 }
 ```
@@ -753,14 +841,17 @@ export interface QueryParams {
 ---
 
 #### `src/types/d1.ts`
+
 **Purpose**: Cloudflare D1 REST API type definitions
 **Type**: TypeScript module
 **Features**:
+
 - D1 response types with metadata
 - Query parameter types
 - Payload helper types
 
 **Exports**:
+
 ```typescript
 // Response types
 export interface D1Response<T> {
@@ -777,14 +868,14 @@ export interface D1ErrorResponse {
 // Query parameters
 export interface D1QueryParams {
   sort_by?: string;
-  order?: 'asc' | 'desc';
+  order?: "asc" | "desc";
   limit?: number;
   offset?: number;
   [key: string]: string | number | undefined;
 }
 
 // Helper types
-export type D1CreatePayload<T> = Omit<T, 'id' | 'created_at' | 'updated_at'>;
+export type D1CreatePayload<T> = Omit<T, "id" | "created_at" | "updated_at">;
 export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 ```
 
@@ -793,12 +884,14 @@ export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 ## 🔄 Common Patterns
 
 ### Creating a New Page
+
 1. Create directory in `src/app/(dashboard)/`
 2. Add `page.tsx` with metadata
 3. Add `loading.tsx` for loading state
 4. Update sidebar navigation
 
 ### Creating a Feature
+
 1. Create directory in `src/components/features/[feature]/`
 2. Add components (form, table, filters, etc.)
 3. Create Server Actions in `src/lib/actions/[feature].ts`
@@ -806,6 +899,7 @@ export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 5. Add validation schemas in `src/lib/validations/[feature].ts`
 
 ### Adding a Form
+
 1. Create form component in `src/components/features/`
 2. Use `'use client'` directive
 3. Create Server Action for submission
@@ -817,6 +911,7 @@ export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 ## 📦 Dependencies
 
 ### Production
+
 - `next`: 16.1.6 - Framework
 - `react`: 19.2.3 - UI library
 - `react-dom`: 19.2.3 - React DOM
@@ -827,6 +922,7 @@ export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;
 - `tailwind-merge`: ^3.4.0 - Tailwind class merging
 
 ### Development
+
 - `typescript`: ^5 - Type safety
 - `eslint`: ^9 - Linting
 - `@tailwindcss/postcss`: ^4 - PostCSS plugin

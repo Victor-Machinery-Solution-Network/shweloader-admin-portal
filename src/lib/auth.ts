@@ -1,8 +1,8 @@
-import NextAuth from 'next-auth';
-import Credentials from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
-import { d1 } from '@/lib/api/d1-client';
-import type { AdminUser } from '@/types';
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import { d1 } from "@/lib/api/d1-client";
+import type { AdminUser } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory, sufficient for single-instance admin portal)
@@ -10,10 +10,7 @@ import type { AdminUser } from '@/types';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
-const loginAttempts = new Map<
-  string,
-  { count: number; lastAttempt: number }
->();
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 
 export function isRateLimited(email: string): boolean {
   const record = loginAttempts.get(email);
@@ -55,8 +52,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         const email = credentials?.email as string | undefined;
@@ -73,8 +70,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           // Query admin_user by email via D1 REST API
           const { results } = await d1.query<AdminUser>(
-            'SELECT * FROM admin_user WHERE email = ? AND active = 1 LIMIT 1',
-            [email]
+            "SELECT * FROM admin_user WHERE email = ? AND active = 1 LIMIT 1",
+            [email],
           );
 
           const user = results[0];
@@ -107,12 +104,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 60 * 60 * 8, // 8 hours
   },
 
   pages: {
-    signIn: '/login',
+    signIn: "/login",
   },
 
   callbacks: {
@@ -121,7 +118,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.user_id = user.id;
         token.username = user.name;
-        token.role_id = (user as AdminUser & { role_id: number | null }).role_id;
+        token.role_id = (
+          user as AdminUser & { role_id: number | null }
+        ).role_id;
       }
       return token;
     },
@@ -138,11 +137,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnLogin = nextUrl.pathname.startsWith('/login');
+      const isOnLogin = nextUrl.pathname.startsWith("/login");
 
       if (isOnLogin) {
         if (isLoggedIn) {
-          return Response.redirect(new URL('/dashboard', nextUrl));
+          return Response.redirect(new URL("/dashboard", nextUrl));
         }
         return true;
       }

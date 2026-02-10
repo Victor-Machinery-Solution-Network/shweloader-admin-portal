@@ -28,51 +28,51 @@ import type {
   D1Response,
   D1QueryParams,
   D1RawQueryRequest,
-} from '@/types/d1';
+} from "@/types/d1";
 
 // Configuration
 const D1_BASE_URL =
   process.env.NEXT_PUBLIC_D1_API_URL ||
-  'https://cloudflare-d1-rest-api.shweloader.workers.dev';
+  "https://cloudflare-d1-rest-api.shweloader.workers.dev";
 
-const D1_API_TOKEN = process.env.D1_API_TOKEN || '';
+const D1_API_TOKEN = process.env.D1_API_TOKEN || "";
 
 /** Custom error class for D1 API errors */
 export class D1Error extends Error {
   constructor(
     message: string,
     public status: number,
-    public isD1Error: boolean = true
+    public isD1Error: boolean = true,
   ) {
     super(message);
-    this.name = 'D1Error';
+    this.name = "D1Error";
   }
 }
 
 /** Build query string from params object */
 function buildQueryString(params?: D1QueryParams): string {
-  if (!params) return '';
+  if (!params) return "";
 
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
+    if (value !== undefined && value !== null && value !== "") {
       searchParams.append(key, String(value));
     }
   });
 
   const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : '';
+  return queryString ? `?${queryString}` : "";
 }
 
 /** Get authorization headers */
 function getHeaders(): HeadersInit {
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   if (D1_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${D1_API_TOKEN}`;
+    headers["Authorization"] = `Bearer ${D1_API_TOKEN}`;
   }
 
   return headers;
@@ -80,19 +80,49 @@ function getHeaders(): HeadersInit {
 
 /** Handle D1 API response */
 async function handleD1Response<T>(response: Response): Promise<D1Response<T>> {
-  const data: D1ApiResponse<T> = await response.json();
+  const text = await response.text();
 
-  if (!data.success) {
+  // Empty response (e.g. DELETE 204) — return success with no results
+  if (!text.trim()) {
+    return { success: true, results: [], meta: {} } as unknown as D1Response<T>;
+  }
+
+  const data = JSON.parse(text);
+
+  // Standard D1 format: { success, results, meta }
+  if (data.success !== undefined) {
+    if (!data.success) {
+      throw new D1Error(data.error, response.status);
+    }
+    return data as D1Response<T>;
+  }
+
+  // REST create/update format: { message, data } (returned by POST 201, etc.)
+  if (data.data !== undefined) {
+    return {
+      success: true,
+      results: [data.data as T],
+      meta: {},
+    } as unknown as D1Response<T>;
+  }
+
+  // Error format: { error }
+  if (data.error) {
     throw new D1Error(data.error, response.status);
   }
 
-  return data;
+  // Unknown format — wrap as single result
+  return {
+    success: true,
+    results: [data as T],
+    meta: {},
+  } as unknown as D1Response<T>;
 }
 
 /** Make a request to the D1 API */
 async function d1Fetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<D1Response<T>> {
   const url = `${D1_BASE_URL}${endpoint}`;
 
@@ -111,13 +141,13 @@ async function d1Fetch<T>(
         const errorData = await response.json();
         throw new D1Error(
           errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-          response.status
+          response.status,
         );
       } catch (e) {
         if (e instanceof D1Error) throw e;
         throw new D1Error(
           `HTTP ${response.status}: ${response.statusText}`,
-          response.status
+          response.status,
         );
       }
     }
@@ -128,9 +158,9 @@ async function d1Fetch<T>(
 
     // Network or other errors
     throw new D1Error(
-      error instanceof Error ? error.message : 'Network error',
+      error instanceof Error ? error.message : "Network error",
       0,
-      false
+      false,
     );
   }
 }
@@ -158,10 +188,7 @@ export const d1 = {
    * // With filtering
    * const { results } = await d1.list('users', { status: 'active', role: 'admin' });
    */
-  async list<T>(
-    table: string,
-    params?: D1QueryParams
-  ): Promise<D1Response<T>> {
+  async list<T>(table: string, params?: D1QueryParams): Promise<D1Response<T>> {
     const queryString = buildQueryString(params);
     return d1Fetch<T>(`/rest/${table}${queryString}`);
   },
@@ -175,10 +202,7 @@ export const d1 = {
    * @example
    * const { results: [user] } = await d1.get('users', 123);
    */
-  async get<T>(
-    table: string,
-    id: string | number
-  ): Promise<D1Response<T>> {
+  async get<T>(table: string, id: string | number): Promise<D1Response<T>> {
     return d1Fetch<T>(`/rest/${table}/${id}`);
   },
 
@@ -196,10 +220,10 @@ export const d1 = {
    */
   async create<T>(
     table: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): Promise<D1Response<T>> {
     return d1Fetch<T>(`/rest/${table}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
@@ -219,10 +243,10 @@ export const d1 = {
   async update<T>(
     table: string,
     id: string | number,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ): Promise<D1Response<T>> {
     return d1Fetch<T>(`/rest/${table}/${id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -238,10 +262,10 @@ export const d1 = {
    */
   async delete<T = unknown>(
     table: string,
-    id: string | number
+    id: string | number,
   ): Promise<D1Response<T>> {
     return d1Fetch<T>(`/rest/${table}/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
@@ -259,15 +283,15 @@ export const d1 = {
    */
   async query<T>(
     sql: string,
-    params?: D1RawQueryRequest['params']
+    params?: D1RawQueryRequest["params"],
   ): Promise<D1Response<T>> {
     const body: D1RawQueryRequest = { query: sql };
     if (params) {
       body.params = params;
     }
 
-    return d1Fetch<T>('/query', {
-      method: 'POST',
+    return d1Fetch<T>("/query", {
+      method: "POST",
       body: JSON.stringify(body),
     });
   },
