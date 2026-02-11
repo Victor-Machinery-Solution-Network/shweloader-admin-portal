@@ -239,6 +239,61 @@ export async function deleteBrand(id: number) {
   }
 }
 
+// ─── Linked Count Helpers ────────────────────────────────────────────────────
+
+export interface BrandLinkedCounts {
+  equipmentModels: number;
+  attachmentModels: number;
+  total: number;
+}
+
+export async function getBrandLinkedCounts(
+  brandIds: number[],
+): Promise<Record<number, BrandLinkedCounts>> {
+  const counts: Record<number, BrandLinkedCounts> = {};
+  for (const id of brandIds) {
+    const [eqModels, atModels] = await Promise.all([
+      d1.query<{ count: number }>(
+        "SELECT COUNT(*) as count FROM equipment_model WHERE brand_id = ?",
+        [id],
+      ),
+      d1.query<{ count: number }>(
+        "SELECT COUNT(*) as count FROM attachment_model WHERE brand_id = ?",
+        [id],
+      ),
+    ]);
+
+    const equipmentModels = eqModels.results[0]?.count ?? 0;
+    const attachmentModels = atModels.results[0]?.count ?? 0;
+
+    counts[id] = {
+      equipmentModels,
+      attachmentModels,
+      total: equipmentModels + attachmentModels,
+    };
+  }
+  return counts;
+}
+
+export async function formatBrandLinkedSummary(c: BrandLinkedCounts): Promise<string> {
+  const parts: string[] = [];
+  if (c.equipmentModels > 0) {
+    parts.push(
+      `${c.equipmentModels} equipment ${c.equipmentModels === 1 ? "model" : "models"}`,
+    );
+  }
+  if (c.attachmentModels > 0) {
+    parts.push(
+      `${c.attachmentModels} attachment ${c.attachmentModels === 1 ? "model" : "models"}`,
+    );
+  }
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
+// ─── Bulk Delete ────────────────────────────────────────────────────────────
+
 export async function deleteBrands(ids: number[]) {
   const errors: string[] = [];
   let deleted = 0;

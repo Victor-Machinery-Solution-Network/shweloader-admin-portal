@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useTransition, useRef } from "react";
-import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
@@ -88,7 +87,6 @@ export function SubCategoryForm({
           ? "Update the sub category details."
           : "Create a new sub category."
       }
-      icon={isEditing ? Pencil : Plus}
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

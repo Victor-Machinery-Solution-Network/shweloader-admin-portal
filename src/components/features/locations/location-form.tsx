@@ -5,35 +5,31 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
-import { ImageInput } from "@/components/ui/image-input";
-import {
-  createAttachmentCategory,
-  updateAttachmentCategory,
-} from "@/lib/actions/attachment";
-import type { AttachmentCategory } from "@/types/attachment";
+import { createLocation, updateLocation } from "@/lib/actions/location";
+import type { Location } from "@/types/location";
 
-interface CategoryFormProps {
+interface LocationFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category?: AttachmentCategory;
+  location?: Location;
 }
 
-export function CategoryForm({
+export function LocationForm({
   open,
   onOpenChange,
-  category,
-}: CategoryFormProps) {
+  location,
+}: LocationFormProps) {
   const [isPending, startTransition] = useTransition();
-  const isEditing = !!category;
+  const isEditing = !!location;
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       const result = isEditing
-        ? await updateAttachmentCategory(category.category_id, formData)
-        : await createAttachmentCategory(formData);
+        ? await updateLocation(location.location_id, formData)
+        : await createLocation(formData);
 
       if (result.success) {
-        toast.success(isEditing ? "Category updated" : "Category created");
+        toast.success(isEditing ? "Location updated" : "Location created");
         onOpenChange(false);
       } else {
         toast.error(result.error ?? "Something went wrong");
@@ -45,11 +41,11 @@ export function CategoryForm({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Edit Category" : "Add Category"}
+      title={isEditing ? "Edit Location" : "Add Location"}
       description={
         isEditing
-          ? "Update the category details."
-          : "Create a new attachment category."
+          ? "Update the location details."
+          : "Create a new location."
       }
       onSubmit={handleSubmit}
       isPending={isPending}
@@ -57,20 +53,14 @@ export function CategoryForm({
     >
       <div className="space-y-4">
         <Field orientation="vertical">
-          <FieldLabel>Category Name</FieldLabel>
+          <FieldLabel>City Name</FieldLabel>
           <FieldContent>
             <Input
-              name="name"
-              placeholder="e.g. Buckets"
-              defaultValue={category?.name ?? ""}
+              name="city_name"
+              placeholder="e.g. Yangon"
+              defaultValue={location?.city_name ?? ""}
               required
             />
-          </FieldContent>
-        </Field>
-        <Field orientation="vertical">
-          <FieldLabel>Image</FieldLabel>
-          <FieldContent>
-            <ImageInput name="image_url" value={category?.image_url} />
           </FieldContent>
         </Field>
       </div>

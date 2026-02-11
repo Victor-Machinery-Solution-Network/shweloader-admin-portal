@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -52,7 +51,6 @@ export function CategoryForm({
           ? "Update the category details."
           : "Create a new main category."
       }
-      icon={isEditing ? Pencil : Plus}
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

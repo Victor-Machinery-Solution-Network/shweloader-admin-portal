@@ -21,6 +21,20 @@ export type { EquipmentMainCategory, EquipmentSubCategory } from "./equipment";
 // Re-export attachment types
 export type { AttachmentCategory } from "./attachment";
 
+// Re-export location types
+export type { Location } from "./location";
+
+// Re-export customer types
+export type { Customer, BusinessType } from "./customer";
+
+// Re-export partner types
+export type {
+  Partner,
+  PartnerType,
+  PartnerStatusType,
+  PartnerWithDetails,
+} from "./partner";
+
 // Re-export brand types
 export type {
   ProductBrand,

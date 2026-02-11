@@ -1,7 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +17,6 @@ interface FormDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
-  icon: LucideIcon;
-  iconClassName?: string;
   children: React.ReactNode;
   onSubmit: (formData: FormData) => void;
   isPending?: boolean;
@@ -32,8 +28,6 @@ export function FormDialog({
   onOpenChange,
   title,
   description,
-  icon: Icon,
-  iconClassName = "bg-primary/10",
   children,
   onSubmit,
   isPending = false,
@@ -48,15 +42,7 @@ export function FormDialog({
     >
       <DialogContent showCloseButton={!isPending}>
         <DialogHeader className="items-center text-center">
-          <div
-            className={cn(
-              "mb-2 inline-flex size-16 items-center justify-center rounded-full *:[svg:not([class*=size-])]:size-8",
-              iconClassName,
-            )}
-          >
-            <Icon className="text-primary" />
-          </div>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-xl">{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <form

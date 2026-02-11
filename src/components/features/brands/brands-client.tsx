@@ -9,7 +9,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { BrandForm } from "./brand-form";
 import { createColumns } from "./columns";
-import { deleteBrands } from "@/lib/actions/brand";
+import {
+  deleteBrands,
+  getBrandLinkedCounts,
+  formatBrandLinkedSummary,
+} from "@/lib/actions/brand";
 import type { ProductBrandWithCategories } from "@/types/brand";
 import type { AttachmentCategory } from "@/types/attachment";
 import type { EquipmentSubCategory } from "@/types/equipment";
@@ -40,15 +44,39 @@ export function BrandsClient({
     [],
   );
 
+  const buildDescription = useCallback(
+    async (selected: ProductBrandWithCategories[]) => {
+      const ids = selected.map((b) => b.brand_id);
+      const counts = await getBrandLinkedCounts(ids);
+      const totalLinked = Object.values(counts).reduce(
+        (sum, c) => sum + c.total,
+        0,
+      );
+      if (totalLinked > 0) {
+        const parts = await Promise.all(
+          Object.values(counts)
+            .filter((c) => c.total > 0)
+            .map((c) => formatBrandLinkedSummary(c)),
+        );
+        return `These brands are linked to ${parts.join("; ")}. Deleting will remove brand references from those models. This action cannot be undone.`;
+      }
+      const count = selected.length;
+      const plural = count === 1 ? "brand" : "brands";
+      return `This will permanently delete ${count} ${plural}. This action cannot be undone.`;
+    },
+    [],
+  );
+
   const renderToolbar = useCallback(
     (selected: ProductBrandWithCategories[]) => (
       <BulkDeleteButton
         selectedRows={selected}
         onDelete={handleBulkDelete}
+        buildDescription={buildDescription}
         itemLabel="brand"
       />
     ),
-    [handleBulkDelete],
+    [handleBulkDelete, buildDescription],
   );
 
   return (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -93,7 +92,6 @@ export function BrandForm({
       description={
         isEditing ? "Update the brand details." : "Create a new brand."
       }
-      icon={isEditing ? Pencil : Plus}
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

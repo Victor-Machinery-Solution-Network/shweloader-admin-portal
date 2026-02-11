@@ -18,3 +18,15 @@ export interface EquipmentSubCategory {
   created_by: number | null;
   created_at: string;
 }
+
+/** Matches the equipment_model table in D1 */
+export interface EquipmentModel {
+  model_id: number;
+  name: string;
+  brand_id: number | null;
+  sub_category_id: number;
+  pdf_url: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
