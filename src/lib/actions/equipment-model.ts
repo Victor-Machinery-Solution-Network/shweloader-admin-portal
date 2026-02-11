@@ -87,19 +87,16 @@ export async function deleteEquipmentModel(id: number) {
 }
 
 export async function deleteEquipmentModels(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => equipmentModelService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await equipmentModelService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(
-        getErrorMessage(error, `Failed to delete equipment model ${id}`),
-      );
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete equipment model ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_MODELS);
 

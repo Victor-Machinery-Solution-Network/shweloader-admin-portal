@@ -31,12 +31,13 @@ export async function getPartnersWithDetails(): Promise<PartnerWithDetails[]> {
 
 export async function approvePartner(id: number) {
   try {
-    const reviewed_by = await getCurrentUserId();
-    // Find the "Approved" status ID
-    const statusResult = await d1.query<{ id: number }>(
-      "SELECT id FROM partner_status_type WHERE status_name = ?",
-      ["Approved"],
-    );
+    const [reviewed_by, statusResult] = await Promise.all([
+      getCurrentUserId(),
+      d1.query<{ id: number }>(
+        "SELECT id FROM partner_status_type WHERE status_name = ?",
+        ["Approved"],
+      ),
+    ]);
     const statusId = statusResult.results[0]?.id;
     if (!statusId) {
       return { success: false, error: "Approved status type not found" };
@@ -60,12 +61,13 @@ export async function approvePartner(id: number) {
 
 export async function rejectPartner(id: number, reason: string) {
   try {
-    const reviewed_by = await getCurrentUserId();
-    // Find the "Rejected" status ID
-    const statusResult = await d1.query<{ id: number }>(
-      "SELECT id FROM partner_status_type WHERE status_name = ?",
-      ["Rejected"],
-    );
+    const [reviewed_by, statusResult] = await Promise.all([
+      getCurrentUserId(),
+      d1.query<{ id: number }>(
+        "SELECT id FROM partner_status_type WHERE status_name = ?",
+        ["Rejected"],
+      ),
+    ]);
     const statusId = statusResult.results[0]?.id;
     if (!statusId) {
       return { success: false, error: "Rejected status type not found" };
@@ -83,19 +85,6 @@ export async function rejectPartner(id: number, reason: string) {
     return {
       success: false,
       error: getErrorMessage(error, "Failed to reject partner"),
-    };
-  }
-}
-
-export async function deletePartner(id: number) {
-  try {
-    await partnerService.delete(id);
-    revalidatePath(ROUTES.PARTNERS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to delete partner request"),
     };
   }
 }

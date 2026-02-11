@@ -250,32 +250,38 @@ export interface BrandLinkedCounts {
 export async function getBrandLinkedCounts(
   brandIds: number[],
 ): Promise<Record<number, BrandLinkedCounts>> {
-  const counts: Record<number, BrandLinkedCounts> = {};
-  for (const id of brandIds) {
-    const [eqModels, atModels] = await Promise.all([
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM equipment_model WHERE brand_id = ?",
-        [id],
-      ),
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM attachment_model WHERE brand_id = ?",
-        [id],
-      ),
-    ]);
+  const entries = await Promise.all(
+    brandIds.map(async (id) => {
+      const [eqModels, atModels] = await Promise.all([
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM equipment_model WHERE brand_id = ?",
+          [id],
+        ),
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM attachment_model WHERE brand_id = ?",
+          [id],
+        ),
+      ]);
 
-    const equipmentModels = eqModels.results[0]?.count ?? 0;
-    const attachmentModels = atModels.results[0]?.count ?? 0;
+      const equipmentModels = eqModels.results[0]?.count ?? 0;
+      const attachmentModels = atModels.results[0]?.count ?? 0;
 
-    counts[id] = {
-      equipmentModels,
-      attachmentModels,
-      total: equipmentModels + attachmentModels,
-    };
-  }
-  return counts;
+      return [
+        id,
+        {
+          equipmentModels,
+          attachmentModels,
+          total: equipmentModels + attachmentModels,
+        },
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
-export async function formatBrandLinkedSummary(c: BrandLinkedCounts): Promise<string> {
+export async function formatBrandLinkedSummary(
+  c: BrandLinkedCounts,
+): Promise<string> {
   const parts: string[] = [];
   if (c.equipmentModels > 0) {
     parts.push(
@@ -295,17 +301,16 @@ export async function formatBrandLinkedSummary(c: BrandLinkedCounts): Promise<st
 // ─── Bulk Delete ────────────────────────────────────────────────────────────
 
 export async function deleteBrands(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => brandService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await brandService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(getErrorMessage(error, `Failed to delete brand ${id}`));
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete brand ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.BRANDS);
 

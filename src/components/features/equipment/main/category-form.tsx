@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { ImageInput } from "@/components/ui/image-input";
@@ -59,11 +59,11 @@ export function CategoryForm({
         <Field orientation="vertical">
           <FieldLabel>Main Category Name</FieldLabel>
           <FieldContent>
-            <Input
+            <RequiredInput
               name="name"
               placeholder="e.g. Excavators"
               defaultValue={category?.name ?? ""}
-              required
+              errorMessage="Category name is required"
             />
           </FieldContent>
         </Field>

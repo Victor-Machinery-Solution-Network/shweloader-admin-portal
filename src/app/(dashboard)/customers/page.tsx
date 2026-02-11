@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Customers",
-  description: "View registered customers",
+  description: "Manage customers and business types",
 };
 
 export default async function CustomersPage() {

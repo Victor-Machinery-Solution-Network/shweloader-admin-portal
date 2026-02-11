@@ -1,77 +1,78 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { locationService } from "@/lib/services/location";
+import { businessTypeService } from "@/lib/services/customer";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 
-// ─── Location Actions ────────────────────────────────────────────────────────
+// ─── Business Type Actions ───────────────────────────────────────────────────
 
-export async function createLocation(formData: FormData) {
-  const city_name = formData.get("city_name") as string;
+export async function createBusinessType(formData: FormData) {
+  const name = formData.get("name") as string;
 
-  if (!city_name?.trim()) {
-    return { success: false, error: "City name is required" };
+  if (!name?.trim()) {
+    return { success: false, error: "Business type name is required" };
   }
 
   try {
     const created_by = await getCurrentUserId();
-    await locationService.create({
-      city_name: city_name.trim(),
+    await businessTypeService.create({
+      name: name.trim(),
+      is_listed: 1,
       created_by,
     });
-    revalidatePath(ROUTES.LOCATIONS);
+    revalidatePath(ROUTES.CUSTOMERS);
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, "Failed to create location"),
+      error: getErrorMessage(error, "Failed to create business type"),
     };
   }
 }
 
-export async function updateLocation(id: number, formData: FormData) {
-  const city_name = formData.get("city_name") as string;
+export async function updateBusinessType(id: number, formData: FormData) {
+  const name = formData.get("name") as string;
 
-  if (!city_name?.trim()) {
-    return { success: false, error: "City name is required" };
+  if (!name?.trim()) {
+    return { success: false, error: "Business type name is required" };
   }
 
   try {
-    await locationService.update(id, { city_name: city_name.trim() });
-    revalidatePath(ROUTES.LOCATIONS);
+    await businessTypeService.update(id, { name: name.trim() });
+    revalidatePath(ROUTES.CUSTOMERS);
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, "Failed to update location"),
+      error: getErrorMessage(error, "Failed to update business type"),
     };
   }
 }
 
-export async function deleteLocation(id: number) {
+export async function deleteBusinessType(id: number) {
   try {
-    await locationService.delete(id);
-    revalidatePath(ROUTES.LOCATIONS);
+    await businessTypeService.delete(id);
+    revalidatePath(ROUTES.CUSTOMERS);
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, "Failed to delete location"),
+      error: getErrorMessage(error, "Failed to delete business type"),
     };
   }
 }
 
 // ─── Linked Count Helpers ────────────────────────────────────────────────────
 
-export async function getListingCount(
-  locationIds: number[],
+export async function getCustomerCount(
+  businessTypeIds: number[],
 ): Promise<Record<number, number>> {
   const entries = await Promise.all(
-    locationIds.map(async (id) => {
+    businessTypeIds.map(async (id) => {
       const result = await d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM product_list WHERE location_id = ?",
+        "SELECT COUNT(*) as count FROM customer WHERE business_type_id = ?",
         [id],
       );
       return [id, result.results[0]?.count ?? 0] as const;
@@ -82,19 +83,19 @@ export async function getListingCount(
 
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
-export async function deleteLocations(ids: number[]) {
+export async function deleteBusinessTypes(ids: number[]) {
   const results = await Promise.allSettled(
-    ids.map((id) => locationService.delete(id)),
+    ids.map((id) => businessTypeService.delete(id)),
   );
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
     .map((r, i) =>
-      getErrorMessage(r.reason, `Failed to delete location ${ids[i]}`),
+      getErrorMessage(r.reason, `Failed to delete business type ${ids[i]}`),
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.LOCATIONS);
+  revalidatePath(ROUTES.CUSTOMERS);
 
   if (errors.length > 0) {
     return {

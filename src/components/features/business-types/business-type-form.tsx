@@ -5,31 +5,36 @@ import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
-import { createLocation, updateLocation } from "@/lib/actions/location";
-import type { Location } from "@/types/location";
+import {
+  createBusinessType,
+  updateBusinessType,
+} from "@/lib/actions/business-type";
+import type { BusinessType } from "@/types/customer";
 
-interface LocationFormProps {
+interface BusinessTypeFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  location?: Location;
+  businessType?: BusinessType;
 }
 
-export function LocationForm({
+export function BusinessTypeForm({
   open,
   onOpenChange,
-  location,
-}: LocationFormProps) {
+  businessType,
+}: BusinessTypeFormProps) {
   const [isPending, startTransition] = useTransition();
-  const isEditing = !!location;
+  const isEditing = !!businessType;
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       const result = isEditing
-        ? await updateLocation(location.location_id, formData)
-        : await createLocation(formData);
+        ? await updateBusinessType(businessType.business_type_id, formData)
+        : await createBusinessType(formData);
 
       if (result.success) {
-        toast.success(isEditing ? "Location updated" : "Location created");
+        toast.success(
+          isEditing ? "Business type updated" : "Business type created",
+        );
         onOpenChange(false);
       } else {
         toast.error(result.error ?? "Something went wrong");
@@ -41,11 +46,11 @@ export function LocationForm({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Edit Location" : "Add Location"}
+      title={isEditing ? "Edit Business Type" : "Add Business Type"}
       description={
         isEditing
-          ? "Update the location details."
-          : "Create a new location."
+          ? "Update the business type details."
+          : "Create a new business type."
       }
       onSubmit={handleSubmit}
       isPending={isPending}
@@ -53,13 +58,13 @@ export function LocationForm({
     >
       <div className="space-y-4">
         <Field orientation="vertical">
-          <FieldLabel>City Name</FieldLabel>
+          <FieldLabel>Business Type Name</FieldLabel>
           <FieldContent>
             <RequiredInput
-              name="city_name"
-              placeholder="e.g. Yangon"
-              defaultValue={location?.city_name ?? ""}
-              errorMessage="City name is required"
+              name="name"
+              placeholder="e.g. Construction"
+              defaultValue={businessType?.name ?? ""}
+              errorMessage="Business type name is required"
             />
           </FieldContent>
         </Field>

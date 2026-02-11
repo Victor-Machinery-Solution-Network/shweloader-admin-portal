@@ -87,19 +87,16 @@ export async function deleteAttachmentModel(id: number) {
 }
 
 export async function deleteAttachmentModels(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => attachmentModelService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await attachmentModelService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(
-        getErrorMessage(error, `Failed to delete attachment model ${id}`),
-      );
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete attachment model ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.ATTACHMENT_MODELS);
 

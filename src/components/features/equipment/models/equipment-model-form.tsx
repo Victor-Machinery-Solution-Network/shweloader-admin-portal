@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useRef } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { RequiredInput } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
@@ -120,11 +120,11 @@ export function EquipmentModelForm({
         <Field orientation="vertical">
           <FieldLabel>Model Name</FieldLabel>
           <FieldContent>
-            <Input
+            <RequiredInput
               name="name"
               placeholder="e.g. CAT 320"
               defaultValue={model?.name ?? ""}
-              required
+              errorMessage="Model name is required"
             />
           </FieldContent>
         </Field>

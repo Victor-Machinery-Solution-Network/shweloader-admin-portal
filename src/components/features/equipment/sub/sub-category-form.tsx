@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useRef } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { RequiredInput } from "@/components/ui/required-input";
 import {
   Combobox,
   ComboboxInput,
@@ -122,11 +122,11 @@ export function SubCategoryForm({
         <Field orientation="vertical">
           <FieldLabel>Sub Category Name</FieldLabel>
           <FieldContent>
-            <Input
+            <RequiredInput
               name="name"
               placeholder="e.g. Mini Excavators"
               defaultValue={subCategory?.name ?? ""}
-              required
+              errorMessage="Sub category name is required"
             />
           </FieldContent>
         </Field>

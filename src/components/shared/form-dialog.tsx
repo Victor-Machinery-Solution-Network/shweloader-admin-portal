@@ -46,6 +46,7 @@ export function FormDialog({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <form
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit(new FormData(e.currentTarget));

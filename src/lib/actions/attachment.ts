@@ -70,17 +70,16 @@ export async function deleteAttachmentCategory(id: number) {
 }
 
 export async function deleteAttachmentCategories(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => attachmentCategoryService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await attachmentCategoryService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(getErrorMessage(error, `Failed to delete category ${id}`));
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete category ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
 
@@ -104,29 +103,33 @@ export interface AttachmentCategoryLinkedCounts {
 export async function getAttachmentCategoryLinkedCounts(
   categoryIds: number[],
 ): Promise<Record<number, AttachmentCategoryLinkedCounts>> {
-  const counts: Record<number, AttachmentCategoryLinkedCounts> = {};
-  for (const id of categoryIds) {
-    const [atModels, brands] = await Promise.all([
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM attachment_model WHERE category_id = ?",
-        [id],
-      ),
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM attachment_category_brand WHERE category_id = ?",
-        [id],
-      ),
-    ]);
+  const entries = await Promise.all(
+    categoryIds.map(async (id) => {
+      const [atModels, brands] = await Promise.all([
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM attachment_model WHERE category_id = ?",
+          [id],
+        ),
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM attachment_category_brand WHERE category_id = ?",
+          [id],
+        ),
+      ]);
 
-    const attachmentModels = atModels.results[0]?.count ?? 0;
-    const brandsCount = brands.results[0]?.count ?? 0;
+      const attachmentModels = atModels.results[0]?.count ?? 0;
+      const brandsCount = brands.results[0]?.count ?? 0;
 
-    counts[id] = {
-      attachmentModels,
-      brands: brandsCount,
-      total: attachmentModels + brandsCount,
-    };
-  }
-  return counts;
+      return [
+        id,
+        {
+          attachmentModels,
+          brands: brandsCount,
+          total: attachmentModels + brandsCount,
+        },
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 export async function formatAttachmentCategoryLinkedSummary(

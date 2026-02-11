@@ -70,17 +70,16 @@ export async function deleteMainCategory(id: number) {
 }
 
 export async function deleteMainCategories(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => mainCategoryService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await mainCategoryService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(getErrorMessage(error, `Failed to delete category ${id}`));
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete category ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
 
@@ -96,11 +95,13 @@ export async function deleteMainCategories(ids: number[]) {
 export async function getSubCategoryCount(
   categoryIds: number[],
 ): Promise<Record<number, number>> {
-  const counts: Record<number, number> = {};
-  for (const id of categoryIds) {
-    counts[id] = await subCategoryService.count({ category_id: id });
-  }
-  return counts;
+  const entries = await Promise.all(
+    categoryIds.map(async (id) => {
+      const count = await subCategoryService.count({ category_id: id });
+      return [id, count] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 // ─── Sub Category Actions ────────────────────────────────────────────────────
@@ -177,19 +178,16 @@ export async function deleteSubCategory(id: number) {
 }
 
 export async function deleteSubCategories(ids: number[]) {
-  const errors: string[] = [];
-  let deleted = 0;
+  const results = await Promise.allSettled(
+    ids.map((id) => subCategoryService.delete(id)),
+  );
 
-  for (const id of ids) {
-    try {
-      await subCategoryService.delete(id);
-      deleted++;
-    } catch (error) {
-      errors.push(
-        getErrorMessage(error, `Failed to delete sub category ${id}`),
-      );
-    }
-  }
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete sub category ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
 
@@ -213,29 +211,33 @@ export interface SubCategoryLinkedCounts {
 export async function getSubCategoryLinkedCounts(
   subCategoryIds: number[],
 ): Promise<Record<number, SubCategoryLinkedCounts>> {
-  const counts: Record<number, SubCategoryLinkedCounts> = {};
-  for (const id of subCategoryIds) {
-    const [eqModels, brands] = await Promise.all([
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM equipment_model WHERE sub_category_id = ?",
-        [id],
-      ),
-      d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM equipment_sub_category_brand WHERE sub_category_id = ?",
-        [id],
-      ),
-    ]);
+  const entries = await Promise.all(
+    subCategoryIds.map(async (id) => {
+      const [eqModels, brands] = await Promise.all([
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM equipment_model WHERE sub_category_id = ?",
+          [id],
+        ),
+        d1.query<{ count: number }>(
+          "SELECT COUNT(*) as count FROM equipment_sub_category_brand WHERE sub_category_id = ?",
+          [id],
+        ),
+      ]);
 
-    const equipmentModels = eqModels.results[0]?.count ?? 0;
-    const brandsCount = brands.results[0]?.count ?? 0;
+      const equipmentModels = eqModels.results[0]?.count ?? 0;
+      const brandsCount = brands.results[0]?.count ?? 0;
 
-    counts[id] = {
-      equipmentModels,
-      brands: brandsCount,
-      total: equipmentModels + brandsCount,
-    };
-  }
-  return counts;
+      return [
+        id,
+        {
+          equipmentModels,
+          brands: brandsCount,
+          total: equipmentModels + brandsCount,
+        },
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 export async function formatSubCategoryLinkedSummary(

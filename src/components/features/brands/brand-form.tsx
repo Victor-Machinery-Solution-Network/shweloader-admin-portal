@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { FormDialog } from "@/components/shared/form-dialog";
@@ -100,11 +100,11 @@ export function BrandForm({
         <Field orientation="vertical">
           <FieldLabel>Brand Name</FieldLabel>
           <FieldContent>
-            <Input
+            <RequiredInput
               name="name"
               placeholder="e.g. Caterpillar"
               defaultValue={brand?.name ?? ""}
-              required
+              errorMessage="Brand name is required"
             />
           </FieldContent>
         </Field>
