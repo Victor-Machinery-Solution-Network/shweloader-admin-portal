@@ -23,6 +23,7 @@ interface FormDialogProps {
   onSubmit: (formData: FormData) => void;
   isPending?: boolean;
   submitLabel?: string;
+  extraFooterAction?: React.ReactNode;
   className?: string;
 }
 
@@ -36,6 +37,7 @@ export function FormDialog({
   onSubmit,
   isPending = false,
   submitLabel = "Save",
+  extraFooterAction,
   className,
 }: FormDialogProps) {
   return (
@@ -69,10 +71,11 @@ export function FormDialog({
             onSubmit(new FormData(e.currentTarget));
           }}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1 pr-2.5">
             {children}
           </div>
           <DialogFooter className="mt-6">
+            {extraFooterAction}
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>
                 Cancel

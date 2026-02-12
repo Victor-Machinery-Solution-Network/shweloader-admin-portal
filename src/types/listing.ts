@@ -81,6 +81,8 @@ export interface SaleListingWithDetails {
   usd_price: number | null;
   is_hidden: number;
   is_sold_out: number;
+  approve_status_id: number | null;
+  rejection_reason: string | null;
   created_at: string;
   // Product info
   thumbnail_url: string | null;
@@ -94,6 +96,8 @@ export interface SaleListingWithDetails {
   product_type: "equipment" | "attachment";
   partner_name: string | null;
   location_name: string | null;
+  // Approval status
+  approve_status_name: string | null;
   // Featured status
   featured_id: number | null;
 }
@@ -106,6 +110,8 @@ export interface RentListingWithDetails {
   mmk_price: number | null;
   usd_price: number | null;
   is_hidden: number;
+  approve_status_id: number | null;
+  rejection_reason: string | null;
   created_at: string;
   // Product info
   thumbnail_url: string | null;
@@ -119,8 +125,16 @@ export interface RentListingWithDetails {
   product_type: "equipment" | "attachment";
   partner_name: string | null;
   location_name: string | null;
+  // Approval status
+  approve_status_name: string | null;
   // Featured status
   featured_id: number | null;
+}
+
+/** Approval status type lookup */
+export interface ApprovalStatusType {
+  id: number;
+  status_name: string;
 }
 
 /** JOIN view for featured listings tab */

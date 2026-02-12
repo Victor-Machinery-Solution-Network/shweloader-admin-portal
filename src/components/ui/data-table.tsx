@@ -246,12 +246,22 @@ function DataTable<TData, TValue>({
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => {
-              const hasFixedSize = header.column.columnDef.maxSize !== undefined && header.column.columnDef.maxSize < 150;
+            {headerGroup.headers.map((header, headerIdx) => {
+              const hasFixedSize =
+                header.column.columnDef.maxSize !== undefined &&
+                header.column.columnDef.maxSize < 150;
               return (
                 <TableHead
                   key={header.id}
-                  style={hasFixedSize ? { width: header.column.getSize(), padding: '0 0.25rem' } : undefined}
+                  style={
+                    hasFixedSize
+                      ? {
+                          width: header.column.getSize(),
+                          padding: "0 0.25rem",
+                          ...(headerIdx === 0 && { paddingLeft: "0.75rem" }),
+                        }
+                      : undefined
+                  }
                 >
                   {header.isPlaceholder
                     ? null
@@ -267,24 +277,46 @@ function DataTable<TData, TValue>({
       </TableHeader>
       <TableBody>
         {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              data-state={row.getIsSelected() ? "selected" : undefined}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const hasFixedSize = cell.column.columnDef.maxSize !== undefined && cell.column.columnDef.maxSize < 150;
-                return (
-                  <TableCell
-                    key={cell.id}
-                    style={hasFixedSize ? { width: cell.column.getSize(), padding: '0 0.25rem' } : undefined}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))
+          table.getRowModel().rows.map((row) => {
+            const cells = row.getVisibleCells().map((cell, cellIdx) => {
+              const hasFixedSize =
+                cell.column.columnDef.maxSize !== undefined &&
+                cell.column.columnDef.maxSize < 150;
+              return (
+                <TableCell
+                  key={cell.id}
+                  style={
+                    hasFixedSize
+                      ? {
+                          width: cell.column.getSize(),
+                          padding: "0 0.25rem",
+                          ...(cellIdx === 0 && { paddingLeft: "0.75rem" }),
+                        }
+                      : undefined
+                  }
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              );
+            });
+
+            return enableDragSort && getRowId ? (
+              <SortableRow
+                key={row.id}
+                id={getRowId(row.original)}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+              >
+                {cells}
+              </SortableRow>
+            ) : (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+              >
+                {cells}
+              </TableRow>
+            );
+          })
         ) : (
           <TableRow>
             <TableCell colSpan={allColumns.length} className="h-24 text-center">
@@ -350,7 +382,9 @@ function DataTable<TData, TValue>({
             {enablePagination && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-muted-foreground text-sm whitespace-nowrap">Rows per page</p>
+                  <p className="text-muted-foreground text-sm whitespace-nowrap">
+                    Rows per page
+                  </p>
                   <Select
                     value={`${table.getState().pagination.pageSize}`}
                     onValueChange={(value) => table.setPageSize(Number(value))}

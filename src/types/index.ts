@@ -56,6 +56,20 @@ export type {
   ProductBrandWithCategories,
 } from "./brand";
 
+// Re-export article types
+export type {
+  ArticleCategory,
+  Article,
+  ArticleStatusType,
+  ArticleWithDetails,
+} from "./article";
+
+// Re-export carousel types
+export type { Carousel, CarouselImageWithDetails } from "./carousel";
+
+// Re-export announcement types
+export type { AnnouncementText } from "./announcement";
+
 /** Matches the admin_user table in D1 */
 export interface AdminUser {
   user_id: number;

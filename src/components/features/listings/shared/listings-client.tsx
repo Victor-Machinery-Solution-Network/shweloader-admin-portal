@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useMemo, useCallback, useTransition } from "react";
-import { ShoppingCart, Home, Plus, Star, Filter, Check } from "lucide-react";
+import {
+  ShoppingCart,
+  Home,
+  Plus,
+  Star,
+  Filter,
+  Check,
+  Clock,
+} from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,8 +24,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createSaleColumns, createRentColumns } from "./listing-columns";
+import {
+  createPendingSaleColumns,
+  createPendingRentColumns,
+} from "./pending-listing-columns";
 import { featuredColumns } from "./featured-columns";
 import { ListingForm } from "./listing-form";
 import { reorderFeatured } from "@/lib/actions/listing";
@@ -87,6 +100,33 @@ export function ListingsClient({
     ) as ColumnDef<ListingRow>[];
   }, [pageType, partners, equipmentModels, attachmentModels, locations]);
 
+  const pendingColumns = useMemo(() => {
+    const factory =
+      pageType === "sale" ? createPendingSaleColumns : createPendingRentColumns;
+    return factory(
+      partners,
+      equipmentModels,
+      attachmentModels,
+      locations,
+    ) as ColumnDef<ListingRow>[];
+  }, [pageType, partners, equipmentModels, attachmentModels, locations]);
+
+  // Split listings by approval status
+  const approvedListings = useMemo(
+    () =>
+      listings.filter(
+        (l) => !l.approve_status_name || l.approve_status_name === "Approved",
+      ),
+    [listings],
+  );
+
+  const pendingListings = useMemo(
+    () => listings.filter((l) => l.approve_status_name === "Pending"),
+    [listings],
+  );
+
+  const pendingCount = pendingListings.length;
+
   const [showCreate, setShowCreate] = useState(false);
   const [hiddenFilter, setHiddenFilter] = useState<
     "all" | "visible" | "hidden"
@@ -97,7 +137,7 @@ export function ListingsClient({
   const [, startTransition] = useTransition();
 
   const filteredListings = useMemo(() => {
-    return listings.filter((listing) => {
+    return approvedListings.filter((listing) => {
       if (hiddenFilter === "visible" && listing.is_hidden === 1) return false;
       if (hiddenFilter === "hidden" && listing.is_hidden === 0) return false;
       if (
@@ -116,7 +156,7 @@ export function ListingsClient({
         return false;
       return true;
     });
-  }, [listings, hiddenFilter, soldFilter, config.hasSoldFilter]);
+  }, [approvedListings, hiddenFilter, soldFilter, config.hasSoldFilter]);
 
   const activeFilterCount =
     (hiddenFilter !== "all" ? 1 : 0) +
@@ -213,6 +253,18 @@ export function ListingsClient({
             <Icon className="size-4" />
             {config.tabLabel}
           </TabsTrigger>
+          <TabsTrigger value="pending">
+            <Clock className="size-4" />
+            Pending
+            {pendingCount > 0 && (
+              <Badge
+                variant="outline"
+                className="ml-1 size-5 justify-center border-blue-200 bg-blue-50 p-0 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
+              >
+                {pendingCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="featured">
             <Star className="size-4" />
             Featured Listings
@@ -220,7 +272,7 @@ export function ListingsClient({
         </TabsList>
 
         <TabsContent value="listings">
-          {listings.length > 0 ? (
+          {approvedListings.length > 0 ? (
             <DataTable
               columns={columns}
               data={filteredListings}
@@ -240,6 +292,25 @@ export function ListingsClient({
                   <Plus /> Add Listing
                 </Button>
               }
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="pending">
+          {pendingListings.length > 0 ? (
+            <DataTable
+              columns={pendingColumns}
+              data={pendingListings}
+              searchKey="model_name"
+              searchPlaceholder="Search pending listings..."
+              enablePagination
+              pageSize={10}
+            />
+          ) : (
+            <EmptyState
+              icon={Clock}
+              title="No pending listings"
+              description="All listings have been reviewed."
             />
           )}
         </TabsContent>

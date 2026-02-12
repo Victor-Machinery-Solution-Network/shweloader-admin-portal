@@ -453,6 +453,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition,
       sl.mmk_price, sl.usd_price, sl.is_hidden, sl.is_sold_out,
+      sl.approve_status_id, sl.rejection_reason,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id,
@@ -460,6 +461,7 @@ export async function getSaleListingsWithDetails(): Promise<
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       c.username AS partner_name,
       l.city_name AS location_name,
+      ast.status_name AS approve_status_name,
       fl.id AS featured_id
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
@@ -468,6 +470,7 @@ export async function getSaleListingsWithDetails(): Promise<
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN customer c ON p.customer_id = c.customer_id
     LEFT JOIN location l ON pl.location_id = l.location_id
+    LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
     ORDER BY sl.created_at DESC`,
   );
@@ -481,6 +484,7 @@ export async function getRentListingsWithDetails(): Promise<
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
       rl.mmk_price, rl.usd_price, rl.is_hidden,
+      rl.approve_status_id, rl.rejection_reason,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id,
@@ -488,6 +492,7 @@ export async function getRentListingsWithDetails(): Promise<
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       c.username AS partner_name,
       l.city_name AS location_name,
+      ast.status_name AS approve_status_name,
       fl.id AS featured_id
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
@@ -496,6 +501,7 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN customer c ON p.customer_id = c.customer_id
     LEFT JOIN location l ON pl.location_id = l.location_id
+    LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
     ORDER BY rl.created_at DESC`,
   );
@@ -560,4 +566,76 @@ export async function getApprovedPartners(): Promise<
     ORDER BY c.username ASC`,
   );
   return result.results;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LISTING APPROVAL ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function approveListingSale(id: number) {
+  try {
+    const userId = await getCurrentUserId();
+    await d1.query(
+      `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [userId, id],
+    );
+    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to approve listing"),
+    };
+  }
+}
+
+export async function rejectListingSale(id: number, reason?: string) {
+  try {
+    const userId = await getCurrentUserId();
+    await d1.query(
+      `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rejected'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [userId, reason || null, id],
+    );
+    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to reject listing"),
+    };
+  }
+}
+
+export async function approveListingRent(id: number) {
+  try {
+    const userId = await getCurrentUserId();
+    await d1.query(
+      `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [userId, id],
+    );
+    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to approve listing"),
+    };
+  }
+}
+
+export async function rejectListingRent(id: number, reason?: string) {
+  try {
+    const userId = await getCurrentUserId();
+    await d1.query(
+      `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rejected'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [userId, reason || null, id],
+    );
+    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to reject listing"),
+    };
+  }
 }

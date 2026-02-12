@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, useRef, useCallback } from "react";
-import { ShoppingCart, Home } from "lucide-react";
+import { ShoppingCart, Home, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,8 @@ interface ListingFormProps {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  onApprove?: () => void;
+  isApproving?: boolean;
 }
 
 export function ListingForm({
@@ -60,6 +62,8 @@ export function ListingForm({
   equipmentModels,
   attachmentModels,
   locations,
+  onApprove,
+  isApproving = false,
 }: ListingFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!listing;
@@ -281,6 +285,19 @@ export function ListingForm({
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}
+      extraFooterAction={
+        onApprove ? (
+          <Button
+            type="button"
+            onClick={onApprove}
+            disabled={isPending || isApproving}
+            className="gap-1.5"
+          >
+            <CheckCircle className="size-4" />
+            Approve
+          </Button>
+        ) : undefined
+      }
       className="sm:max-w-2xl max-h-[90vh]"
     >
       <div ref={containerRef} className="space-y-4">
