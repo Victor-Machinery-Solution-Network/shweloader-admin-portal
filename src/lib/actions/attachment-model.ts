@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { attachmentModelService } from "@/lib/services/attachment";
 import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
@@ -32,6 +32,7 @@ export async function createAttachmentModel(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.ATTACHMENT_MODELS);
+    updateTag("attachment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -64,6 +65,7 @@ export async function updateAttachmentModel(id: number, formData: FormData) {
       pdf_url,
     });
     revalidatePath(ROUTES.ATTACHMENT_MODELS);
+    updateTag("attachment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -77,6 +79,7 @@ export async function deleteAttachmentModel(id: number) {
   try {
     await attachmentModelService.delete(id);
     revalidatePath(ROUTES.ATTACHMENT_MODELS);
+    updateTag("attachment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -99,6 +102,7 @@ export async function deleteAttachmentModels(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.ATTACHMENT_MODELS);
+  updateTag("attachment-models");
 
   if (errors.length > 0) {
     return {

@@ -61,13 +61,15 @@ export function RowActions({ model, subCategories, brands }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EquipmentModelForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        model={model}
-        subCategories={subCategories}
-        brands={brands}
-      />
+      {showEdit && (
+        <EquipmentModelForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          model={model}
+          subCategories={subCategories}
+          brands={brands}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

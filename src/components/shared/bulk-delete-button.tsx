@@ -43,8 +43,7 @@ export function BulkDeleteButton<TData>({
         `This will permanently delete ${count} ${plural}. This action cannot be undone.`,
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  }, [count, buildDescription, selectedRows, plural]);
 
   if (count === 0) return null;
 

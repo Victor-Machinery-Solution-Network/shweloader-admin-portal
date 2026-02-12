@@ -34,8 +34,11 @@ export function RowActions({ subCategory, categories }: RowActionsProps) {
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
+    if (!showDelete) return;
+    let cancelled = false;
     getSubCategoryLinkedCounts([subCategory.sub_category_id]).then(
       async (counts) => {
+        if (cancelled) return;
         const c = counts[subCategory.sub_category_id];
         if (c && c.total > 0) {
           const summary = await formatSubCategoryLinkedSummary(c);
@@ -49,7 +52,11 @@ export function RowActions({ subCategory, categories }: RowActionsProps) {
         }
       },
     );
-  }, [subCategory.sub_category_id, subCategory.name]);
+    return () => {
+      cancelled = true;
+      setDeleteDescription("");
+    };
+  }, [showDelete, subCategory.sub_category_id, subCategory.name]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -85,12 +92,14 @@ export function RowActions({ subCategory, categories }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <SubCategoryForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        subCategory={subCategory}
-        categories={categories}
-      />
+      {showEdit && (
+        <SubCategoryForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          subCategory={subCategory}
+          categories={categories}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

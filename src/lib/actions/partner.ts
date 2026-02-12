@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { partnerService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
@@ -50,6 +50,7 @@ export async function approvePartner(id: number) {
       rejection_reason: null,
     });
     revalidatePath(ROUTES.PARTNERS);
+    updateTag("partners");
     return { success: true };
   } catch (error) {
     return {
@@ -80,6 +81,7 @@ export async function rejectPartner(id: number, reason: string) {
       rejection_reason: reason || null,
     });
     revalidatePath(ROUTES.PARTNERS);
+    updateTag("partners");
     return { success: true };
   } catch (error) {
     return {

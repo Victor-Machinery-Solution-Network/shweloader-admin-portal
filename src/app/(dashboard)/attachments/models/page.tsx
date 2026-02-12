@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import {
   attachmentModelService,
   attachmentCategoryService,
@@ -12,11 +13,29 @@ export const metadata = {
   description: "Manage attachment models",
 };
 
+const getCachedAttachmentModels = unstable_cache(
+  () => attachmentModelService.list({ sort_by: "name", order: "asc" }),
+  ["attachment-models-list"],
+  { revalidate: 120, tags: ["attachment-models"] },
+);
+
+const getCachedAttachmentCategories = unstable_cache(
+  () => attachmentCategoryService.list({ sort_by: "name", order: "asc" }),
+  ["attachment-categories-list"],
+  { revalidate: 300, tags: ["attachment-categories"] },
+);
+
+const getCachedBrands = unstable_cache(
+  () => brandService.list({ sort_by: "name", order: "asc" }),
+  ["brands-list"],
+  { revalidate: 300, tags: ["brands"] },
+);
+
 export default async function AttachmentModelsPage() {
   const [models, categories, brands] = await Promise.all([
-    attachmentModelService.list({ sort_by: "name", order: "asc" }),
-    attachmentCategoryService.list({ sort_by: "name", order: "asc" }),
-    brandService.list({ sort_by: "name", order: "asc" }),
+    getCachedAttachmentModels(),
+    getCachedAttachmentCategories(),
+    getCachedBrands(),
   ]);
 
   return (

@@ -38,7 +38,10 @@ export function RowActions({
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
+    if (!showDelete) return;
+    let cancelled = false;
     getBrandLinkedCounts([brand.brand_id]).then(async (counts) => {
+      if (cancelled) return;
       const c = counts[brand.brand_id];
       if (c && c.total > 0) {
         const summary = await formatBrandLinkedSummary(c);
@@ -51,7 +54,11 @@ export function RowActions({
         );
       }
     });
-  }, [brand.brand_id, brand.name]);
+    return () => {
+      cancelled = true;
+      setDeleteDescription("");
+    };
+  }, [showDelete, brand.brand_id, brand.name]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -87,15 +94,17 @@ export function RowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <BrandForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        brand={brand}
-        categories={categories}
-        subCategories={subCategories}
-        brandCategoryIds={brand.categoryIds}
-        brandSubCategoryIds={brand.subCategoryIds}
-      />
+      {showEdit && (
+        <BrandForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          brand={brand}
+          categories={categories}
+          subCategories={subCategories}
+          brandCategoryIds={brand.categoryIds}
+          brandSubCategoryIds={brand.subCategoryIds}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

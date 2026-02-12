@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { equipmentModelService } from "@/lib/services/equipment";
 import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
@@ -32,6 +32,7 @@ export async function createEquipmentModel(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.EQUIPMENT_MODELS);
+    updateTag("equipment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -64,6 +65,7 @@ export async function updateEquipmentModel(id: number, formData: FormData) {
       pdf_url,
     });
     revalidatePath(ROUTES.EQUIPMENT_MODELS);
+    updateTag("equipment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -77,6 +79,7 @@ export async function deleteEquipmentModel(id: number) {
   try {
     await equipmentModelService.delete(id);
     revalidatePath(ROUTES.EQUIPMENT_MODELS);
+    updateTag("equipment-models");
     return { success: true };
   } catch (error) {
     return {
@@ -99,6 +102,7 @@ export async function deleteEquipmentModels(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_MODELS);
+  updateTag("equipment-models");
 
   if (errors.length > 0) {
     return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, lazy, Suspense } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
-import { ListingForm } from "./listing-form";
+
+const LazyListingForm = lazy(() =>
+  import("./listing-form").then((mod) => ({ default: mod.ListingForm }))
+);
 import {
   deleteSaleListing,
   deleteRentListing,
@@ -51,10 +54,17 @@ export function ListingRowActions({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    if (!showEdit) return;
     if (listing.product_list_id) {
-      getProductImages(listing.product_list_id).then(setExistingImages);
+      let cancelled = false;
+      getProductImages(listing.product_list_id).then((images) => {
+        if (!cancelled) setExistingImages(images);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [listing.product_list_id]);
+  }, [showEdit, listing.product_list_id]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -93,17 +103,21 @@ export function ListingRowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ListingForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        pageType={pageType}
-        listing={listing}
-        existingImages={existingImages}
-        partners={partners}
-        equipmentModels={equipmentModels}
-        attachmentModels={attachmentModels}
-        locations={locations}
-      />
+      {showEdit && (
+        <Suspense fallback={null}>
+          <LazyListingForm
+            open={showEdit}
+            onOpenChange={setShowEdit}
+            pageType={pageType}
+            listing={listing}
+            existingImages={existingImages}
+            partners={partners}
+            equipmentModels={equipmentModels}
+            attachmentModels={attachmentModels}
+            locations={locations}
+          />
+        </Suspense>
+      )}
 
       <DeleteDialog
         open={showDelete}

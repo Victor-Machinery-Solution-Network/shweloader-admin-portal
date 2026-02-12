@@ -1,15 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useTransition } from "react";
-import {
-  ShoppingCart,
-  Home,
-  Plus,
-  Star,
-  Filter,
-  Check,
-  Clock,
-} from "lucide-react";
+import { useState, useMemo, useCallback, useTransition, lazy, Suspense } from "react";
+import { ShoppingCart, Home, Plus, Star, Filter, Check, Clock } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +24,9 @@ import {
   createPendingRentColumns,
 } from "./pending-listing-columns";
 import { featuredColumns } from "./featured-columns";
-import { ListingForm } from "./listing-form";
+const LazyListingForm = lazy(() =>
+  import("./listing-form").then((mod) => ({ default: mod.ListingForm }))
+);
 import { reorderFeatured } from "@/lib/actions/listing";
 import type {
   SaleListingWithDetails,
@@ -334,15 +328,19 @@ export function ListingsClient({
         </TabsContent>
       </Tabs>
 
-      <ListingForm
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        pageType={pageType}
-        partners={partners}
-        equipmentModels={equipmentModels}
-        attachmentModels={attachmentModels}
-        locations={locations}
-      />
+      {showCreate && (
+        <Suspense fallback={null}>
+          <LazyListingForm
+            open={showCreate}
+            onOpenChange={setShowCreate}
+            pageType={pageType}
+            partners={partners}
+            equipmentModels={equipmentModels}
+            attachmentModels={attachmentModels}
+            locations={locations}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

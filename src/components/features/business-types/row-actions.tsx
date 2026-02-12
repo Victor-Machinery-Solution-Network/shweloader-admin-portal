@@ -80,11 +80,13 @@ export function RowActions({ businessType }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <BusinessTypeForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        businessType={businessType}
-      />
+      {showEdit && (
+        <BusinessTypeForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          businessType={businessType}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

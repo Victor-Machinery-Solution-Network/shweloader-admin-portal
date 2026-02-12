@@ -30,8 +30,11 @@ export function RowActions({ category }: RowActionsProps) {
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
+    if (!showDelete) return;
+    let cancelled = false;
     getAttachmentCategoryLinkedCounts([category.category_id]).then(
       async (counts) => {
+        if (cancelled) return;
         const c = counts[category.category_id];
         if (c && c.total > 0) {
           const summary = await formatAttachmentCategoryLinkedSummary(c);
@@ -45,7 +48,11 @@ export function RowActions({ category }: RowActionsProps) {
         }
       },
     );
-  }, [category.category_id, category.name]);
+    return () => {
+      cancelled = true;
+      setDeleteDescription("");
+    };
+  }, [showDelete, category.category_id, category.name]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -81,11 +88,13 @@ export function RowActions({ category }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CategoryForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        category={category}
-      />
+      {showEdit && (
+        <CategoryForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          category={category}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

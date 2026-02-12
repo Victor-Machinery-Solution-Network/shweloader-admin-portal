@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { mainCategoryService } from '@/lib/services/equipment';
 import { MainCategoriesClient } from '@/components/features/equipment/main/main-categories-client';
 
@@ -8,11 +9,14 @@ export const metadata = {
   description: 'Manage equipment main categories',
 };
 
+const getCachedMainCategories = unstable_cache(
+  () => mainCategoryService.list({ sort_by: 'display_order', order: 'asc' }),
+  ['equipment-main-categories-list'],
+  { revalidate: 300, tags: ['equipment-main-categories'] },
+);
+
 export default async function EquipmentMainCategoriesPage() {
-  const categories = await mainCategoryService.list({
-    sort_by: 'display_order',
-    order: 'asc',
-  });
+  const categories = await getCachedMainCategories();
 
   return <MainCategoriesClient categories={categories} />;
 }

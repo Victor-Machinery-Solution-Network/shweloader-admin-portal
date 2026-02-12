@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import {
   equipmentModelService,
   subCategoryService,
@@ -12,11 +13,29 @@ export const metadata = {
   description: "Manage equipment models",
 };
 
+const getCachedEquipmentModels = unstable_cache(
+  () => equipmentModelService.list({ sort_by: "name", order: "asc" }),
+  ["equipment-models-list"],
+  { revalidate: 120, tags: ["equipment-models"] },
+);
+
+const getCachedSubCategories = unstable_cache(
+  () => subCategoryService.list({ sort_by: "name", order: "asc" }),
+  ["equipment-sub-categories-list"],
+  { revalidate: 300, tags: ["equipment-sub-categories"] },
+);
+
+const getCachedBrands = unstable_cache(
+  () => brandService.list({ sort_by: "name", order: "asc" }),
+  ["brands-list"],
+  { revalidate: 300, tags: ["brands"] },
+);
+
 export default async function EquipmentModelsPage() {
   const [models, subCategories, brands] = await Promise.all([
-    equipmentModelService.list({ sort_by: "name", order: "asc" }),
-    subCategoryService.list({ sort_by: "name", order: "asc" }),
-    brandService.list({ sort_by: "name", order: "asc" }),
+    getCachedEquipmentModels(),
+    getCachedSubCategories(),
+    getCachedBrands(),
   ]);
 
   return (

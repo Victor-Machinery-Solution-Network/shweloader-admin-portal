@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { brandService } from "@/lib/services/brand";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
@@ -182,6 +182,7 @@ export async function createBrand(formData: FormData) {
     }
 
     revalidatePath(ROUTES.BRANDS);
+    updateTag("brands");
     return { success: true };
   } catch (error) {
     return {
@@ -217,6 +218,7 @@ export async function updateBrand(id: number, formData: FormData) {
     }
 
     revalidatePath(ROUTES.BRANDS);
+    updateTag("brands");
     return { success: true };
   } catch (error) {
     return {
@@ -230,6 +232,7 @@ export async function deleteBrand(id: number) {
   try {
     await brandService.delete(id);
     revalidatePath(ROUTES.BRANDS);
+    updateTag("brands");
     return { success: true };
   } catch (error) {
     return {
@@ -318,6 +321,7 @@ export async function deleteBrands(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.BRANDS);
+  updateTag("brands");
 
   if (errors.length > 0) {
     return {

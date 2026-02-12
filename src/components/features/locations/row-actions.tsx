@@ -76,11 +76,13 @@ export function RowActions({ location }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <LocationForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        location={location}
-      />
+      {showEdit && (
+        <LocationForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          location={location}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

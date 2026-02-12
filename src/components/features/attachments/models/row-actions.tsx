@@ -61,13 +61,15 @@ export function RowActions({ model, categories, brands }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AttachmentModelForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        model={model}
-        categories={categories}
-        brands={brands}
-      />
+      {showEdit && (
+        <AttachmentModelForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          model={model}
+          categories={categories}
+          brands={brands}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

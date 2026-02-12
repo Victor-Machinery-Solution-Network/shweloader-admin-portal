@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { locationService } from "@/lib/services/location";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
@@ -22,6 +22,7 @@ export async function createLocation(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.LOCATIONS);
+    updateTag("locations");
     return { success: true };
   } catch (error) {
     return {
@@ -41,6 +42,7 @@ export async function updateLocation(id: number, formData: FormData) {
   try {
     await locationService.update(id, { city_name: city_name.trim() });
     revalidatePath(ROUTES.LOCATIONS);
+    updateTag("locations");
     return { success: true };
   } catch (error) {
     return {
@@ -54,6 +56,7 @@ export async function deleteLocation(id: number) {
   try {
     await locationService.delete(id);
     revalidatePath(ROUTES.LOCATIONS);
+    updateTag("locations");
     return { success: true };
   } catch (error) {
     return {
@@ -99,6 +102,7 @@ export async function deleteLocations(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.LOCATIONS);
+  updateTag("locations");
 
   if (errors.length > 0) {
     return {

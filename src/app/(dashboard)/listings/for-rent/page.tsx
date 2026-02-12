@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import {
   getRentListingsWithDetails,
   getFeaturedListingsWithDetails,
@@ -15,6 +16,30 @@ export const metadata = {
   description: "Manage rental listings and featured items",
 };
 
+const getCachedPartners = unstable_cache(
+  () => getApprovedPartners(),
+  ["approved-partners"],
+  { revalidate: 120, tags: ["partners"] },
+);
+
+const getCachedEquipmentModels = unstable_cache(
+  () => equipmentModelService.list({ sort_by: "name", order: "asc" }),
+  ["equipment-models-list"],
+  { revalidate: 120, tags: ["equipment-models"] },
+);
+
+const getCachedAttachmentModels = unstable_cache(
+  () => attachmentModelService.list({ sort_by: "name", order: "asc" }),
+  ["attachment-models-list"],
+  { revalidate: 120, tags: ["attachment-models"] },
+);
+
+const getCachedLocations = unstable_cache(
+  () => locationService.list({ sort_by: "city_name", order: "asc" }),
+  ["locations-list"],
+  { revalidate: 300, tags: ["locations"] },
+);
+
 export default async function ListingsForRentPage() {
   const [
     listings,
@@ -26,10 +51,10 @@ export default async function ListingsForRentPage() {
   ] = await Promise.all([
     getRentListingsWithDetails(),
     getFeaturedListingsWithDetails(),
-    getApprovedPartners(),
-    equipmentModelService.list({ sort_by: "name", order: "asc" }),
-    attachmentModelService.list({ sort_by: "name", order: "asc" }),
-    locationService.list({ sort_by: "city_name", order: "asc" }),
+    getCachedPartners(),
+    getCachedEquipmentModels(),
+    getCachedAttachmentModels(),
+    getCachedLocations(),
   ]);
 
   return (

@@ -67,27 +67,29 @@ export function RowActions({ partner }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <FormDialog
-        open={showReject}
-        onOpenChange={setShowReject}
-        title="Reject Partner"
-        description={`Reject partner request from "${partner.customer_name ?? "Unknown"}".`}
-        onSubmit={handleReject}
-        isPending={isPending}
-        submitLabel="Reject"
-      >
-        <div className="space-y-4">
-          <Field orientation="vertical">
-            <FieldLabel>Reason (optional)</FieldLabel>
-            <FieldContent>
-              <Input
-                name="rejection_reason"
-                placeholder="e.g. Incomplete documentation"
-              />
-            </FieldContent>
-          </Field>
-        </div>
-      </FormDialog>
+      {showReject && (
+        <FormDialog
+          open={showReject}
+          onOpenChange={setShowReject}
+          title="Reject Partner"
+          description={`Reject partner request from "${partner.customer_name ?? "Unknown"}".`}
+          onSubmit={handleReject}
+          isPending={isPending}
+          submitLabel="Reject"
+        >
+          <div className="space-y-4">
+            <Field orientation="vertical">
+              <FieldLabel>Reason (optional)</FieldLabel>
+              <FieldContent>
+                <Input
+                  name="rejection_reason"
+                  placeholder="e.g. Incomplete documentation"
+                />
+              </FieldContent>
+            </Field>
+          </div>
+        </FormDialog>
+      )}
     </>
   );
 }

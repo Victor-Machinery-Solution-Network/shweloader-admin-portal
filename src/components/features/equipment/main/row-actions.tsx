@@ -79,11 +79,13 @@ export function RowActions({ category }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CategoryForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        category={category}
-      />
+      {showEdit && (
+        <CategoryForm
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          category={category}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}

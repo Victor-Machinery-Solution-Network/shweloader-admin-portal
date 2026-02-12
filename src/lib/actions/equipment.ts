@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import {
   mainCategoryService,
   subCategoryService,
@@ -27,6 +27,7 @@ export async function createMainCategory(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+    updateTag("equipment-main-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -47,6 +48,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
   try {
     await mainCategoryService.update(id, { name: name.trim(), image_url });
     revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+    updateTag("equipment-main-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -60,6 +62,7 @@ export async function deleteMainCategory(id: number) {
   try {
     await mainCategoryService.delete(id);
     revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+    updateTag("equipment-main-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -82,6 +85,7 @@ export async function deleteMainCategories(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+  updateTag("equipment-main-categories");
 
   if (errors.length > 0) {
     return {
@@ -134,6 +138,7 @@ export async function createSubCategory(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+    updateTag("equipment-sub-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -162,6 +167,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
       image_url,
     });
     revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+    updateTag("equipment-sub-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -175,6 +181,7 @@ export async function deleteSubCategory(id: number) {
   try {
     await subCategoryService.delete(id);
     revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+    updateTag("equipment-sub-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -197,6 +204,7 @@ export async function deleteSubCategories(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+  updateTag("equipment-sub-categories");
 
   if (errors.length > 0) {
     return {
@@ -280,6 +288,7 @@ export async function reorderMainCategories(orderedIds: number[]) {
       `UPDATE equipment_main_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
     );
     revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+    updateTag("equipment-main-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -303,6 +312,7 @@ export async function reorderSubCategories(orderedIds: number[]) {
       `UPDATE equipment_sub_category SET display_order = CASE sub_category_id ${cases} END WHERE sub_category_id IN (${idList})`,
     );
     revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+    updateTag("equipment-sub-categories");
     return { success: true };
   } catch (error) {
     return {

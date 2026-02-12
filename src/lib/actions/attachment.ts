@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { attachmentCategoryService } from "@/lib/services/attachment";
 import { d1 } from "@/lib/api/d1-client";
 import { ROUTES } from "@/lib/constants";
@@ -24,6 +24,7 @@ export async function createAttachmentCategory(formData: FormData) {
       created_by,
     });
     revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
+    updateTag("attachment-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -47,6 +48,7 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
       image_url,
     });
     revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
+    updateTag("attachment-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -60,6 +62,7 @@ export async function deleteAttachmentCategory(id: number) {
   try {
     await attachmentCategoryService.delete(id);
     revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
+    updateTag("attachment-categories");
     return { success: true };
   } catch (error) {
     return {
@@ -82,6 +85,7 @@ export async function deleteAttachmentCategories(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
+  updateTag("attachment-categories");
 
   if (errors.length > 0) {
     return {
@@ -165,6 +169,7 @@ export async function reorderAttachmentCategories(orderedIds: number[]) {
       `UPDATE attachment_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
     );
     revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
+    updateTag("attachment-categories");
     return { success: true };
   } catch (error) {
     return {
