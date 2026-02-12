@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,51 +11,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
-import { CategoryForm } from "./category-form";
-import {
-  deleteArticleCategory,
-  getArticleCount,
-} from "@/lib/actions/article-category";
-import type { ArticleCategory } from "@/types/article";
+import { AnnouncementForm } from "./announcement-form";
+import { deleteAnnouncement } from "@/lib/actions/announcement";
+import type { AnnouncementText } from "@/types/announcement";
 
 interface RowActionsProps {
-  category: ArticleCategory;
+  announcement: AnnouncementText;
 }
 
-export function RowActions({ category }: RowActionsProps) {
+export function RowActions({ announcement }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [linkedCount, setLinkedCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!showDelete) return;
-    let cancelled = false;
-    getArticleCount([category.category_id]).then((counts) => {
-      if (!cancelled) setLinkedCount(counts[category.category_id] ?? 0);
-    });
-    return () => {
-      cancelled = true;
-      setLinkedCount(null);
-    };
-  }, [showDelete, category.category_id]);
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteArticleCategory(category.category_id);
+      const result = await deleteAnnouncement(announcement.announcement_id);
       if (result.success) {
-        toast.success("Category deleted");
+        toast.success("Announcement deleted");
         setShowDelete(false);
       } else {
-        toast.error(result.error ?? "Failed to delete");
+        toast.error(result.error ?? "Failed to delete announcement");
       }
     });
   }
-
-  const deleteDescription =
-    linkedCount !== null && linkedCount > 0
-      ? `This will permanently delete "${category.name}". There ${linkedCount === 1 ? "is" : "are"} ${linkedCount} ${linkedCount === 1 ? "article" : "articles"} linked to this category. Those articles will have their category unset.`
-      : `This will permanently delete "${category.name}". This action cannot be undone.`;
 
   return (
     <>
@@ -79,18 +58,18 @@ export function RowActions({ category }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CategoryForm
+      <AnnouncementForm
         open={showEdit}
         onOpenChange={setShowEdit}
-        category={category}
+        announcement={announcement}
       />
 
       <DeleteDialog
         open={showDelete}
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
-        title="Delete category?"
-        description={deleteDescription}
+        title="Delete announcement?"
+        description="This will permanently delete the announcement. This action cannot be undone."
         isPending={isPending}
       />
     </>

@@ -300,15 +300,7 @@ function DataTable<TData, TValue>({
               );
             });
 
-            return enableDragSort && getRowId ? (
-              <SortableRow
-                key={row.id}
-                id={getRowId(row.original)}
-                data-state={row.getIsSelected() ? "selected" : undefined}
-              >
-                {cells}
-              </SortableRow>
-            ) : (
+            return (
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() ? "selected" : undefined}
@@ -389,7 +381,7 @@ function DataTable<TData, TValue>({
                     value={`${table.getState().pagination.pageSize}`}
                     onValueChange={(value) => table.setPageSize(Number(value))}
                   >
-                    <SelectTrigger size="sm" className="w-[70px]">
+                    <SelectTrigger size="sm" className="w-17.5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -450,5 +442,11 @@ function DataTable<TData, TValue>({
   );
 }
 
-export { DataTable, DataTableColumnHeader, getSelectColumn, useDataTable, SortableRowContext };
+export {
+  DataTable,
+  DataTableColumnHeader,
+  getSelectColumn,
+  useDataTable,
+  SortableRowContext,
+};
 export type { DataTableProps };
