@@ -130,6 +130,7 @@
 } */
 
 :root {
+  color-scheme: light dark;
   --background: #ffffff;
   --foreground: #262626;
   --card: #ffffff;
@@ -187,6 +188,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #171717;
   --foreground: #e5e5e5;
   --card: #262626;
@@ -302,6 +304,29 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+  }
+
+  /* Prevent 300ms double-tap zoom delay on touch devices */
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Honor prefers-reduced-motion for all animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -69,7 +69,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               columns={approvedColumns}
               data={approvedPartners}
               searchKey="customer_name"
-              searchPlaceholder="Search partners..."
+              searchPlaceholder="Search partners…"
               enablePagination
               pageSize={10}
             />
@@ -88,7 +88,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               columns={pendingColumns}
               data={pendingPartners}
               searchKey="customer_name"
-              searchPlaceholder="Search pending applications..."
+              searchPlaceholder="Search pending applications…"
               enablePagination
               pageSize={10}
             />
@@ -107,7 +107,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               columns={rejectedColumns}
               data={rejectedPartners}
               searchKey="customer_name"
-              searchPlaceholder="Search rejected applications..."
+              searchPlaceholder="Search rejected applications…"
               enablePagination
               pageSize={10}
             />

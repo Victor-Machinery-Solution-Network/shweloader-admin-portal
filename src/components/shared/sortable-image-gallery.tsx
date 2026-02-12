@@ -79,15 +79,15 @@ function SortableImageCard({
             }}
           />
           <div className="bg-muted hidden size-full items-center justify-center">
-            <ImagePlus className="text-muted-foreground size-6" />
+            <ImagePlus className="text-muted-foreground size-6" aria-hidden="true" />
           </div>
         </div>
       ) : (
         <div className="flex aspect-square w-full items-center justify-center bg-muted/50 p-2">
           <div className="w-full space-y-2 text-center">
-            <ImagePlus className="text-muted-foreground mx-auto size-6" />
+            <ImagePlus className="text-muted-foreground mx-auto size-6" aria-hidden="true" />
             <Input
-              placeholder="Paste image URL..."
+              placeholder="Paste image URL\u2026"
               value={url}
               onChange={(e) => onUrlChange(e.target.value)}
               onBlur={() => {
@@ -104,18 +104,20 @@ function SortableImageCard({
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
+          aria-label="Reorder image"
           className="cursor-grab rounded bg-black/50 p-1 text-white hover:bg-black/70 active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="size-3.5" />
+          <GripVertical className="size-3.5" aria-hidden="true" />
         </button>
         <button
           type="button"
+          aria-label="Remove image"
           className="rounded bg-black/50 p-1 text-white hover:bg-red-600"
           onClick={onRemove}
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-3.5" aria-hidden="true" />
         </button>
       </div>
 
@@ -127,7 +129,7 @@ function SortableImageCard({
             className="flex w-full items-center justify-center gap-1 rounded bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70"
             onClick={() => setShowUrlInput(true)}
           >
-            <Link className="size-3" /> Edit URL
+            <Link className="size-3" aria-hidden="true" /> Edit URL
           </button>
         </div>
       )}
@@ -232,7 +234,7 @@ export function SortableImageGallery({
                 className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
               >
                 <div className="text-center">
-                  <Plus className="text-muted-foreground mx-auto size-5" />
+                  <Plus className="text-muted-foreground mx-auto size-5" aria-hidden="true" />
                   <span className="text-muted-foreground mt-1 block text-xs">
                     Add Photo
                   </span>

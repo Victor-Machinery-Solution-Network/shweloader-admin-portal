@@ -64,6 +64,7 @@ export function CategoryForm({
               placeholder="e.g. Buckets"
               defaultValue={category?.name ?? ""}
               errorMessage="Category name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

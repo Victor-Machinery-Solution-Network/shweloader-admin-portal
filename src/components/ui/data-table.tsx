@@ -123,9 +123,10 @@ function DragHandle() {
       ref={setActivatorNodeRef}
       {...attributes}
       {...listeners}
+      aria-label="Reorder row"
       className="text-muted-foreground hover:text-foreground flex cursor-grab items-center touch-none active:cursor-grabbing"
     >
-      <GripVertical className="size-4" />
+      <GripVertical className="size-4" aria-hidden="true" />
     </button>
   );
 }
@@ -175,7 +176,7 @@ function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search\u2026",
   enableSelection = false,
   enablePagination = true,
   enableDragSort = false,
@@ -184,6 +185,7 @@ function DataTable<TData, TValue>({
   pageSize = 10,
   toolbar,
 }: DataTableProps<TData, TValue>) {
+  "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -205,6 +207,9 @@ function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns: allColumns,
+    ...(getRowId && {
+      getRowId: (row: TData) => String(getRowId(row)),
+    }),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: enablePagination
       ? getPaginationRowModel()
@@ -329,6 +334,7 @@ function DataTable<TData, TValue>({
             {searchKey && (
               <Input
                 placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
                 value={
                   (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
                 }
@@ -394,7 +400,7 @@ function DataTable<TData, TValue>({
                   </Select>
                 </div>
 
-                <p className="text-muted-foreground text-sm whitespace-nowrap">
+                <p className="text-muted-foreground text-sm whitespace-nowrap tabular-nums">
                   Page {table.getState().pagination.pageIndex + 1} of{" "}
                   {table.getPageCount()}
                 </p>
@@ -403,34 +409,38 @@ function DataTable<TData, TValue>({
                   <Button
                     variant="outline"
                     size="icon-xs"
+                    aria-label="First page"
                     onClick={() => table.setPageIndex(0)}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    <ChevronsLeft className="size-3.5" />
+                    <ChevronsLeft className="size-3.5" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon-xs"
+                    aria-label="Previous page"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    <ChevronLeft className="size-3.5" />
+                    <ChevronLeft className="size-3.5" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon-xs"
+                    aria-label="Next page"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                   >
-                    <ChevronRight className="size-3.5" />
+                    <ChevronRight className="size-3.5" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon-xs"
+                    aria-label="Last page"
                     onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                     disabled={!table.getCanNextPage()}
                   >
-                    <ChevronsRight className="size-3.5" />
+                    <ChevronsRight className="size-3.5" aria-hidden="true" />
                   </Button>
                 </div>
               </div>

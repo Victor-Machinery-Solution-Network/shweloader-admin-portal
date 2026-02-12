@@ -25,9 +25,9 @@ export default function Error({
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center max-w-md">
         <div className="mb-4 flex justify-center">
-          <AlertTriangle className="h-16 w-16 text-destructive" />
+          <AlertTriangle className="h-16 w-16 text-destructive" aria-hidden="true" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">Something went wrong!</h2>
+        <h2 className="text-2xl font-bold mb-2 text-pretty">Something went wrong!</h2>
         <p className="text-muted-foreground mb-6">
           An unexpected error occurred. Please try again.
         </p>

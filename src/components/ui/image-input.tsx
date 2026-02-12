@@ -163,10 +163,11 @@ export function ImageInput({
               type="button"
               variant="destructive"
               size="icon-sm"
+              aria-label="Remove image"
               onClick={handleRemove}
               disabled={disabled}
             >
-              <X />
+              <X aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -186,7 +187,7 @@ export function ImageInput({
           )}
         >
           <div className="rounded-full bg-muted p-2">
-            <ImagePlus className="size-5 text-muted-foreground" />
+            <ImagePlus className="size-5 text-muted-foreground" aria-hidden="true" />
           </div>
           <p className="text-sm text-muted-foreground">{placeholder}</p>
           <p className="text-xs text-muted-foreground/60">Max {maxSizeMB}MB</p>

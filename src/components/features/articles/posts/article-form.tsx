@@ -125,6 +125,7 @@ export function ArticleForm({
               placeholder="e.g. How to Maintain Heavy Equipment"
               defaultValue={article?.title ?? ""}
               errorMessage="Title is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -134,9 +135,10 @@ export function ArticleForm({
           <FieldContent>
             <Textarea
               name="content"
-              placeholder="Write your article content here..."
+              placeholder="Write your article content here…"
               defaultValue={article?.content ?? ""}
               className="min-h-40"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -150,7 +152,7 @@ export function ArticleForm({
               items={categoryNames}
             >
               <ComboboxInput
-                placeholder="Search category..."
+                placeholder="Search category…"
                 showClear={!!selectedCategory}
               />
               <ComboboxContent container={containerRef}>
@@ -180,6 +182,7 @@ export function ArticleForm({
                   ? article.publish_date.slice(0, 16)
                   : getLocalNow()
               }
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

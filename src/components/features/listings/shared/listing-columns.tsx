@@ -60,6 +60,7 @@ function HiddenToggle({
       size="icon-sm"
       disabled={isPending}
       title={isHidden ? "Show listing" : "Hide listing"}
+      aria-label={isHidden ? "Show listing" : "Hide listing"}
       className={
         isHidden
           ? "rounded-full"
@@ -67,7 +68,7 @@ function HiddenToggle({
       }
       onClick={() => startTransition(() => onToggle())}
     >
-      {isHidden ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+      {isHidden ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
     </Button>
   );
 }
@@ -87,6 +88,7 @@ function SoldOutToggle({
       size="icon-sm"
       disabled={isPending}
       title={isSoldOut ? "Mark available" : "Mark sold out"}
+      aria-label={isSoldOut ? "Mark available" : "Mark sold out"}
       className={
         isSoldOut
           ? "rounded-full"
@@ -106,9 +108,9 @@ function SoldOutToggle({
       }
     >
       {isSoldOut ? (
-        <PackageX className="size-5" />
+        <PackageX aria-hidden="true" className="size-5" />
       ) : (
-        <PackageCheck className="size-5" />
+        <PackageCheck aria-hidden="true" className="size-5" />
       )}
     </Button>
   );
@@ -132,6 +134,7 @@ function FeatureToggle({
       size="icon-sm"
       disabled={isPending}
       title={isFeatured ? "Remove from featured" : "Feature on home page"}
+      aria-label={isFeatured ? "Remove from featured" : "Feature on home page"}
       className={
         isFeatured
           ? "rounded-full"
@@ -158,9 +161,9 @@ function FeatureToggle({
       }
     >
       {isFeatured ? (
-        <Star className="size-5 fill-current" />
+        <Star aria-hidden="true" className="size-5 fill-current" />
       ) : (
-        <StarOff className="size-5" />
+        <StarOff aria-hidden="true" className="size-5" />
       )}
     </Button>
   );
@@ -244,7 +247,7 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
       }
 
       return (
-        <div className="text-sm">
+        <div className="text-sm tabular-nums">
           {hasMmk && (
             <span className="font-medium">
               {Number(mmk_price).toLocaleString()} MMK

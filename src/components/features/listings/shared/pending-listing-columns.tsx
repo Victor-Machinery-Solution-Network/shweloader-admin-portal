@@ -103,7 +103,7 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
       }
 
       return (
-        <div className="text-sm">
+        <div className="text-sm tabular-nums">
           {hasMmk && (
             <span className="font-medium">
               {Number(mmk_price).toLocaleString()} MMK
@@ -150,7 +150,7 @@ export function createPendingSaleColumns(
         <DataTableColumnHeader column={column} title="Submitted" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm">
+        <span className="text-muted-foreground text-sm tabular-nums">
           {formatDate(row.original.created_at)}
         </span>
       ),
@@ -191,7 +191,7 @@ export function createPendingRentColumns(
         <DataTableColumnHeader column={column} title="Submitted" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm">
+        <span className="text-muted-foreground text-sm tabular-nums">
           {formatDate(row.original.created_at)}
         </span>
       ),

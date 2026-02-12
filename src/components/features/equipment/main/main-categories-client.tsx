@@ -99,7 +99,7 @@ export function MainCategoriesClient({
           columns={columns}
           data={data}
           searchKey="name"
-          searchPlaceholder="Search categories..."
+          searchPlaceholder="Search categories…"
           enableSelection
           enablePagination
           enableDragSort

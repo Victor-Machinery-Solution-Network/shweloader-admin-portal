@@ -124,6 +124,7 @@ export function AttachmentModelForm({
               placeholder="e.g. HB20G"
               defaultValue={model?.name ?? ""}
               errorMessage="Model name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -137,7 +138,7 @@ export function AttachmentModelForm({
               items={categoryNames}
             >
               <ComboboxInput
-                placeholder="Search category..."
+                placeholder="Search category…"
                 showClear={!!selectedCategory}
               />
               <ComboboxContent container={containerRef}>
@@ -165,7 +166,7 @@ export function AttachmentModelForm({
               items={brandNames}
             >
               <ComboboxInput
-                placeholder="Search brand (optional)..."
+                placeholder="Search brand (optional)…"
                 showClear={!!selectedBrand}
               />
               <ComboboxContent container={containerRef}>

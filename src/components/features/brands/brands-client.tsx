@@ -92,7 +92,7 @@ export function BrandsClient({
           columns={columns}
           data={brands}
           searchKey="name"
-          searchPlaceholder="Search brands..."
+          searchPlaceholder="Search brands…"
           enableSelection
           enablePagination
           pageSize={10}

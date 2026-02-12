@@ -70,7 +70,7 @@ export function LocationsClient({ locations }: LocationsClientProps) {
           columns={columns}
           data={locations}
           searchKey="city_name"
-          searchPlaceholder="Search locations..."
+          searchPlaceholder="Search locations…"
           enableSelection
           enablePagination
           pageSize={10}

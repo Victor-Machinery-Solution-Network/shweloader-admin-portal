@@ -418,7 +418,7 @@ export default function DashboardOverviewPage() {
         {/* ========== 6. TEXTAREA ========== */}
         <Section title="Textarea" number={6}>
           <SubSection title="Default">
-            <Textarea placeholder="Type your message..." className="max-w-sm" />
+            <Textarea placeholder="Type your message…" className="max-w-sm" />
           </SubSection>
           <SubSection title="States">
             <Textarea disabled placeholder="Disabled textarea" className="max-w-sm" />
@@ -760,7 +760,7 @@ export default function DashboardOverviewPage() {
         <Section title="Combobox" number={15}>
           <SubSection title="Basic">
             <Combobox>
-              <ComboboxInput placeholder="Search frameworks..." className="w-64" />
+              <ComboboxInput placeholder="Search frameworks…" className="w-64" />
               <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No results found.</ComboboxEmpty>
@@ -776,7 +776,7 @@ export default function DashboardOverviewPage() {
 
           <SubSection title="With Clear Button">
             <Combobox>
-              <ComboboxInput placeholder="Search..." showClear className="w-64" />
+              <ComboboxInput placeholder="Search…" showClear className="w-64" />
               <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No results.</ComboboxEmpty>
@@ -974,7 +974,7 @@ export default function DashboardOverviewPage() {
               <InputGroupAddon align="inline-start">
                 <InputGroupText><Search /></InputGroupText>
               </InputGroupAddon>
-              <InputGroupInput placeholder="Search..." />
+              <InputGroupInput placeholder="Search…" />
             </InputGroup>
           </SubSection>
 
@@ -989,7 +989,7 @@ export default function DashboardOverviewPage() {
 
           <SubSection title="With Button">
             <InputGroup className="max-w-xs">
-              <InputGroupInput placeholder="Search..." />
+              <InputGroupInput placeholder="Search…" />
               <InputGroupAddon align="inline-end">
                 <InputGroupButton size="xs" variant="ghost">
                   <Search />
@@ -1012,7 +1012,7 @@ export default function DashboardOverviewPage() {
               <InputGroupAddon align="block-end">
                 <InputGroupButton size="xs">Send</InputGroupButton>
               </InputGroupAddon>
-              <InputGroupTextarea placeholder="Type a message..." />
+              <InputGroupTextarea placeholder="Type a message…" />
             </InputGroup>
           </SubSection>
         </Section>
@@ -1114,7 +1114,7 @@ export default function DashboardOverviewPage() {
                 columns={demoColumns}
                 data={demoUsers}
                 searchKey="name"
-                searchPlaceholder="Search by name..."
+                searchPlaceholder="Search by name…"
                 enableSelection
                 enablePagination
                 pageSize={5}
@@ -1210,7 +1210,7 @@ export default function DashboardOverviewPage() {
                   { label: 'Astro', value: 'astro' },
                 ]}
                 onValueChange={() => {}}
-                placeholder="Select frameworks..."
+                placeholder="Select frameworks…"
               />
             </div>
           </SubSection>
@@ -1227,7 +1227,7 @@ export default function DashboardOverviewPage() {
                 ]}
                 defaultValue={['js', 'ts', 'python', 'rust']}
                 onValueChange={() => {}}
-                placeholder="Select languages..."
+                placeholder="Select languages…"
                 maxCount={2}
               />
             </div>

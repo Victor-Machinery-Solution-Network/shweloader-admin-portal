@@ -22,7 +22,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
-const multiSelectVariants = cva('m-1 transition-all', {
+const multiSelectVariants = cva('m-1 transition-colors', {
   variants: {
     variant: {
       default:
@@ -133,13 +133,22 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
                       {option?.label}
                       <span
                         role="button"
+                        tabIndex={-1}
+                        aria-label="Remove"
                         className="ml-1 rounded-full outline-none hover:opacity-60"
                         onClick={(e) => {
                           e.stopPropagation()
                           toggleOption(value)
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleOption(value)
+                          }
+                        }}
                       >
-                        <X className="size-3" />
+                        <X className="size-3" aria-hidden="true" />
                       </span>
                     </Badge>
                   )
@@ -162,13 +171,22 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
               {selectedValues.length > 0 && (
                 <span
                   role="button"
+                  tabIndex={-1}
+                  aria-label="Clear all"
                   className="text-muted-foreground hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleClear()
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleClear()
+                    }
+                  }}
                 >
-                  <X className="size-4" />
+                  <X className="size-4" aria-hidden="true" />
                 </span>
               )}
               <Separator orientation="vertical" className="h-full" />
@@ -181,7 +199,7 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           align="start"
         >
           <Command>
-            {searchable && <CommandInput placeholder="Search..." />}
+            {searchable && <CommandInput placeholder="Search\u2026" />}
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup>

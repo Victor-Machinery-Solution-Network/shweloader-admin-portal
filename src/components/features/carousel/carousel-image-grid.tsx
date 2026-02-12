@@ -163,7 +163,7 @@ export function CarouselImageGrid({
                 <div className="text-center">
                   <ImagePlus className="text-muted-foreground mx-auto size-5" />
                   <span className="text-muted-foreground mt-1 block text-xs">
-                    {isAdding ? "Uploading..." : "Add Image"}
+                    {isAdding ? "Uploading…" : "Add Image"}
                   </span>
                 </div>
               </button>
@@ -200,7 +200,7 @@ export function CarouselImageGrid({
         {images.length === 0 ? (
           <>
             <p className="text-sm font-medium">
-              {isAdding ? "Uploading..." : "Drop images here or click to browse"}
+              {isAdding ? "Uploading…" : "Drop images here or click to browse"}
             </p>
             <p className="text-xs text-muted-foreground">
               Supports JPG, PNG, WebP. Max {MAX_SIZE_MB}MB per image.
@@ -209,7 +209,7 @@ export function CarouselImageGrid({
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              {isAdding ? "Uploading..." : "Drop more images here or click to add"}
+              {isAdding ? "Uploading…" : "Drop more images here or click to add"}
             </p>
             <p className="text-xs text-muted-foreground">
               {images.length} {images.length === 1 ? "image" : "images"} — drag

@@ -120,11 +120,12 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
         <div className="absolute inset-x-0 top-0 flex items-center justify-between p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             type="button"
+            aria-label="Reorder image"
             className="cursor-grab rounded bg-black/50 p-1 text-white hover:bg-black/70 active:cursor-grabbing"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="size-4" />
+            <GripVertical aria-hidden="true" className="size-4" />
           </button>
 
           <TooltipProvider>
@@ -139,13 +140,14 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
                         ? "bg-black/50 hover:bg-black/70"
                         : "bg-orange-600/80 hover:bg-orange-600",
                     )}
+                    aria-label={isActive ? "Hide image" : "Show image"}
                     onClick={handleToggleActive}
                     disabled={isToggling}
                   >
                     {isActive ? (
-                      <Eye className="size-4" />
+                      <Eye aria-hidden="true" className="size-4" />
                     ) : (
-                      <EyeOff className="size-4" />
+                      <EyeOff aria-hidden="true" className="size-4" />
                     )}
                   </button>
                 </TooltipTrigger>
@@ -164,9 +166,10 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
                         ? "bg-blue-600/80 hover:bg-blue-600"
                         : "bg-black/50 hover:bg-black/70",
                     )}
+                    aria-label={image.link_url ? "Edit link" : "Add link"}
                     onClick={() => setShowLinkEdit(!showLinkEdit)}
                   >
-                    <Link className="size-4" />
+                    <Link aria-hidden="true" className="size-4" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -176,10 +179,11 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
 
               <button
                 type="button"
+                aria-label="Remove image"
                 className="rounded bg-black/50 p-1 text-white hover:bg-red-600"
                 onClick={() => setShowDelete(true)}
               >
-                <Trash2 className="size-4" />
+                <Trash2 aria-hidden="true" className="size-4" />
               </button>
             </div>
           </TooltipProvider>
@@ -188,7 +192,7 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
         {/* Link indicator */}
         {image.link_url && !showLinkEdit && (
           <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1 text-xs text-white truncate flex items-center gap-1">
-            <ExternalLink className="size-3 shrink-0" />
+            <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
             <span className="truncate">{image.link_url}</span>
           </div>
         )}
@@ -207,7 +211,7 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
               <Input
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder="https://…"
                 className="h-7 text-xs bg-white/90 text-black"
                 autoFocus
               />

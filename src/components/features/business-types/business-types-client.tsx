@@ -78,7 +78,7 @@ export function BusinessTypesClient({
           columns={columns}
           data={businessTypes}
           searchKey="name"
-          searchPlaceholder="Search business types..."
+          searchPlaceholder="Search business types…"
           enableSelection
           enablePagination
           pageSize={10}

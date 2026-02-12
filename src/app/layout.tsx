@@ -25,6 +25,10 @@ const anonymousPro = Anonymous_Pro({
 export const metadata: Metadata = {
   title: "Admin Portal | Shweloader",
   description: "Admin portal for managing Shweloader resources",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#171717" },
+  ],
 };
 
 export default function RootLayout({
@@ -33,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${albertSans.variable} ${abhayaLibre.variable} ${anonymousPro.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${albertSans.variable} ${abhayaLibre.variable} ${anonymousPro.variable}`}>
       <body className="antialiased">
         {children}
         <Toaster position="top-center" />

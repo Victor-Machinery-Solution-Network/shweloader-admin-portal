@@ -53,7 +53,7 @@ export function RowActions({ partner }: RowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-xs">
-            <MoreHorizontal />
+            <MoreHorizontal aria-hidden="true" />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>

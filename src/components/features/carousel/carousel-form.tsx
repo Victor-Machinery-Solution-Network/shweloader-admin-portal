@@ -68,6 +68,7 @@ export function CarouselForm({
               placeholder="e.g. Home Page Hero"
               defaultValue={carousel?.name ?? ""}
               errorMessage="Carousel name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -76,9 +77,10 @@ export function CarouselForm({
           <FieldContent>
             <Textarea
               name="description"
-              placeholder="Brief description of this carousel..."
+              placeholder="Brief description of this carousel…"
               defaultValue={carousel?.description ?? ""}
               rows={2}
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

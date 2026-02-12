@@ -66,6 +66,7 @@ export function AnnouncementForm({
             placeholder="e.g. Weekend promotion is now live"
             defaultValue={announcement?.text ?? ""}
             errorMessage="Announcement text is required"
+            autoComplete="off"
           />
         </FieldContent>
       </Field>

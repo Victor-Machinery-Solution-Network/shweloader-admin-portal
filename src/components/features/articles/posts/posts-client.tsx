@@ -123,7 +123,7 @@ export function PostsClient({
               columns={publishedColumns}
               data={publishedArticles}
               searchKey="title"
-              searchPlaceholder="Search articles..."
+              searchPlaceholder="Search articles…"
               enableSelection
               enablePagination
               pageSize={10}
@@ -144,7 +144,7 @@ export function PostsClient({
               columns={pendingColumns}
               data={pendingArticles}
               searchKey="title"
-              searchPlaceholder="Search pending articles..."
+              searchPlaceholder="Search pending articles…"
               enablePagination
               pageSize={10}
             />

@@ -66,7 +66,7 @@ const appliedAtColumn: ColumnDef<PartnerWithDetails> = {
   cell: ({ row }) => {
     const date = row.getValue("applied_at") as string;
     return (
-      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     );
   },
 };
@@ -79,7 +79,7 @@ const reviewedAtColumn: ColumnDef<PartnerWithDetails> = {
   cell: ({ row }) => {
     const date = row.original.reviewed_at;
     return date ? (
-      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     ) : (
       <span className="text-muted-foreground text-sm">—</span>
     );
@@ -94,7 +94,7 @@ const rejectedAtColumn: ColumnDef<PartnerWithDetails> = {
   cell: ({ row }) => {
     const date = row.original.reviewed_at;
     return date ? (
-      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     ) : (
       <span className="text-muted-foreground text-sm">—</span>
     );

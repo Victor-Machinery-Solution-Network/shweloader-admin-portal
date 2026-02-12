@@ -88,6 +88,7 @@ function DndTable({
   onReorder,
   colCount,
 }: DndTableProps) {
+  "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),

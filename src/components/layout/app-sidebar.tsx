@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -93,7 +94,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Package className="h-4 w-4" />
+            <Package className="h-4 w-4" aria-hidden="true" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">Admin Portal</span>
@@ -117,7 +118,7 @@ export function AppSidebar() {
                   }
                 >
                   <Link href={ROUTES.DASHBOARD}>
-                    <LayoutDashboard />
+                    <LayoutDashboard aria-hidden="true" />
                     <span>Overview</span>
                   </Link>
                 </SidebarMenuButton>
@@ -129,7 +130,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.DASHBOARD_ANALYTICS}
                 >
                   <Link href={ROUTES.DASHBOARD_ANALYTICS}>
-                    <BarChart />
+                    <BarChart aria-hidden="true" />
                     <span>Analytics</span>
                   </Link>
                 </SidebarMenuButton>
@@ -148,10 +149,11 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   onClick={() => setIsEquipmentOpen(!isEquipmentOpen)}
                 >
-                  <Wrench />
+                  <Wrench aria-hidden="true" />
                   <span>Equipment</span>
                   <ChevronDown
                     className={`ml-auto transition-transform ${isEquipmentOpen ? "" : "-rotate-90"}`}
+                    aria-hidden="true"
                   />
                 </SidebarMenuButton>
                 {isEquipmentOpen && (
@@ -195,10 +197,11 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   onClick={() => setIsAttachmentsOpen(!isAttachmentsOpen)}
                 >
-                  <Package />
+                  <Package aria-hidden="true" />
                   <span>Attachments</span>
                   <ChevronDown
                     className={`ml-auto transition-transform ${isAttachmentsOpen ? "" : "-rotate-90"}`}
+                    aria-hidden="true"
                   />
                 </SidebarMenuButton>
                 {isAttachmentsOpen && (
@@ -234,7 +237,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.BRANDS}
                 >
                   <Link href={ROUTES.BRANDS}>
-                    <Tag />
+                    <Tag aria-hidden="true" />
                     <span>Brands</span>
                   </Link>
                 </SidebarMenuButton>
@@ -247,7 +250,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.LOCATIONS}
                 >
                   <Link href={ROUTES.LOCATIONS}>
-                    <MapPin />
+                    <MapPin aria-hidden="true" />
                     <span>Locations</span>
                   </Link>
                 </SidebarMenuButton>
@@ -266,10 +269,11 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   onClick={() => setIsListingsOpen(!isListingsOpen)}
                 >
-                  <ShoppingCart />
+                  <ShoppingCart aria-hidden="true" />
                   <span>Listings</span>
                   <ChevronDown
                     className={`ml-auto transition-transform ${isListingsOpen ? "" : "-rotate-90"}`}
+                    aria-hidden="true"
                   />
                 </SidebarMenuButton>
                 {isListingsOpen && (
@@ -305,7 +309,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.ENQUIRIES}
                 >
                   <Link href={ROUTES.ENQUIRIES}>
-                    <MessageSquare />
+                    <MessageSquare aria-hidden="true" />
                     <span>Enquiries</span>
                   </Link>
                 </SidebarMenuButton>
@@ -325,7 +329,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.CUSTOMERS}
                 >
                   <Link href={ROUTES.CUSTOMERS}>
-                    <Users />
+                    <Users aria-hidden="true" />
                     <span>Customers</span>
                   </Link>
                 </SidebarMenuButton>
@@ -337,7 +341,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.PARTNERS}
                 >
                   <Link href={ROUTES.PARTNERS}>
-                    <UserCheck />
+                    <UserCheck aria-hidden="true" />
                     <span>Partners</span>
                   </Link>
                 </SidebarMenuButton>
@@ -356,10 +360,11 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   onClick={() => setIsArticlesOpen(!isArticlesOpen)}
                 >
-                  <FileText />
+                  <FileText aria-hidden="true" />
                   <span>Articles</span>
                   <ChevronDown
                     className={`ml-auto transition-transform ${isArticlesOpen ? "" : "-rotate-90"}`}
+                    aria-hidden="true"
                   />
                 </SidebarMenuButton>
                 {isArticlesOpen && (
@@ -394,7 +399,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.CAROUSEL_IMAGES}
                 >
                   <Link href={ROUTES.CAROUSEL_IMAGES}>
-                    <ImageIcon />
+                    <ImageIcon aria-hidden="true" />
                     <span>Carousel Images</span>
                   </Link>
                 </SidebarMenuButton>
@@ -406,7 +411,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.ANNOUNCEMENT_BAR}
                 >
                   <Link href={ROUTES.ANNOUNCEMENT_BAR}>
-                    <Megaphone />
+                    <Megaphone aria-hidden="true" />
                     <span>Announcement Bar</span>
                   </Link>
                 </SidebarMenuButton>
@@ -426,7 +431,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.ADMINS}
                 >
                   <Link href={ROUTES.ADMINS}>
-                    <Shield />
+                    <Shield aria-hidden="true" />
                     <span>Admins</span>
                   </Link>
                 </SidebarMenuButton>
@@ -438,7 +443,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.ROLES_PERMISSIONS}
                 >
                   <Link href={ROUTES.ROLES_PERMISSIONS}>
-                    <UserCog />
+                    <UserCog aria-hidden="true" />
                     <span>Roles & Permissions</span>
                   </Link>
                 </SidebarMenuButton>
@@ -450,7 +455,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.SETTINGS}
                 >
                   <Link href={ROUTES.SETTINGS}>
-                    <Settings />
+                    <Settings aria-hidden="true" />
                     <span>General Settings</span>
                   </Link>
                 </SidebarMenuButton>
@@ -478,7 +483,7 @@ export function AppSidebar() {
                       {userEmail}
                     </span>
                   </div>
-                  <MoreVertical className="ml-auto size-4" />
+                  <MoreVertical className="ml-auto size-4" aria-hidden="true" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -507,11 +512,11 @@ export function AppSidebar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground">
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="mr-2 h-4 w-4" aria-hidden="true" />
                   Account
                 </DropdownMenuItem>
                 <DropdownMenuItem className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground">
-                  <Bell className="mr-2 h-4 w-4" />
+                  <Bell className="mr-2 h-4 w-4" aria-hidden="true" />
                   Notifications
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -519,7 +524,7 @@ export function AppSidebar() {
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                   onClick={() => logoutAction()}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

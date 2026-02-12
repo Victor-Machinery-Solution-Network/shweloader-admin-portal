@@ -62,19 +62,19 @@ export function RowActions({ category }: RowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-xs">
-            <MoreHorizontal />
+            <MoreHorizontal aria-hidden="true" />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setShowEdit(true)}>
-            <Pencil /> Edit
+            <Pencil aria-hidden="true" /> Edit
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => setShowDelete(true)}
           >
-            <Trash2 /> Delete
+            <Trash2 aria-hidden="true" /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

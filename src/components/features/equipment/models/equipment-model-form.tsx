@@ -125,6 +125,7 @@ export function EquipmentModelForm({
               placeholder="e.g. CAT 320"
               defaultValue={model?.name ?? ""}
               errorMessage="Model name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -138,7 +139,7 @@ export function EquipmentModelForm({
               items={subCategoryNames}
             >
               <ComboboxInput
-                placeholder="Search sub category..."
+                placeholder="Search sub category…"
                 showClear={!!selectedSubCategory}
               />
               <ComboboxContent container={containerRef}>
@@ -166,7 +167,7 @@ export function EquipmentModelForm({
               items={brandNames}
             >
               <ComboboxInput
-                placeholder="Search brand..."
+                placeholder="Search brand…"
                 showClear={!!selectedBrand}
               />
               <ComboboxContent container={containerRef}>

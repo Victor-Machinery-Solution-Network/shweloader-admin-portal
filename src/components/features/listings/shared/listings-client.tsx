@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback, useTransition, lazy, Suspense } from "react";
-import { ShoppingCart, Home, Plus, Star, Filter, Check, Clock } from "lucide-react";
+import { useMemo, useCallback, useTransition, lazy, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+
+import { ShoppingCart, Home, Plus, Star, Filter, Clock } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,13 +12,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createSaleColumns, createRentColumns } from "./listing-columns";
 import {
@@ -121,14 +125,36 @@ export function ListingsClient({
 
   const pendingCount = pendingListings.length;
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [hiddenFilter, setHiddenFilter] = useState<
-    "all" | "visible" | "hidden"
-  >("all");
-  const [soldFilter, setSoldFilter] = useState<"all" | "available" | "sold">(
-    "all",
-  );
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [, startTransition] = useTransition();
+
+  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured";
+  const hiddenFilter = (searchParams.get("visibility") ?? "all") as "all" | "visible" | "hidden";
+  const soldFilter = (searchParams.get("sold") ?? "all") as "all" | "available" | "sold";
+  const showCreate = searchParams.get("create") === "1";
+
+  const setParam = useCallback(
+    (key: string, value: string, defaultValue: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === defaultValue) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `?${qs}` : "?", { scroll: false });
+    },
+    [searchParams, router],
+  );
+
+  const setTab = useCallback((v: string) => setParam("tab", v, "listings"), [setParam]);
+  const setHiddenFilter = useCallback((v: string) => setParam("visibility", v, "all"), [setParam]);
+  const setSoldFilter = useCallback((v: string) => setParam("sold", v, "all"), [setParam]);
+  const setShowCreate = useCallback(
+    (open: boolean) => setParam("create", open ? "1" : "0", "0"),
+    [setParam],
+  );
 
   const filteredListings = useMemo(() => {
     return approvedListings.filter((listing) => {
@@ -161,10 +187,10 @@ export function ListingsClient({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            <Filter className="size-3.5" />
+            <Filter className="size-3.5" aria-hidden="true" />
             Filter
             {activeFilterCount > 0 && (
-              <span className="ml-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">
+              <span className="ml-1 rounded bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
                 {activeFilterCount}
               </span>
             )}
@@ -172,51 +198,27 @@ export function ListingsClient({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuLabel>Visibility</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => setHiddenFilter("all")}>
-            {hiddenFilter === "all" && <Check className="mr-2 size-4" />}
-            <span className={hiddenFilter !== "all" ? "ml-6" : ""}>All</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setHiddenFilter("visible")}>
-            {hiddenFilter === "visible" && <Check className="mr-2 size-4" />}
-            <span className={hiddenFilter !== "visible" ? "ml-6" : ""}>
-              Visible only
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setHiddenFilter("hidden")}>
-            {hiddenFilter === "hidden" && <Check className="mr-2 size-4" />}
-            <span className={hiddenFilter !== "hidden" ? "ml-6" : ""}>
-              Hidden only
-            </span>
-          </DropdownMenuItem>
+          <DropdownMenuRadioGroup value={hiddenFilter} onValueChange={(v) => setHiddenFilter(v as typeof hiddenFilter)}>
+            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="visible">Visible only</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="hidden">Hidden only</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
 
           {config.hasSoldFilter && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Status</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setSoldFilter("all")}>
-                {soldFilter === "all" && <Check className="mr-2 size-4" />}
-                <span className={soldFilter !== "all" ? "ml-6" : ""}>All</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSoldFilter("available")}>
-                {soldFilter === "available" && (
-                  <Check className="mr-2 size-4" />
-                )}
-                <span className={soldFilter !== "available" ? "ml-6" : ""}>
-                  Available only
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSoldFilter("sold")}>
-                {soldFilter === "sold" && <Check className="mr-2 size-4" />}
-                <span className={soldFilter !== "sold" ? "ml-6" : ""}>
-                  Sold out only
-                </span>
-              </DropdownMenuItem>
+              <DropdownMenuRadioGroup value={soldFilter} onValueChange={(v) => setSoldFilter(v as typeof soldFilter)}>
+                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="available">Available only</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="sold">Sold out only</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
       <Button onClick={() => setShowCreate(true)} className="ml-auto">
-        <Plus /> Add Listing
+        <Plus aria-hidden="true" /> Add Listing
       </Button>
     </>
   );
@@ -241,26 +243,26 @@ export function ListingsClient({
     <>
       <PageHeader title={config.title} description={config.description} />
 
-      <Tabs defaultValue="listings">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="listings">
-            <Icon className="size-4" />
+            <Icon className="size-4" aria-hidden="true" />
             {config.tabLabel}
           </TabsTrigger>
           <TabsTrigger value="pending">
-            <Clock className="size-4" />
+            <Clock className="size-4" aria-hidden="true" />
             Pending
             {pendingCount > 0 && (
               <Badge
                 variant="outline"
-                className="ml-1 size-5 justify-center border-blue-200 bg-blue-50 p-0 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
+                className="ml-1 size-5 justify-center border-blue-200 bg-blue-50 p-0 tabular-nums text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
               >
                 {pendingCount}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="featured">
-            <Star className="size-4" />
+            <Star className="size-4" aria-hidden="true" />
             Featured Listings
           </TabsTrigger>
         </TabsList>
@@ -271,7 +273,7 @@ export function ListingsClient({
               columns={columns}
               data={filteredListings}
               searchKey="model_name"
-              searchPlaceholder="Search by model..."
+              searchPlaceholder="Search by model\u2026"
               enablePagination
               pageSize={10}
               toolbar={filterToolbar}
@@ -283,7 +285,7 @@ export function ListingsClient({
               description={config.emptyDescription}
               action={
                 <Button onClick={() => setShowCreate(true)}>
-                  <Plus /> Add Listing
+                  <Plus aria-hidden="true" /> Add Listing
                 </Button>
               }
             />
@@ -296,7 +298,7 @@ export function ListingsClient({
               columns={pendingColumns}
               data={pendingListings}
               searchKey="model_name"
-              searchPlaceholder="Search pending listings..."
+              searchPlaceholder="Search pending listings\u2026"
               enablePagination
               pageSize={10}
             />
@@ -329,7 +331,7 @@ export function ListingsClient({
       </Tabs>
 
       {showCreate && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="flex items-center justify-center p-8"><Spinner className="size-6" /></div>}>
           <LazyListingForm
             open={showCreate}
             onOpenChange={setShowCreate}

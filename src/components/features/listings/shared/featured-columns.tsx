@@ -16,6 +16,7 @@ function RemoveButton({ featuredId }: { featuredId: number }) {
     <Button
       variant="ghost"
       size="icon-xs"
+      aria-label="Remove from featured"
       disabled={isPending}
       onClick={() => {
         startTransition(async () => {
@@ -28,7 +29,7 @@ function RemoveButton({ featuredId }: { featuredId: number }) {
         });
       }}
     >
-      <X className="size-4 text-destructive" />
+      <X className="size-4 text-destructive" aria-hidden="true" />
     </Button>
   );
 }

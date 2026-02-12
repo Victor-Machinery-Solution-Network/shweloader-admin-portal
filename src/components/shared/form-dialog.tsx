@@ -84,7 +84,7 @@ export function FormDialog({
             <Button type="submit" disabled={isPending}>
               {isPending ? (
                 <>
-                  <Spinner className="mr-1" /> Saving...
+                  <Spinner className="mr-1" /> Saving{'\u2026'}
                 </>
               ) : (
                 submitLabel

@@ -17,10 +17,16 @@ export default function DashboardLayout({
   return (
     <AuthSessionProvider>
       <SidebarProvider>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:rounded-lg focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:ring-2 focus:ring-ring"
+        >
+          Skip to main content
+        </a>
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
-          <main className="flex-1 p-6">
+          <main id="main-content" className="flex-1 p-6">
             {children}
           </main>
         </SidebarInset>

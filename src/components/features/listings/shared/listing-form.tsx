@@ -277,9 +277,9 @@ export function ListingForm({
       }
       icon={
         pageType === "sale" ? (
-          <ShoppingCart className="text-muted-foreground size-6" />
+          <ShoppingCart aria-hidden="true" className="text-muted-foreground size-6" />
         ) : (
-          <Home className="text-muted-foreground size-6" />
+          <Home aria-hidden="true" className="text-muted-foreground size-6" />
         )
       }
       onSubmit={handleSubmit}
@@ -401,7 +401,7 @@ export function ListingForm({
               items={partnerNames}
             >
               <ComboboxInput
-                placeholder="Search partner..."
+                placeholder="Search partner…"
                 showClear={!!selectedPartner}
               />
               <ComboboxContent container={containerRef}>
@@ -430,7 +430,7 @@ export function ListingForm({
               items={locationNames}
             >
               <ComboboxInput
-                placeholder="Search location (optional)..."
+                placeholder="Search location (optional)…"
                 showClear={!!selectedLocation}
               />
               <ComboboxContent container={containerRef}>
@@ -457,6 +457,7 @@ export function ListingForm({
               name="custom_id"
               placeholder="e.g. SL-001"
               defaultValue={listing?.custom_id ?? ""}
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -470,6 +471,7 @@ export function ListingForm({
                 name="condition"
                 placeholder="e.g. Used - Good"
                 defaultValue={saleDefaults?.condition ?? ""}
+                autoComplete="off"
               />
             </FieldContent>
           </Field>
@@ -482,6 +484,7 @@ export function ListingForm({
             <FieldContent>
               <Input
                 name="usd_price"
+                inputMode="decimal"
                 type="number"
                 placeholder="0"
                 value={usdPrice}
@@ -491,6 +494,7 @@ export function ListingForm({
                   // let the dialog scroll instead.
                   e.currentTarget.blur();
                 }}
+                autoComplete="off"
               />
             </FieldContent>
           </Field>
@@ -525,6 +529,7 @@ export function ListingForm({
                   onWheel={(e) => {
                     e.currentTarget.blur();
                   }}
+                  autoComplete="off"
                 />
               )}
             </FieldContent>
@@ -538,6 +543,7 @@ export function ListingForm({
                 value={mmkPrice.toLocaleString()}
                 readOnly
                 className="bg-muted"
+                autoComplete="off"
               />
             </FieldContent>
           </Field>
@@ -562,9 +568,10 @@ export function ListingForm({
           <FieldContent>
             <Textarea
               name="description"
-              placeholder="Describe the product..."
+              placeholder="Describe the product…"
               rows={3}
               defaultValue={listing?.description ?? ""}
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

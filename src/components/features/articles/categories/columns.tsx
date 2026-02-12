@@ -24,7 +24,7 @@ export const columns: ColumnDef<ArticleCategory>[] = [
     cell: ({ row }) => {
       const date = row.getValue("created_at") as string;
       return (
-        <span className="text-muted-foreground text-sm">
+        <span className="text-muted-foreground text-sm tabular-nums">
           {formatDate(date)}
         </span>
       );

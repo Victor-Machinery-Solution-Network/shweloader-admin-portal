@@ -36,7 +36,7 @@ export function DeleteDialog({
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10">
-            <Trash2 className="text-destructive" />
+            <Trash2 className="text-destructive" aria-hidden="true" />
           </AlertDialogMedia>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -51,7 +51,7 @@ export function DeleteDialog({
             }}
             disabled={isPending}
           >
-            {isPending ? <><Spinner className="mr-1" /> Deleting...</> : 'Delete'}
+            {isPending ? <><Spinner className="mr-1" /> Deleting{'\u2026'}</> : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -114,7 +114,7 @@ const publishDateColumn: ColumnDef<ArticleWithDetails> = {
       return <span className="text-muted-foreground text-sm">—</span>;
     }
     return (
-      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     );
   },
 };
@@ -127,7 +127,7 @@ const createdAtColumn: ColumnDef<ArticleWithDetails> = {
   cell: ({ row }) => {
     const date = row.getValue("created_at") as string;
     return (
-      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     );
   },
 };

@@ -66,7 +66,7 @@ export function EquipmentModelsClient({
           columns={columns}
           data={models}
           searchKey="name"
-          searchPlaceholder="Search models..."
+          searchPlaceholder="Search models…"
           enableSelection
           enablePagination
           pageSize={10}

@@ -65,6 +65,7 @@ export function BusinessTypeForm({
               placeholder="e.g. Construction"
               defaultValue={businessType?.name ?? ""}
               errorMessage="Business type name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

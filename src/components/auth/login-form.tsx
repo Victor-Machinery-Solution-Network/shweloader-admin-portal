@@ -63,7 +63,7 @@ export function LoginForm() {
       {/* Branding */}
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-          <Lock className="h-6 w-6 text-primary-foreground" />
+          <Lock className="h-6 w-6 text-primary-foreground" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{APP_NAME}</h1>
         <p className="text-sm text-muted-foreground">
@@ -85,13 +85,14 @@ export function LoginForm() {
             <div className="space-y-2" data-invalid={emailInvalid || undefined}>
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="name@example.com"
                   autoComplete="email"
+                  spellCheck={false}
                   autoFocus
                   required
                   disabled={isPending}
@@ -114,7 +115,7 @@ export function LoginForm() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   ref={passwordRef}
                   id="password"
@@ -133,9 +134,9 @@ export function LoginForm() {
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -154,7 +155,7 @@ export function LoginForm() {
               {isPending ? (
                 <>
                   <Spinner className="mr-2" />
-                  Signing in...
+                  Signing in{'\u2026'}
                 </>
               ) : (
                 'Sign in'

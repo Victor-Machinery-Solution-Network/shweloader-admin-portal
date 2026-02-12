@@ -105,6 +105,7 @@ export function BrandForm({
               placeholder="e.g. Caterpillar"
               defaultValue={brand?.name ?? ""}
               errorMessage="Brand name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>
@@ -116,7 +117,7 @@ export function BrandForm({
               options={subCategoryOptions}
               defaultValue={selectedSubCategoryIds}
               onValueChange={setSelectedSubCategoryIds}
-              placeholder="Select equipment sub-categories..."
+              placeholder="Select equipment sub-categories…"
               maxCount={3}
             />
           </FieldContent>
@@ -129,7 +130,7 @@ export function BrandForm({
               options={categoryOptions}
               defaultValue={selectedCategoryIds}
               onValueChange={setSelectedCategoryIds}
-              placeholder="Select attachment categories..."
+              placeholder="Select attachment categories…"
               maxCount={3}
             />
           </FieldContent>

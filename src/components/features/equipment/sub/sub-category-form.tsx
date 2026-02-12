@@ -101,7 +101,7 @@ export function SubCategoryForm({
               items={categoryNames}
             >
               <ComboboxInput
-                placeholder="Search main category..."
+                placeholder="Search main category…"
                 showClear={!!selectedName}
               />
               <ComboboxContent container={containerRef}>
@@ -127,6 +127,7 @@ export function SubCategoryForm({
               placeholder="e.g. Mini Excavators"
               defaultValue={subCategory?.name ?? ""}
               errorMessage="Sub category name is required"
+              autoComplete="off"
             />
           </FieldContent>
         </Field>

@@ -44,13 +44,13 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="h-4 mx-2 !self-center" />
       <div className="flex flex-1 items-center justify-between">
-        <h1 className="text-base font-medium">{title}</h1>
+        <h1 className="text-base font-medium text-pretty">{title}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <Bell className="h-4 w-4" />
+          <Button variant="ghost" size="icon" aria-label="Notifications">
+            <Bell className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <User className="h-4 w-4" />
+          <Button variant="ghost" size="icon" aria-label="User profile">
+            <User className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>

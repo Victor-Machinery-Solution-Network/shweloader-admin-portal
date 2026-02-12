@@ -78,7 +78,7 @@ export const columns: ColumnDef<AnnouncementText>[] = [
       <DataTableColumnHeader column={column} title="Created" />
     ),
     cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">
+      <span className="text-muted-foreground text-sm tabular-nums">
         {formatDate(row.original.created_at)}
       </span>
     ),
