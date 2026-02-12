@@ -68,16 +68,20 @@ export async function deleteLocation(id: number) {
 export async function getListingCount(
   locationIds: number[],
 ): Promise<Record<number, number>> {
-  const entries = await Promise.all(
-    locationIds.map(async (id) => {
-      const result = await d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM product_list WHERE location_id = ?",
-        [id],
-      );
-      return [id, result.results[0]?.count ?? 0] as const;
-    }),
+  if (locationIds.length === 0) return {};
+
+  const placeholders = locationIds.map(() => "?").join(",");
+  const result = await d1.query<{ location_id: number; count: number }>(
+    `SELECT location_id, COUNT(*) as count FROM product_list WHERE location_id IN (${placeholders}) GROUP BY location_id`,
+    locationIds,
   );
-  return Object.fromEntries(entries);
+
+  const countMap = Object.fromEntries(
+    result.results.map((r) => [r.location_id, r.count]),
+  );
+  return Object.fromEntries(
+    locationIds.map((id) => [id, countMap[id] ?? 0]),
+  );
 }
 
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
+import Image from 'next/image';
 import { ImagePlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -139,11 +140,13 @@ export function ImageInput({
       {value ? (
         /* Preview state */
         <div className="relative group">
-          <div className="relative overflow-hidden rounded-xl border bg-muted">
-            <img
+          <div className="relative h-32 overflow-hidden rounded-xl border bg-muted">
+            <Image
               src={value}
               alt="Preview"
-              className="h-32 w-full object-contain"
+              fill
+              className="object-contain"
+              unoptimized
             />
           </div>
           <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">

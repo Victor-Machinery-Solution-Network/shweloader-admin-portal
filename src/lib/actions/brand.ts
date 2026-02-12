@@ -250,33 +250,38 @@ export interface BrandLinkedCounts {
 export async function getBrandLinkedCounts(
   brandIds: number[],
 ): Promise<Record<number, BrandLinkedCounts>> {
-  const entries = await Promise.all(
-    brandIds.map(async (id) => {
-      const [eqModels, atModels] = await Promise.all([
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM equipment_model WHERE brand_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM attachment_model WHERE brand_id = ?",
-          [id],
-        ),
-      ]);
+  if (brandIds.length === 0) return {};
 
-      const equipmentModels = eqModels.results[0]?.count ?? 0;
-      const attachmentModels = atModels.results[0]?.count ?? 0;
+  const placeholders = brandIds.map(() => "?").join(",");
 
+  const [eqResults, atResults] = await Promise.all([
+    d1.query<{ brand_id: number; count: number }>(
+      `SELECT brand_id, COUNT(*) as count FROM equipment_model WHERE brand_id IN (${placeholders}) GROUP BY brand_id`,
+      brandIds,
+    ),
+    d1.query<{ brand_id: number; count: number }>(
+      `SELECT brand_id, COUNT(*) as count FROM attachment_model WHERE brand_id IN (${placeholders}) GROUP BY brand_id`,
+      brandIds,
+    ),
+  ]);
+
+  const eqMap = Object.fromEntries(
+    eqResults.results.map((r) => [r.brand_id, r.count]),
+  );
+  const atMap = Object.fromEntries(
+    atResults.results.map((r) => [r.brand_id, r.count]),
+  );
+
+  return Object.fromEntries(
+    brandIds.map((id) => {
+      const equipmentModels = eqMap[id] ?? 0;
+      const attachmentModels = atMap[id] ?? 0;
       return [
         id,
-        {
-          equipmentModels,
-          attachmentModels,
-          total: equipmentModels + attachmentModels,
-        },
-      ] as const;
+        { equipmentModels, attachmentModels, total: equipmentModels + attachmentModels },
+      ];
     }),
   );
-  return Object.fromEntries(entries);
 }
 
 export async function formatBrandLinkedSummary(

@@ -95,13 +95,20 @@ export async function deleteMainCategories(ids: number[]) {
 export async function getSubCategoryCount(
   categoryIds: number[],
 ): Promise<Record<number, number>> {
-  const entries = await Promise.all(
-    categoryIds.map(async (id) => {
-      const count = await subCategoryService.count({ category_id: id });
-      return [id, count] as const;
-    }),
+  if (categoryIds.length === 0) return {};
+
+  const placeholders = categoryIds.map(() => "?").join(",");
+  const result = await d1.query<{ category_id: number; count: number }>(
+    `SELECT category_id, COUNT(*) as count FROM equipment_sub_category WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+    categoryIds,
   );
-  return Object.fromEntries(entries);
+
+  const countMap = Object.fromEntries(
+    result.results.map((r) => [r.category_id, r.count]),
+  );
+  return Object.fromEntries(
+    categoryIds.map((id) => [id, countMap[id] ?? 0]),
+  );
 }
 
 // ─── Sub Category Actions ────────────────────────────────────────────────────
@@ -260,6 +267,10 @@ export async function formatSubCategoryLinkedSummary(
 // ─── Reorder Actions ─────────────────────────────────────────────────────────
 
 export async function reorderMainCategories(orderedIds: number[]) {
+  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
+    return { success: false, error: "Invalid category IDs" };
+  }
+
   try {
     const cases = orderedIds
       .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
@@ -279,6 +290,10 @@ export async function reorderMainCategories(orderedIds: number[]) {
 }
 
 export async function reorderSubCategories(orderedIds: number[]) {
+  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
+    return { success: false, error: "Invalid sub category IDs" };
+  }
+
   try {
     const cases = orderedIds
       .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)

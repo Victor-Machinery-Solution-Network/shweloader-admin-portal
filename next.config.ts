@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@hugeicons/core-free-icons",
+      "@hugeicons/react",
+    ],
+  },
 };
 
 export default nextConfig;

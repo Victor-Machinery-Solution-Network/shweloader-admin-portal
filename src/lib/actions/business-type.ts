@@ -69,16 +69,20 @@ export async function deleteBusinessType(id: number) {
 export async function getCustomerCount(
   businessTypeIds: number[],
 ): Promise<Record<number, number>> {
-  const entries = await Promise.all(
-    businessTypeIds.map(async (id) => {
-      const result = await d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM customer WHERE business_type_id = ?",
-        [id],
-      );
-      return [id, result.results[0]?.count ?? 0] as const;
-    }),
+  if (businessTypeIds.length === 0) return {};
+
+  const placeholders = businessTypeIds.map(() => "?").join(",");
+  const result = await d1.query<{ business_type_id: number; count: number }>(
+    `SELECT business_type_id, COUNT(*) as count FROM customer WHERE business_type_id IN (${placeholders}) GROUP BY business_type_id`,
+    businessTypeIds,
   );
-  return Object.fromEntries(entries);
+
+  const countMap = Object.fromEntries(
+    result.results.map((r) => [r.business_type_id, r.count]),
+  );
+  return Object.fromEntries(
+    businessTypeIds.map((id) => [id, countMap[id] ?? 0]),
+  );
 }
 
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────

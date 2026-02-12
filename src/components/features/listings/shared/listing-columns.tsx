@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -174,7 +175,7 @@ function thumbnailColumn<T extends ListingBase>(): ColumnDef<T> {
     cell: ({ row }) => {
       const url = row.original.thumbnail_url;
       return url ? (
-        <img src={url} alt="" className="size-10 rounded-md object-cover" />
+        <Image src={url} alt="" width={40} height={40} className="rounded-md object-cover" unoptimized />
       ) : (
         <div className="bg-muted size-10 rounded-md" />
       );

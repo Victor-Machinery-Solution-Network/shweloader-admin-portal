@@ -15,24 +15,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-  type DraggableAttributes,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
@@ -40,6 +22,7 @@ import {
   ChevronsRight,
   GripVertical,
 } from "lucide-react";
+import type { DraggableAttributes } from "@dnd-kit/core";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,6 +43,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+// Lazy-load the dnd table module (only loaded when enableDragSort is true)
+const LazyDndTable = React.lazy(() => import("./data-table-dnd"));
 
 // --- Helper: sortable header ---
 function DataTableColumnHeader<TData>({
@@ -117,7 +103,7 @@ function getSelectColumn<TData>(): ColumnDef<TData> {
   };
 }
 
-// --- Drag & Drop row reordering ---
+// --- Drag handle context (shared with data-table-dnd.tsx) ---
 const SortableRowContext = React.createContext<{
   attributes: DraggableAttributes;
   listeners: Record<string, unknown> | undefined;
@@ -155,40 +141,6 @@ function getDragHandleColumn<TData>(): ColumnDef<TData> {
     enableSorting: false,
     enableHiding: false,
   };
-}
-
-function SortableRow({
-  id,
-  ...props
-}: { id: UniqueIdentifier } & Omit<
-  React.ComponentProps<typeof TableRow>,
-  "id"
->) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(
-      transform ? { ...transform, x: 0 } : null,
-    ),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <SortableRowContext.Provider
-      value={{ attributes, listeners, setActivatorNodeRef }}
-    >
-      <TableRow ref={setNodeRef} style={style} {...props} />
-    </SortableRowContext.Provider>
-  );
 }
 
 // --- Context for child access to table actions ---
@@ -239,32 +191,6 @@ function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-
-  // --- Drag & Drop ---
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor),
-  );
-
-  const sortableItems = React.useMemo<UniqueIdentifier[]>(
-    () => (enableDragSort && getRowId ? data.map(getRowId) : []),
-    [data, enableDragSort, getRowId],
-  );
-
-  const handleDragEnd = React.useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id || !getRowId) return;
-
-      const oldIndex = data.findIndex((item) => getRowId(item) === active.id);
-      const newIndex = data.findIndex((item) => getRowId(item) === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        onReorder?.(arrayMove([...data], oldIndex, newIndex));
-      }
-    },
-    [data, getRowId, onReorder],
-  );
 
   const allColumns = React.useMemo(() => {
     const cols: ColumnDef<TData, TValue>[] = [];
@@ -341,10 +267,12 @@ function DataTable<TData, TValue>({
       </TableHeader>
       <TableBody>
         {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row) => {
-            const cells = row
-              .getVisibleCells()
-              .map((cell) => {
+          table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() ? "selected" : undefined}
+            >
+              {row.getVisibleCells().map((cell) => {
                 const hasFixedSize = cell.column.columnDef.maxSize !== undefined && cell.column.columnDef.maxSize < 150;
                 return (
                   <TableCell
@@ -354,25 +282,9 @@ function DataTable<TData, TValue>({
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 );
-              });
-
-            return enableDragSort && getRowId ? (
-              <SortableRow
-                key={row.id}
-                id={getRowId(row.original)}
-                data-state={row.getIsSelected() ? "selected" : undefined}
-              >
-                {cells}
-              </SortableRow>
-            ) : (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() ? "selected" : undefined}
-              >
-                {cells}
-              </TableRow>
-            );
-          })
+              })}
+            </TableRow>
+          ))
         ) : (
           <TableRow>
             <TableCell colSpan={allColumns.length} className="h-24 text-center">
@@ -408,19 +320,16 @@ function DataTable<TData, TValue>({
 
         {/* Table */}
         <div className="rounded-xl border">
-          {enableDragSort ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sortableItems}
-                strategy={verticalListSortingStrategy}
-              >
-                {renderTableContent()}
-              </SortableContext>
-            </DndContext>
+          {enableDragSort && getRowId ? (
+            <React.Suspense fallback={renderTableContent()}>
+              <LazyDndTable
+                table={table}
+                data={data}
+                getRowId={getRowId as (row: unknown) => string | number}
+                onReorder={onReorder as ((data: unknown[]) => void) | undefined}
+                colCount={allColumns.length}
+              />
+            </React.Suspense>
           ) : (
             renderTableContent()
           )}
@@ -507,5 +416,5 @@ function DataTable<TData, TValue>({
   );
 }
 
-export { DataTable, DataTableColumnHeader, getSelectColumn, useDataTable };
+export { DataTable, DataTableColumnHeader, getSelectColumn, useDataTable, SortableRowContext };
 export type { DataTableProps };

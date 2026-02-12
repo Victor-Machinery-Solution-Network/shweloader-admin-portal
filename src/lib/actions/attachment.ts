@@ -152,6 +152,10 @@ export async function formatAttachmentCategoryLinkedSummary(
 // ─── Reorder Actions ─────────────────────────────────────────────────────────
 
 export async function reorderAttachmentCategories(orderedIds: number[]) {
+  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
+    return { success: false, error: "Invalid category IDs" };
+  }
+
   try {
     const cases = orderedIds
       .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)

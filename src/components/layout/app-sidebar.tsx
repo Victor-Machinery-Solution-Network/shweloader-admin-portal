@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -80,15 +80,13 @@ export function AppSidebar() {
   const [isListingsOpen, setIsListingsOpen] = useState(isListingsActive);
   const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
 
-  // Adjust open state when pathname changes (React-recommended pattern)
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
+  // Auto-expand collapsible sections when navigating to their child routes
+  useEffect(() => {
     if (isEquipmentActive) setIsEquipmentOpen(true);
     if (isAttachmentsActive) setIsAttachmentsOpen(true);
     if (isListingsActive) setIsListingsOpen(true);
     if (isArticlesActive) setIsArticlesOpen(true);
-  }
+  }, [pathname, isEquipmentActive, isAttachmentsActive, isListingsActive, isArticlesActive]);
 
   return (
     <Sidebar variant="inset">

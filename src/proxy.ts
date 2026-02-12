@@ -1,6 +1,6 @@
 export { auth as proxy } from '@/lib/auth';
 
-export const config = {
+export const proxyConfig = {
   matcher: [
     /*
      * Match all request paths except:
