@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 
-interface RequiredInputProps
-  extends React.ComponentProps<typeof Input> {
+interface RequiredInputProps extends React.ComponentProps<typeof Input> {
   errorMessage?: string;
 }
 
@@ -20,15 +19,11 @@ export function RequiredInput({
 }: RequiredInputProps) {
   const [touched, setTouched] = useState(false);
   const [empty, setEmpty] = useState(!props.defaultValue && !props.value);
-  const [mounted, setMounted] = useState(false);
-
-  // Only apply aria-invalid after hydration to avoid SSR mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mountedRef = useRef(false);
 
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
+      mountedRef.current = true;
       setTouched(true);
       setEmpty(!e.target.value.trim());
       onBlur?.(e);
@@ -46,7 +41,7 @@ export function RequiredInput({
     [touched, onChange],
   );
 
-  const showError = mounted && touched && empty;
+  const showError = touched && empty;
 
   return (
     <div className="space-y-1">
@@ -57,9 +52,7 @@ export function RequiredInput({
         onBlur={handleBlur}
         onChange={handleChange}
       />
-      {showError && (
-        <p className="text-xs text-destructive">{errorMessage}</p>
-      )}
+      {showError && <p className="text-xs text-destructive">{errorMessage}</p>}
     </div>
   );
 }

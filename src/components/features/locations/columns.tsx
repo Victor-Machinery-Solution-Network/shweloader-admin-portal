@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
+import { formatDate } from "@/lib/utils";
 import type { Location } from "@/types/location";
 import { RowActions } from "./row-actions";
 
@@ -24,7 +25,7 @@ export const columns: ColumnDef<Location>[] = [
       const date = row.getValue("created_at") as string;
       return (
         <span className="text-muted-foreground text-sm">
-          {new Date(date).toLocaleDateString()}
+          {formatDate(date)}
         </span>
       );
     },

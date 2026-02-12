@@ -34,26 +34,22 @@ export function RowActions({ subCategory, categories }: RowActionsProps) {
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
-    if (showDelete) {
-      getSubCategoryLinkedCounts([subCategory.sub_category_id]).then(
-        async (counts) => {
-          const c = counts[subCategory.sub_category_id];
-          if (c && c.total > 0) {
-            const summary = await formatSubCategoryLinkedSummary(c);
-            setDeleteDescription(
-              `This will permanently delete "${subCategory.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this sub category.`,
-            );
-          } else {
-            setDeleteDescription(
-              `This will permanently delete "${subCategory.name}". This action cannot be undone.`,
-            );
-          }
-        },
-      );
-    } else {
-      setDeleteDescription("");
-    }
-  }, [showDelete, subCategory.sub_category_id, subCategory.name]);
+    getSubCategoryLinkedCounts([subCategory.sub_category_id]).then(
+      async (counts) => {
+        const c = counts[subCategory.sub_category_id];
+        if (c && c.total > 0) {
+          const summary = await formatSubCategoryLinkedSummary(c);
+          setDeleteDescription(
+            `This will permanently delete "${subCategory.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this sub category.`,
+          );
+        } else {
+          setDeleteDescription(
+            `This will permanently delete "${subCategory.name}". This action cannot be undone.`,
+          );
+        }
+      },
+    );
+  }, [subCategory.sub_category_id, subCategory.name]);
 
   function handleDelete() {
     startTransition(async () => {

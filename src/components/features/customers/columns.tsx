@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 import type { Customer } from "@/types/customer";
 import type { BusinessType } from "@/types/customer";
 
@@ -63,6 +64,20 @@ export function createColumns(
       },
     },
     {
+      accessorKey: "office_address",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Office Address" />
+      ),
+      cell: ({ row }) => {
+        const address = row.getValue("office_address") as string | null;
+        return address ? (
+          <span className="text-sm max-w-48 truncate block">{address}</span>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        );
+      },
+    },
+    {
       id: "business_type",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Business Type" />
@@ -89,10 +104,7 @@ export function createColumns(
       cell: ({ row }) => {
         const verified = row.original.is_verified === 1;
         return (
-          <Badge
-            variant={verified ? "default" : "outline"}
-            className="text-xs"
-          >
+          <Badge variant={verified ? "default" : "outline"} className="text-xs">
             {verified ? "Verified" : "Unverified"}
           </Badge>
         );
@@ -107,7 +119,7 @@ export function createColumns(
         const date = row.getValue("created_at") as string;
         return (
           <span className="text-muted-foreground text-sm">
-            {new Date(date).toLocaleDateString()}
+            {formatDate(date)}
           </span>
         );
       },

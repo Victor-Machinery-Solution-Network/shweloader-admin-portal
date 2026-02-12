@@ -33,40 +33,39 @@ export function CustomersClient({
     [businessTypes],
   );
 
-  const buildBTDescription = useCallback(
-    async (selected: BusinessType[]) => {
-      const ids = selected.map((bt) => bt.business_type_id);
-      const counts = await getCustomerCount(ids);
-      const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
+  const buildBTDescription = useCallback(async (selected: BusinessType[]) => {
+    const ids = selected.map((bt) => bt.business_type_id);
+    const counts = await getCustomerCount(ids);
+    const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
-      const names = selected.map((bt) => `"${bt.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} business types (${names})`}.`;
+    const names = selected.map((bt) => `"${bt.name}"`).join(", ");
+    let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} business types (${names})`}.`;
 
-      if (totalLinked > 0) {
-        msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "customer" : "customers"} using ${selected.length === 1 ? "this business type" : "these business types"}.`;
-      }
+    if (totalLinked > 0) {
+      msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "customer" : "customers"} using ${selected.length === 1 ? "this business type" : "these business types"}.`;
+    }
 
-      return msg;
-    },
-    [],
-  );
+    return msg;
+  }, []);
 
-  const handleBulkDeleteBT = useCallback(
-    async (selected: BusinessType[]) => {
-      const ids = selected.map((bt) => bt.business_type_id);
-      return deleteBusinessTypes(ids);
-    },
-    [],
-  );
+  const handleBulkDeleteBT = useCallback(async (selected: BusinessType[]) => {
+    const ids = selected.map((bt) => bt.business_type_id);
+    return deleteBusinessTypes(ids);
+  }, []);
 
   const renderBTToolbar = useCallback(
     (selected: BusinessType[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDeleteBT}
-        buildDescription={buildBTDescription}
-        itemLabel="business type"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDeleteBT}
+          buildDescription={buildBTDescription}
+          itemLabel="business type"
+        />
+        <Button onClick={() => setShowCreateBT(true)} className="ml-auto">
+          <Plus /> Add Business Type
+        </Button>
+      </>
     ),
     [handleBulkDeleteBT, buildBTDescription],
   );
@@ -110,12 +109,6 @@ export function CustomersClient({
         </TabsContent>
 
         <TabsContent value="business-types">
-          <div className="flex justify-end mb-4">
-            <Button onClick={() => setShowCreateBT(true)}>
-              <Plus /> Add Business Type
-            </Button>
-          </div>
-
           {businessTypes.length > 0 ? (
             <DataTable
               columns={businessTypeColumns}

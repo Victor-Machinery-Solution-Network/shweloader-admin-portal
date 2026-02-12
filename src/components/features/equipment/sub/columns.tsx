@@ -2,11 +2,8 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { formatDate } from "@/lib/utils";
 import type {
   EquipmentSubCategory,
   EquipmentMainCategory,
@@ -64,7 +61,7 @@ export function getColumns(
         const date = row.getValue("created_at") as string;
         return (
           <span className="text-muted-foreground text-sm">
-            {new Date(date).toLocaleDateString()}
+            {formatDate(date)}
           </span>
         );
       },

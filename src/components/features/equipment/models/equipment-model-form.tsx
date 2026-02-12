@@ -60,10 +60,10 @@ export function EquipmentModelForm({
     ? (brands.find((b) => b.brand_id === model.brand_id)?.name ?? "")
     : "";
 
-  const [selectedSubCategory, setSelectedSubCategory] =
-    useState<string>(defaultSubCategoryName);
-  const [selectedBrand, setSelectedBrand] =
-    useState<string>(defaultBrandName);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>(
+    defaultSubCategoryName,
+  );
+  const [selectedBrand, setSelectedBrand] = useState<string>(defaultBrandName);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -166,7 +166,7 @@ export function EquipmentModelForm({
               items={brandNames}
             >
               <ComboboxInput
-                placeholder="Search brand (optional)..."
+                placeholder="Search brand..."
                 showClear={!!selectedBrand}
               />
               <ComboboxContent container={containerRef}>
@@ -188,10 +188,7 @@ export function EquipmentModelForm({
         <Field orientation="vertical">
           <FieldLabel>PDF Specification</FieldLabel>
           <FieldContent>
-            <PdfInput
-              name="pdf_url"
-              value={model?.pdf_url ?? null}
-            />
+            <PdfInput name="pdf_url" value={model?.pdf_url ?? null} />
           </FieldContent>
         </Field>
       </div>

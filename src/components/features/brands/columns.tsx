@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -47,11 +48,14 @@ function BadgeList({
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-64">
-              <div className="flex flex-wrap gap-1">
+              <ul className="space-y-1">
                 {remaining.map((name) => (
-                  <span key={name}>{name}</span>
+                  <li key={name} className="flex items-center gap-1.5">
+                    <span className="size-1 rounded-full bg-current shrink-0" />
+                    <span className="text-sm">{name}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -117,7 +121,7 @@ export function createColumns(
         const date = row.getValue("created_at") as string;
         return (
           <span className="text-muted-foreground text-sm">
-            {new Date(date).toLocaleDateString()}
+            {formatDate(date)}
           </span>
         );
       },

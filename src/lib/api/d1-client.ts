@@ -23,12 +23,7 @@
  * const { results } = await d1.query('SELECT * FROM users WHERE age > ? LIMIT ?', [21, 10]);
  */
 
-import type {
-  D1ApiResponse,
-  D1Response,
-  D1QueryParams,
-  D1RawQueryRequest,
-} from "@/types/d1";
+import type { D1Response, D1QueryParams, D1RawQueryRequest } from "@/types/d1";
 
 // Configuration
 const D1_BASE_URL =

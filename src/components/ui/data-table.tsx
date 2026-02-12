@@ -109,6 +109,9 @@ function getSelectColumn<TData>(): ColumnDef<TData> {
         aria-label="Select row"
       />
     ),
+    size: 32,
+    minSize: 32,
+    maxSize: 32,
     enableSorting: false,
     enableHiding: false,
   };
@@ -146,6 +149,9 @@ function getDragHandleColumn<TData>(): ColumnDef<TData> {
     id: "drag-handle",
     header: () => null,
     cell: () => <DragHandle />,
+    size: 32,
+    minSize: 32,
+    maxSize: 32,
     enableSorting: false,
     enableHiding: false,
   };
@@ -314,16 +320,22 @@ function DataTable<TData, TValue>({
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <TableHead key={header.id}>
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
-              </TableHead>
-            ))}
+            {headerGroup.headers.map((header) => {
+              const hasFixedSize = header.column.columnDef.maxSize !== undefined && header.column.columnDef.maxSize < 150;
+              return (
+                <TableHead
+                  key={header.id}
+                  style={hasFixedSize ? { width: header.column.getSize(), padding: '0 0.25rem' } : undefined}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                </TableHead>
+              );
+            })}
           </TableRow>
         ))}
       </TableHeader>
@@ -332,11 +344,17 @@ function DataTable<TData, TValue>({
           table.getRowModel().rows.map((row) => {
             const cells = row
               .getVisibleCells()
-              .map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ));
+              .map((cell) => {
+                const hasFixedSize = cell.column.columnDef.maxSize !== undefined && cell.column.columnDef.maxSize < 150;
+                return (
+                  <TableCell
+                    key={cell.id}
+                    style={hasFixedSize ? { width: cell.column.getSize(), padding: '0 0.25rem' } : undefined}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                );
+              });
 
             return enableDragSort && getRowId ? (
               <SortableRow
@@ -421,9 +439,9 @@ function DataTable<TData, TValue>({
             )}
 
             {enablePagination && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm whitespace-nowrap">Rows per page</p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-muted-foreground text-sm whitespace-nowrap">Rows per page</p>
                   <Select
                     value={`${table.getState().pagination.pageSize}`}
                     onValueChange={(value) => table.setPageSize(Number(value))}
@@ -441,7 +459,7 @@ function DataTable<TData, TValue>({
                   </Select>
                 </div>
 
-                <p className="text-sm whitespace-nowrap">
+                <p className="text-muted-foreground text-sm whitespace-nowrap">
                   Page {table.getState().pagination.pageIndex + 1} of{" "}
                   {table.getPageCount()}
                 </p>

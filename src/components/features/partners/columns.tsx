@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import type { PartnerWithDetails } from "@/types/partner";
 
@@ -65,9 +66,7 @@ const appliedAtColumn: ColumnDef<PartnerWithDetails> = {
   cell: ({ row }) => {
     const date = row.getValue("applied_at") as string;
     return (
-      <span className="text-muted-foreground text-sm">
-        {new Date(date).toLocaleDateString()}
-      </span>
+      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
     );
   },
 };
@@ -75,14 +74,27 @@ const appliedAtColumn: ColumnDef<PartnerWithDetails> = {
 const reviewedAtColumn: ColumnDef<PartnerWithDetails> = {
   accessorKey: "reviewed_at",
   header: ({ column }) => (
-    <DataTableColumnHeader column={column} title="Reviewed" />
+    <DataTableColumnHeader column={column} title="Approved At" />
   ),
   cell: ({ row }) => {
     const date = row.original.reviewed_at;
     return date ? (
-      <span className="text-muted-foreground text-sm">
-        {new Date(date).toLocaleDateString()}
-      </span>
+      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
+    ) : (
+      <span className="text-muted-foreground text-sm">—</span>
+    );
+  },
+};
+
+const rejectedAtColumn: ColumnDef<PartnerWithDetails> = {
+  accessorKey: "reviewed_at",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Rejected At" />
+  ),
+  cell: ({ row }) => {
+    const date = row.original.reviewed_at;
+    return date ? (
+      <span className="text-muted-foreground text-sm">{formatDate(date)}</span>
     ) : (
       <span className="text-muted-foreground text-sm">—</span>
     );
@@ -133,4 +145,5 @@ export const rejectedColumns: ColumnDef<PartnerWithDetails>[] = [
     },
   },
   appliedAtColumn,
+  rejectedAtColumn,
 ];

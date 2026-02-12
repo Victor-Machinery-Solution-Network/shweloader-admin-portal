@@ -35,6 +35,19 @@ export type {
   PartnerWithDetails,
 } from "./partner";
 
+// Re-export listing types
+export type {
+  ProductList,
+  ProductImage,
+  SaleListing,
+  RentListing,
+  FeaturedListing,
+  SaleListingWithDetails,
+  RentListingWithDetails,
+  FeaturedListingWithDetails,
+  ApprovedPartner,
+} from "./listing";
+
 // Re-export brand types
 export type {
   ProductBrand,
@@ -52,45 +65,4 @@ export interface AdminUser {
   role_id: number | null;
   active: number;
   created_at: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "user";
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  status: "pending" | "processing" | "completed" | "cancelled";
-  total: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-export interface ApiError {
-  message: string;
-  code?: string;
-  details?: unknown;
 }

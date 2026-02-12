@@ -2,11 +2,11 @@
  * Main application sidebar navigation
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -21,12 +21,12 @@ import {
   MessageSquare,
   UserCheck,
   FileText,
-  Image,
+  Image as ImageIcon,
   Megaphone,
   Shield,
   UserCog,
-} from 'lucide-react';
-import { ROUTES } from '@/lib/constants';
+} from "lucide-react";
+import { ROUTES } from "@/lib/constants";
 import {
   Sidebar,
   SidebarContent,
@@ -41,7 +41,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-} from '@/components/ui/sidebar';
+} from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,22 +49,22 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreVertical, User, LogOut, Bell } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useSession } from 'next-auth/react';
-import { logoutAction } from '@/lib/actions/auth-actions';
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, User, LogOut, Bell } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSession } from "next-auth/react";
+import { logoutAction } from "@/lib/actions/auth-actions";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  const userName = session?.user?.name ?? 'Admin User';
-  const userEmail = session?.user?.email ?? '';
+  const userName = session?.user?.name ?? "Admin User";
+  const userEmail = session?.user?.email ?? "";
   const initials = userName
-    .split(' ')
+    .split(" ")
     .map((n) => n[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 
@@ -72,20 +72,23 @@ export function AppSidebar() {
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
   const isAttachmentsActive = pathname.startsWith(ROUTES.ATTACHMENTS);
   const isListingsActive = pathname.startsWith(ROUTES.LISTINGS);
-  const isArticlesActive = pathname.startsWith('/articles');
+  const isArticlesActive = pathname.startsWith("/articles");
 
   const [isEquipmentOpen, setIsEquipmentOpen] = useState(isEquipmentActive);
-  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(isAttachmentsActive);
+  const [isAttachmentsOpen, setIsAttachmentsOpen] =
+    useState(isAttachmentsActive);
   const [isListingsOpen, setIsListingsOpen] = useState(isListingsActive);
   const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
 
-  // Keep collapsibles in sync when navigating via links
-  useEffect(() => {
+  // Adjust open state when pathname changes (React-recommended pattern)
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     if (isEquipmentActive) setIsEquipmentOpen(true);
     if (isAttachmentsActive) setIsAttachmentsOpen(true);
     if (isListingsActive) setIsListingsOpen(true);
     if (isArticlesActive) setIsArticlesOpen(true);
-  }, [pathname, isEquipmentActive, isAttachmentsActive, isListingsActive, isArticlesActive]);
+  }
 
   return (
     <Sidebar variant="inset">
@@ -108,7 +111,13 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.DASHBOARD || pathname === ROUTES.DASHBOARD_OVERVIEW}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={
+                    pathname === ROUTES.DASHBOARD ||
+                    pathname === ROUTES.DASHBOARD_OVERVIEW
+                  }
+                >
                   <Link href={ROUTES.DASHBOARD}>
                     <LayoutDashboard />
                     <span>Overview</span>
@@ -117,7 +126,10 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.DASHBOARD_ANALYTICS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.DASHBOARD_ANALYTICS}
+                >
                   <Link href={ROUTES.DASHBOARD_ANALYTICS}>
                     <BarChart />
                     <span>Analytics</span>
@@ -141,27 +153,36 @@ export function AppSidebar() {
                   <Wrench />
                   <span>Equipment</span>
                   <ChevronDown
-                    className={`ml-auto transition-transform ${isEquipmentOpen ? '' : '-rotate-90'}`}
+                    className={`ml-auto transition-transform ${isEquipmentOpen ? "" : "-rotate-90"}`}
                   />
                 </SidebarMenuButton>
                 {isEquipmentOpen && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_MAIN_CATEGORIES}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.EQUIPMENT_MAIN_CATEGORIES}
+                      >
                         <Link href={ROUTES.EQUIPMENT_MAIN_CATEGORIES}>
                           <span>Main Categories</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_SUB_CATEGORIES}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.EQUIPMENT_SUB_CATEGORIES}
+                      >
                         <Link href={ROUTES.EQUIPMENT_SUB_CATEGORIES}>
                           <span>Sub Categories</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_MODELS}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.EQUIPMENT_MODELS}
+                      >
                         <Link href={ROUTES.EQUIPMENT_MODELS}>
                           <span>Models</span>
                         </Link>
@@ -179,20 +200,26 @@ export function AppSidebar() {
                   <Package />
                   <span>Attachments</span>
                   <ChevronDown
-                    className={`ml-auto transition-transform ${isAttachmentsOpen ? '' : '-rotate-90'}`}
+                    className={`ml-auto transition-transform ${isAttachmentsOpen ? "" : "-rotate-90"}`}
                   />
                 </SidebarMenuButton>
                 {isAttachmentsOpen && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ATTACHMENT_CATEGORIES}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.ATTACHMENT_CATEGORIES}
+                      >
                         <Link href={ROUTES.ATTACHMENT_CATEGORIES}>
                           <span>Categories</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ATTACHMENT_MODELS}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.ATTACHMENT_MODELS}
+                      >
                         <Link href={ROUTES.ATTACHMENT_MODELS}>
                           <span>Models</span>
                         </Link>
@@ -204,7 +231,10 @@ export function AppSidebar() {
 
               {/* Brands */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.BRANDS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.BRANDS}
+                >
                   <Link href={ROUTES.BRANDS}>
                     <Tag />
                     <span>Brands</span>
@@ -214,7 +244,10 @@ export function AppSidebar() {
 
               {/* Locations */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.LOCATIONS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.LOCATIONS}
+                >
                   <Link href={ROUTES.LOCATIONS}>
                     <MapPin />
                     <span>Locations</span>
@@ -238,20 +271,26 @@ export function AppSidebar() {
                   <ShoppingCart />
                   <span>Listings</span>
                   <ChevronDown
-                    className={`ml-auto transition-transform ${isListingsOpen ? '' : '-rotate-90'}`}
+                    className={`ml-auto transition-transform ${isListingsOpen ? "" : "-rotate-90"}`}
                   />
                 </SidebarMenuButton>
                 {isListingsOpen && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.LISTINGS_FOR_SALE}
+                      >
                         <Link href={ROUTES.LISTINGS_FOR_SALE}>
                           <span>For Sale</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.LISTINGS_FOR_RENT}
+                      >
                         <Link href={ROUTES.LISTINGS_FOR_RENT}>
                           <span>For Rent</span>
                         </Link>
@@ -263,7 +302,10 @@ export function AppSidebar() {
 
               {/* Enquiries */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.ENQUIRIES}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.ENQUIRIES}
+                >
                   <Link href={ROUTES.ENQUIRIES}>
                     <MessageSquare />
                     <span>Enquiries</span>
@@ -280,7 +322,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.CUSTOMERS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.CUSTOMERS}
+                >
                   <Link href={ROUTES.CUSTOMERS}>
                     <Users />
                     <span>Customers</span>
@@ -289,7 +334,10 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.PARTNERS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.PARTNERS}
+                >
                   <Link href={ROUTES.PARTNERS}>
                     <UserCheck />
                     <span>Partners</span>
@@ -313,20 +361,26 @@ export function AppSidebar() {
                   <FileText />
                   <span>Articles</span>
                   <ChevronDown
-                    className={`ml-auto transition-transform ${isArticlesOpen ? '' : '-rotate-90'}`}
+                    className={`ml-auto transition-transform ${isArticlesOpen ? "" : "-rotate-90"}`}
                   />
                 </SidebarMenuButton>
                 {isArticlesOpen && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ARTICLE_CATEGORIES}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.ARTICLE_CATEGORIES}
+                      >
                         <Link href={ROUTES.ARTICLE_CATEGORIES}>
                           <span>Categories</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.POSTS}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === ROUTES.POSTS}
+                      >
                         <Link href={ROUTES.POSTS}>
                           <span>Posts</span>
                         </Link>
@@ -337,16 +391,22 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.CAROUSEL_IMAGES}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.CAROUSEL_IMAGES}
+                >
                   <Link href={ROUTES.CAROUSEL_IMAGES}>
-                    <Image />
+                    <ImageIcon />
                     <span>Carousel Images</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.ANNOUNCEMENT_BAR}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.ANNOUNCEMENT_BAR}
+                >
                   <Link href={ROUTES.ANNOUNCEMENT_BAR}>
                     <Megaphone />
                     <span>Announcement Bar</span>
@@ -363,7 +423,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.ADMINS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.ADMINS}
+                >
                   <Link href={ROUTES.ADMINS}>
                     <Shield />
                     <span>Admins</span>
@@ -372,7 +435,10 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.ROLES_PERMISSIONS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.ROLES_PERMISSIONS}
+                >
                   <Link href={ROUTES.ROLES_PERMISSIONS}>
                     <UserCog />
                     <span>Roles & Permissions</span>
@@ -381,7 +447,10 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.SETTINGS}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.SETTINGS}
+                >
                   <Link href={ROUTES.SETTINGS}>
                     <Settings />
                     <span>General Settings</span>
@@ -398,16 +467,18 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                >
+                <SidebarMenuButton size="lg">
                   <Avatar className="h-8 w-8 rounded-full">
                     <AvatarImage src="/avatars/user.png" alt={userName} />
-                    <AvatarFallback className="rounded-full">{initials}</AvatarFallback>
+                    <AvatarFallback className="rounded-full">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">{userName}</span>
-                    <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {userEmail}
+                    </span>
                   </div>
                   <MoreVertical className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -422,11 +493,17 @@ export function AppSidebar() {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-full">
                       <AvatarImage src="/avatars/user.png" alt={userName} />
-                      <AvatarFallback className="rounded-full">{initials}</AvatarFallback>
+                      <AvatarFallback className="rounded-full">
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-foreground">{userName}</span>
-                      <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
+                      <span className="truncate font-semibold text-foreground">
+                        {userName}
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {userEmail}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>

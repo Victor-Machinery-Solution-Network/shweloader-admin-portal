@@ -31,7 +31,7 @@ export function BulkDeleteButton<TData>({
   const plural = count === 1 ? itemLabel : `${itemLabel}s`;
 
   useEffect(() => {
-    if (!showDialog || count === 0) {
+    if (count === 0) {
       setDescription('');
       return;
     }
@@ -44,7 +44,7 @@ export function BulkDeleteButton<TData>({
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDialog, count]);
+  }, [count]);
 
   if (count === 0) return null;
 

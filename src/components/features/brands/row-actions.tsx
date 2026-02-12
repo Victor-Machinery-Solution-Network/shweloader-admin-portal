@@ -38,7 +38,6 @@ export function RowActions({
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
-    if (!showDelete) return;
     getBrandLinkedCounts([brand.brand_id]).then(async (counts) => {
       const c = counts[brand.brand_id];
       if (c && c.total > 0) {
@@ -52,7 +51,7 @@ export function RowActions({
         );
       }
     });
-  }, [showDelete, brand.brand_id, brand.name]);
+  }, [brand.brand_id, brand.name]);
 
   function handleDelete() {
     startTransition(async () => {

@@ -26,13 +26,15 @@ export function RowActions({ location }: RowActionsProps) {
   const [linkedCount, setLinkedCount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (showDelete) {
-      getListingCount([location.location_id]).then((counts) => {
-        setLinkedCount(counts[location.location_id] ?? 0);
-      });
-    } else {
+    if (!showDelete) return;
+    let cancelled = false;
+    getListingCount([location.location_id]).then((counts) => {
+      if (!cancelled) setLinkedCount(counts[location.location_id] ?? 0);
+    });
+    return () => {
+      cancelled = true;
       setLinkedCount(null);
-    }
+    };
   }, [showDelete, location.location_id]);
 
   function handleDelete() {

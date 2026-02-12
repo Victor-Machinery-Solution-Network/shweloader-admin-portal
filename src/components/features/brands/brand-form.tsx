@@ -110,19 +110,6 @@ export function BrandForm({
         </Field>
 
         <Field orientation="vertical">
-          <FieldLabel>Attachment Categories</FieldLabel>
-          <FieldContent>
-            <MultiSelect
-              options={categoryOptions}
-              defaultValue={selectedCategoryIds}
-              onValueChange={setSelectedCategoryIds}
-              placeholder="Select attachment categories..."
-              maxCount={3}
-            />
-          </FieldContent>
-        </Field>
-
-        <Field orientation="vertical">
           <FieldLabel>Equipment Sub-Categories</FieldLabel>
           <FieldContent>
             <MultiSelect
@@ -130,6 +117,19 @@ export function BrandForm({
               defaultValue={selectedSubCategoryIds}
               onValueChange={setSelectedSubCategoryIds}
               placeholder="Select equipment sub-categories..."
+              maxCount={3}
+            />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>Attachment Categories</FieldLabel>
+          <FieldContent>
+            <MultiSelect
+              options={categoryOptions}
+              defaultValue={selectedCategoryIds}
+              onValueChange={setSelectedCategoryIds}
+              placeholder="Select attachment categories..."
               maxCount={3}
             />
           </FieldContent>

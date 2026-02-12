@@ -30,26 +30,22 @@ export function RowActions({ category }: RowActionsProps) {
   const [deleteDescription, setDeleteDescription] = useState("");
 
   useEffect(() => {
-    if (showDelete) {
-      getAttachmentCategoryLinkedCounts([category.category_id]).then(
-        async (counts) => {
-          const c = counts[category.category_id];
-          if (c && c.total > 0) {
-            const summary = await formatAttachmentCategoryLinkedSummary(c);
-            setDeleteDescription(
-              `This will permanently delete "${category.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this category.`,
-            );
-          } else {
-            setDeleteDescription(
-              `This will permanently delete "${category.name}". This action cannot be undone.`,
-            );
-          }
-        },
-      );
-    } else {
-      setDeleteDescription("");
-    }
-  }, [showDelete, category.category_id, category.name]);
+    getAttachmentCategoryLinkedCounts([category.category_id]).then(
+      async (counts) => {
+        const c = counts[category.category_id];
+        if (c && c.total > 0) {
+          const summary = await formatAttachmentCategoryLinkedSummary(c);
+          setDeleteDescription(
+            `This will permanently delete "${category.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this category.`,
+          );
+        } else {
+          setDeleteDescription(
+            `This will permanently delete "${category.name}". This action cannot be undone.`,
+          );
+        }
+      },
+    );
+  }, [category.category_id, category.name]);
 
   function handleDelete() {
     startTransition(async () => {

@@ -29,13 +29,16 @@ export function RowActions({ businessType }: RowActionsProps) {
   const [linkedCount, setLinkedCount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (showDelete) {
-      getCustomerCount([businessType.business_type_id]).then((counts) => {
+    if (!showDelete) return;
+    let cancelled = false;
+    getCustomerCount([businessType.business_type_id]).then((counts) => {
+      if (!cancelled)
         setLinkedCount(counts[businessType.business_type_id] ?? 0);
-      });
-    } else {
+    });
+    return () => {
+      cancelled = true;
       setLinkedCount(null);
-    }
+    };
   }, [showDelete, businessType.business_type_id]);
 
   function handleDelete() {
