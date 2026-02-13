@@ -1,6 +1,6 @@
-export { auth as proxy } from '@/lib/auth';
+export { auth as proxy } from "@/lib/auth";
 
-export const proxyConfig = {
+export const config = {
   matcher: [
     /*
      * Match all request paths except:
@@ -10,6 +10,6 @@ export const proxyConfig = {
      * - favicon.ico (favicon file)
      * - public assets (images, etc.)
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
   ],
 };
