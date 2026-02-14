@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { announcementTextService } from "@/lib/services/announcement";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
 
 // ─── Announcement Text Actions ──────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ export async function createAnnouncement(formData: FormData) {
       created_by,
       display_order: String(nextOrder),
     });
-    revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
     return {
@@ -49,7 +49,7 @@ export async function updateAnnouncement(id: number, formData: FormData) {
 
   try {
     await announcementTextService.update(id, { text: text.trim() });
-    revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
     return {
@@ -62,7 +62,7 @@ export async function updateAnnouncement(id: number, formData: FormData) {
 export async function deleteAnnouncement(id: number) {
   try {
     await announcementTextService.delete(id);
-    revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
     return {
@@ -83,8 +83,7 @@ export async function deleteAnnouncements(ids: number[]) {
       getErrorMessage(r.reason, `Failed to delete announcement ${ids[i]}`),
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
-
-  revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+  invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
 
   if (errors.length > 0) {
     return {
@@ -101,7 +100,7 @@ export async function toggleAnnouncementActive(id: number) {
       "UPDATE announcement_text SET is_active = 1 - is_active WHERE announcement_id = ?",
       [id],
     );
-    revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
     return {
@@ -120,7 +119,7 @@ export async function reorderAnnouncements(orderedIds: number[]) {
     await d1.query(
       `UPDATE announcement_text SET display_order = CASE announcement_id ${cases} END WHERE announcement_id IN (${idList})`,
     );
-    revalidatePath(ROUTES.ANNOUNCEMENT_BAR);
+    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
     return {

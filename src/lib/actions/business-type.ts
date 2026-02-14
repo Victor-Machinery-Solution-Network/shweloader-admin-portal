@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { businessTypeService } from "@/lib/services/customer";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
 
 // ─── Business Type Actions ───────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ export async function createBusinessType(formData: FormData) {
       is_listed: 1,
       created_by,
     });
-    revalidatePath(ROUTES.CUSTOMERS);
+    invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
     return { success: true };
   } catch (error) {
     return {
@@ -41,7 +41,7 @@ export async function updateBusinessType(id: number, formData: FormData) {
 
   try {
     await businessTypeService.update(id, { name: name.trim() });
-    revalidatePath(ROUTES.CUSTOMERS);
+    invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
     return { success: true };
   } catch (error) {
     return {
@@ -54,7 +54,7 @@ export async function updateBusinessType(id: number, formData: FormData) {
 export async function deleteBusinessType(id: number) {
   try {
     await businessTypeService.delete(id);
-    revalidatePath(ROUTES.CUSTOMERS);
+    invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
     return { success: true };
   } catch (error) {
     return {
@@ -99,7 +99,7 @@ export async function deleteBusinessTypes(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.CUSTOMERS);
+  invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
 
   if (errors.length > 0) {
     return {

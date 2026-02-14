@@ -1,44 +1,17 @@
-import { unstable_cache } from "next/cache";
 import {
-  getRentListingsWithDetails,
-  getFeaturedListingsWithDetails,
-  getApprovedPartners,
-} from "@/lib/actions/listing";
-import { equipmentModelService } from "@/lib/services/equipment";
-import { attachmentModelService } from "@/lib/services/attachment";
-import { locationService } from "@/lib/services/location";
+  getCachedRentListings,
+  getCachedFeaturedListings,
+  getCachedApprovedPartners,
+  getCachedEquipmentModels,
+  getCachedAttachmentModels,
+  getCachedLocations,
+} from "@/lib/cache";
 import { ListingsClient } from "@/components/features/listings/shared/listings-client";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Listings For Rent",
   description: "Manage rental listings and featured items",
 };
-
-const getCachedPartners = unstable_cache(
-  () => getApprovedPartners(),
-  ["approved-partners"],
-  { revalidate: 120, tags: ["partners"] },
-);
-
-const getCachedEquipmentModels = unstable_cache(
-  () => equipmentModelService.list({ sort_by: "name", order: "asc" }),
-  ["equipment-models-list"],
-  { revalidate: 120, tags: ["equipment-models"] },
-);
-
-const getCachedAttachmentModels = unstable_cache(
-  () => attachmentModelService.list({ sort_by: "name", order: "asc" }),
-  ["attachment-models-list"],
-  { revalidate: 120, tags: ["attachment-models"] },
-);
-
-const getCachedLocations = unstable_cache(
-  () => locationService.list({ sort_by: "city_name", order: "asc" }),
-  ["locations-list"],
-  { revalidate: 300, tags: ["locations"] },
-);
 
 export default async function ListingsForRentPage() {
   const [
@@ -49,9 +22,9 @@ export default async function ListingsForRentPage() {
     attachmentModels,
     locations,
   ] = await Promise.all([
-    getRentListingsWithDetails(),
-    getFeaturedListingsWithDetails(),
-    getCachedPartners(),
+    getCachedRentListings(),
+    getCachedFeaturedListings(),
+    getCachedApprovedPartners(),
     getCachedEquipmentModels(),
     getCachedAttachmentModels(),
     getCachedLocations(),

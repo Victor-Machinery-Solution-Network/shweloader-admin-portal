@@ -1,22 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  MoreHorizontal,
-  CheckCircle,
-  XCircle,
-  ExternalLink,
-} from "lucide-react";
+import { CheckCircle, XCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { ListingForm } from "./listing-form";
 import {
@@ -88,28 +77,13 @@ export function PendingListingRowActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs">
-            <MoreHorizontal aria-hidden="true" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setShowView(true)}>
-            <ExternalLink /> View
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => handleApprove()}
-            disabled={isPending}
-          >
-            <CheckCircle /> Approve
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setShowReject(true)}>
-            <XCircle /> Reject
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActionsUI
+        actions={[
+          { label: "View", icon: ExternalLink, onClick: () => setShowView(true) },
+          { label: "Approve", icon: CheckCircle, onClick: () => handleApprove(), disabled: isPending },
+          { label: "Reject", icon: XCircle, onClick: () => setShowReject(true) },
+        ]}
+      />
 
       {/* View listing details */}
       <ListingForm

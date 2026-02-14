@@ -1,7 +1,8 @@
-import { unstable_cache } from "next/cache";
-import { brandService } from "@/lib/services/brand";
-import { attachmentCategoryService } from "@/lib/services/attachment";
-import { subCategoryService } from "@/lib/services/equipment";
+import {
+  getCachedBrands,
+  getCachedAttachmentCategories,
+  getCachedSubCategories,
+} from "@/lib/cache";
 import {
   getBrandsCategoryIds,
   getBrandsSubCategoryIds,
@@ -9,30 +10,11 @@ import {
 import { BrandsClient } from "@/components/features/brands/brands-client";
 import type { ProductBrandWithCategories } from "@/types/brand";
 
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Brands",
   description: "Manage product brands",
 };
-
-const getCachedBrands = unstable_cache(
-  () => brandService.list({ sort_by: "name", order: "asc" }),
-  ["brands-list"],
-  { revalidate: 300, tags: ["brands"] },
-);
-
-const getCachedAttachmentCategories = unstable_cache(
-  () => attachmentCategoryService.list({ sort_by: "display_order", order: "asc" }),
-  ["attachment-categories-list"],
-  { revalidate: 300, tags: ["attachment-categories"] },
-);
-
-const getCachedSubCategories = unstable_cache(
-  () => subCategoryService.list({ sort_by: "name", order: "asc" }),
-  ["equipment-sub-categories-list"],
-  { revalidate: 300, tags: ["equipment-sub-categories"] },
-);
 
 export default async function BrandsPage() {
   const [brands, categories, subCategories] = await Promise.all([

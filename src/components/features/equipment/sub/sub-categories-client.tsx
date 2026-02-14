@@ -87,12 +87,17 @@ export function SubCategoriesClient({
 
   const renderToolbar = useCallback(
     (selected: EquipmentSubCategory[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="sub category"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="sub category"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Sub Category
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -102,11 +107,7 @@ export function SubCategoriesClient({
       <PageHeader
         title="Sub Categories"
         description="Manage equipment sub categories"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Sub Category
-        </Button>
-      </PageHeader>
+      />
 
       {data.length > 0 ? (
         <DataTable

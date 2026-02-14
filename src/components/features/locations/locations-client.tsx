@@ -47,23 +47,24 @@ export function LocationsClient({ locations }: LocationsClientProps) {
 
   const renderToolbar = useCallback(
     (selected: Location[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="location"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="location"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Location
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
 
   return (
     <>
-      <PageHeader title="Locations" description="Manage locations">
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Location
-        </Button>
-      </PageHeader>
+      <PageHeader title="Locations" description="Manage locations" />
 
       {locations.length > 0 ? (
         <DataTable

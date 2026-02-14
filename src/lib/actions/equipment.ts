@@ -1,13 +1,13 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import {
   mainCategoryService,
   subCategoryService,
 } from "@/lib/services/equipment";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Main Category Actions ───────────────────────────────────────────────────
 
@@ -26,8 +26,7 @@ export async function createMainCategory(formData: FormData) {
       image_url,
       created_by,
     });
-    revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
-    updateTag("equipment-main-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -47,8 +46,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
 
   try {
     await mainCategoryService.update(id, { name: name.trim(), image_url });
-    revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
-    updateTag("equipment-main-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -61,8 +59,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
 export async function deleteMainCategory(id: number) {
   try {
     await mainCategoryService.delete(id);
-    revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
-    updateTag("equipment-main-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -84,8 +81,7 @@ export async function deleteMainCategories(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
-  updateTag("equipment-main-categories");
+  invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
 
   if (errors.length > 0) {
     return {
@@ -137,8 +133,7 @@ export async function createSubCategory(formData: FormData) {
       image_url,
       created_by,
     });
-    revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
-    updateTag("equipment-sub-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -166,8 +161,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
       category_id,
       image_url,
     });
-    revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
-    updateTag("equipment-sub-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -180,8 +174,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
 export async function deleteSubCategory(id: number) {
   try {
     await subCategoryService.delete(id);
-    revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
-    updateTag("equipment-sub-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -203,8 +196,7 @@ export async function deleteSubCategories(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
-  updateTag("equipment-sub-categories");
+  invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
 
   if (errors.length > 0) {
     return {
@@ -287,8 +279,7 @@ export async function reorderMainCategories(orderedIds: number[]) {
     await d1.query(
       `UPDATE equipment_main_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
     );
-    revalidatePath(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
-    updateTag("equipment-main-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -311,8 +302,7 @@ export async function reorderSubCategories(orderedIds: number[]) {
     await d1.query(
       `UPDATE equipment_sub_category SET display_order = CASE sub_category_id ${cases} END WHERE sub_category_id IN (${idList})`,
     );
-    revalidatePath(ROUTES.EQUIPMENT_SUB_CATEGORIES);
-    updateTag("equipment-sub-categories");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {

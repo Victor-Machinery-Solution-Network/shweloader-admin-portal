@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction, type LoginState } from '@/lib/actions/auth-actions';
-import { TurnstileWidget } from '@/components/auth/turnstile-widget';
+import { TurnstileWidget, type TurnstileHandle } from '@/components/auth/turnstile-widget';
 import {
   Card,
   CardContent,
@@ -31,8 +31,10 @@ export function LoginForm() {
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [isNavigating, setIsNavigating] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
   const turnstileRef = useRef<HTMLInputElement>(null);
+  const turnstileWidgetRef = useRef<TurnstileHandle>(null);
 
   const handleTurnstileToken = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -52,16 +54,23 @@ export function LoginForm() {
     }
   }
 
+  // Prefetch dashboard while user types credentials so navigation is near-instant
+  useEffect(() => {
+    router.prefetch(ROUTES.DASHBOARD);
+  }, [router]);
+
   // On success, navigate via router.push (not redirect() in server action, which breaks
   // cross-layout-group RSC transitions in production — see vercel/next.js#66621)
   // On error, show toast and refocus password field
   useEffect(() => {
     if (state?.success) {
+      setIsNavigating(true);
       router.push(ROUTES.DASHBOARD);
       return;
     }
     if (state?.error) {
       toast.error(state.error);
+      turnstileWidgetRef.current?.reset();
       passwordRef.current?.focus();
     }
   }, [state, router]);
@@ -103,7 +112,7 @@ export function LoginForm() {
                   spellCheck={false}
                   autoFocus
                   required
-                  disabled={isPending}
+                  disabled={isPending || isNavigating}
                   aria-invalid={emailInvalid}
                   aria-describedby={emailInvalid ? 'email-error' : undefined}
                   className="pl-9"
@@ -131,7 +140,7 @@ export function LoginForm() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
-                  disabled={isPending}
+                  disabled={isPending || isNavigating}
                   className="pl-9 pr-9"
                 />
                 <button
@@ -151,19 +160,19 @@ export function LoginForm() {
             </div>
 
             {/* Turnstile */}
-            <TurnstileWidget onTokenChange={handleTurnstileToken} />
+            <TurnstileWidget ref={turnstileWidgetRef} onTokenChange={handleTurnstileToken} />
             <input ref={turnstileRef} type="hidden" name="cf-turnstile-response" />
 
             {/* Submit */}
             <Button
               type="submit"
               className="w-full"
-              disabled={isPending || !turnstileToken}
+              disabled={isPending || isNavigating || !turnstileToken}
             >
-              {isPending ? (
+              {isPending || isNavigating ? (
                 <>
                   <Spinner className="mr-2" />
-                  Signing in{'\u2026'}
+                  {isNavigating ? 'Redirecting\u2026' : 'Signing in\u2026'}
                 </>
               ) : (
                 'Sign in'

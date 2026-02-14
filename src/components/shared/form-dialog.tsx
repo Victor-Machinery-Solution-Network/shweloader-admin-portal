@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { FormSubmittedContext } from "@/components/ui/required-input";
 import {
   Dialog,
   DialogClose,
@@ -40,11 +42,16 @@ export function FormDialog({
   extraFooterAction,
   className,
 }: FormDialogProps) {
+  const [submitted, setSubmitted] = useState(false);
+
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!isPending) onOpenChange(v);
+        if (!isPending) {
+          if (!v) setSubmitted(false);
+          onOpenChange(v);
+        }
       }}
     >
       <DialogContent
@@ -68,9 +75,11 @@ export function FormDialog({
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
+            setSubmitted(true);
             onSubmit(new FormData(e.currentTarget));
           }}
         >
+          <FormSubmittedContext value={submitted}>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1 pr-2.5">
             {children}
           </div>
@@ -91,6 +100,7 @@ export function FormDialog({
               )}
             </Button>
           </DialogFooter>
+          </FormSubmittedContext>
         </form>
       </DialogContent>
     </Dialog>

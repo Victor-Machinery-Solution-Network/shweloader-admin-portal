@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { MoreHorizontal, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { approvePartner, rejectPartner } from "@/lib/actions/partner";
 import type { PartnerWithDetails } from "@/types/partner";
@@ -50,22 +44,12 @@ export function RowActions({ partner }: RowActionsProps) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs">
-            <MoreHorizontal aria-hidden="true" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={handleApprove} disabled={isPending}>
-            <CheckCircle /> Approve
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setShowReject(true)}>
-            <XCircle /> Reject
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActionsUI
+        actions={[
+          { label: "Approve", icon: CheckCircle, onClick: handleApprove, disabled: isPending },
+          { label: "Reject", icon: XCircle, onClick: () => setShowReject(true) },
+        ]}
+      />
 
       {showReject && (
         <FormDialog

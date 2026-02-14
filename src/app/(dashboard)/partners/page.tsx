@@ -1,7 +1,6 @@
-import { getPartnersWithDetails } from "@/lib/actions/partner";
+import { getCachedPartnersWithDetails } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
 
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Partners",
@@ -9,7 +8,7 @@ export const metadata = {
 };
 
 export default async function PartnersPage() {
-  const partners = await getPartnersWithDetails();
+  const partners = await getCachedPartnersWithDetails();
 
   return <PartnersClient partners={partners} />;
 }

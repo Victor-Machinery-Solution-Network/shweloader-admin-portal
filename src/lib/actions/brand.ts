@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import { brandService } from "@/lib/services/brand";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
 
@@ -181,8 +181,7 @@ export async function createBrand(formData: FormData) {
       }
     }
 
-    revalidatePath(ROUTES.BRANDS);
-    updateTag("brands");
+    invalidateTag(CACHE_TAGS.BRANDS);
     return { success: true };
   } catch (error) {
     return {
@@ -217,8 +216,7 @@ export async function updateBrand(id: number, formData: FormData) {
       await syncBrandSubCategories(id, subCategoryIds, userId);
     }
 
-    revalidatePath(ROUTES.BRANDS);
-    updateTag("brands");
+    invalidateTag(CACHE_TAGS.BRANDS);
     return { success: true };
   } catch (error) {
     return {
@@ -231,8 +229,7 @@ export async function updateBrand(id: number, formData: FormData) {
 export async function deleteBrand(id: number) {
   try {
     await brandService.delete(id);
-    revalidatePath(ROUTES.BRANDS);
-    updateTag("brands");
+    invalidateTag(CACHE_TAGS.BRANDS);
     return { success: true };
   } catch (error) {
     return {
@@ -320,8 +317,7 @@ export async function deleteBrands(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.BRANDS);
-  updateTag("brands");
+  invalidateTag(CACHE_TAGS.BRANDS);
 
   if (errors.length > 0) {
     return {

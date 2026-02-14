@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import Script from 'next/script';
 
 declare global {
@@ -23,50 +23,66 @@ declare global {
   }
 }
 
+export interface TurnstileHandle {
+  reset: () => void;
+}
+
 interface TurnstileWidgetProps {
   onTokenChange: (token: string) => void;
 }
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
 
-export function TurnstileWidget({ onTokenChange }: TurnstileWidgetProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
+export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>(
+  function TurnstileWidget({ onTokenChange }, ref) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const widgetIdRef = useRef<string | null>(null);
 
-  const renderWidget = useCallback(() => {
-    if (!window.turnstile || !containerRef.current || widgetIdRef.current) return;
+    useImperativeHandle(ref, () => ({
+      reset() {
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.reset(widgetIdRef.current);
+          onTokenChange('');
+        }
+      },
+    }), [onTokenChange]);
 
-    widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey: SITE_KEY,
-      callback: (token: string) => onTokenChange(token),
-      'expired-callback': () => onTokenChange(''),
-      'error-callback': () => onTokenChange(''),
-      theme: 'auto',
-      size: 'normal',
-    });
-  }, [onTokenChange]);
+    const renderWidget = useCallback(() => {
+      if (!window.turnstile || !containerRef.current || widgetIdRef.current) return;
 
-  useEffect(() => {
-    // If script already loaded, render immediately
-    if (window.turnstile && containerRef.current && !widgetIdRef.current) {
-      renderWidget();
-    }
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: SITE_KEY,
+        callback: (token: string) => onTokenChange(token),
+        'expired-callback': () => onTokenChange(''),
+        'error-callback': () => onTokenChange(''),
+        theme: 'auto',
+        size: 'normal',
+      });
+    }, [onTokenChange]);
 
-    return () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
+    useEffect(() => {
+      // If script already loaded, render immediately
+      if (window.turnstile && containerRef.current && !widgetIdRef.current) {
+        renderWidget();
       }
-    };
-  }, [renderWidget]);
 
-  return (
-    <>
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        onReady={renderWidget}
-      />
-      <div ref={containerRef} className="flex justify-center" />
-    </>
-  );
-}
+      return () => {
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+      };
+    }, [renderWidget]);
+
+    return (
+      <>
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          onReady={renderWidget}
+        />
+        {/* Fixed height (65px) prevents layout shift while widget loads */}
+        <div ref={containerRef} className="flex min-h-[65px] justify-center" />
+      </>
+    );
+  }
+);

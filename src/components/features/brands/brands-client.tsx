@@ -69,23 +69,24 @@ export function BrandsClient({
 
   const renderToolbar = useCallback(
     (selected: ProductBrandWithCategories[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="brand"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="brand"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Brand
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
 
   return (
     <>
-      <PageHeader title="Brands" description="Manage product brands">
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Brand
-        </Button>
-      </PageHeader>
+      <PageHeader title="Brands" description="Manage product brands" />
 
       {brands.length > 0 ? (
         <DataTable

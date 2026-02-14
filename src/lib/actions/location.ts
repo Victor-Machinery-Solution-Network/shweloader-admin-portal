@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import { locationService } from "@/lib/services/location";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Location Actions ────────────────────────────────────────────────────────
 
@@ -21,8 +21,7 @@ export async function createLocation(formData: FormData) {
       city_name: city_name.trim(),
       created_by,
     });
-    revalidatePath(ROUTES.LOCATIONS);
-    updateTag("locations");
+    invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -41,8 +40,7 @@ export async function updateLocation(id: number, formData: FormData) {
 
   try {
     await locationService.update(id, { city_name: city_name.trim() });
-    revalidatePath(ROUTES.LOCATIONS);
-    updateTag("locations");
+    invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -55,8 +53,7 @@ export async function updateLocation(id: number, formData: FormData) {
 export async function deleteLocation(id: number) {
   try {
     await locationService.delete(id);
-    revalidatePath(ROUTES.LOCATIONS);
-    updateTag("locations");
+    invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -101,8 +98,7 @@ export async function deleteLocations(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.LOCATIONS);
-  updateTag("locations");
+  invalidateTag(CACHE_TAGS.LOCATIONS);
 
   if (errors.length > 0) {
     return {

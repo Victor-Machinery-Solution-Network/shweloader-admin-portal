@@ -1,11 +1,9 @@
 import {
-  articleCategoryService,
-  articleStatusTypeService,
-} from "@/lib/services/article";
-import { getArticlesWithDetails } from "@/lib/actions/article";
+  getCachedArticlesWithDetails,
+  getCachedArticleCategories,
+  getCachedArticleStatusTypes,
+} from "@/lib/cache";
 import { PostsClient } from "@/components/features/articles/posts/posts-client";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Posts",
@@ -14,9 +12,9 @@ export const metadata = {
 
 export default async function PostsPage() {
   const [articles, categories, statusTypes] = await Promise.all([
-    getArticlesWithDetails(),
-    articleCategoryService.list({ sort_by: "name", order: "asc" }),
-    articleStatusTypeService.list(),
+    getCachedArticlesWithDetails(),
+    getCachedArticleCategories(),
+    getCachedArticleStatusTypes(),
   ]);
 
   return (

@@ -4,16 +4,20 @@
  * All pages under (dashboard) will have this layout
  */
 
+import { after } from 'next/server';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AuthSessionProvider } from '@/components/providers/session-provider';
+import { warmCaches } from '@/lib/cache';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  after(warmCaches);
+
   return (
     <AuthSessionProvider>
       <SidebarProvider>

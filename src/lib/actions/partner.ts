@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import { partnerService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 import type { PartnerWithDetails } from "@/types/partner";
 
 // ─── Partner Queries ─────────────────────────────────────────────────────────
@@ -49,8 +49,7 @@ export async function approvePartner(id: number) {
       reviewed_by,
       rejection_reason: null,
     });
-    revalidatePath(ROUTES.PARTNERS);
-    updateTag("partners");
+    invalidateTag(CACHE_TAGS.PARTNERS);
     return { success: true };
   } catch (error) {
     return {
@@ -80,8 +79,7 @@ export async function rejectPartner(id: number, reason: string) {
       reviewed_by,
       rejection_reason: reason || null,
     });
-    revalidatePath(ROUTES.PARTNERS);
-    updateTag("partners");
+    invalidateTag(CACHE_TAGS.PARTNERS);
     return { success: true };
   } catch (error) {
     return {

@@ -1,7 +1,5 @@
-import { announcementTextService } from "@/lib/services/announcement";
+import { getCachedAnnouncements } from "@/lib/cache";
 import { AnnouncementClient } from "@/components/features/announcement/announcement-client";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Announcement Bar",
@@ -9,10 +7,7 @@ export const metadata = {
 };
 
 export default async function AnnouncementBarPage() {
-  const announcements = await announcementTextService.list({
-    sort_by: "display_order",
-    order: "asc",
-  });
+  const announcements = await getCachedAnnouncements();
 
   return <AnnouncementClient announcements={announcements} />;
 }

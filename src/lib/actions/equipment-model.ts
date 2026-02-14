@@ -1,9 +1,9 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import { equipmentModelService } from "@/lib/services/equipment";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Equipment Model Actions ────────────────────────────────────────────────
 
@@ -31,8 +31,7 @@ export async function createEquipmentModel(formData: FormData) {
       pdf_url,
       created_by,
     });
-    revalidatePath(ROUTES.EQUIPMENT_MODELS);
-    updateTag("equipment-models");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
     return { success: true };
   } catch (error) {
     return {
@@ -64,8 +63,7 @@ export async function updateEquipmentModel(id: number, formData: FormData) {
       brand_id,
       pdf_url,
     });
-    revalidatePath(ROUTES.EQUIPMENT_MODELS);
-    updateTag("equipment-models");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
     return { success: true };
   } catch (error) {
     return {
@@ -78,8 +76,7 @@ export async function updateEquipmentModel(id: number, formData: FormData) {
 export async function deleteEquipmentModel(id: number) {
   try {
     await equipmentModelService.delete(id);
-    revalidatePath(ROUTES.EQUIPMENT_MODELS);
-    updateTag("equipment-models");
+    invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
     return { success: true };
   } catch (error) {
     return {
@@ -101,8 +98,7 @@ export async function deleteEquipmentModels(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.EQUIPMENT_MODELS);
-  updateTag("equipment-models");
+  invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
 
   if (errors.length > 0) {
     return {

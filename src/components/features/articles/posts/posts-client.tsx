@@ -76,12 +76,17 @@ export function PostsClient({
 
   const renderToolbar = useCallback(
     (selected: ArticleWithDetails[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="article"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="article"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Create Post
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -91,11 +96,7 @@ export function PostsClient({
       <PageHeader
         title="Posts"
         description="Manage article posts for the website"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Create Post
-        </Button>
-      </PageHeader>
+      />
 
       <Tabs defaultValue="published">
         <TabsList>

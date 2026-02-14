@@ -65,3 +65,34 @@ export const DATETIME_FORMAT = "MMM dd, yyyy HH:mm";
 
 // System exchange rate (USD to MMK)
 export const SYSTEM_EXCHANGE_RATE = 3200;
+
+// ---------------------------------------------------------------------------
+// Cache configuration
+// ---------------------------------------------------------------------------
+
+/** Revalidation intervals in seconds */
+export const CACHE_TTL = {
+  LOOKUP: 300, // 5 min — brands, locations, categories
+  MODEL: 120, // 2 min — equipment/attachment models, partners, listings
+} as const;
+
+/** Tag strings used by unstable_cache + updateTag for invalidation */
+export const CACHE_TAGS = {
+  BRANDS: "brands",
+  LOCATIONS: "locations",
+  EQUIPMENT_MAIN_CATEGORIES: "equipment-main-categories",
+  EQUIPMENT_SUB_CATEGORIES: "equipment-sub-categories",
+  EQUIPMENT_MODELS: "equipment-models",
+  ATTACHMENT_CATEGORIES: "attachment-categories",
+  ATTACHMENT_MODELS: "attachment-models",
+  PARTNERS: "partners",
+  SALE_LISTINGS: "sale-listings",
+  RENT_LISTINGS: "rent-listings",
+  FEATURED_LISTINGS: "featured-listings",
+  CUSTOMERS: "customers",
+  BUSINESS_TYPES: "business-types",
+  ANNOUNCEMENTS: "announcements",
+  ARTICLE_CATEGORIES: "article-categories",
+  ARTICLES: "articles",
+  CAROUSELS: "carousels",
+} as const;

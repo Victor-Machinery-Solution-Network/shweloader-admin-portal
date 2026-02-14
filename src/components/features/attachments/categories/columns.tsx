@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ImageCell } from "@/components/shared/image-cell";
 import { formatDate } from "@/lib/utils";
 import type { AttachmentCategory } from "@/types/attachment";
 import { RowActions } from "./row-actions";
@@ -13,19 +13,12 @@ export const columns: ColumnDef<AttachmentCategory>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => {
-      const name = row.getValue("name") as string;
-      const imageUrl = row.original.image_url;
-      return (
-        <div className="flex items-center gap-3">
-          <Avatar size="sm">
-            {imageUrl && <AvatarImage src={imageUrl} alt={name} />}
-            <AvatarFallback>{name.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium">{name}</span>
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <ImageCell
+        name={row.getValue("name") as string}
+        imageUrl={row.original.image_url}
+      />
+    ),
   },
   {
     accessorKey: "created_at",

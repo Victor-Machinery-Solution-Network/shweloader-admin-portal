@@ -41,11 +41,16 @@ export function EquipmentModelsClient({
 
   const renderToolbar = useCallback(
     (selected: EquipmentModel[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        itemLabel="model"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          itemLabel="model"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Model
+        </Button>
+      </>
     ),
     [handleBulkDelete],
   );
@@ -55,11 +60,7 @@ export function EquipmentModelsClient({
       <PageHeader
         title="Equipment Models"
         description="Manage equipment models"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Model
-        </Button>
-      </PageHeader>
+      />
 
       {models.length > 0 ? (
         <DataTable

@@ -80,12 +80,17 @@ export function AttachmentCategoriesClient({
 
   const renderToolbar = useCallback(
     (selected: AttachmentCategory[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="category"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="category"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Category
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -95,11 +100,7 @@ export function AttachmentCategoriesClient({
       <PageHeader
         title="Attachment Categories"
         description="Manage attachment categories"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Category
-        </Button>
-      </PageHeader>
+      />
 
       {data.length > 0 ? (
         <DataTable

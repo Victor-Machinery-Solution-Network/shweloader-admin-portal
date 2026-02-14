@@ -32,12 +32,17 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
 
   const renderToolbar = useCallback(
     (selected: AnnouncementText[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="announcement"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="announcement"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Create Announcement
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -47,11 +52,7 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
       <PageHeader
         title="Announcement Bar"
         description="Manage announcement messages shown on the website"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Create Announcement
-        </Button>
-      </PageHeader>
+      />
 
       {announcements.length > 0 ? (
         <DataTable

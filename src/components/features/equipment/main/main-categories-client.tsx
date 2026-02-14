@@ -73,12 +73,17 @@ export function MainCategoriesClient({
 
   const renderToolbar = useCallback(
     (selected: EquipmentMainCategory[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="category"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="category"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Category
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -88,11 +93,7 @@ export function MainCategoriesClient({
       <PageHeader
         title="Main Categories"
         description="Manage equipment main categories"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Category
-        </Button>
-      </PageHeader>
+      />
 
       {data.length > 0 ? (
         <DataTable

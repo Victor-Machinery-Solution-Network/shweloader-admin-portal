@@ -1,16 +1,9 @@
 "use client";
 
 import { useState, useTransition, useEffect, lazy, Suspense } from "react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 
 const LazyListingForm = lazy(() =>
@@ -82,26 +75,12 @@ export function ListingRowActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs">
-            <MoreHorizontal aria-hidden="true" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setShowEdit(true)}>
-            <Pencil aria-hidden="true" /> Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => setShowDelete(true)}
-          >
-            <Trash2 aria-hidden="true" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActionsUI
+        actions={[
+          { label: "Edit", icon: Pencil, onClick: () => setShowEdit(true) },
+          { label: "Delete", icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive", separatorBefore: true },
+        ]}
+      />
 
       {showEdit && (
         <Suspense fallback={null}>

@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { articleCategoryService } from "@/lib/services/article";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
 
 // ─── Article Category Actions ────────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ export async function createArticleCategory(formData: FormData) {
       name: name.trim(),
       created_by,
     });
-    revalidatePath(ROUTES.ARTICLE_CATEGORIES);
+    invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -40,7 +40,7 @@ export async function updateArticleCategory(id: number, formData: FormData) {
 
   try {
     await articleCategoryService.update(id, { name: name.trim() });
-    revalidatePath(ROUTES.ARTICLE_CATEGORIES);
+    invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -53,8 +53,7 @@ export async function updateArticleCategory(id: number, formData: FormData) {
 export async function deleteArticleCategory(id: number) {
   try {
     await articleCategoryService.delete(id);
-    revalidatePath(ROUTES.ARTICLE_CATEGORIES);
-    revalidatePath(ROUTES.POSTS);
+    invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -94,8 +93,7 @@ export async function deleteArticleCategories(ids: number[]) {
       getErrorMessage(r.reason, `Failed to delete category ${ids[i]}`),
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
-
-  revalidatePath(ROUTES.ARTICLE_CATEGORIES);
+  invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
 
   if (errors.length > 0) {
     return {

@@ -7,7 +7,7 @@
 import { useState, useEffect } from "react";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -58,6 +58,7 @@ import { logoutAction } from "@/lib/actions/auth-actions";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
 
   const userName = session?.user?.name ?? "Admin User";
@@ -88,6 +89,36 @@ export function AppSidebar() {
     if (isListingsActive) setIsListingsOpen(true);
     if (isArticlesActive) setIsArticlesOpen(true);
   }, [pathname, isEquipmentActive, isAttachmentsActive, isListingsActive, isArticlesActive]);
+
+  // Predictive prefetching: when a section opens, prefetch child route bundles
+  useEffect(() => {
+    if (isEquipmentOpen) {
+      router.prefetch(ROUTES.EQUIPMENT_MAIN_CATEGORIES);
+      router.prefetch(ROUTES.EQUIPMENT_SUB_CATEGORIES);
+      router.prefetch(ROUTES.EQUIPMENT_MODELS);
+    }
+  }, [isEquipmentOpen, router]);
+
+  useEffect(() => {
+    if (isAttachmentsOpen) {
+      router.prefetch(ROUTES.ATTACHMENT_CATEGORIES);
+      router.prefetch(ROUTES.ATTACHMENT_MODELS);
+    }
+  }, [isAttachmentsOpen, router]);
+
+  useEffect(() => {
+    if (isListingsOpen) {
+      router.prefetch(ROUTES.LISTINGS_FOR_SALE);
+      router.prefetch(ROUTES.LISTINGS_FOR_RENT);
+    }
+  }, [isListingsOpen, router]);
+
+  useEffect(() => {
+    if (isArticlesOpen) {
+      router.prefetch(ROUTES.ARTICLE_CATEGORIES);
+      router.prefetch(ROUTES.POSTS);
+    }
+  }, [isArticlesOpen, router]);
 
   return (
     <Sidebar variant="inset">

@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { carouselService } from "@/lib/services/carousel";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 // ─── Carousel Actions ───────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ export async function createCarousel(formData: FormData) {
       name: name.trim(),
       description,
     });
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -42,7 +42,7 @@ export async function updateCarousel(id: number, formData: FormData) {
 
   try {
     await carouselService.update(id, { name: name.trim(), description });
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -55,7 +55,7 @@ export async function updateCarousel(id: number, formData: FormData) {
 export async function deleteCarousel(id: number) {
   try {
     await carouselService.delete(id);
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -115,7 +115,7 @@ export async function addCarouselImage(
       [carouselId, imageId, String(nextOrder), added_by, linkUrl || null],
     );
 
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -134,7 +134,7 @@ export async function removeCarouselImage(
       "DELETE FROM carousel_image WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],
     );
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -154,7 +154,7 @@ export async function updateCarouselImageLink(
       "UPDATE carousel_image SET link_url = ? WHERE carousel_id = ? AND image_id = ?",
       [linkUrl, carouselId, imageId],
     );
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -173,7 +173,7 @@ export async function toggleCarouselImageActive(
       "UPDATE carousel_image SET active = 1 - active WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],
     );
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {
@@ -195,7 +195,7 @@ export async function reorderCarouselImages(
     await d1.query(
       `UPDATE carousel_image SET display_order = CASE image_id ${cases} END WHERE carousel_id = ${carouselId} AND image_id IN (${idList})`,
     );
-    revalidatePath(ROUTES.CAROUSEL_IMAGES);
+    invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
     return {

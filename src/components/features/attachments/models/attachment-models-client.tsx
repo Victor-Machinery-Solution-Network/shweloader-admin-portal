@@ -41,11 +41,16 @@ export function AttachmentModelsClient({
 
   const renderToolbar = useCallback(
     (selected: AttachmentModel[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        itemLabel="model"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          itemLabel="model"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Add Model
+        </Button>
+      </>
     ),
     [handleBulkDelete],
   );
@@ -55,11 +60,7 @@ export function AttachmentModelsClient({
       <PageHeader
         title="Attachment Models"
         description="Manage attachment models"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Model
-        </Button>
-      </PageHeader>
+      />
 
       {models.length > 0 ? (
         <DataTable

@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
 import { attachmentCategoryService } from "@/lib/services/attachment";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
@@ -23,8 +23,7 @@ export async function createAttachmentCategory(formData: FormData) {
       image_url,
       created_by,
     });
-    revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
-    updateTag("attachment-categories");
+    invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -47,8 +46,7 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
       name: name.trim(),
       image_url,
     });
-    revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
-    updateTag("attachment-categories");
+    invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -61,8 +59,7 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
 export async function deleteAttachmentCategory(id: number) {
   try {
     await attachmentCategoryService.delete(id);
-    revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
-    updateTag("attachment-categories");
+    invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {
@@ -84,8 +81,7 @@ export async function deleteAttachmentCategories(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
-  updateTag("attachment-categories");
+  invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
 
   if (errors.length > 0) {
     return {
@@ -168,8 +164,7 @@ export async function reorderAttachmentCategories(orderedIds: number[]) {
     await d1.query(
       `UPDATE attachment_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
     );
-    revalidatePath(ROUTES.ATTACHMENT_CATEGORIES);
-    updateTag("attachment-categories");
+    invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
     return {

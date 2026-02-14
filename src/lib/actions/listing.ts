@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import {
   productListService,
   productImageService,
@@ -9,8 +8,9 @@ import {
   featuredListingService,
 } from "@/lib/services/listing";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
@@ -166,8 +166,8 @@ export async function createListing(formData: FormData) {
       await syncProductImages(productId, imageUrls, created_by);
     }
 
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -215,7 +215,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     const uploadedBy = await getCurrentUserId();
     await syncProductImages(productListId, imageUrls, uploadedBy);
 
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -240,7 +240,7 @@ export async function deleteSaleListing(saleId: number) {
       await productListService.delete(productListId);
     }
 
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -283,7 +283,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     const uploadedBy = await getCurrentUserId();
     await syncProductImages(productListId, imageUrls, uploadedBy);
 
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -306,7 +306,7 @@ export async function deleteRentListing(rentId: number) {
       await productListService.delete(productListId);
     }
 
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -328,7 +328,7 @@ export async function toggleSaleHidden(id: number) {
     );
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await saleListingService.update(id, { is_hidden: newVal });
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true, is_hidden: newVal };
   } catch (error) {
     return {
@@ -346,7 +346,7 @@ export async function toggleRentHidden(id: number) {
     );
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await rentListingService.update(id, { is_hidden: newVal });
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true, is_hidden: newVal };
   } catch (error) {
     return {
@@ -364,7 +364,7 @@ export async function toggleSoldOut(id: number) {
     );
     const newVal = current.results[0]?.is_sold_out === 1 ? 0 : 1;
     await saleListingService.update(id, { is_sold_out: newVal });
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true, is_sold_out: newVal };
   } catch (error) {
     return {
@@ -395,8 +395,7 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
       created_by,
     });
 
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -409,8 +408,7 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
 export async function removeFromFeatured(featuredId: number) {
   try {
     await featuredListingService.delete(featuredId);
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -431,8 +429,7 @@ export async function reorderFeatured(
         }),
       ),
     );
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -579,7 +576,7 @@ export async function approveListingSale(id: number) {
       `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, id],
     );
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -596,7 +593,7 @@ export async function rejectListingSale(id: number, reason?: string) {
       `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rejected'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, reason || null, id],
     );
-    revalidatePath(ROUTES.LISTINGS_FOR_SALE);
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -613,7 +610,7 @@ export async function approveListingRent(id: number) {
       `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, id],
     );
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -630,7 +627,7 @@ export async function rejectListingRent(id: number, reason?: string) {
       `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rejected'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, reason || null, id],
     );
-    revalidatePath(ROUTES.LISTINGS_FOR_RENT);
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     return { success: true };
   } catch (error) {
     return {

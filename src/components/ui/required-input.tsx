@@ -1,47 +1,36 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, createContext, useContext } from "react";
 import { Input } from "@/components/ui/input";
+
+/** Context provided by FormDialog — true after the user clicks submit. */
+export const FormSubmittedContext = createContext(false);
 
 interface RequiredInputProps extends React.ComponentProps<typeof Input> {
   errorMessage?: string;
 }
 
 /**
- * Input that shows an inline error message on blur when the field is empty.
+ * Input that shows an inline error message when the form is submitted and the field is empty.
  * Uses `aria-invalid` to trigger the red border styling from the Input component.
  */
 export function RequiredInput({
   errorMessage = "This field is required",
-  onBlur,
   onChange,
   ...props
 }: RequiredInputProps) {
-  const [touched, setTouched] = useState(false);
+  const submitted = useContext(FormSubmittedContext);
   const [empty, setEmpty] = useState(!props.defaultValue && !props.value);
-  const mountedRef = useRef(false);
-
-  const handleBlur = useCallback(
-    (e: React.FocusEvent<HTMLInputElement>) => {
-      mountedRef.current = true;
-      setTouched(true);
-      setEmpty(!e.target.value.trim());
-      onBlur?.(e);
-    },
-    [onBlur],
-  );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (touched) {
-        setEmpty(!e.target.value.trim());
-      }
+      setEmpty(!e.target.value.trim());
       onChange?.(e);
     },
-    [touched, onChange],
+    [onChange],
   );
 
-  const showError = touched && empty;
+  const showError = submitted && empty;
 
   return (
     <div className="space-y-1">
@@ -49,7 +38,6 @@ export function RequiredInput({
         {...props}
         required
         aria-invalid={showError || undefined}
-        onBlur={handleBlur}
         onChange={handleChange}
       />
       {showError && <p className="text-xs text-destructive">{errorMessage}</p>}

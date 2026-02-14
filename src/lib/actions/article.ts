@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { articleService } from "@/lib/services/article";
 import { d1 } from "@/lib/api/d1-client";
-import { ROUTES } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
 import type { ArticleWithDetails } from "@/types/article";
 
 // ─── Article Actions ─────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ export async function createArticle(formData: FormData) {
       created_by,
       publish_date: publish_date || null,
     });
-    revalidatePath(ROUTES.POSTS);
+    invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
   } catch (error) {
     return {
@@ -77,7 +77,7 @@ export async function updateArticle(id: number, formData: FormData) {
         : null,
       publish_date: publish_date || null,
     });
-    revalidatePath(ROUTES.POSTS);
+    invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
   } catch (error) {
     return {
@@ -90,7 +90,7 @@ export async function updateArticle(id: number, formData: FormData) {
 export async function deleteArticle(id: number) {
   try {
     await articleService.delete(id);
-    revalidatePath(ROUTES.POSTS);
+    invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
   } catch (error) {
     return {
@@ -112,7 +112,7 @@ export async function updateArticleStatus(id: number, statusId: number) {
       [statusId, userId, id],
     );
 
-    revalidatePath(ROUTES.POSTS);
+    invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
   } catch (error) {
     return {
@@ -153,8 +153,7 @@ export async function deleteArticles(ids: number[]) {
       getErrorMessage(r.reason, `Failed to delete article ${ids[i]}`),
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
-
-  revalidatePath(ROUTES.POSTS);
+  invalidateTag(CACHE_TAGS.ARTICLES);
 
   if (errors.length > 0) {
     return {

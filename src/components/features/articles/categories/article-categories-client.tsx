@@ -34,12 +34,17 @@ export function ArticleCategoriesClient({
 
   const renderToolbar = useCallback(
     (selected: ArticleCategory[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="category"
-      />
+      <>
+        <BulkDeleteButton
+          selectedRows={selected}
+          onDelete={handleBulkDelete}
+          buildDescription={buildDescription}
+          itemLabel="category"
+        />
+        <Button onClick={() => setShowCreate(true)} className="ml-auto">
+          <Plus /> Create Category
+        </Button>
+      </>
     ),
     [handleBulkDelete, buildDescription],
   );
@@ -49,11 +54,7 @@ export function ArticleCategoriesClient({
       <PageHeader
         title="Article Categories"
         description="Organize your articles into categories"
-      >
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Create Category
-        </Button>
-      </PageHeader>
+      />
 
       {categories.length > 0 ? (
         <DataTable
