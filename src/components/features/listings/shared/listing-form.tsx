@@ -5,9 +5,9 @@ import { ShoppingCart, Home, CheckCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { ImageInput } from "@/components/ui/image-input";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { SortableImageGallery } from "@/components/shared/sortable-image-gallery";
 import { SYSTEM_EXCHANGE_RATE } from "@/lib/constants";
 import {
@@ -589,12 +589,10 @@ export function ListingForm({
         <Field orientation="vertical">
           <FieldLabel>Description</FieldLabel>
           <FieldContent>
-            <Textarea
+            <MarkdownEditor
               name="description"
               placeholder="Describe the product…"
-              rows={3}
               defaultValue={listing?.description ?? ""}
-              autoComplete="off"
             />
           </FieldContent>
         </Field>

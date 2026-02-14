@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
       "@dnd-kit/sortable",
       "@tanstack/react-table",
       "radix-ui",
+      "@tiptap/react",
+      "@tiptap/starter-kit",
     ],
   },
 };

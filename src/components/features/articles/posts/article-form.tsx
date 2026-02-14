@@ -5,9 +5,9 @@ import { CheckCircle, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RequiredInput } from "@/components/ui/required-input";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import {
   Combobox,
   ComboboxInput,
@@ -137,12 +137,11 @@ export function ArticleForm({
         <Field orientation="vertical">
           <FieldLabel>Content</FieldLabel>
           <FieldContent>
-            <Textarea
+            <MarkdownEditor
               name="content"
               placeholder="Write your article content here…"
               defaultValue={article?.content ?? ""}
-              className="min-h-40"
-              autoComplete="off"
+              minHeight="min-h-40"
             />
           </FieldContent>
         </Field>

@@ -2,7 +2,7 @@
 
 ## Current State
 
-Phases 1–3 are largely complete. Auth is production-ready with Turnstile + rate limiting. Equipment categories, attachment categories, and brands have full CRUD with drag-and-drop reordering, many-to-many junction table management, and detailed delete warnings. The remaining pages (models, customers, partners, listings, CMS, roles, settings) are still placeholders.
+Phases 1–6 are substantially complete. The admin portal has full auth, equipment/attachment catalog (categories + models), customer/partner management with approval workflows, sale/rent listings with featured content management, and CMS (articles, carousel, announcements). Phase 7 (RBAC + Settings) has schema + seed data ready but UI is still placeholder.
 
 ---
 
@@ -20,28 +20,27 @@ Catalog (categories → sub-categories → models)
 Business (customers → partners → products → listings)
   ↓
 CMS (articles, carousel, announcements)
+  ↓
+RBAC + Settings (roles, permissions, admin users, app settings)
 ```
 
 ---
 
-## Phase 1 — Authentication (Start Here)
+## Phase 1 — Authentication
 
-**Why first:** Every table has `created_by`, `approved_by`, `reviewed_by`. You cannot create meaningful records without a logged-in admin user. The middleware is a placeholder returning `true`.
+**Why first:** Every table has `created_by`, `approved_by`, `reviewed_by`. You cannot create meaningful records without a logged-in admin user.
 
-- Wire up Auth.js (NextAuth v5) with credentials provider
-- Implement login against `admin_user` table via D1 REST API
+**Completed:**
+
+- Auth.js v5 with Credentials provider + JWT sessions
+- Login against `admin_user` table via D1 REST API
 - Session management + middleware route protection
-- Store `user_id` in session for audit fields
-
-**Security hardening (completed):**
-
 - bcrypt password hashing (cost factor 12)
 - In-memory email-based rate limiting (5 attempts / 15 min lockout)
 - Cloudflare Turnstile bot protection on login form
 - Generic error messages (no email enumeration)
 - JWT 8-hour session expiry, HttpOnly cookies
 - Server-side input validation before DB queries
-- `noValidate` form with custom `aria-invalid` email validation
 
 **Status: COMPLETE**
 
@@ -49,52 +48,43 @@ CMS (articles, carousel, announcements)
 
 ## Phase 2 — Lookup Tables + Brands + Locations
 
-**Why second:** These are the simplest CRUD and every downstream entity references them. They also establish the patterns (service → server actions → data table → form) that get reused 15+ times.
+**Why second:** Simplest CRUD, referenced by every downstream entity. Established the reusable patterns (service → server actions → DataTable → form dialog).
 
-**Tables:** `partner_type`, `partner_status_type`, `enquiry_status_type`, `approval_status_type`, `article_status_type`, `product_brand`, `location`
+**Tables:** `partner_type`, `partner_status_type`, `enquiry_status_type`, `approval_status_type`, `article_status_type`, `condition_type`, `product_brand`, `location`, `business_type`
 
-- Build one fully (e.g., `product_brand`) with list/create/edit/delete
-- Then replicate the pattern across all lookup tables
-- This is where the reusable `DataTable` + form patterns get nailed down
+**Completed:**
 
-**Completed items:**
+- `product_brand` — Full CRUD with DataTable, search, pagination, drag-and-drop reordering, many-to-many junction table management (attachment_category_brand, equipment_sub_category_brand), multi-select UI, badge overflow with "+X more" tooltips, detailed delete warnings with linked counts, bulk delete
+- `location` — Full CRUD with DataTable, linked listing count in delete warnings
+- `business_type` — Full CRUD, embedded as second tab in Customers page, linked customer count tracking
 
-- `product_brand` — Full CRUD with DataTable, search, pagination, drag-and-drop reordering
-- Brand ↔ Attachment Category many-to-many via `attachment_category_brand` junction table
-- Brand ↔ Equipment Sub-Category many-to-many via `equipment_sub_category_brand` junction table
-- Multi-select UI in brand form for selecting linked categories/sub-categories
-- Badge overflow with "+X more" tooltip when categories exceed 2
-- Detailed delete warnings showing linked equipment models, attachment models, categories, and sub-categories
-- Bulk delete with aggregated linked count descriptions
+**Still pending (no CRUD pages yet):**
 
-**Status: BRANDS COMPLETE** — Locations and other lookup tables still pending
+- `partner_type`
+- `partner_status_type`
+- `enquiry_status_type`
+- `approval_status_type`
+- `article_status_type`
+- `condition_type`
+
+**Status: PARTIALLY COMPLETE** — 3 of 9 tables have CRUD pages
 
 ---
 
 ## Phase 3 — Equipment & Attachment Catalog
 
-**Why third:** This is the **core domain** — an equipment marketplace. No listings can exist without models, and no models without categories.
+**Why third:** Core domain — an equipment marketplace. No listings can exist without models, and no models without categories.
 
-Build in order:
-
-1. `equipment_main_category` (simple CRUD + image)
-2. `equipment_sub_category` (CRUD + parent category dropdown)
-3. `equipment_model` (CRUD + brand + sub-category + PDF upload)
-4. `equipment_sub_category_brand` (bridge table management)
-5. Then mirror for `attachment_category` → `attachment_model` → `attachment_category_brand`
-
-**This establishes relational UI patterns** — dropdowns that depend on other entities, file uploads, nested navigation.
-
-**Completed items:**
+**Completed:**
 
 - `equipment_main_category` — Full CRUD, drag-and-drop reordering, linked sub-category count in delete warnings
 - `equipment_sub_category` — Full CRUD with main category dropdown, drag-and-drop reordering, detailed delete warnings (linked equipment models + brands)
+- `equipment_model` — Full CRUD with sub-category + brand dropdowns, PDF upload, linked sale/rent listing count tracking
 - `attachment_category` — Full CRUD, drag-and-drop reordering, detailed delete warnings (linked attachment models + brands)
+- `attachment_model` — Full CRUD with category + brand dropdowns, PDF upload, linked count tracking
 - Junction table management for `equipment_sub_category_brand` and `attachment_category_brand` handled through brand form (Phase 2)
 
-**Still pending:** `equipment_model`, `attachment_model` pages
-
-**Status: CATEGORIES COMPLETE** — Model pages pending
+**Status: COMPLETE**
 
 ---
 
@@ -102,44 +92,82 @@ Build in order:
 
 **Why fourth:** Customers/partners are the marketplace users whose data feeds into listings.
 
-- `customer` list with filters (verified, business type)
-- `partner` management with status workflow (pending → approved/rejected)
-- Partner review flow using `approval_status_type`
+**Completed:**
 
-**This introduces the first workflow/status-driven UI** — not just CRUD but state transitions.
+- `customer` — List page with dual-tab interface (Customers + Business Types), columns for id/name/phone/email/business type/verified status, business type filtering
+- `partner` — List page with 3-tab approval workflow (Approved | Pending | Rejected), status badges with pending count indicator, approve/reject actions
+
+**Status: COMPLETE**
 
 ---
 
 ## Phase 5 — Listings (Sale + Rent) + Enquiries
 
-**Why fifth:** This is where the business value lives. It depends on products, partners, and approval statuses all being in place.
+**Why fifth:** This is where the business value lives. Depends on products, partners, and approval statuses all being in place.
 
-- `product_list` (links partner → equipment or attachment model, images, custom fields)
-- `sale_listing` / `rent_listing` with approval workflow
-- `featured_listing` management
-- `enquiry` management with status tracking
+**Completed:**
 
-**Most complex phase** — approval workflows, image galleries, custom fields (JSON), dual-listing logic.
+- `sale_listing` — Full CRUD with multi-tab interface (Listings | Pending | Featured), listing form with partner/model/location/condition selection, image gallery with drag-reorder, approval workflow (approve/reject with reason), inline toggles (hidden, sold-out, featured), URL-driven state for tabs/filters/dialogs
+- `rent_listing` — Same structure as sale listings (shared components), approval workflow, hidden toggle, featured management
+- `featured_listing` — Managed within sale/rent pages, drag-and-drop reordering, add/remove from featured
+- `product_list` + `product_image` — Unified creation supporting sale, rent, or both simultaneously, image sync with fractional display order keys, cascade deletes
+- Complex 14-table JOINs for listing detail views
+- Lazy-loaded ListingForm (616 lines) for performance
+
+**Still pending:**
+
+- `enquiry` — Page exists as empty placeholder (11 lines)
+
+**Status: ~90% COMPLETE** — Enquiries page not built
 
 ---
 
 ## Phase 6 — CMS (Articles, Carousel, Announcements)
 
-**Why sixth:** Important but don't block the core marketplace. Can be built in parallel once patterns are established.
+**Why sixth:** Important but don't block the core marketplace.
 
-- `article_category` → `article` with status workflow + rich text editor
-- `carousel` → `carousel_image` management with ordering
-- `announcement_text` with display ordering
+**Completed:**
+
+- `article_category` — Full CRUD with DataTable, linked article count in delete warnings
+- `article` — Full CRUD with dual-tab interface (Published | Pending), status workflow (Published/Hidden/Pending), category selection, search and filtering, bulk delete
+- `carousel` — Multi-carousel management with tab-based interface, image grid with drag-and-drop reordering, image cards with title/link URL/button label, upload and delete support
+- `announcement_text` — Full CRUD with DataTable, drag-and-drop reordering, bulk delete
+
+**Status: COMPLETE**
 
 ---
 
 ## Phase 7 — Roles/Permissions & Settings
 
-**Why last:** A single "super admin" role can be hardcoded initially. Fine-grained RBAC is a polish feature.
+**Why last:** A single "super admin" role was sufficient during development. Fine-grained RBAC is a polish feature.
 
-- `role` CRUD with `feature_permission` assignment UI
-- `role_permission` matrix editor
-- `admin_user` management (invite, deactivate, assign roles)
+**Schema redesign (completed):**
+
+- `feature_permission` table redesigned with `feature_permission_id` surrogate key (was composite PK)
+- `role_permission` now references `feature_permission_id` instead of `permission_id` directly — enables per-feature permission control
+- Seed script created (`scripts/seed-rbac.ts`) — idempotent, can be re-run in any environment
+- Seeded data: 5 permissions (create, read, edit, delete, approve), 21 features (granular per entity), 83 feature_permission combos, Super Admin role with all 83 permissions
+
+**Still pending (placeholder pages only):**
+
+- `role` CRUD with `feature_permission` matrix editor (checkbox grid: features on rows, actions on columns)
+- `admin_user` management (create, deactivate, assign roles)
 - `app_setting` key-value management
 - `admin_activity_log` viewer
-- Dashboard analytics (overview page with real data)
+- Dashboard analytics (overview page with real data, currently a component showcase)
+
+**Status: SCHEMA + SEED COMPLETE** — UI not started
+
+---
+
+## Remaining Work Summary
+
+| Priority | Item | Effort |
+|----------|------|--------|
+| 1 | Phase 7: Role CRUD + permission matrix UI | Medium |
+| 2 | Phase 7: Admin user management (create, assign role, deactivate) | Medium |
+| 3 | Phase 5: Enquiry management page | Small |
+| 4 | Phase 2: Remaining lookup table CRUD pages (6 tables) | Small (replicate existing pattern) |
+| 5 | Phase 7: App settings page | Small |
+| 6 | Phase 7: Activity log viewer | Small |
+| 7 | Phase 7: Dashboard with real analytics | Medium |
