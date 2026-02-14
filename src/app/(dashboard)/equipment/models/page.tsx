@@ -1,5 +1,6 @@
 import {
   getCachedEquipmentModels,
+  getCachedMainCategories,
   getCachedSubCategories,
   getCachedBrands,
 } from "@/lib/cache";
@@ -11,8 +12,9 @@ export const metadata = {
 };
 
 export default async function EquipmentModelsPage() {
-  const [models, subCategories, brands] = await Promise.all([
+  const [models, mainCategories, subCategories, brands] = await Promise.all([
     getCachedEquipmentModels(),
+    getCachedMainCategories(),
     getCachedSubCategories(),
     getCachedBrands(),
   ]);
@@ -20,6 +22,7 @@ export default async function EquipmentModelsPage() {
   return (
     <EquipmentModelsClient
       models={models}
+      mainCategories={mainCategories}
       subCategories={subCategories}
       brands={brands}
     />

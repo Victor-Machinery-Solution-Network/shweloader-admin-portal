@@ -32,8 +32,8 @@ export function RowActions({
 
   const deleteDescription =
     linkedCount > 0
-      ? `This brand is linked to ${linkedSummary}. Deleting it will remove the brand reference from those models. This action cannot be undone.`
-      : `This will permanently delete "${brand.name}". This action cannot be undone.`;
+      ? <>This will permanently delete <strong>&ldquo;{brand.name}&rdquo;</strong>.<br />This brand is linked to <strong>{linkedSummary}</strong>. Deleting it will remove the brand reference from those models.</>
+      : <>This will permanently delete <strong>&ldquo;{brand.name}&rdquo;</strong>.<br />This action cannot be undone.</>;
 
   function handleDelete() {
     startTransition(async () => {

@@ -18,6 +18,15 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
 
+/**
+ * Context for providing a portal container to ComboboxContent.
+ * When a provider wraps the combobox (e.g. inside a FormDialog),
+ * the dropdown will portal into that container automatically,
+ * keeping it within the dialog's focus-trap without expanding the layout.
+ */
+const ComboboxPortalContext =
+  React.createContext<React.RefObject<HTMLDivElement | null> | null>(null);
+
 const Combobox = ComboboxPrimitive.Root;
 
 function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
@@ -116,8 +125,9 @@ function ComboboxContent({
     /** Custom container for the portal. Pass a ref or function. */
     container?: ComboboxPrimitive.Portal.Props["container"];
   }) {
+  const portalContext = React.useContext(ComboboxPortalContext);
   return (
-    <ComboboxPrimitive.Portal container={container}>
+    <ComboboxPrimitive.Portal container={container ?? portalContext}>
       <ComboboxPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}
@@ -309,6 +319,7 @@ function useComboboxAnchor() {
 
 export {
   Combobox,
+  ComboboxPortalContext,
   ComboboxInput,
   ComboboxContent,
   ComboboxList,

@@ -22,8 +22,8 @@ export function RowActions({ category, linkedCount, linkedSummary }: RowActionsP
 
   const deleteDescription =
     linkedCount > 0
-      ? `This will permanently delete "${category.name}". There ${linkedCount === 1 ? "is" : "are"} ${linkedSummary} linked to this category.`
-      : `This will permanently delete "${category.name}". This action cannot be undone.`;
+      ? <>This will permanently delete <strong>&ldquo;{category.name}&rdquo;</strong>.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedSummary}</strong> linked to this category.</>
+      : <>This will permanently delete <strong>&ldquo;{category.name}&rdquo;</strong>.<br />This action cannot be undone.</>;
 
   function handleDelete() {
     startTransition(async () => {

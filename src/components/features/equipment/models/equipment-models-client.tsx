@@ -10,25 +10,27 @@ import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { EquipmentModelForm } from "./equipment-model-form";
 import { createColumns } from "./columns";
 import { deleteEquipmentModels } from "@/lib/actions/equipment-model";
-import type { EquipmentModel, EquipmentSubCategory } from "@/types/equipment";
+import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
 import type { ProductBrand } from "@/types/brand";
 
 interface EquipmentModelsClientProps {
   models: EquipmentModel[];
+  mainCategories: EquipmentMainCategory[];
   subCategories: EquipmentSubCategory[];
   brands: ProductBrand[];
 }
 
 export function EquipmentModelsClient({
   models,
+  mainCategories,
   subCategories,
   brands,
 }: EquipmentModelsClientProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
-    () => createColumns(subCategories, brands),
-    [subCategories, brands],
+    () => createColumns(mainCategories, subCategories, brands),
+    [mainCategories, subCategories, brands],
   );
 
   const handleBulkDelete = useCallback(

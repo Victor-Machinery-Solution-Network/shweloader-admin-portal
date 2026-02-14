@@ -162,7 +162,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   enableSelection?: boolean;
   enablePagination?: boolean;
-  /** Enable drag-and-drop row reordering. Requires getRowId. Disables column sorting. */
+  /** Enable drag-and-drop row reordering. Requires getRowId. Column sorting is supported — clicking a sortable header temporarily hides drag handles and sorts by column; a "Custom Order" button lets users return to drag mode. */
   enableDragSort?: boolean;
   /** Unique ID getter for each row (required when enableDragSort is true) */
   getRowId?: (row: TData) => string | number;
@@ -194,15 +194,20 @@ function DataTable<TData, TValue>({
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
+  // When drag-sort is enabled, column sorting and drag reordering coexist:
+  // - No column sorted → drag handles visible, DnD active ("custom order" mode)
+  // - Column sorted → drag handles hidden, standard sorted table, "Custom Order" button shown
+  const isColumnSorted = sorting.length > 0;
+
   const allColumns = React.useMemo(() => {
     const cols: ColumnDef<TData, TValue>[] = [];
-    if (enableDragSort)
+    if (enableDragSort && !isColumnSorted)
       cols.push(getDragHandleColumn<TData>() as ColumnDef<TData, TValue>);
     if (enableSelection)
       cols.push(getSelectColumn<TData>() as ColumnDef<TData, TValue>);
     cols.push(...columns);
     return cols;
-  }, [columns, enableSelection, enableDragSort]);
+  }, [columns, enableSelection, enableDragSort, isColumnSorted]);
 
   const table = useReactTable({
     data,
@@ -214,13 +219,12 @@ function DataTable<TData, TValue>({
     getPaginationRowModel: enablePagination
       ? getPaginationRowModel()
       : undefined,
-    getSortedRowModel: enableDragSort ? undefined : getSortedRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    enableSorting: !enableDragSort,
     state: {
       sorting,
       columnFilters,
@@ -329,7 +333,7 @@ function DataTable<TData, TValue>({
     <DataTableContext.Provider value={{ clearSelection }}>
       <div className="space-y-4">
         {/* Toolbar */}
-        {(searchKey || resolvedToolbar) && (
+        {(searchKey || resolvedToolbar || (enableDragSort && isColumnSorted)) && (
           <div className="flex items-center gap-2">
             {searchKey && (
               <Input
@@ -344,13 +348,23 @@ function DataTable<TData, TValue>({
                 className="max-w-xs"
               />
             )}
+            {enableDragSort && isColumnSorted && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSorting([])}
+              >
+                <GripVertical className="size-3.5" />
+                Custom Order
+              </Button>
+            )}
             {resolvedToolbar}
           </div>
         )}
 
         {/* Table */}
         <div className="rounded-xl border">
-          {enableDragSort && getRowId ? (
+          {enableDragSort && getRowId && !isColumnSorted ? (
             <React.Suspense fallback={renderTableContent()}>
               <LazyDndTable
                 table={table}

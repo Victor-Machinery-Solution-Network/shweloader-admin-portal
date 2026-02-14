@@ -5,15 +5,19 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { RowActions } from "./row-actions";
-import type { EquipmentModel, EquipmentSubCategory } from "@/types/equipment";
+import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
 import type { ProductBrand } from "@/types/brand";
 
 export function createColumns(
+  mainCategories: EquipmentMainCategory[],
   subCategories: EquipmentSubCategory[],
   brands: ProductBrand[],
 ): ColumnDef<EquipmentModel>[] {
+  const mainCategoryMap = new Map(
+    mainCategories.map((mc) => [mc.category_id, mc.name]),
+  );
   const subCategoryMap = new Map(
-    subCategories.map((sc) => [sc.sub_category_id, sc.name]),
+    subCategories.map((sc) => [sc.sub_category_id, sc]),
   );
   const brandMap = new Map(brands.map((b) => [b.brand_id, b.name]));
 
@@ -29,14 +33,30 @@ export function createColumns(
       },
     },
     {
+      id: "main_category",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Main Category" />
+      ),
+      cell: ({ row }) => {
+        const sc = subCategoryMap.get(row.original.sub_category_id);
+        const name = sc
+          ? (mainCategoryMap.get(sc.category_id) ?? `#${sc.category_id}`)
+          : "—";
+        return (
+          <Badge variant="outline" className="text-xs">
+            {name}
+          </Badge>
+        );
+      },
+    },
+    {
       id: "sub_category",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sub Category" />
       ),
       cell: ({ row }) => {
-        const name =
-          subCategoryMap.get(row.original.sub_category_id) ??
-          `#${row.original.sub_category_id}`;
+        const sc = subCategoryMap.get(row.original.sub_category_id);
+        const name = sc?.name ?? `#${row.original.sub_category_id}`;
         return (
           <Badge variant="secondary" className="text-xs">
             {name}

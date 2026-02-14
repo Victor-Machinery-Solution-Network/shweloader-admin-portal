@@ -33,8 +33,8 @@ export function RowActions({ location, linkedCount }: RowActionsProps) {
 
   const deleteDescription =
     linkedCount > 0
-      ? `This will permanently delete "${location.city_name}". There ${linkedCount === 1 ? "is" : "are"} ${linkedCount} ${linkedCount === 1 ? "listing" : "listings"} linked to this location that must be removed first.`
-      : `This will permanently delete "${location.city_name}". This action cannot be undone.`;
+      ? <>This will permanently delete <strong>&ldquo;{location.city_name}&rdquo;</strong>.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "listing" : "listings"} linked to this location that must be removed first.</>
+      : <>This will permanently delete <strong>&ldquo;{location.city_name}&rdquo;</strong>.<br />This action cannot be undone.</>;
 
   return (
     <>
