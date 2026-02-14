@@ -114,8 +114,8 @@ export function EquipmentModelForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-muted-foreground size-6" />
-          : <Cog className="text-muted-foreground size-6" />
+          ? <Pencil className="text-primary size-6" />
+          : <Cog className="text-primary size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

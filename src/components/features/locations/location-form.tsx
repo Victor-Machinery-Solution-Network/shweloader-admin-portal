@@ -50,8 +50,8 @@ export function LocationForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-muted-foreground size-6" />
-          : <MapPin className="text-muted-foreground size-6" />
+          ? <Pencil className="text-primary size-6" />
+          : <MapPin className="text-primary size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

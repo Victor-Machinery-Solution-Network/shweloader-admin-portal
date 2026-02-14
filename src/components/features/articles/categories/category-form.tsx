@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -51,7 +51,11 @@ export function CategoryForm({
           ? "Update the category name."
           : "Add a new category for organizing articles."
       }
-      icon={<FolderOpen className="text-muted-foreground size-6" />}
+      icon={
+        isEditing
+          ? <Pencil className="text-primary size-6" />
+          : <FolderOpen className="text-primary size-6" />
+      }
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

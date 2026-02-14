@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { RequiredInput } from "@/components/ui/required-input";
@@ -96,6 +96,11 @@ export function ArticleForm({
       title={isEditing ? "Edit Article" : "Create Article"}
       description={
         isEditing ? "Update the article details." : "Write a new article post."
+      }
+      icon={
+        isEditing
+          ? <Pencil className="text-primary size-6" />
+          : <FileText className="text-primary size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
@@ -53,7 +53,11 @@ export function AnnouncementForm({
           ? "Update announcement text."
           : "Create a new announcement bar message."
       }
-      icon={<Megaphone className="text-muted-foreground size-6" />}
+      icon={
+        isEditing
+          ? <Pencil className="text-primary size-6" />
+          : <Megaphone className="text-primary size-6" />
+      }
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

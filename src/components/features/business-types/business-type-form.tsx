@@ -55,8 +55,8 @@ export function BusinessTypeForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-muted-foreground size-6" />
-          : <Briefcase className="text-muted-foreground size-6" />
+          ? <Pencil className="text-primary size-6" />
+          : <Briefcase className="text-primary size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

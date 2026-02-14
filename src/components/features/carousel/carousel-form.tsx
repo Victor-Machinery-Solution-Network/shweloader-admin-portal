@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { Images } from "lucide-react";
+import { Images, Pencil } from "lucide-react";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -54,7 +54,11 @@ export function CarouselForm({
           ? "Update the carousel details."
           : "Create a new carousel to display images."
       }
-      icon={<Images className="text-muted-foreground size-6" />}
+      icon={
+        isEditing
+          ? <Pencil className="text-primary size-6" />
+          : <Images className="text-primary size-6" />
+      }
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}

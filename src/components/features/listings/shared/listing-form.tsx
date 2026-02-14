@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, useCallback } from "react";
-import { ShoppingCart, Home, CheckCircle } from "lucide-react";
+import { ShoppingCart, Home, CheckCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -275,10 +275,12 @@ export function ListingForm({
         isEditing ? "Update the listing details." : "Create a new listing."
       }
       icon={
-        pageType === "sale" ? (
-          <ShoppingCart aria-hidden="true" className="text-muted-foreground size-6" />
+        isEditing ? (
+          <Pencil className="text-primary size-6" />
+        ) : pageType === "sale" ? (
+          <ShoppingCart className="text-primary size-6" />
         ) : (
-          <Home aria-hidden="true" className="text-muted-foreground size-6" />
+          <Home className="text-primary size-6" />
         )
       }
       onSubmit={handleSubmit}
