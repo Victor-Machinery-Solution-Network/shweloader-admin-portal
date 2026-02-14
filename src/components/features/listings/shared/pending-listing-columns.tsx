@@ -9,6 +9,7 @@ import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
@@ -128,6 +129,7 @@ interface ReferenceData {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
 }
 
 // --- Pending Sale Columns ---
@@ -137,6 +139,7 @@ export function createPendingSaleColumns(
   equipmentModels: EquipmentModel[],
   attachmentModels: AttachmentModel[],
   locations: Location[],
+  conditionTypes: ConditionType[],
 ): ColumnDef<SaleListingWithDetails>[] {
   return [
     thumbnailColumn<SaleListingWithDetails>(),
@@ -165,6 +168,7 @@ export function createPendingSaleColumns(
           equipmentModels={equipmentModels}
           attachmentModels={attachmentModels}
           locations={locations}
+          conditionTypes={conditionTypes}
         />
       ),
     },
@@ -178,6 +182,7 @@ export function createPendingRentColumns(
   equipmentModels: EquipmentModel[],
   attachmentModels: AttachmentModel[],
   locations: Location[],
+  conditionTypes: ConditionType[],
 ): ColumnDef<RentListingWithDetails>[] {
   return [
     thumbnailColumn<RentListingWithDetails>(),
@@ -206,6 +211,7 @@ export function createPendingRentColumns(
           equipmentModels={equipmentModels}
           attachmentModels={attachmentModels}
           locations={locations}
+          conditionTypes={conditionTypes}
         />
       ),
     },

@@ -27,6 +27,7 @@ import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
@@ -272,6 +273,7 @@ interface ReferenceData {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
 }
 
 // --- Sale Columns ---
@@ -281,12 +283,14 @@ export function createSaleColumns(
   equipmentModels: EquipmentModel[],
   attachmentModels: AttachmentModel[],
   locations: Location[],
+  conditionTypes: ConditionType[],
 ): ColumnDef<SaleListingWithDetails>[] {
   const ref: ReferenceData = {
     partners,
     equipmentModels,
     attachmentModels,
     locations,
+    conditionTypes,
   };
 
   return [
@@ -295,12 +299,12 @@ export function createSaleColumns(
     partnerColumn<SaleListingWithDetails>(),
     productTypeColumn<SaleListingWithDetails>(),
     {
-      accessorKey: "condition",
+      accessorKey: "condition_name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Condition" />
       ),
       cell: ({ row }) => {
-        const condition = row.original.condition;
+        const condition = row.original.condition_name;
         return condition ? (
           <span className="text-sm">{condition}</span>
         ) : (
@@ -354,12 +358,14 @@ export function createRentColumns(
   equipmentModels: EquipmentModel[],
   attachmentModels: AttachmentModel[],
   locations: Location[],
+  conditionTypes: ConditionType[],
 ): ColumnDef<RentListingWithDetails>[] {
   const ref: ReferenceData = {
     partners,
     equipmentModels,
     attachmentModels,
     locations,
+    conditionTypes,
   };
 
   return [

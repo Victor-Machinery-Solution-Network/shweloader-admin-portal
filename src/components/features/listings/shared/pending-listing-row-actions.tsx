@@ -18,6 +18,7 @@ import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
@@ -30,6 +31,7 @@ interface PendingListingRowActionsProps {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
 }
 
 export function PendingListingRowActions({
@@ -39,6 +41,7 @@ export function PendingListingRowActions({
   equipmentModels,
   attachmentModels,
   locations,
+  conditionTypes,
 }: PendingListingRowActionsProps) {
   const [showView, setShowView] = useState(false);
   const [showReject, setShowReject] = useState(false);
@@ -95,6 +98,7 @@ export function PendingListingRowActions({
         equipmentModels={equipmentModels}
         attachmentModels={attachmentModels}
         locations={locations}
+        conditionTypes={conditionTypes}
         onApprove={() => handleApprove(true)}
         isApproving={isPending}
       />

@@ -28,11 +28,19 @@ import {
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
 import type { Location } from "@/types/location";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   ProductImage,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 
 type ListingDetails = SaleListingWithDetails | RentListingWithDetails;
@@ -48,6 +56,7 @@ interface ListingFormProps {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
   onApprove?: () => void;
   isApproving?: boolean;
 }
@@ -62,6 +71,7 @@ export function ListingForm({
   equipmentModels,
   attachmentModels,
   locations,
+  conditionTypes,
   onApprove,
   isApproving = false,
 }: ListingFormProps) {
@@ -264,7 +274,8 @@ export function ListingForm({
   }
 
   const showCondition = forSale;
-  const saleDefaults = listing && "condition" in listing ? listing : null;
+  const saleDefaults =
+    listing && "condition_type_id" in listing ? listing : null;
 
   return (
     <FormDialog
@@ -468,12 +479,23 @@ export function ListingForm({
           <Field orientation="vertical">
             <FieldLabel>Condition</FieldLabel>
             <FieldContent>
-              <Input
-                name="condition"
-                placeholder="e.g. Used - Good"
-                defaultValue={saleDefaults?.condition ?? ""}
-                autoComplete="off"
-              />
+              <Select
+                name="condition_type_id"
+                defaultValue={
+                  saleDefaults?.condition_type_id?.toString() ?? ""
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select condition" />
+                </SelectTrigger>
+                <SelectContent>
+                  {conditionTypes.map((ct) => (
+                    <SelectItem key={ct.id} value={String(ct.id)}>
+                      {ct.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FieldContent>
           </Field>
         )}

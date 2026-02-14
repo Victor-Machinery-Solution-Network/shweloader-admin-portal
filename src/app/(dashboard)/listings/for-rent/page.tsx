@@ -10,6 +10,7 @@ import {
   getEquipmentModels,
   getAttachmentModels,
   getLocations,
+  getConditionTypes,
 } from "@/lib/cache";
 import { ListingsClient } from "@/components/features/listings/shared/listings-client";
 
@@ -42,6 +43,7 @@ async function RentListingsContent() {
     CACHE_TAGS.EQUIPMENT_MODELS,
     CACHE_TAGS.ATTACHMENT_MODELS,
     CACHE_TAGS.LOCATIONS,
+    CACHE_TAGS.CONDITION_TYPES,
   );
 
   const [
@@ -51,6 +53,7 @@ async function RentListingsContent() {
     equipmentModels,
     attachmentModels,
     locations,
+    conditionTypes,
   ] = await Promise.all([
     getRentListings(),
     getFeaturedListings(),
@@ -58,6 +61,7 @@ async function RentListingsContent() {
     getEquipmentModels(),
     getAttachmentModels(),
     getLocations(),
+    getConditionTypes(),
   ]);
 
   return (
@@ -69,6 +73,7 @@ async function RentListingsContent() {
       equipmentModels={equipmentModels}
       attachmentModels={attachmentModels}
       locations={locations}
+      conditionTypes={conditionTypes}
     />
   );
 }

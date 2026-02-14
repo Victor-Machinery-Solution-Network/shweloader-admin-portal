@@ -19,6 +19,7 @@ import {
   articleStatusTypeService,
 } from "@/lib/services/article";
 import { carouselService } from "@/lib/services/carousel";
+import { conditionTypeService } from "@/lib/services/listing";
 import { getAllSubCategoryBrandLinks, getAllCategoryBrandLinks } from "@/lib/actions/brand";
 import {
   getApprovedPartners as fetchApprovedPartners,
@@ -129,6 +130,10 @@ export async function getCarouselsWithImages() {
       images: await getCarouselImages(c.carousel_id),
     })),
   );
+}
+
+export function getConditionTypes() {
+  return conditionTypeService.list({ sort_by: "name", order: "asc" });
 }
 
 // Listing detail queries

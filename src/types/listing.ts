@@ -24,12 +24,18 @@ export interface ProductImage {
   created_at: string;
 }
 
-/** Matches the sale_listing table in D1 (includes manually added is_sold_out) */
+/** Matches the condition_type lookup table in D1 */
+export interface ConditionType {
+  id: number;
+  name: string;
+}
+
+/** Matches the sale_listing table in D1 */
 export interface SaleListing {
   id: number;
   custom_id: string | null;
   product_list_id: number;
-  condition: string | null;
+  condition_type_id: number | null;
   mmk_price: number | null;
   usd_price: number | null;
   is_hidden: number;
@@ -76,7 +82,8 @@ export interface SaleListingWithDetails {
   id: number;
   custom_id: string | null;
   product_list_id: number;
-  condition: string | null;
+  condition_type_id: number | null;
+  condition_name: string | null;
   mmk_price: number | null;
   usd_price: number | null;
   is_hidden: number;

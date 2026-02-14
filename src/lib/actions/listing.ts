@@ -134,7 +134,9 @@ export async function createListing(formData: FormData) {
       await saleListingService.create({
         product_list_id: productId,
         custom_id: (formData.get("custom_id") as string)?.trim() || null,
-        condition: (formData.get("condition") as string)?.trim() || null,
+        condition_type_id: formData.get("condition_type_id")
+          ? Number(formData.get("condition_type_id"))
+          : null,
         mmk_price: formData.get("mmk_price")
           ? Number(formData.get("mmk_price"))
           : null,
@@ -204,7 +206,9 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     // 2. Update sale_listing
     await saleListingService.update(saleId, {
       custom_id: (formData.get("custom_id") as string)?.trim() || null,
-      condition: (formData.get("condition") as string)?.trim() || null,
+      condition_type_id: formData.get("condition_type_id")
+        ? Number(formData.get("condition_type_id"))
+        : null,
       mmk_price: formData.get("mmk_price")
         ? Number(formData.get("mmk_price"))
         : null,
@@ -428,7 +432,8 @@ export async function getSaleListingsWithDetails(): Promise<
 > {
   const result = await d1.query<SaleListingWithDetails>(
     `SELECT
-      sl.id, sl.custom_id, sl.product_list_id, sl.condition,
+      sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
+      ct.name AS condition_name,
       sl.mmk_price, sl.usd_price, sl.is_hidden, sl.is_sold_out,
       sl.approve_status_id, sl.rejection_reason,
       sl.created_at,
@@ -442,6 +447,7 @@ export async function getSaleListingsWithDetails(): Promise<
       fl.id AS featured_id
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN partner p ON pl.partner_id = p.id

@@ -36,6 +36,7 @@ import type {
   RentListingWithDetails,
   FeaturedListingWithDetails,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
@@ -72,6 +73,7 @@ interface ListingsClientProps {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
 }
 
 export function ListingsClient({
@@ -82,6 +84,7 @@ export function ListingsClient({
   equipmentModels,
   attachmentModels,
   locations,
+  conditionTypes,
 }: ListingsClientProps) {
   const config = PAGE_CONFIG[pageType];
   const Icon = config.icon;
@@ -94,8 +97,9 @@ export function ListingsClient({
       equipmentModels,
       attachmentModels,
       locations,
+      conditionTypes,
     ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations]);
+  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes]);
 
   const pendingColumns = useMemo(() => {
     const factory =
@@ -105,8 +109,9 @@ export function ListingsClient({
       equipmentModels,
       attachmentModels,
       locations,
+      conditionTypes,
     ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations]);
+  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes]);
 
   // Split listings by approval status
   const approvedListings = useMemo(
@@ -228,7 +233,7 @@ export function ListingsClient({
   return (
     <>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList variant="segment">
+        <TabsList>
           <TabsTrigger value="listings">
             <Icon className="size-4" aria-hidden="true" />
             {config.tabLabel}
@@ -324,6 +329,7 @@ export function ListingsClient({
             equipmentModels={equipmentModels}
             attachmentModels={attachmentModels}
             locations={locations}
+            conditionTypes={conditionTypes}
           />
         </Suspense>
       )}

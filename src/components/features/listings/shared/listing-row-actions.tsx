@@ -19,6 +19,7 @@ import type {
   RentListingWithDetails,
   ProductImage,
   ApprovedPartner,
+  ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
@@ -31,6 +32,7 @@ interface ListingRowActionsProps {
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
   locations: Location[];
+  conditionTypes: ConditionType[];
 }
 
 export function ListingRowActions({
@@ -40,6 +42,7 @@ export function ListingRowActions({
   equipmentModels,
   attachmentModels,
   locations,
+  conditionTypes,
 }: ListingRowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -94,6 +97,7 @@ export function ListingRowActions({
             equipmentModels={equipmentModels}
             attachmentModels={attachmentModels}
             locations={locations}
+            conditionTypes={conditionTypes}
           />
         </Suspense>
       )}

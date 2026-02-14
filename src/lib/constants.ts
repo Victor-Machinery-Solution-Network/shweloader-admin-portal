@@ -89,4 +89,5 @@ export const CACHE_TAGS = {
   ARTICLE_CATEGORIES: "article-categories",
   ARTICLES: "articles",
   CAROUSELS: "carousels",
+  CONDITION_TYPES: "condition-types",
 } as const;

@@ -5,6 +5,7 @@ import type {
   SaleListing,
   RentListing,
   FeaturedListing,
+  ConditionType,
 } from "@/types/listing";
 
 export const productListService = createService<ProductList>("product_list", {
@@ -26,5 +27,10 @@ export const rentListingService = createService<RentListing>("rent_listing", {
 
 export const featuredListingService = createService<FeaturedListing>(
   "featured_listing",
+  { primaryKey: "id" },
+);
+
+export const conditionTypeService = createService<ConditionType>(
+  "condition_type",
   { primaryKey: "id" },
 );
