@@ -1,7 +1,12 @@
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { PageHeader } from "@/components/shared/page-header";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import {
-  getCachedBrands,
-  getCachedAttachmentCategories,
-  getCachedSubCategories,
+  getBrands,
+  getAttachmentCategories,
+  getSubCategories,
 } from "@/lib/cache";
 import {
   getBrandsCategoryIds,
@@ -18,14 +23,28 @@ export const metadata = {
   description: "Manage product brands",
 };
 
-export default async function BrandsPage() {
+export default function BrandsPage() {
+  return (
+    <>
+      <PageHeader title="Brands" description="Manage product brands" />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <BrandsContent />
+      </Suspense>
+    </>
+  );
+}
+
+async function BrandsContent() {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag(CACHE_TAGS.BRANDS);
+
   const [brands, categories, subCategories] = await Promise.all([
-    getCachedBrands(),
-    getCachedAttachmentCategories(),
-    getCachedSubCategories(),
+    getBrands(),
+    getAttachmentCategories(),
+    getSubCategories(),
   ]);
 
-  // Fetch category & sub-category links + delete-linked counts for all brands in parallel
   const brandIds = brands.map((b) => b.brand_id);
   const [categoryIdMap, subCategoryIdMap, countsMap] = await Promise.all([
     getBrandsCategoryIds(brandIds),

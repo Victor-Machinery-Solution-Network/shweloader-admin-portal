@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PageHeader } from "@/components/shared/page-header";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
@@ -227,10 +227,8 @@ export function ListingsClient({
 
   return (
     <>
-      <PageHeader title={config.title} description={config.description} />
-
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList variant="segment">
           <TabsTrigger value="listings">
             <Icon className="size-4" aria-hidden="true" />
             {config.tabLabel}

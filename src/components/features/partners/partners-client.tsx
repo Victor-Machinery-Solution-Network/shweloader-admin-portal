@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { Handshake, Clock, ShieldCheck, ShieldX } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -34,11 +33,6 @@ export function PartnersClient({ partners }: PartnersClientProps) {
 
   return (
     <>
-      <PageHeader
-        title="Partners"
-        description="Review and manage partner applications"
-      />
-
       <Tabs defaultValue="partners">
         <TabsList>
           <TabsTrigger value="partners">

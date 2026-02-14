@@ -70,13 +70,7 @@ export const SYSTEM_EXCHANGE_RATE = 3200;
 // Cache configuration
 // ---------------------------------------------------------------------------
 
-/** Revalidation intervals in seconds */
-export const CACHE_TTL = {
-  LOOKUP: 300, // 5 min — brands, locations, categories
-  MODEL: 120, // 2 min — equipment/attachment models, partners, listings
-} as const;
-
-/** Tag strings used by unstable_cache + updateTag for invalidation */
+/** Tag strings used by cacheTag (use cache) + updateTag for invalidation */
 export const CACHE_TAGS = {
   BRANDS: "brands",
   LOCATIONS: "locations",

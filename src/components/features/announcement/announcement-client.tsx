@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { Megaphone, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { columns } from "./columns";
@@ -54,11 +53,6 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
 
   return (
     <>
-      <PageHeader
-        title="Announcement Bar"
-        description="Manage announcement messages shown on the website"
-      />
-
       {data.length > 0 ? (
         <DataTable
           columns={columns}

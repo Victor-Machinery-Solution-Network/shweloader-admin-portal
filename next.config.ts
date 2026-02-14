@@ -9,14 +9,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   reactCompiler: true,
   headers: async () => [
     { source: "/(.*)", headers: securityHeaders },
   ],
   experimental: {
-    staleTimes: {
-      static: 0, // Disable client Router Cache — server-side unstable_cache handles freshness
-    },
     optimizePackageImports: [
       "lucide-react",
       "@hugeicons/core-free-icons",

@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PageHeader } from "@/components/shared/page-header";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { CarouselForm } from "./carousel-form";
@@ -64,14 +64,11 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
 
   return (
     <>
-      <PageHeader
-        title="Carousel Images"
-        description="Manage carousel slideshows for the website"
-      >
+      <div className="flex justify-end mb-4">
         <Button onClick={() => setShowCreate(true)}>
           <Plus /> Add Carousel
         </Button>
-      </PageHeader>
+      </div>
 
       {carousels.length > 0 ? (
         <Tabs defaultValue={defaultTab}>

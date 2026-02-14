@@ -140,20 +140,20 @@ export default async function BrandsPage() {
 Usage in Server Actions:
 
 ```typescript
-// lib/actions/brands.ts
+// lib/actions/brand.ts
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { brandService } from '@/lib/services/brands';
+import { invalidateTag } from '@/lib/cache-invalidation';
+import { CACHE_TAGS } from '@/lib/constants';
+import { brandService } from '@/lib/services/brand';
 
 export async function createBrand(formData: FormData) {
   const brand = await brandService.create({
     name: formData.get('name') as string,
     logo_url: formData.get('logo_url') as string,
-    status: 'active',
   });
 
-  revalidatePath('/brands');
+  invalidateTag(CACHE_TAGS.BRANDS); // Also invalidates dependent tags
   return { success: true, data: brand };
 }
 
@@ -162,14 +162,13 @@ export async function updateBrand(id: number, formData: FormData) {
     name: formData.get('name') as string,
   });
 
-  revalidatePath('/brands');
-  revalidatePath(`/brands/${id}`);
+  invalidateTag(CACHE_TAGS.BRANDS);
   return { success: true, data: brand };
 }
 
 export async function deleteBrand(id: number) {
   await brandService.delete(id);
-  revalidatePath('/brands');
+  invalidateTag(CACHE_TAGS.BRANDS);
   return { success: true };
 }
 ```
@@ -888,59 +887,133 @@ export async function POST(request: Request) {
 
 ## Caching Strategies
 
-### Revalidation
+This project uses **Cache Components** (`cacheComponents: true` in `next.config.ts`) with **Partial Prerendering (PPR)**. Caching is done at the **component level** using the `"use cache"` directive.
+
+### Architecture Overview
+
+```
+page.tsx (sync)         → PageHeader (static shell, instant from CDN)
+  └─ <Suspense>         → fallback={<DataTableSkeleton />}
+       └─ Content()     → async component with "use cache" (cached data)
+            └─ cache.ts → plain data-fetching functions (no caching)
+```
+
+- **`cache.ts`** — Plain data-fetching layer. No caching logic. Each function wraps a service call with default sort params.
+- **Page data components** — Own the caching strategy via `"use cache"` + `cacheLife` + `cacheTag`.
+- **`cache-invalidation.ts`** — Uses `updateTag()` for immediate cache invalidation in server actions.
+
+### Page Pattern (Component-Level Caching)
+
+Every data page follows this pattern:
 
 ```typescript
-// Revalidate every 1 hour
-const res = await fetch('https://api.example.com/data', {
-  next: { revalidate: 3600 }
-});
+// app/(dashboard)/brands/page.tsx
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { PageHeader } from "@/components/shared/page-header";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { getBrands } from "@/lib/cache";
+import { BrandsClient } from "@/components/features/brands/brands-client";
 
-// No caching
-const res = await fetch('https://api.example.com/data', {
-  cache: 'no-store'
-});
+export const metadata = {
+  title: "Brands",
+  description: "Manage brands",
+};
 
-// Force cache
-const res = await fetch('https://api.example.com/data', {
-  cache: 'force-cache'
-});
+// Sync page function — renders static shell instantly
+export default function BrandsPage() {
+  return (
+    <>
+      <PageHeader title="Brands" description="Manage brands" />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <BrandsContent />
+      </Suspense>
+    </>
+  );
+}
+
+// Async data component — cached via "use cache"
+async function BrandsContent() {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag(CACHE_TAGS.BRANDS);
+
+  const brands = await getBrands();
+  return <BrandsClient brands={brands} />;
+}
 ```
+
+### Cache Tiers
+
+| Tier | TTL | `cacheLife` | Used For |
+|------|-----|-------------|----------|
+| Tier 1 (Lookup) | 5 min / 1 hr | `{ stale: 300, revalidate: 300, expire: 3600 }` | Brands, locations, categories, customers, announcements |
+| Tier 2 (Model) | 2 min / 30 min | `{ stale: 120, revalidate: 120, expire: 1800 }` | Equipment/attachment models, partners, articles, carousels, listings |
 
 ### Cache Tags
 
+Tags are defined in `CACHE_TAGS` (`src/lib/constants.ts`). Each page data component tags itself with the entities it depends on:
+
 ```typescript
-// Add cache tags
-const user = await fetch(`https://api.example.com/users/${id}`, {
-  next: { tags: [`user-${id}`, 'users'] }
-});
+// Single entity page
+cacheTag(CACHE_TAGS.ANNOUNCEMENTS);
 
-// Revalidate by tag
-import { revalidateTag } from 'next/cache';
+// Multi-entity page — tag with ALL dependencies
+cacheTag(
+  CACHE_TAGS.RENT_LISTINGS,
+  CACHE_TAGS.FEATURED_LISTINGS,
+  CACHE_TAGS.PARTNERS,
+  CACHE_TAGS.EQUIPMENT_MODELS,
+  CACHE_TAGS.ATTACHMENT_MODELS,
+  CACHE_TAGS.LOCATIONS,
+);
+```
 
-export async function updateUser(id: string, data: any) {
-  await db.user.update({ where: { id }, data });
-  revalidateTag(`user-${id}`);
-  revalidateTag('users');
+### Cache Invalidation (Server Actions)
+
+Use `invalidateTag()` from `cache-invalidation.ts` in server actions. It calls `updateTag()` (immediate invalidation + Router Cache) and resolves dependent tags recursively.
+
+```typescript
+// lib/actions/brand.ts
+"use server";
+
+import { invalidateTag } from "@/lib/cache-invalidation";
+import { CACHE_TAGS } from "@/lib/constants";
+
+export async function createBrand(data: FormData) {
+  const brand = await brandService.create({ ... });
+
+  // Invalidates BRANDS + dependent tags (EQUIPMENT_MODELS, ATTACHMENT_MODELS)
+  invalidateTag(CACHE_TAGS.BRANDS);
+
+  return { success: true, data: brand };
 }
 ```
 
-### Path Revalidation
+### Data-Fetching Layer (`cache.ts`)
+
+Plain functions that wrap service calls with default sort params. **No caching here** — caching is at the component level.
 
 ```typescript
-import { revalidatePath } from 'next/cache';
+// src/lib/cache.ts
+export function getBrands() {
+  return brandService.list({ sort_by: "name", order: "asc" });
+}
 
-export async function createUser(data: any) {
-  const user = await db.user.create({ data });
-
-  // Revalidate specific paths
-  revalidatePath('/users');
-  revalidatePath(`/users/${user.id}`);
-
-  // Revalidate all user routes
-  revalidatePath('/users', 'layout');
+export function getLocations() {
+  return locationService.list({ sort_by: "city_name", order: "asc" });
 }
 ```
+
+### Adding a New Cached Page
+
+1. **Add data function** to `cache.ts` (plain function, no caching)
+2. **Create page.tsx** with sync page + `<Suspense>` + async data component
+3. **Add `"use cache"`** + `cacheLife()` + `cacheTag()` to the data component
+4. **Add cache tag** to `CACHE_TAGS` in `constants.ts`
+5. **Add dependencies** to `CACHE_DEPENDENTS` in `cache-invalidation.ts` if needed
+6. **Call `invalidateTag()`** in server actions after mutations
 
 ---
 
@@ -1081,17 +1154,18 @@ const posts = await fetchPosts(); // Waits for users
 </Suspense>
 ```
 
-### 5. Cache Wisely
+### 5. Cache at Component Level
 
 ```typescript
-// Static data - cache forever
-fetch(url, { cache: 'force-cache' });
+// Use "use cache" on async data components, not on data functions
+async function DataContent() {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 }); // Tier 1
+  cacheTag(CACHE_TAGS.YOUR_ENTITY);
 
-// Dynamic data - short cache
-fetch(url, { next: { revalidate: 60 } });
-
-// Real-time data - no cache
-fetch(url, { cache: 'no-store' });
+  const data = await getData(); // Plain function from cache.ts
+  return <DataClient data={data} />;
+}
 ```
 
 ### 6. Type Safety

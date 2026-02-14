@@ -2,80 +2,71 @@
  * Loading skeleton components
  */
 
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function TableSkeleton({ rows = 5 }: { rows?: number }) {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className="h-12 w-full" />
-      ))}
-    </div>
-  );
-}
-
-export function CardSkeleton() {
-  return (
-    <Card className="p-6">
-      <Skeleton className="h-4 w-1/4 mb-2" />
-      <Skeleton className="h-8 w-1/3 mb-4" />
-      <Skeleton className="h-4 w-full" />
-    </Card>
-  );
-}
-
-export function TablePageSkeleton({ rows = 5 }: { rows?: number }) {
+/**
+ * Skeleton matching the DataTable layout exactly: add button, search bar,
+ * table (header + rows using real table elements), and pagination footer.
+ * Used as the Suspense fallback so only the data area shows a skeleton
+ * while the PageHeader above remains visible.
+ */
+export function DataTableSkeleton({
+  rows = 5,
+  columns = 4,
+}: {
+  rows?: number;
+  columns?: number;
+}) {
   return (
     <div className="space-y-4">
-      {/* PageHeader skeleton */}
-      <div className="flex items-center justify-between border-b pb-4 mb-6">
-        <div>
-          <Skeleton className="h-9 w-48" />
-          <Skeleton className="h-4 w-64 mt-2" />
-        </div>
-        <Skeleton className="h-9 w-32" />
-      </div>
-
-      {/* Search bar skeleton */}
+      {/* Toolbar: search + add button in same row (matches DataTable toolbar) */}
       <div className="flex items-center gap-2">
-        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-9 w-full max-w-xs" />
+        <Skeleton className="h-9 w-32 ml-auto" />
       </div>
 
-      {/* Table skeleton */}
+      {/* Table */}
       <div className="rounded-xl border">
-        <div className="p-4 space-y-3">
-          <div className="flex gap-4 pb-3 border-b">
+        <div className="relative w-full overflow-x-auto">
+          <table className="w-full caption-bottom text-sm">
+            <thead className="bg-muted/50 [&_tr]:border-b">
+              <tr className="border-b">
+                {Array.from({ length: columns }).map((_, i) => (
+                  <th key={i} className="h-12 px-3 text-left align-middle">
+                    <Skeleton className="h-4 w-24" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0">
+              {Array.from({ length: rows }).map((_, i) => (
+                <tr key={i} className="border-b">
+                  {Array.from({ length: columns }).map((_, j) => (
+                    <td key={j} className="p-3 align-middle">
+                      <Skeleton className="h-4 w-full" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination footer */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-36" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-[4.375rem]" />
+          <Skeleton className="h-4 w-20" />
+          <div className="flex items-center gap-1">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-4 flex-1" />
+              <Skeleton key={i} className="h-7 w-7 rounded-md" />
             ))}
           </div>
-          {Array.from({ length: rows }).map((_, i) => (
-            <div key={i} className="flex gap-4 py-2">
-              {Array.from({ length: 4 }).map((_, j) => (
-                <Skeleton key={j} className="h-4 flex-1" />
-              ))}
-            </div>
-          ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-export function PageSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <Skeleton className="h-8 w-1/4 mb-2" />
-        <Skeleton className="h-4 w-1/3" />
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
-      </div>
-      <TableSkeleton />
     </div>
   );
 }

@@ -12,6 +12,7 @@ export function createColumns(
   mainCategories: EquipmentMainCategory[],
   subCategories: EquipmentSubCategory[],
   brands: ProductBrand[],
+  subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[],
 ): ColumnDef<EquipmentModel>[] {
   const mainCategoryMap = new Map(
     mainCategories.map((mc) => [mc.category_id, mc.name]),
@@ -103,6 +104,7 @@ export function createColumns(
           model={row.original}
           subCategories={subCategories}
           brands={brands}
+          subCategoryBrandLinks={subCategoryBrandLinks}
         />
       ),
     },

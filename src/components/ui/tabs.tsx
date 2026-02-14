@@ -25,12 +25,14 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "rounded-4xl p-[3px] shadow-sm group-data-horizontal/tabs:h-9 group-data-vertical/tabs:rounded-2xl data-[variant=line]:rounded-none data-[variant=line]:shadow-none group/tabs-list text-muted-foreground inline-flex w-fit items-center justify-center group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col",
+  "group/tabs-list text-muted-foreground inline-flex w-fit items-center justify-center group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col",
   {
     variants: {
       variant: {
-        default: "bg-muted",
+        default:
+          "bg-muted rounded-4xl p-[3px] shadow-sm group-data-horizontal/tabs:h-9 group-data-vertical/tabs:rounded-2xl",
         line: "gap-1 bg-transparent",
+        segment: "bg-muted/50 rounded-lg p-1 border border-border/30",
       },
     },
     defaultVariants: {
@@ -67,6 +69,7 @@ function TabsTrigger({
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-background data-active:shadow-sm dark:data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 data-active:text-foreground",
         "after:bg-foreground after:absolute after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        "group-data-[variant=segment]/tabs-list:h-auto group-data-[variant=segment]/tabs-list:rounded-md group-data-[variant=segment]/tabs-list:px-3 group-data-[variant=segment]/tabs-list:py-1.5 group-data-[variant=segment]/tabs-list:transition-all group-data-[variant=segment]/tabs-list:duration-200 group-data-[variant=segment]/tabs-list:data-active:shadow-[0_1px_3px_rgba(0,0,0,0.08)]",
         className,
       )}
       {...props}

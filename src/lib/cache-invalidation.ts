@@ -1,4 +1,4 @@
-import { updateTag, revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -46,6 +46,9 @@ const CACHE_DEPENDENTS: Partial<Record<CacheTag, CacheTag[]>> = {
 /**
  * Invalidate one or more cache tags plus all their dependents (recursive).
  * Uses a Set to deduplicate — safe against circular references.
+ *
+ * Uses updateTag (Server Action API) for immediate cache expiration
+ * with read-your-own-writes semantics + Router Cache invalidation.
  */
 export function invalidateTag(...tags: CacheTag[]) {
   const all = new Set<CacheTag>();
@@ -58,11 +61,4 @@ export function invalidateTag(...tags: CacheTag[]) {
 
   for (const tag of tags) resolve(tag);
   for (const tag of all) updateTag(tag);
-
-  // updateTag only invalidates unstable_cache data entries.
-  // revalidatePath invalidates the ISR route cache so the server
-  // re-renders pages with fresh data on the next request.
-  // Combined with staleTimes.static: 0 (no client Router Cache),
-  // this ensures navigating to any page always shows fresh data.
-  revalidatePath("/", "layout");
 }

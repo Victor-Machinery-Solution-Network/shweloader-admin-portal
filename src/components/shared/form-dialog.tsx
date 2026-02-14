@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,13 @@ export function FormDialog({
 }: FormDialogProps) {
   const [submitted, setSubmitted] = useState(false);
   const portalRef = useRef<HTMLDivElement>(null);
+
+  // Reset submitted state when dialog closes programmatically (e.g. after successful save).
+  // Radix Dialog's onOpenChange only fires for user-initiated closes (overlay/Escape),
+  // not when the parent changes the `open` prop directly.
+  useEffect(() => {
+    if (!open) setSubmitted(false);
+  }, [open]);
 
   return (
     <Dialog

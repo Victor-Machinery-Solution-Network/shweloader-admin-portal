@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { Cog, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { AttachmentModelForm } from "./attachment-model-form";
@@ -13,22 +12,29 @@ import { deleteAttachmentModels } from "@/lib/actions/attachment-model";
 import type { AttachmentModel, AttachmentCategory } from "@/types/attachment";
 import type { ProductBrand } from "@/types/brand";
 
+interface CategoryBrandLink {
+  category_id: number;
+  brand_id: number;
+}
+
 interface AttachmentModelsClientProps {
   models: AttachmentModel[];
   categories: AttachmentCategory[];
   brands: ProductBrand[];
+  categoryBrandLinks: CategoryBrandLink[];
 }
 
 export function AttachmentModelsClient({
   models,
   categories,
   brands,
+  categoryBrandLinks,
 }: AttachmentModelsClientProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
-    () => createColumns(categories, brands),
-    [categories, brands],
+    () => createColumns(categories, brands, categoryBrandLinks),
+    [categories, brands, categoryBrandLinks],
   );
 
   const handleBulkDelete = useCallback(
@@ -57,11 +63,6 @@ export function AttachmentModelsClient({
 
   return (
     <>
-      <PageHeader
-        title="Attachment Models"
-        description="Manage attachment models"
-      />
-
       {models.length > 0 ? (
         <DataTable
           columns={columns}
@@ -91,6 +92,7 @@ export function AttachmentModelsClient({
         onOpenChange={setShowCreate}
         categories={categories}
         brands={brands}
+        categoryBrandLinks={categoryBrandLinks}
       />
     </>
   );

@@ -14,9 +14,10 @@ interface RowActionsProps {
   model: AttachmentModel;
   categories: AttachmentCategory[];
   brands: ProductBrand[];
+  categoryBrandLinks: { category_id: number; brand_id: number }[];
 }
 
-export function RowActions({ model, categories, brands }: RowActionsProps) {
+export function RowActions({ model, categories, brands, categoryBrandLinks }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -49,6 +50,7 @@ export function RowActions({ model, categories, brands }: RowActionsProps) {
           model={model}
           categories={categories}
           brands={brands}
+          categoryBrandLinks={categoryBrandLinks}
         />
       )}
 

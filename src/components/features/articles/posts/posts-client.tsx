@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { FileText, Plus, Clock, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { Badge } from "@/components/ui/badge";
@@ -93,11 +92,6 @@ export function PostsClient({
 
   return (
     <>
-      <PageHeader
-        title="Posts"
-        description="Manage article posts for the website"
-      />
-
       <Tabs defaultValue="published">
         <TabsList>
           <TabsTrigger value="published">

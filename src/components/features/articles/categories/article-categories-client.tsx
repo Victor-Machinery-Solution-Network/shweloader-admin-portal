@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { FolderOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
@@ -54,11 +53,6 @@ export function ArticleCategoriesClient({
 
   return (
     <>
-      <PageHeader
-        title="Article Categories"
-        description="Organize your articles into categories"
-      />
-
       {categories.length > 0 ? (
         <DataTable
           columns={columns}

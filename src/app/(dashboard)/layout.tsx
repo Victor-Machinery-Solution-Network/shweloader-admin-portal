@@ -2,23 +2,24 @@
  * Dashboard layout - includes sidebar and header
  * Route group (dashboard) doesn't affect URLs
  * All pages under (dashboard) will have this layout
+ *
+ * With cacheComponents enabled (PPR):
+ * - Static shell (sidebar, headers, nav) pre-rendered at build time
+ * - Cached data (use cache) populated at build time for static pages,
+ *   on first request for PPR pages, and shared across all routes
+ * - updateTag in server actions for immediate invalidation after mutations
  */
 
-import { after } from 'next/server';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AuthSessionProvider } from '@/components/providers/session-provider';
-import { NavigationRefresh } from '@/components/providers/navigation-refresh';
-import { warmCaches } from '@/lib/cache';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  after(warmCaches);
-
   return (
     <AuthSessionProvider>
       <SidebarProvider>
@@ -28,7 +29,6 @@ export default function DashboardLayout({
         >
           Skip to main content
         </a>
-        <NavigationRefresh />
         <AppSidebar />
         <SidebarInset>
           <AppHeader />

@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { Cog, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { EquipmentModelForm } from "./equipment-model-form";
@@ -13,11 +12,17 @@ import { deleteEquipmentModels } from "@/lib/actions/equipment-model";
 import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
 import type { ProductBrand } from "@/types/brand";
 
+interface SubCategoryBrandLink {
+  sub_category_id: number;
+  brand_id: number;
+}
+
 interface EquipmentModelsClientProps {
   models: EquipmentModel[];
   mainCategories: EquipmentMainCategory[];
   subCategories: EquipmentSubCategory[];
   brands: ProductBrand[];
+  subCategoryBrandLinks: SubCategoryBrandLink[];
 }
 
 export function EquipmentModelsClient({
@@ -25,12 +30,13 @@ export function EquipmentModelsClient({
   mainCategories,
   subCategories,
   brands,
+  subCategoryBrandLinks,
 }: EquipmentModelsClientProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
-    () => createColumns(mainCategories, subCategories, brands),
-    [mainCategories, subCategories, brands],
+    () => createColumns(mainCategories, subCategories, brands, subCategoryBrandLinks),
+    [mainCategories, subCategories, brands, subCategoryBrandLinks],
   );
 
   const handleBulkDelete = useCallback(
@@ -59,11 +65,6 @@ export function EquipmentModelsClient({
 
   return (
     <>
-      <PageHeader
-        title="Equipment Models"
-        description="Manage equipment models"
-      />
-
       {models.length > 0 ? (
         <DataTable
           columns={columns}
@@ -93,6 +94,7 @@ export function EquipmentModelsClient({
         onOpenChange={setShowCreate}
         subCategories={subCategories}
         brands={brands}
+        subCategoryBrandLinks={subCategoryBrandLinks}
       />
     </>
   );

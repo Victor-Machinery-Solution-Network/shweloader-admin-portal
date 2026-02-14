@@ -29,36 +29,78 @@ app/
 
 ## Data Flow
 
-### Server Components (Default)
+### Server Components (Default) — with Cache Components
 ```typescript
-// app/(dashboard)/users/page.tsx
-export default async function UsersPage() {
-  const users = await db.getUsers(); // Direct data access
-  return <UserTable users={users} />;
+// app/(dashboard)/brands/page.tsx
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { getBrands } from "@/lib/cache";
+
+// Sync page — renders static shell instantly (PPR)
+export default function BrandsPage() {
+  return (
+    <>
+      <PageHeader title="Brands" description="Manage brands" />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <BrandsContent />
+      </Suspense>
+    </>
+  );
+}
+
+// Async data component — cached via "use cache"
+async function BrandsContent() {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag(CACHE_TAGS.BRANDS);
+
+  const brands = await getBrands();
+  return <BrandsClient brands={brands} />;
+}
+```
+
+### Data Fetching Layer (`cache.ts`)
+```typescript
+// src/lib/cache.ts — plain functions, no caching here
+export function getBrands() {
+  return brandService.list({ sort_by: "name", order: "asc" });
 }
 ```
 
 ### Server Actions (Mutations)
 ```typescript
-// lib/actions/users.ts
+// lib/actions/brand.ts
 'use server'
-export async function createUser(data: FormData) {
-  const result = await db.insertUser(data);
-  revalidatePath('/users');
+import { invalidateTag } from '@/lib/cache-invalidation';
+import { CACHE_TAGS } from '@/lib/constants';
+
+export async function createBrand(data: FormData) {
+  const result = await brandService.create({ ... });
+  invalidateTag(CACHE_TAGS.BRANDS); // updateTag + dependent tags
   return result;
 }
 ```
 
 ### Client Components (Interactivity)
 ```typescript
-// components/features/users/user-form.tsx
+// components/features/brands/brand-form.tsx
 'use client'
-import { createUser } from '@/lib/actions/users';
+import { createBrand } from '@/lib/actions/brand';
 
-export function UserForm() {
-  return <form action={createUser}>...</form>;
+export function BrandForm() {
+  return <form action={createBrand}>...</form>;
 }
 ```
+
+## Caching Architecture
+
+- **`cacheComponents: true`** in `next.config.ts` enables PPR
+- **Static shell** (sidebar, PageHeader, nav) pre-rendered at build time → instant from CDN
+- **`"use cache"` on page data components** — caches the rendered output with `cacheLife` and `cacheTag`
+- **`cache.ts`** — plain data-fetching layer (no caching logic)
+- **`cache-invalidation.ts`** — `invalidateTag()` calls `updateTag()` for immediate invalidation + resolves `CACHE_DEPENDENTS` recursively
+- **Two cache tiers**: Tier 1 (5 min) for lookup tables, Tier 2 (2 min) for models/partners/listings
+- **All data pages are `○ (Static)`** — pre-rendered at build time, no skeleton on navigation
 
 ## Routing Patterns
 
@@ -145,10 +187,11 @@ export default function Error({ error, reset }) {
 
 ### 4. Loading States
 ```typescript
-// app/(dashboard)/users/loading.tsx
-export default function Loading() {
-  return <UserTableSkeleton />;
-}
+// Use Suspense boundaries in page.tsx (not loading.tsx files)
+// With all pages static, skeletons are rarely seen
+<Suspense fallback={<DataTableSkeleton />}>
+  <DataContent />
+</Suspense>
 ```
 
 ### 5. Metadata

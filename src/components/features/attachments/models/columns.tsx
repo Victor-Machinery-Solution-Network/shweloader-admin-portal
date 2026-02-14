@@ -11,6 +11,7 @@ import type { ProductBrand } from "@/types/brand";
 export function createColumns(
   categories: AttachmentCategory[],
   brands: ProductBrand[],
+  categoryBrandLinks: { category_id: number; brand_id: number }[],
 ): ColumnDef<AttachmentModel>[] {
   const categoryMap = new Map(categories.map((c) => [c.category_id, c.name]));
   const brandMap = new Map(brands.map((b) => [b.brand_id, b.name]));
@@ -81,6 +82,7 @@ export function createColumns(
           model={row.original}
           categories={categories}
           brands={brands}
+          categoryBrandLinks={categoryBrandLinks}
         />
       ),
     },

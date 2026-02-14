@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Briefcase, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { BusinessTypeForm } from "./business-type-form";
@@ -64,14 +64,11 @@ export function BusinessTypesClient({
 
   return (
     <>
-      <PageHeader
-        title="Business Types"
-        description="Manage customer business types"
-      >
+      <div className="flex justify-end mb-4">
         <Button onClick={() => setShowCreate(true)}>
           <Plus /> Add Business Type
         </Button>
-      </PageHeader>
+      </div>
 
       {businessTypes.length > 0 ? (
         <DataTable

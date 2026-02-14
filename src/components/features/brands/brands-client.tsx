@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { Tag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { BrandForm } from "./brand-form";
@@ -88,8 +87,6 @@ export function BrandsClient({
 
   return (
     <>
-      <PageHeader title="Brands" description="Manage product brands" />
-
       {brands.length > 0 ? (
         <DataTable
           columns={columns}

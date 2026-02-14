@@ -14,9 +14,10 @@ interface RowActionsProps {
   model: EquipmentModel;
   subCategories: EquipmentSubCategory[];
   brands: ProductBrand[];
+  subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[];
 }
 
-export function RowActions({ model, subCategories, brands }: RowActionsProps) {
+export function RowActions({ model, subCategories, brands, subCategoryBrandLinks }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -49,6 +50,7 @@ export function RowActions({ model, subCategories, brands }: RowActionsProps) {
           model={model}
           subCategories={subCategories}
           brands={brands}
+          subCategoryBrandLinks={subCategoryBrandLinks}
         />
       )}
 

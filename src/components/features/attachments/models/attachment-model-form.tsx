@@ -29,6 +29,7 @@ interface AttachmentModelFormProps {
   model?: AttachmentModel;
   categories: AttachmentCategory[];
   brands: ProductBrand[];
+  categoryBrandLinks: { category_id: number; brand_id: number }[];
 }
 
 export function AttachmentModelForm({
@@ -37,32 +38,124 @@ export function AttachmentModelForm({
   model,
   categories,
   brands,
+  categoryBrandLinks,
 }: AttachmentModelFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!model;
 
+  // ID ↔ name lookup maps
   const categoryMap = new Map(
     categories.map((c) => [c.name, c.category_id]),
   );
+  const categoryIdToName = new Map(
+    categories.map((c) => [c.category_id, c.name]),
+  );
   const brandMap = new Map(brands.map((b) => [b.name, b.brand_id]));
+  const brandIdToName = new Map(brands.map((b) => [b.brand_id, b.name]));
 
-  const categoryNames = useMemo(
+  // Build bi-directional link sets: categoryId → Set<brandId>, brandId → Set<categoryId>
+  const brandsByCategory = useMemo(() => {
+    const map = new Map<number, Set<number>>();
+    for (const link of categoryBrandLinks) {
+      let set = map.get(link.category_id);
+      if (!set) {
+        set = new Set();
+        map.set(link.category_id, set);
+      }
+      set.add(link.brand_id);
+    }
+    return map;
+  }, [categoryBrandLinks]);
+
+  const categoriesByBrand = useMemo(() => {
+    const map = new Map<number, Set<number>>();
+    for (const link of categoryBrandLinks) {
+      let set = map.get(link.brand_id);
+      if (!set) {
+        set = new Set();
+        map.set(link.brand_id, set);
+      }
+      set.add(link.category_id);
+    }
+    return map;
+  }, [categoryBrandLinks]);
+
+  // All names (unfiltered)
+  const allCategoryNames = useMemo(
     () => categories.map((c) => c.name),
     [categories],
   );
-  const brandNames = useMemo(() => brands.map((b) => b.name), [brands]);
+  const allBrandNames = useMemo(() => brands.map((b) => b.name), [brands]);
 
+  // Default values for edit mode
   const defaultCategoryName = model
-    ? (categories.find((c) => c.category_id === model.category_id)?.name ?? "")
+    ? (categoryIdToName.get(model.category_id) ?? "")
     : "";
   const defaultBrandName = model?.brand_id
-    ? (brands.find((b) => b.brand_id === model.brand_id)?.name ?? "")
+    ? (brandIdToName.get(model.brand_id) ?? "")
     : "";
 
-  const [selectedCategory, setSelectedCategory] =
-    useState<string>(defaultCategoryName);
-  const [selectedBrand, setSelectedBrand] =
-    useState<string>(defaultBrandName);
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    defaultCategoryName,
+  );
+  const [selectedBrand, setSelectedBrand] = useState<string>(defaultBrandName);
+
+  // Filtered lists based on current selection
+  const filteredCategoryNames = useMemo(() => {
+    if (!selectedBrand) return allCategoryNames;
+    const brandId = brandMap.get(selectedBrand);
+    if (!brandId) return allCategoryNames;
+    const linkedCatIds = categoriesByBrand.get(brandId);
+    if (!linkedCatIds || linkedCatIds.size === 0) return allCategoryNames;
+    return categories
+      .filter((c) => linkedCatIds.has(c.category_id))
+      .map((c) => c.name);
+  }, [selectedBrand, allCategoryNames, brandMap, categoriesByBrand, categories]);
+
+  const filteredBrandNames = useMemo(() => {
+    if (!selectedCategory) return allBrandNames;
+    const catId = categoryMap.get(selectedCategory);
+    if (!catId) return allBrandNames;
+    const linkedBrandIds = brandsByCategory.get(catId);
+    if (!linkedBrandIds || linkedBrandIds.size === 0) return allBrandNames;
+    return brands
+      .filter((b) => linkedBrandIds.has(b.brand_id))
+      .map((b) => b.name);
+  }, [selectedCategory, allBrandNames, categoryMap, brandsByCategory, brands]);
+
+  const handleCategoryChange = (val: string | null) => {
+    const newCat = val ?? "";
+    setSelectedCategory(newCat);
+
+    // Clear brand if it's no longer valid for the new category
+    if (selectedBrand && newCat) {
+      const catId = categoryMap.get(newCat);
+      const brandId = brandMap.get(selectedBrand);
+      if (catId && brandId) {
+        const linkedBrandIds = brandsByCategory.get(catId);
+        if (linkedBrandIds && linkedBrandIds.size > 0 && !linkedBrandIds.has(brandId)) {
+          setSelectedBrand("");
+        }
+      }
+    }
+  };
+
+  const handleBrandChange = (val: string | null) => {
+    const newBrand = val ?? "";
+    setSelectedBrand(newBrand);
+
+    // Clear category if it's no longer valid for the new brand
+    if (selectedCategory && newBrand) {
+      const brandId = brandMap.get(newBrand);
+      const catId = categoryMap.get(selectedCategory);
+      if (brandId && catId) {
+        const linkedCatIds = categoriesByBrand.get(brandId);
+        if (linkedCatIds && linkedCatIds.size > 0 && !linkedCatIds.has(catId)) {
+          setSelectedCategory("");
+        }
+      }
+    }
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -139,8 +232,8 @@ export function AttachmentModelForm({
           <FieldContent>
             <Combobox
               value={selectedCategory}
-              onValueChange={(val) => setSelectedCategory(val ?? "")}
-              items={categoryNames}
+              onValueChange={handleCategoryChange}
+              items={filteredCategoryNames}
             >
               <ComboboxInput
                 placeholder="Search category…"
@@ -167,8 +260,8 @@ export function AttachmentModelForm({
           <FieldContent>
             <Combobox
               value={selectedBrand}
-              onValueChange={(val) => setSelectedBrand(val ?? "")}
-              items={brandNames}
+              onValueChange={handleBrandChange}
+              items={filteredBrandNames}
             >
               <ComboboxInput
                 placeholder="Search brand (optional)…"

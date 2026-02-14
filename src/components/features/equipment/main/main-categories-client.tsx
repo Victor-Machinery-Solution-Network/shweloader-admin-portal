@@ -4,7 +4,6 @@ import { useState, useCallback, useMemo } from "react";
 import { Layers, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
@@ -77,11 +76,6 @@ export function MainCategoriesClient({
 
   return (
     <>
-      <PageHeader
-        title="Main Categories"
-        description="Manage equipment main categories"
-      />
-
       {data.length > 0 ? (
         <DataTable
           columns={columns}

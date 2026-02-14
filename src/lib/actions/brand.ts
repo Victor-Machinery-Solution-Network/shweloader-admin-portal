@@ -66,7 +66,27 @@ async function syncBrandCategories(
   }
 }
 
+/** Get ALL attachment category ↔ brand links (for dependent filtering in forms) */
+export async function getAllCategoryBrandLinks(): Promise<
+  { category_id: number; brand_id: number }[]
+> {
+  const result = await d1.query<{ category_id: number; brand_id: number }>(
+    "SELECT category_id, brand_id FROM attachment_category_brand",
+  );
+  return result.results;
+}
+
 // ─── Equipment Sub-Category-Brand Link Helpers ──────────────────────────────
+
+/** Get ALL sub-category ↔ brand links (for dependent filtering in forms) */
+export async function getAllSubCategoryBrandLinks(): Promise<
+  { sub_category_id: number; brand_id: number }[]
+> {
+  const result = await d1.query<{ sub_category_id: number; brand_id: number }>(
+    "SELECT sub_category_id, brand_id FROM equipment_sub_category_brand",
+  );
+  return result.results;
+}
 
 /** Get the equipment sub-category IDs linked to a brand */
 export async function getBrandSubCategoryIds(

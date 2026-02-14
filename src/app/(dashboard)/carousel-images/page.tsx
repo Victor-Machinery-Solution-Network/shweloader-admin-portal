@@ -1,4 +1,9 @@
-import { getCachedCarouselsWithImages } from "@/lib/cache";
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { PageHeader } from "@/components/shared/page-header";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { getCarouselsWithImages } from "@/lib/cache";
 import { CarouselClient } from "@/components/features/carousel/carousel-client";
 
 export const metadata = {
@@ -6,8 +11,26 @@ export const metadata = {
   description: "Manage carousel images",
 };
 
-export default async function CarouselImagesPage() {
-  const carousels = await getCachedCarouselsWithImages();
+export default function CarouselImagesPage() {
+  return (
+    <>
+      <PageHeader
+        title="Carousel Images"
+        description="Manage carousel slideshows for the website"
+      />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <CarouselContent />
+      </Suspense>
+    </>
+  );
+}
+
+async function CarouselContent() {
+  "use cache";
+  cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
+  cacheTag(CACHE_TAGS.CAROUSELS);
+
+  const carousels = await getCarouselsWithImages();
 
   return <CarouselClient carousels={carousels} />;
 }

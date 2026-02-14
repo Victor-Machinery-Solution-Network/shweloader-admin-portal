@@ -1,4 +1,9 @@
-import { getCachedSubCategories, getCachedMainCategories } from "@/lib/cache";
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { PageHeader } from "@/components/shared/page-header";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { getSubCategories, getMainCategories } from "@/lib/cache";
 import {
   getSubCategoryLinkedCounts,
   formatSubCategoryLinkedSummary,
@@ -11,10 +16,28 @@ export const metadata = {
   description: "Manage equipment sub categories",
 };
 
-export default async function EquipmentSubCategoriesPage() {
+export default function EquipmentSubCategoriesPage() {
+  return (
+    <>
+      <PageHeader
+        title="Sub Categories"
+        description="Manage equipment sub categories"
+      />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <SubCategoriesContent />
+      </Suspense>
+    </>
+  );
+}
+
+async function SubCategoriesContent() {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+
   const [subCategories, categories] = await Promise.all([
-    getCachedSubCategories(),
-    getCachedMainCategories(),
+    getSubCategories(),
+    getMainCategories(),
   ]);
 
   const countsMap = await getSubCategoryLinkedCounts(

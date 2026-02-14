@@ -1,4 +1,9 @@
-import { getCachedPartnersWithDetails } from "@/lib/cache";
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
+import { PageHeader } from "@/components/shared/page-header";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { getPartnersWithDetails } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
 
 
@@ -7,8 +12,26 @@ export const metadata = {
   description: "Review and manage partner applications",
 };
 
-export default async function PartnersPage() {
-  const partners = await getCachedPartnersWithDetails();
+export default function PartnersPage() {
+  return (
+    <>
+      <PageHeader
+        title="Partners"
+        description="Review and manage partner applications"
+      />
+      <Suspense fallback={<DataTableSkeleton />}>
+        <PartnersContent />
+      </Suspense>
+    </>
+  );
+}
+
+async function PartnersContent() {
+  "use cache";
+  cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
+  cacheTag(CACHE_TAGS.PARTNERS);
+
+  const partners = await getPartnersWithDetails();
 
   return <PartnersClient partners={partners} />;
 }
