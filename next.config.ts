@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   ],
   experimental: {
     staleTimes: {
-      static: 30, // Minimum allowed (default 300s) — reduces stale Router Cache window
+      static: 0, // Disable client Router Cache — server-side unstable_cache handles freshness
     },
     optimizePackageImports: [
       "lucide-react",

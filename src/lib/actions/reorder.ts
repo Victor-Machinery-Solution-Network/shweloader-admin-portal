@@ -127,5 +127,11 @@ export async function getNextDisplayOrder(
   scopeId?: number,
 ): Promise<string> {
   const lastKey = await getLastDisplayOrder(table, scopeColumn, scopeId);
-  return keyBetween(lastKey, null);
+  try {
+    return keyBetween(lastKey, null);
+  } catch {
+    // Legacy rows may have plain integer display_order values (e.g. "5")
+    // which aren't valid fractional-indexing keys. Start fresh.
+    return keyBetween(null, null);
+  }
 }

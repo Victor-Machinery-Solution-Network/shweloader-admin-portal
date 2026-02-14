@@ -1,4 +1,4 @@
-import { updateTag } from "next/cache";
+import { updateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -58,4 +58,11 @@ export function invalidateTag(...tags: CacheTag[]) {
 
   for (const tag of tags) resolve(tag);
   for (const tag of all) updateTag(tag);
+
+  // updateTag only invalidates unstable_cache data entries.
+  // revalidatePath invalidates the ISR route cache so the server
+  // re-renders pages with fresh data on the next request.
+  // Combined with staleTimes.static: 0 (no client Router Cache),
+  // this ensures navigating to any page always shows fresh data.
+  revalidatePath("/", "layout");
 }
