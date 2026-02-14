@@ -35,7 +35,7 @@ interface RowActionsProps {
 
 export function RowActions({ actions }: RowActionsProps) {
   return (
-    <>
+    <div className="flex justify-end">
       {/* Desktop: inline icon buttons with tooltips */}
       <TooltipProvider>
         <div className="hidden items-center gap-1 md:flex">
@@ -48,7 +48,7 @@ export function RowActions({ actions }: RowActionsProps) {
                   onClick={action.onClick}
                   disabled={action.disabled}
                   className={cn(
-                    "text-muted-foreground",
+                    "text-muted-foreground hover:text-foreground",
                     action.variant === "destructive" &&
                       "hover:bg-destructive/10 hover:text-destructive",
                   )}
@@ -93,7 +93,7 @@ export function RowActions({ actions }: RowActionsProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </div>
   );
 }
 

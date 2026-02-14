@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
-    <div className="flex items-center justify-between border-b pb-4 mb-6">
+    <div className="flex items-center justify-between mb-4">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-balance">{title}</h1>
         {description && (

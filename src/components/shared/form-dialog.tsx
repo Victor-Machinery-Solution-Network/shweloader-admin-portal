@@ -76,6 +76,7 @@ export function FormDialog({
           onSubmit={(e) => {
             e.preventDefault();
             setSubmitted(true);
+            if (!e.currentTarget.checkValidity()) return;
             onSubmit(new FormData(e.currentTarget));
           }}
         >
