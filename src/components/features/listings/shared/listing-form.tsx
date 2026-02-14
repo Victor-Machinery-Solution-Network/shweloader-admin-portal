@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef, useCallback } from "react";
+import { useState, useMemo, useTransition, useCallback } from "react";
 import { ShoppingCart, Home, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,6 @@ export function ListingForm({
 }: ListingFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!listing;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Product type state
   const defaultProductType = listing?.equipment_model_id
@@ -300,7 +299,7 @@ export function ListingForm({
       }
       className="sm:max-w-2xl max-h-[90vh]"
     >
-      <div ref={containerRef} className="space-y-4">
+      <div className="space-y-4">
         {/* Listing Type Selection (create only) */}
         {!isEditing && (
           <Field orientation="vertical">
@@ -375,7 +374,7 @@ export function ListingForm({
                 placeholder={`Search ${productType} model...`}
                 showClear={!!selectedModel}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No model found</ComboboxEmpty>
                   <ComboboxCollection>
@@ -404,7 +403,7 @@ export function ListingForm({
                 placeholder="Search partner…"
                 showClear={!!selectedPartner}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No partner found</ComboboxEmpty>
                   <ComboboxCollection>
@@ -433,7 +432,7 @@ export function ListingForm({
                 placeholder="Search location (optional)…"
                 showClear={!!selectedLocation}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No location found</ComboboxEmpty>
                   <ComboboxCollection>

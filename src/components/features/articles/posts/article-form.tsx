@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,6 @@ export function ArticleForm({
   isPublishing = false,
 }: ArticleFormProps) {
   const [isPending, startTransition] = useTransition();
-  const containerRef = useRef<HTMLDivElement>(null);
   const isEditing = !!article;
 
   const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
@@ -116,7 +115,7 @@ export function ArticleForm({
       }
       className="sm:max-w-2xl"
     >
-      <div ref={containerRef} className="space-y-4">
+      <div className="space-y-4">
         <Field orientation="vertical">
           <FieldLabel>Title</FieldLabel>
           <FieldContent>
@@ -155,7 +154,7 @@ export function ArticleForm({
                 placeholder="Search category…"
                 showClear={!!selectedCategory}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No category found</ComboboxEmpty>
                   <ComboboxCollection>

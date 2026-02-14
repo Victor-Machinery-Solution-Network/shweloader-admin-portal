@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import {
@@ -36,7 +36,6 @@ export function SubCategoryForm({
 }: SubCategoryFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!subCategory;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Build a name→id lookup map
   const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
@@ -91,7 +90,7 @@ export function SubCategoryForm({
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <div ref={containerRef} className="space-y-4">
+      <div className="space-y-4">
         <Field orientation="vertical">
           <FieldLabel>Main Category</FieldLabel>
           <FieldContent>
@@ -104,7 +103,7 @@ export function SubCategoryForm({
                 placeholder="Search main category…"
                 showClear={!!selectedName}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No category found</ComboboxEmpty>
                   <ComboboxCollection>

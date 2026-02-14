@@ -9,6 +9,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AuthSessionProvider } from '@/components/providers/session-provider';
+import { NavigationRefresh } from '@/components/providers/navigation-refresh';
 import { warmCaches } from '@/lib/cache';
 
 export default function DashboardLayout({
@@ -27,6 +28,7 @@ export default function DashboardLayout({
         >
           Skip to main content
         </a>
+        <NavigationRefresh />
         <AppSidebar />
         <SidebarInset>
           <AppHeader />

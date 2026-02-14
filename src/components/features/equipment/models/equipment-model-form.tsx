@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
@@ -39,7 +39,6 @@ export function EquipmentModelForm({
 }: EquipmentModelFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!model;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const subCategoryMap = new Map(
     subCategories.map((sc) => [sc.name, sc.sub_category_id]),
@@ -116,7 +115,7 @@ export function EquipmentModelForm({
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <div ref={containerRef} className="space-y-4">
+      <div className="space-y-4">
         <Field orientation="vertical">
           <FieldLabel>Model Name</FieldLabel>
           <FieldContent>
@@ -142,7 +141,7 @@ export function EquipmentModelForm({
                 placeholder="Search sub category…"
                 showClear={!!selectedSubCategory}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No sub category found</ComboboxEmpty>
                   <ComboboxCollection>
@@ -170,7 +169,7 @@ export function EquipmentModelForm({
                 placeholder="Search brand…"
                 showClear={!!selectedBrand}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No brand found</ComboboxEmpty>
                   <ComboboxCollection>

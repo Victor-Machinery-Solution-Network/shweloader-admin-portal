@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useRef } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
@@ -39,7 +39,6 @@ export function AttachmentModelForm({
 }: AttachmentModelFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!model;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const categoryMap = new Map(
     categories.map((c) => [c.name, c.category_id]),
@@ -115,7 +114,7 @@ export function AttachmentModelForm({
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <div ref={containerRef} className="space-y-4">
+      <div className="space-y-4">
         <Field orientation="vertical">
           <FieldLabel>Model Name</FieldLabel>
           <FieldContent>
@@ -141,7 +140,7 @@ export function AttachmentModelForm({
                 placeholder="Search category…"
                 showClear={!!selectedCategory}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No category found</ComboboxEmpty>
                   <ComboboxCollection>
@@ -169,7 +168,7 @@ export function AttachmentModelForm({
                 placeholder="Search brand (optional)…"
                 showClear={!!selectedBrand}
               />
-              <ComboboxContent container={containerRef}>
+              <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No brand found</ComboboxEmpty>
                   <ComboboxCollection>
