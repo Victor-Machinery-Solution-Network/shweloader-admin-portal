@@ -49,6 +49,7 @@ const MIN_PASSWORD_LENGTH = 8;
 // Auth.js v5 configuration
 // ---------------------------------------------------------------------------
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
