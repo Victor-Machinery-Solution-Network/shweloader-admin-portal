@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
+import { Cog, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
@@ -110,6 +111,11 @@ export function EquipmentModelForm({
         isEditing
           ? "Update the equipment model details."
           : "Create a new equipment model."
+      }
+      icon={
+        isEditing
+          ? <Pencil className="text-muted-foreground size-6" />
+          : <Cog className="text-muted-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

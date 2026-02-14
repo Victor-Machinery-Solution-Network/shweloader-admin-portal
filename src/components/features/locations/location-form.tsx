@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { MapPin, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -46,6 +47,11 @@ export function LocationForm({
         isEditing
           ? "Update the location details."
           : "Create a new location."
+      }
+      icon={
+        isEditing
+          ? <Pencil className="text-muted-foreground size-6" />
+          : <MapPin className="text-muted-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

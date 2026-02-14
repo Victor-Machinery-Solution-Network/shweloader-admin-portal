@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
+import { FolderOpen, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import {
@@ -85,6 +86,11 @@ export function SubCategoryForm({
         isEditing
           ? "Update the sub category details."
           : "Create a new sub category."
+      }
+      icon={
+        isEditing
+          ? <Pencil className="text-muted-foreground size-6" />
+          : <FolderOpen className="text-muted-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

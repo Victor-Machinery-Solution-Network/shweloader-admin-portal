@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { Briefcase, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -51,6 +52,11 @@ export function BusinessTypeForm({
         isEditing
           ? "Update the business type details."
           : "Create a new business type."
+      }
+      icon={
+        isEditing
+          ? <Pencil className="text-muted-foreground size-6" />
+          : <Briefcase className="text-muted-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}
