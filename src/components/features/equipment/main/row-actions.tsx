@@ -1,38 +1,23 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { CategoryForm } from "./category-form";
-import {
-  deleteMainCategory,
-  getSubCategoryCount,
-} from "@/lib/actions/equipment";
+import { deleteMainCategory } from "@/lib/actions/equipment";
 import type { EquipmentMainCategory } from "@/types/equipment";
 
 interface RowActionsProps {
   category: EquipmentMainCategory;
+  linkedCount: number;
 }
 
-export function RowActions({ category }: RowActionsProps) {
+export function RowActions({ category, linkedCount }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [linkedCount, setLinkedCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!showDelete) return;
-    let cancelled = false;
-    getSubCategoryCount([category.category_id]).then((counts) => {
-      if (!cancelled) setLinkedCount(counts[category.category_id] ?? 0);
-    });
-    return () => {
-      cancelled = true;
-      setLinkedCount(null);
-    };
-  }, [showDelete, category.category_id]);
 
   function handleDelete() {
     startTransition(async () => {
@@ -47,7 +32,7 @@ export function RowActions({ category }: RowActionsProps) {
   }
 
   const deleteDescription =
-    linkedCount !== null && linkedCount > 0
+    linkedCount > 0
       ? `This will permanently delete "${category.name}". There ${linkedCount === 1 ? "is" : "are"} ${linkedCount} sub ${linkedCount === 1 ? "category" : "categories"} linked to this category that must be removed first.`
       : `This will permanently delete "${category.name}". This action cannot be undone.`;
 

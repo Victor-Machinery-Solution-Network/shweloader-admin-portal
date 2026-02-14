@@ -17,6 +17,7 @@ export type SubCategoryRow = EquipmentSubCategory & {
 
 export function getColumns(
   categories: EquipmentMainCategory[],
+  linkedInfo: Record<number, { total: number; summary: string }>,
 ): ColumnDef<SubCategoryRow>[] {
   const categoryMap = new Map(categories.map((c) => [c.category_id, c.name]));
 
@@ -61,9 +62,17 @@ export function getColumns(
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <RowActions subCategory={row.original} categories={categories} />
-      ),
+      cell: ({ row }) => {
+        const info = linkedInfo[row.original.sub_category_id];
+        return (
+          <RowActions
+            subCategory={row.original}
+            categories={categories}
+            linkedCount={info?.total ?? 0}
+            linkedSummary={info?.summary ?? ""}
+          />
+        );
+      },
     },
   ];
 }

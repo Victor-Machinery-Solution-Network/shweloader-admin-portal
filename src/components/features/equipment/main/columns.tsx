@@ -7,35 +7,44 @@ import { formatDate } from "@/lib/utils";
 import type { EquipmentMainCategory } from "@/types/equipment";
 import { RowActions } from "./row-actions";
 
-export const columns: ColumnDef<EquipmentMainCategory>[] = [
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
-    ),
-    cell: ({ row }) => (
-      <ImageCell
-        name={row.getValue("name") as string}
-        imageUrl={row.original.image_url}
-      />
-    ),
-  },
-  {
-    accessorKey: "created_at",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
-    ),
-    cell: ({ row }) => {
-      const date = row.getValue("created_at") as string;
-      return (
-        <span className="text-muted-foreground text-sm tabular-nums">
-          {formatDate(date)}
-        </span>
-      );
+export function getColumns(
+  linkedCounts: Record<number, number>,
+): ColumnDef<EquipmentMainCategory>[] {
+  return [
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Name" />
+      ),
+      cell: ({ row }) => (
+        <ImageCell
+          name={row.getValue("name") as string}
+          imageUrl={row.original.image_url}
+        />
+      ),
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions category={row.original} />,
-  },
-];
+    {
+      accessorKey: "created_at",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue("created_at") as string;
+        return (
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {formatDate(date)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <RowActions
+          category={row.original}
+          linkedCount={linkedCounts[row.original.category_id] ?? 0}
+        />
+      ),
+    },
+  ];
+}

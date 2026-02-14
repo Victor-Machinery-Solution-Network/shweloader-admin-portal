@@ -68,6 +68,7 @@ function BadgeList({
 export function createColumns(
   categories: AttachmentCategory[],
   subCategories: EquipmentSubCategory[],
+  linkedInfo: Record<number, { total: number; summary: string }>,
 ): ColumnDef<ProductBrandWithCategories>[] {
   const categoryMap = new Map(categories.map((c) => [c.category_id, c.name]));
   const subCategoryMap = new Map(
@@ -128,13 +129,18 @@ export function createColumns(
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <RowActions
-          brand={row.original}
-          categories={categories}
-          subCategories={subCategories}
-        />
-      ),
+      cell: ({ row }) => {
+        const info = linkedInfo[row.original.brand_id];
+        return (
+          <RowActions
+            brand={row.original}
+            categories={categories}
+            subCategories={subCategories}
+            linkedCount={info?.total ?? 0}
+            linkedSummary={info?.summary ?? ""}
+          />
+        );
+      },
     },
   ];
 }

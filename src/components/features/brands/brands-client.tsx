@@ -22,18 +22,20 @@ interface BrandsClientProps {
   brands: ProductBrandWithCategories[];
   categories: AttachmentCategory[];
   subCategories: EquipmentSubCategory[];
+  linkedInfo: Record<number, { total: number; summary: string }>;
 }
 
 export function BrandsClient({
   brands,
   categories,
   subCategories,
+  linkedInfo,
 }: BrandsClientProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
-    () => createColumns(categories, subCategories),
-    [categories, subCategories],
+    () => createColumns(categories, subCategories, linkedInfo),
+    [categories, subCategories, linkedInfo],
   );
 
   const handleBulkDelete = useCallback(

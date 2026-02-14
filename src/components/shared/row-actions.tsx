@@ -35,10 +35,10 @@ interface RowActionsProps {
 
 export function RowActions({ actions }: RowActionsProps) {
   return (
-    <div className="flex justify-end">
+    <>
       {/* Desktop: inline icon buttons with tooltips */}
       <TooltipProvider>
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center justify-end gap-1 md:flex">
           {actions.map((action) => (
             <Tooltip key={action.label}>
               <TooltipTrigger asChild>
@@ -64,7 +64,7 @@ export function RowActions({ actions }: RowActionsProps) {
       </TooltipProvider>
 
       {/* Mobile: dropdown menu */}
-      <div className="md:hidden">
+      <div className="flex justify-end md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -93,7 +93,7 @@ export function RowActions({ actions }: RowActionsProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </>
   );
 }
 

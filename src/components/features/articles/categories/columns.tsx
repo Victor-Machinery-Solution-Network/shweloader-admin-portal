@@ -6,32 +6,41 @@ import { formatDate } from "@/lib/utils";
 import type { ArticleCategory } from "@/types/article";
 import { RowActions } from "./row-actions";
 
-export const columns: ColumnDef<ArticleCategory>[] = [
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
-    ),
-    cell: ({ row }) => (
-      <span className="font-medium">{row.getValue("name")}</span>
-    ),
-  },
-  {
-    accessorKey: "created_at",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
-    ),
-    cell: ({ row }) => {
-      const date = row.getValue("created_at") as string;
-      return (
-        <span className="text-muted-foreground text-sm tabular-nums">
-          {formatDate(date)}
-        </span>
-      );
+export function getColumns(
+  linkedCounts: Record<number, number>,
+): ColumnDef<ArticleCategory>[] {
+  return [
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Name" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("name")}</span>
+      ),
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions category={row.original} />,
-  },
-];
+    {
+      accessorKey: "created_at",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue("created_at") as string;
+        return (
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {formatDate(date)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <RowActions
+          category={row.original}
+          linkedCount={linkedCounts[row.original.category_id] ?? 0}
+        />
+      ),
+    },
+  ];
+}

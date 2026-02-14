@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { FolderOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -8,18 +8,21 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
 import { deleteArticleCategories } from "@/lib/actions/article-category";
 import type { ArticleCategory } from "@/types/article";
 
 interface ArticleCategoriesClientProps {
   categories: ArticleCategory[];
+  linkedCounts: Record<number, number>;
 }
 
 export function ArticleCategoriesClient({
   categories,
+  linkedCounts,
 }: ArticleCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
+  const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
 
   const handleBulkDelete = useCallback(async (selected: ArticleCategory[]) => {
     const ids = selected.map((c) => c.category_id);

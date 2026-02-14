@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -8,16 +8,18 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { LocationForm } from "./location-form";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
 import { deleteLocations, getListingCount } from "@/lib/actions/location";
 import type { Location } from "@/types/location";
 
 interface LocationsClientProps {
   locations: Location[];
+  linkedCounts: Record<number, number>;
 }
 
-export function LocationsClient({ locations }: LocationsClientProps) {
+export function LocationsClient({ locations, linkedCounts }: LocationsClientProps) {
   const [showCreate, setShowCreate] = useState(false);
+  const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
 
   const buildDescription = useCallback(
     async (selected: Location[]) => {

@@ -1,52 +1,29 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { CategoryForm } from "./category-form";
-import {
-  deleteAttachmentCategory,
-  getAttachmentCategoryLinkedCounts,
-  formatAttachmentCategoryLinkedSummary,
-} from "@/lib/actions/attachment";
+import { deleteAttachmentCategory } from "@/lib/actions/attachment";
 import type { AttachmentCategory } from "@/types/attachment";
 
 interface RowActionsProps {
   category: AttachmentCategory;
+  linkedCount: number;
+  linkedSummary: string;
 }
 
-export function RowActions({ category }: RowActionsProps) {
+export function RowActions({ category, linkedCount, linkedSummary }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [deleteDescription, setDeleteDescription] = useState("");
 
-  useEffect(() => {
-    if (!showDelete) return;
-    let cancelled = false;
-    getAttachmentCategoryLinkedCounts([category.category_id]).then(
-      async (counts) => {
-        if (cancelled) return;
-        const c = counts[category.category_id];
-        if (c && c.total > 0) {
-          const summary = await formatAttachmentCategoryLinkedSummary(c);
-          setDeleteDescription(
-            `This will permanently delete "${category.name}". There ${c.total === 1 ? "is" : "are"} ${summary} linked to this category.`,
-          );
-        } else {
-          setDeleteDescription(
-            `This will permanently delete "${category.name}". This action cannot be undone.`,
-          );
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-      setDeleteDescription("");
-    };
-  }, [showDelete, category.category_id, category.name]);
+  const deleteDescription =
+    linkedCount > 0
+      ? `This will permanently delete "${category.name}". There ${linkedCount === 1 ? "is" : "are"} ${linkedSummary} linked to this category.`
+      : `This will permanently delete "${category.name}". This action cannot be undone.`;
 
   function handleDelete() {
     startTransition(async () => {
@@ -82,7 +59,7 @@ export function RowActions({ category }: RowActionsProps) {
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete category?"
-        description={deleteDescription || "Loading…"}
+        description={deleteDescription}
         isPending={isPending}
       />
     </>

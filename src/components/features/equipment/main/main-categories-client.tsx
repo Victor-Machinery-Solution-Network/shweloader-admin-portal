@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Layers, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
 import {
   deleteMainCategories,
   getSubCategoryCount,
@@ -19,13 +19,16 @@ import type { EquipmentMainCategory } from "@/types/equipment";
 
 interface MainCategoriesClientProps {
   categories: EquipmentMainCategory[];
+  linkedCounts: Record<number, number>;
 }
 
 export function MainCategoriesClient({
   categories,
+  linkedCounts,
 }: MainCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [data, setData] = useState(categories);
+  const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
 
   // Sync local state when server data changes (after create/delete/revalidation)
   useEffect(() => {

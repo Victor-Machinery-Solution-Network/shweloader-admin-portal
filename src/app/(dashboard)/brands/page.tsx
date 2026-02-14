@@ -6,6 +6,8 @@ import {
 import {
   getBrandsCategoryIds,
   getBrandsSubCategoryIds,
+  getBrandLinkedCounts,
+  formatBrandLinkedSummary,
 } from "@/lib/actions/brand";
 import { BrandsClient } from "@/components/features/brands/brands-client";
 import type { ProductBrandWithCategories } from "@/types/brand";
@@ -23,11 +25,12 @@ export default async function BrandsPage() {
     getCachedSubCategories(),
   ]);
 
-  // Fetch category & sub-category links for all brands in parallel
+  // Fetch category & sub-category links + delete-linked counts for all brands in parallel
   const brandIds = brands.map((b) => b.brand_id);
-  const [categoryIdMap, subCategoryIdMap] = await Promise.all([
+  const [categoryIdMap, subCategoryIdMap, countsMap] = await Promise.all([
     getBrandsCategoryIds(brandIds),
     getBrandsSubCategoryIds(brandIds),
+    getBrandLinkedCounts(brandIds),
   ]);
 
   const brandsWithCategories: ProductBrandWithCategories[] = brands.map(
@@ -38,11 +41,20 @@ export default async function BrandsPage() {
     }),
   );
 
+  const linkedInfo: Record<number, { total: number; summary: string }> = {};
+  for (const [id, c] of Object.entries(countsMap)) {
+    linkedInfo[Number(id)] = {
+      total: c.total,
+      summary: c.total > 0 ? await formatBrandLinkedSummary(c) : "",
+    };
+  }
+
   return (
     <BrandsClient
       brands={brandsWithCategories}
       categories={categories}
       subCategories={subCategories}
+      linkedInfo={linkedInfo}
     />
   );
 }

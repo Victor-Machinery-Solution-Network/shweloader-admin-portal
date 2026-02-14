@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
     { source: "/(.*)", headers: securityHeaders },
   ],
   experimental: {
+    staleTimes: {
+      static: 30, // Minimum allowed (default 300s) — reduces stale Router Cache window
+    },
     optimizePackageImports: [
       "lucide-react",
       "@hugeicons/core-free-icons",

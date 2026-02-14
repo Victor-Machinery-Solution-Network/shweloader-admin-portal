@@ -24,15 +24,20 @@ import type {
 interface SubCategoriesClientProps {
   subCategories: EquipmentSubCategory[];
   categories: EquipmentMainCategory[];
+  linkedInfo: Record<number, { total: number; summary: string }>;
 }
 
 export function SubCategoriesClient({
   subCategories,
   categories,
+  linkedInfo,
 }: SubCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [data, setData] = useState(subCategories);
-  const columns = useMemo(() => getColumns(categories), [categories]);
+  const columns = useMemo(
+    () => getColumns(categories, linkedInfo),
+    [categories, linkedInfo],
+  );
 
   // Sync local state when server data changes (after create/delete/revalidation)
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Paperclip, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
 import {
   deleteAttachmentCategories,
   getAttachmentCategoryLinkedCounts,
@@ -20,13 +20,16 @@ import type { AttachmentCategory } from "@/types/attachment";
 
 interface AttachmentCategoriesClientProps {
   categories: AttachmentCategory[];
+  linkedInfo: Record<number, { total: number; summary: string }>;
 }
 
 export function AttachmentCategoriesClient({
   categories,
+  linkedInfo,
 }: AttachmentCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [data, setData] = useState(categories);
+  const columns = useMemo(() => getColumns(linkedInfo), [linkedInfo]);
 
   useEffect(() => {
     setData(categories);

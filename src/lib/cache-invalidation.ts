@@ -1,4 +1,4 @@
-import { updateTag } from "next/cache";
+import { updateTag, revalidatePath } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -58,4 +58,9 @@ export function invalidateTag(...tags: CacheTag[]) {
 
   for (const tag of tags) resolve(tag);
   for (const tag of all) updateTag(tag);
+
+  // Force client-side Router Cache invalidation for all routes.
+  // updateTag only invalidates server-side Data/Route caches;
+  // revalidatePath ensures the browser discards stale pages.
+  revalidatePath("/", "layout");
 }

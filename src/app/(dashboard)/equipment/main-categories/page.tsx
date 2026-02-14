@@ -1,4 +1,5 @@
 import { getCachedMainCategories } from "@/lib/cache";
+import { getSubCategoryCount } from "@/lib/actions/equipment";
 import { MainCategoriesClient } from "@/components/features/equipment/main/main-categories-client";
 
 
@@ -9,6 +10,11 @@ export const metadata = {
 
 export default async function EquipmentMainCategoriesPage() {
   const categories = await getCachedMainCategories();
+  const linkedCounts = await getSubCategoryCount(
+    categories.map((c) => c.category_id),
+  );
 
-  return <MainCategoriesClient categories={categories} />;
+  return (
+    <MainCategoriesClient categories={categories} linkedCounts={linkedCounts} />
+  );
 }
