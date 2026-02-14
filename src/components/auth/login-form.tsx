@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useActionState } from 'react';
+import { useRouter } from 'next/navigation';
 import { loginAction, type LoginState } from '@/lib/actions/auth-actions';
 import { TurnstileWidget } from '@/components/auth/turnstile-widget';
 import {
@@ -16,10 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export function LoginForm() {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState<
     LoginState | undefined,
     FormData
@@ -50,13 +52,19 @@ export function LoginForm() {
     }
   }
 
-  // Show toast on error and refocus password field
+  // On success, navigate via router.push (not redirect() in server action, which breaks
+  // cross-layout-group RSC transitions in production — see vercel/next.js#66621)
+  // On error, show toast and refocus password field
   useEffect(() => {
+    if (state?.success) {
+      router.push(ROUTES.DASHBOARD);
+      return;
+    }
     if (state?.error) {
       toast.error(state.error);
       passwordRef.current?.focus();
     }
-  }, [state]);
+  }, [state, router]);
 
   return (
     <div className="flex flex-col items-center gap-8">

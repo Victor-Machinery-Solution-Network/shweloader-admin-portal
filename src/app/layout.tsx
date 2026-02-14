@@ -41,8 +41,8 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <Toaster position="top-center" />
-        <Analytics />
-        <SpeedInsights />
+        {process.env.VERCEL && <Analytics />}
+        {process.env.VERCEL && <SpeedInsights />}
       </body>
     </html>
   );

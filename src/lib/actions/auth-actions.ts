@@ -2,11 +2,10 @@
 
 import { signIn, signOut, isRateLimited } from "@/lib/auth";
 import { AuthError } from "next-auth";
-import { redirect } from "next/navigation";
-import { ROUTES } from "@/lib/constants";
 
 export interface LoginState {
   error?: string;
+  success?: boolean;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -85,12 +84,12 @@ export async function loginAction(
           return { error: "Something went wrong. Please try again." };
       }
     }
-    throw error;
+    return { error: "Something went wrong. Please try again." };
   }
 
-  redirect(ROUTES.DASHBOARD);
+  return { success: true };
 }
 
 export async function logoutAction() {
-  await signOut({ redirectTo: ROUTES.LOGIN });
+  await signOut({ redirect: false });
 }

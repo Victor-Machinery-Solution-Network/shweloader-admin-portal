@@ -522,7 +522,10 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  onClick={() => logoutAction()}
+                  onClick={async () => {
+                    await logoutAction();
+                    window.location.href = "/login";
+                  }}
                 >
                   <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                   Log out

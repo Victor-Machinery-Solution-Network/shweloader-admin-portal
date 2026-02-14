@@ -60,13 +60,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
 
-        // Input validation
+        // Input validation (rate limiting is handled in loginAction before signIn is called)
         if (!email || !password) return null;
         if (!EMAIL_REGEX.test(email)) return null;
         if (password.length < MIN_PASSWORD_LENGTH) return null;
-
-        // Rate limit check
-        if (isRateLimited(email)) return null;
 
         try {
           // Query admin_user by email via D1 REST API
@@ -97,7 +94,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             role_id: user.role_id,
           };
-        } catch {
+        } catch (error) {
+          console.error("[auth:authorize] error:", error);
           return null;
         }
       },
