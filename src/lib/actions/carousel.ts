@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
+import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 // ─── Carousel Actions ───────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ export async function getCarouselImages(
      FROM carousel_image ci
      JOIN image i ON ci.image_id = i.image_id
      WHERE ci.carousel_id = ?
-     ORDER BY CAST(ci.display_order AS INTEGER) ASC, ci.added_at ASC`,
+     ORDER BY ci.display_order ASC, ci.added_at ASC`,
     [carouselId],
   );
   return results;
@@ -91,28 +92,24 @@ export async function addCarouselImage(
   }
 
   try {
-    // Parallel: get user, create image record, and get max display_order
-    const [added_by, { results: imageResults }, { results: maxOrder }] =
+    // Parallel: get user, create image record, and get next display_order
+    const [added_by, { results: imageResults }, nextOrder] =
       await Promise.all([
         getCurrentUserId(),
         d1.create("image", {
           image_url: imageUrl.trim(),
           uploaded_by: null, // will be set by the DB default if needed
         }),
-        d1.query<{ max_order: number | null }>(
-          "SELECT MAX(CAST(display_order AS INTEGER)) as max_order FROM carousel_image WHERE carousel_id = ?",
-          [carouselId],
-        ),
+        getNextDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
 
     const imageId = (imageResults[0] as { image_id: number }).image_id;
-    const nextOrder = (maxOrder[0]?.max_order ?? 0) + 1;
 
     // Create the junction record
     await d1.query(
       `INSERT INTO carousel_image (carousel_id, image_id, display_order, added_by, active, link_url)
        VALUES (?, ?, ?, ?, 1, ?)`,
-      [carouselId, imageId, String(nextOrder), added_by, linkUrl || null],
+      [carouselId, imageId, nextOrder, added_by, linkUrl || null],
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
@@ -183,24 +180,3 @@ export async function toggleCarouselImageActive(
   }
 }
 
-export async function reorderCarouselImages(
-  carouselId: number,
-  orderedImageIds: number[],
-) {
-  try {
-    const cases = orderedImageIds
-      .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
-      .join(" ");
-    const idList = orderedImageIds.join(", ");
-    await d1.query(
-      `UPDATE carousel_image SET display_order = CASE image_id ${cases} END WHERE carousel_id = ${carouselId} AND image_id IN (${idList})`,
-    );
-    invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder images"),
-    };
-  }
-}

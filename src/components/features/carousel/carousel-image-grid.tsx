@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useTransition, useRef } from "react";
+import { useCallback, useState, useTransition, useRef } from "react";
 import { ImagePlus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils";
 import { CarouselImageCard } from "./carousel-image-card";
 import {
   addCarouselImage,
-  reorderCarouselImages,
   getCarouselImages,
 } from "@/lib/actions/carousel";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 const MAX_SIZE_MB = 5;
@@ -37,14 +37,17 @@ export function CarouselImageGrid({
   carouselId,
   initialImages,
 }: CarouselImageGridProps) {
-  const [images, setImages] = useState(initialImages);
+  const { data: images, setData: setImages, handleReorder } = useDragReorder(
+    initialImages,
+    {
+      getRowId: (img) => img.image_id,
+      tableName: "carousel_image",
+      scopeId: carouselId,
+    },
+  );
   const [isAdding, startAddTransition] = useTransition();
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setImages(initialImages);
-  }, [initialImages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -52,7 +55,7 @@ export function CarouselImageGrid({
   );
 
   const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
+    (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
@@ -61,16 +64,9 @@ export function CarouselImageGrid({
       if (oldIndex === -1 || newIndex === -1) return;
 
       const reordered = arrayMove([...images], oldIndex, newIndex);
-      setImages(reordered);
-
-      const orderedIds = reordered.map((img) => img.image_id);
-      const result = await reorderCarouselImages(carouselId, orderedIds);
-      if (!result.success) {
-        toast.error(result.error);
-        setImages(images);
-      }
+      handleReorder(reordered, { activeId: active.id, newIndex });
     },
-    [images, carouselId],
+    [images, handleReorder],
   );
 
   const processFile = useCallback(
@@ -100,7 +96,7 @@ export function CarouselImageGrid({
       };
       reader.readAsDataURL(file);
     },
-    [carouselId],
+    [carouselId, setImages],
   );
 
   const handleFileDrop = useCallback(

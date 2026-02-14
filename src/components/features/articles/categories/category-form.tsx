@@ -53,8 +53,8 @@ export function CategoryForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-primary size-6" />
-          : <FolderOpen className="text-primary size-6" />
+          ? <Pencil className="text-primary-foreground size-6" />
+          : <FolderOpen className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

@@ -10,6 +10,7 @@ import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { columns } from "./columns";
 import { AnnouncementForm } from "./announcement-form";
 import { deleteAnnouncements } from "@/lib/actions/announcement";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { AnnouncementText } from "@/types/announcement";
 
 interface AnnouncementClientProps {
@@ -18,6 +19,10 @@ interface AnnouncementClientProps {
 
 export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
   const [showCreate, setShowCreate] = useState(false);
+  const { data, handleReorder } = useDragReorder(announcements, {
+    getRowId: (r) => r.announcement_id,
+    tableName: "announcement_text",
+  });
 
   const handleBulkDelete = useCallback(async (selected: AnnouncementText[]) => {
     const ids = selected.map((a) => a.announcement_id);
@@ -54,14 +59,17 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
         description="Manage announcement messages shown on the website"
       />
 
-      {announcements.length > 0 ? (
+      {data.length > 0 ? (
         <DataTable
           columns={columns}
-          data={announcements}
+          data={data}
           searchKey="text"
           searchPlaceholder="Search announcements…"
           enableSelection
           enablePagination
+          enableDragSort
+          getRowId={(row) => row.announcement_id}
+          onReorder={handleReorder}
           pageSize={10}
           toolbar={renderToolbar}
         />

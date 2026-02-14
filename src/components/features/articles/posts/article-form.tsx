@@ -99,8 +99,8 @@ export function ArticleForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-primary size-6" />
-          : <FileText className="text-primary size-6" />
+          ? <Pencil className="text-primary-foreground size-6" />
+          : <FileText className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Layers, Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/shared/page-header";
@@ -13,8 +12,8 @@ import { getColumns } from "./columns";
 import {
   deleteMainCategories,
   getSubCategoryCount,
-  reorderMainCategories,
 } from "@/lib/actions/equipment";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { EquipmentMainCategory } from "@/types/equipment";
 
 interface MainCategoriesClientProps {
@@ -27,26 +26,11 @@ export function MainCategoriesClient({
   linkedCounts,
 }: MainCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
-  const [data, setData] = useState(categories);
+  const { data, handleReorder } = useDragReorder(categories, {
+    getRowId: (r) => r.category_id,
+    tableName: "equipment_main_category",
+  });
   const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
-
-  // Sync local state when server data changes (after create/delete/revalidation)
-  useEffect(() => {
-    setData(categories);
-  }, [categories]);
-
-  const handleReorder = useCallback(
-    async (reordered: EquipmentMainCategory[]) => {
-      setData(reordered);
-      const ids = reordered.map((c) => c.category_id);
-      const result = await reorderMainCategories(ids);
-      if (!result.success) {
-        toast.error(result.error);
-        setData(categories);
-      }
-    },
-    [categories],
-  );
 
   const buildDescription = useCallback(
     async (selected: EquipmentMainCategory[]) => {

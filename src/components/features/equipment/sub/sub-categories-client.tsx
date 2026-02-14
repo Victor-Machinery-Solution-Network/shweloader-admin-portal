@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { FolderTree, Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,10 +11,10 @@ import { SubCategoryForm } from "./sub-category-form";
 import { getColumns } from "./columns";
 import {
   deleteSubCategories,
-  reorderSubCategories,
   getSubCategoryLinkedCounts,
   formatSubCategoryLinkedSummary,
 } from "@/lib/actions/equipment";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type {
   EquipmentSubCategory,
   EquipmentMainCategory,
@@ -33,28 +32,13 @@ export function SubCategoriesClient({
   linkedInfo,
 }: SubCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
-  const [data, setData] = useState(subCategories);
+  const { data, handleReorder } = useDragReorder(subCategories, {
+    getRowId: (r) => r.sub_category_id,
+    tableName: "equipment_sub_category",
+  });
   const columns = useMemo(
     () => getColumns(categories, linkedInfo),
     [categories, linkedInfo],
-  );
-
-  // Sync local state when server data changes (after create/delete/revalidation)
-  useEffect(() => {
-    setData(subCategories);
-  }, [subCategories]);
-
-  const handleReorder = useCallback(
-    async (reordered: EquipmentSubCategory[]) => {
-      setData(reordered);
-      const ids = reordered.map((s) => s.sub_category_id);
-      const result = await reorderSubCategories(ids);
-      if (!result.success) {
-        toast.error(result.error);
-        setData(subCategories);
-      }
-    },
-    [subCategories],
   );
 
   const handleBulkDelete = useCallback(

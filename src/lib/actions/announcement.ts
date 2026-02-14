@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
+import { getNextDisplayOrder } from "@/lib/actions/reorder";
 
 // ─── Announcement Text Actions ──────────────────────────────────────────────
 
@@ -16,19 +17,16 @@ export async function createAnnouncement(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
-
-    // Get current max display_order
-    const { results: maxOrder } = await d1.query<{ max_order: number | null }>(
-      "SELECT MAX(CAST(display_order AS INTEGER)) as max_order FROM announcement_text",
-    );
-    const nextOrder = (maxOrder[0]?.max_order ?? 0) + 1;
+    const [created_by, display_order] = await Promise.all([
+      getCurrentUserId(),
+      getNextDisplayOrder("announcement_text"),
+    ]);
 
     await announcementTextService.create({
       text: text.trim(),
       is_active: 1,
       created_by,
-      display_order: String(nextOrder),
+      display_order,
     });
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
@@ -110,21 +108,3 @@ export async function toggleAnnouncementActive(id: number) {
   }
 }
 
-export async function reorderAnnouncements(orderedIds: number[]) {
-  try {
-    const cases = orderedIds
-      .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
-      .join(" ");
-    const idList = orderedIds.join(", ");
-    await d1.query(
-      `UPDATE announcement_text SET display_order = CASE announcement_id ${cases} END WHERE announcement_id IN (${idList})`,
-    );
-    invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder announcements"),
-    };
-  }
-}

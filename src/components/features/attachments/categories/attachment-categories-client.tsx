@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Paperclip, Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/shared/page-header";
@@ -14,8 +13,8 @@ import {
   deleteAttachmentCategories,
   getAttachmentCategoryLinkedCounts,
   formatAttachmentCategoryLinkedSummary,
-  reorderAttachmentCategories,
 } from "@/lib/actions/attachment";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { AttachmentCategory } from "@/types/attachment";
 
 interface AttachmentCategoriesClientProps {
@@ -28,25 +27,11 @@ export function AttachmentCategoriesClient({
   linkedInfo,
 }: AttachmentCategoriesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
-  const [data, setData] = useState(categories);
+  const { data, handleReorder } = useDragReorder(categories, {
+    getRowId: (r) => r.category_id,
+    tableName: "attachment_category",
+  });
   const columns = useMemo(() => getColumns(linkedInfo), [linkedInfo]);
-
-  useEffect(() => {
-    setData(categories);
-  }, [categories]);
-
-  const handleReorder = useCallback(
-    async (reordered: AttachmentCategory[]) => {
-      setData(reordered);
-      const ids = reordered.map((c) => c.category_id);
-      const result = await reorderAttachmentCategories(ids);
-      if (!result.success) {
-        toast.error(result.error);
-        setData(categories);
-      }
-    },
-    [categories],
-  );
 
   const buildDescription = useCallback(
     async (selected: AttachmentCategory[]) => {

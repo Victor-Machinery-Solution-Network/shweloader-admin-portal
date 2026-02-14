@@ -113,8 +113,8 @@ export function AttachmentModelForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-primary size-6" />
-          : <Wrench className="text-primary size-6" />
+          ? <Pencil className="text-primary-foreground size-6" />
+          : <Wrench className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

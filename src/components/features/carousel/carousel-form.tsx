@@ -56,8 +56,8 @@ export function CarouselForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-primary size-6" />
-          : <Images className="text-primary size-6" />
+          ? <Pencil className="text-primary-foreground size-6" />
+          : <Images className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

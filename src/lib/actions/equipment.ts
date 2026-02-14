@@ -8,6 +8,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { getNextDisplayOrder } from "@/lib/actions/reorder";
 
 // ─── Main Category Actions ───────────────────────────────────────────────────
 
@@ -20,11 +21,15 @@ export async function createMainCategory(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const [created_by, display_order] = await Promise.all([
+      getCurrentUserId(),
+      getNextDisplayOrder("equipment_main_category"),
+    ]);
     await mainCategoryService.create({
       name: name.trim(),
       image_url,
       created_by,
+      display_order,
     });
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
@@ -126,12 +131,16 @@ export async function createSubCategory(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const [created_by, display_order] = await Promise.all([
+      getCurrentUserId(),
+      getNextDisplayOrder("equipment_sub_category"),
+    ]);
     await subCategoryService.create({
       name: name.trim(),
       category_id,
       image_url,
       created_by,
+      display_order,
     });
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
@@ -264,50 +273,3 @@ export async function formatSubCategoryLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
-// ─── Reorder Actions ─────────────────────────────────────────────────────────
-
-export async function reorderMainCategories(orderedIds: number[]) {
-  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
-    return { success: false, error: "Invalid category IDs" };
-  }
-
-  try {
-    const cases = orderedIds
-      .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
-      .join(" ");
-    const idList = orderedIds.join(", ");
-    await d1.query(
-      `UPDATE equipment_main_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
-    );
-    invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder categories"),
-    };
-  }
-}
-
-export async function reorderSubCategories(orderedIds: number[]) {
-  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
-    return { success: false, error: "Invalid sub category IDs" };
-  }
-
-  try {
-    const cases = orderedIds
-      .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
-      .join(" ");
-    const idList = orderedIds.join(", ");
-    await d1.query(
-      `UPDATE equipment_sub_category SET display_order = CASE sub_category_id ${cases} END WHERE sub_category_id IN (${idList})`,
-    );
-    invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder sub categories"),
-    };
-  }
-}

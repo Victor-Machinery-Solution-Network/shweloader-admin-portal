@@ -276,11 +276,11 @@ export function ListingForm({
       }
       icon={
         isEditing ? (
-          <Pencil className="text-primary size-6" />
+          <Pencil className="text-primary-foreground size-6" />
         ) : pageType === "sale" ? (
-          <ShoppingCart className="text-primary size-6" />
+          <ShoppingCart className="text-primary-foreground size-6" />
         ) : (
-          <Home className="text-primary size-6" />
+          <Home className="text-primary-foreground size-6" />
         )
       }
       onSubmit={handleSubmit}

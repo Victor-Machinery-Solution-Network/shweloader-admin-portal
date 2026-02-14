@@ -66,7 +66,7 @@ export function FormDialog({
         <ComboboxPortalContext value={portalRef}>
           <DialogHeader className="items-center text-center">
             {icon && (
-              <div className="bg-primary/10 mx-auto flex size-12 items-center justify-center rounded-full">
+              <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
                 {icon}
               </div>
             )}

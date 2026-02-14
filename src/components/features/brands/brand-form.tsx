@@ -95,8 +95,8 @@ export function BrandForm({
       }
       icon={
         isEditing
-          ? <Pencil className="text-primary size-6" />
-          : <Tag className="text-primary size-6" />
+          ? <Pencil className="text-primary-foreground size-6" />
+          : <Tag className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

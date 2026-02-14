@@ -77,7 +77,10 @@ interface DndTableProps {
   table: TanstackTable<any>;
   data: unknown[];
   getRowId: (row: unknown) => string | number;
-  onReorder?: (data: unknown[]) => void;
+  onReorder?: (
+    data: unknown[],
+    dragInfo: { activeId: string | number; newIndex: number },
+  ) => void;
   colCount: number;
 }
 
@@ -108,7 +111,8 @@ function DndTable({
       const newIndex = data.findIndex((item) => getRowId(item) === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        onReorder?.(arrayMove([...data], oldIndex, newIndex));
+        const reordered = arrayMove([...data], oldIndex, newIndex);
+        onReorder?.(reordered, { activeId: active.id, newIndex });
       }
     },
     [data, getRowId, onReorder],

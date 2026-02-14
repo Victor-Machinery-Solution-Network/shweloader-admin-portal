@@ -11,6 +11,8 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { nKeysBetween } from "@/lib/utils/display-order";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
@@ -49,14 +51,15 @@ async function syncProductImages(
     );
   }
 
-  // Create new images with display order
+  // Create new images with fractional display order keys
   if (imageUrls.length > 0) {
+    const keys = nKeysBetween(null, null, imageUrls.length);
     await Promise.all(
       imageUrls.map((url, i) =>
         productImageService.create({
           product_list_id: productListId,
           url,
-          display_order: String(i),
+          display_order: keys[i],
           uploaded_by: uploadedBy,
           active: 1,
         }),
@@ -380,18 +383,15 @@ export async function toggleSoldOut(id: number) {
 
 export async function addToFeatured(type: "sale" | "rent", listingId: number) {
   try {
-    const created_by = await getCurrentUserId();
-
-    // Get max display order
-    const maxOrder = await d1.query<{ max_order: string | null }>(
-      "SELECT MAX(CAST(display_order AS INTEGER)) as max_order FROM featured_listing",
-    );
-    const nextOrder = String((Number(maxOrder.results[0]?.max_order) || 0) + 1);
+    const [created_by, display_order] = await Promise.all([
+      getCurrentUserId(),
+      getNextDisplayOrder("featured_listing"),
+    ]);
 
     await featuredListingService.create({
       sale_listing_id: type === "sale" ? listingId : null,
       rent_listing_id: type === "rent" ? listingId : null,
-      display_order: nextOrder,
+      display_order,
       created_by,
     });
 
@@ -418,26 +418,6 @@ export async function removeFromFeatured(featuredId: number) {
   }
 }
 
-export async function reorderFeatured(
-  orderedItems: { id: number; display_order: string }[],
-) {
-  try {
-    await Promise.all(
-      orderedItems.map((item) =>
-        featuredListingService.update(item.id, {
-          display_order: item.display_order,
-        }),
-      ),
-    );
-    invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder featured listings"),
-    };
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY ACTIONS (JOIN)
@@ -528,7 +508,7 @@ export async function getFeaturedListingsWithDetails(): Promise<
     LEFT JOIN attachment_model am_r ON pl_r.attachment_model_id = am_r.model_id
     LEFT JOIN partner p_r ON pl_r.partner_id = p_r.id
     LEFT JOIN customer c_r ON p_r.customer_id = c_r.customer_id
-    ORDER BY CAST(fl.display_order AS INTEGER) ASC`,
+    ORDER BY fl.display_order ASC`,
   );
   return result.results;
 }
@@ -539,7 +519,7 @@ export async function getProductImages(
   productListId: number,
 ): Promise<ProductImage[]> {
   const result = await d1.query<ProductImage>(
-    "SELECT * FROM product_image WHERE product_list_id = ? ORDER BY CAST(display_order AS INTEGER) ASC",
+    "SELECT * FROM product_image WHERE product_list_id = ? ORDER BY display_order ASC",
     [productListId],
   );
   return result.results;

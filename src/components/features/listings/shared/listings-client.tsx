@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useCallback, useTransition, lazy, Suspense } from "react";
+import { useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import { ShoppingCart, Home, Plus, Star, Filter, Clock } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import {
@@ -31,7 +30,7 @@ import { featuredColumns } from "./featured-columns";
 const LazyListingForm = lazy(() =>
   import("./listing-form").then((mod) => ({ default: mod.ListingForm }))
 );
-import { reorderFeatured } from "@/lib/actions/listing";
+import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
@@ -127,8 +126,6 @@ export function ListingsClient({
 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [, startTransition] = useTransition();
-
   const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured";
   const hiddenFilter = (searchParams.get("visibility") ?? "all") as "all" | "visible" | "hidden";
   const soldFilter = (searchParams.get("sold") ?? "all") as "all" | "available" | "sold";
@@ -223,21 +220,10 @@ export function ListingsClient({
     </>
   );
 
-  const handleReorder = useCallback(
-    (reordered: FeaturedListingWithDetails[]) => {
-      const orderedItems = reordered.map((item, index) => ({
-        id: item.id,
-        display_order: String(index),
-      }));
-      startTransition(async () => {
-        const result = await reorderFeatured(orderedItems);
-        if (!result.success) {
-          toast.error(result.error ?? "Failed to reorder");
-        }
-      });
-    },
-    [startTransition],
-  );
+  const { data: featuredData, handleReorder } = useDragReorder(featured, {
+    getRowId: (r) => r.id,
+    tableName: "featured_listing",
+  });
 
   return (
     <>
@@ -312,10 +298,10 @@ export function ListingsClient({
         </TabsContent>
 
         <TabsContent value="featured">
-          {featured.length > 0 ? (
+          {featuredData.length > 0 ? (
             <DataTable
               columns={featuredColumns}
-              data={featured}
+              data={featuredData}
               enableDragSort
               getRowId={(row) => row.id}
               onReorder={handleReorder}

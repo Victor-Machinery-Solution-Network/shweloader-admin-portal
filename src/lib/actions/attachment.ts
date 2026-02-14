@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { getNextDisplayOrder } from "@/lib/actions/reorder";
 
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
@@ -17,11 +18,15 @@ export async function createAttachmentCategory(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const [created_by, display_order] = await Promise.all([
+      getCurrentUserId(),
+      getNextDisplayOrder("attachment_category"),
+    ]);
     await attachmentCategoryService.create({
       name: name.trim(),
       image_url,
       created_by,
+      display_order,
     });
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
@@ -149,27 +154,3 @@ export async function formatAttachmentCategoryLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
-// ─── Reorder Actions ─────────────────────────────────────────────────────────
-
-export async function reorderAttachmentCategories(orderedIds: number[]) {
-  if (!orderedIds.every((id) => Number.isInteger(id) && id > 0)) {
-    return { success: false, error: "Invalid category IDs" };
-  }
-
-  try {
-    const cases = orderedIds
-      .map((id, i) => `WHEN ${id} THEN '${i + 1}'`)
-      .join(" ");
-    const idList = orderedIds.join(", ");
-    await d1.query(
-      `UPDATE attachment_category SET display_order = CASE category_id ${cases} END WHERE category_id IN (${idList})`,
-    );
-    invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to reorder categories"),
-    };
-  }
-}

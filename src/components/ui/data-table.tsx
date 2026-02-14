@@ -167,7 +167,10 @@ interface DataTableProps<TData, TValue> {
   /** Unique ID getter for each row (required when enableDragSort is true) */
   getRowId?: (row: TData) => string | number;
   /** Called with the full data array in new order after a drag-and-drop reorder */
-  onReorder?: (data: TData[]) => void;
+  onReorder?: (
+    data: TData[],
+    dragInfo: { activeId: string | number; newIndex: number },
+  ) => void;
   pageSize?: number;
   toolbar?: React.ReactNode | ((selectedRows: TData[]) => React.ReactNode);
 }
@@ -370,7 +373,7 @@ function DataTable<TData, TValue>({
                 table={table}
                 data={data}
                 getRowId={getRowId as (row: unknown) => string | number}
-                onReorder={onReorder as ((data: unknown[]) => void) | undefined}
+                onReorder={onReorder as ((data: unknown[], dragInfo: { activeId: string | number; newIndex: number }) => void) | undefined}
                 colCount={allColumns.length}
               />
             </React.Suspense>
