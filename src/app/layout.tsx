@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Albert_Sans, Abhaya_Libre, Anonymous_Pro } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
@@ -25,6 +25,9 @@ const anonymousPro = Anonymous_Pro({
 export const metadata: Metadata = {
   title: "Admin Portal | Shweloader",
   description: "Admin portal for managing Shweloader resources",
+};
+
+export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#171717" },
