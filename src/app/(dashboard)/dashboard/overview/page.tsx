@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Mail,
@@ -1110,15 +1110,17 @@ export default function DashboardOverviewPage() {
         <Section title="DataTable" number={21}>
           <SubSection title="With Search, Sort, Pagination & Bulk Select">
             <div className="w-full">
-              <DataTable
-                columns={demoColumns}
-                data={demoUsers}
-                searchKey="name"
-                searchPlaceholder="Search by name…"
-                enableSelection
-                enablePagination
-                pageSize={5}
-              />
+              <Suspense fallback={null}>
+                <DataTable
+                  columns={demoColumns}
+                  data={demoUsers}
+                  searchKey="name"
+                  searchPlaceholder="Search by name…"
+                  enableSelection
+                  enablePagination
+                  pageSize={5}
+                />
+              </Suspense>
             </div>
           </SubSection>
         </Section>

@@ -130,6 +130,7 @@ interface ReferenceData {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
 }
 
 // --- Pending Sale Columns ---
@@ -140,6 +141,7 @@ export function createPendingSaleColumns(
   attachmentModels: AttachmentModel[],
   locations: Location[],
   conditionTypes: ConditionType[],
+  exchangeRate: number,
 ): ColumnDef<SaleListingWithDetails>[] {
   return [
     thumbnailColumn<SaleListingWithDetails>(),
@@ -169,6 +171,7 @@ export function createPendingSaleColumns(
           attachmentModels={attachmentModels}
           locations={locations}
           conditionTypes={conditionTypes}
+          exchangeRate={exchangeRate}
         />
       ),
     },
@@ -183,6 +186,7 @@ export function createPendingRentColumns(
   attachmentModels: AttachmentModel[],
   locations: Location[],
   conditionTypes: ConditionType[],
+  exchangeRate: number,
 ): ColumnDef<RentListingWithDetails>[] {
   return [
     thumbnailColumn<RentListingWithDetails>(),
@@ -212,6 +216,7 @@ export function createPendingRentColumns(
           attachmentModels={attachmentModels}
           locations={locations}
           conditionTypes={conditionTypes}
+          exchangeRate={exchangeRate}
         />
       ),
     },

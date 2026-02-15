@@ -52,6 +52,7 @@ export function MarkdownEditor({
   const [markdown, setMarkdown] = useState(defaultValue);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },

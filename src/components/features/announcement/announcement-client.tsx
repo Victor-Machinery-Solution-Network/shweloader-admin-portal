@@ -58,7 +58,7 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
           columns={columns}
           data={data}
           searchKey="text"
-          searchPlaceholder="Search announcements…"
+          searchPlaceholder="Search announcements"
           enableSelection
           enablePagination
           enableDragSort

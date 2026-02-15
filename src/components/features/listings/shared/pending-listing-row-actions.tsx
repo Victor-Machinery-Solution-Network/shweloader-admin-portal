@@ -32,6 +32,7 @@ interface PendingListingRowActionsProps {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
 }
 
 export function PendingListingRowActions({
@@ -42,6 +43,7 @@ export function PendingListingRowActions({
   attachmentModels,
   locations,
   conditionTypes,
+  exchangeRate,
 }: PendingListingRowActionsProps) {
   const [showView, setShowView] = useState(false);
   const [showReject, setShowReject] = useState(false);
@@ -99,6 +101,7 @@ export function PendingListingRowActions({
         attachmentModels={attachmentModels}
         locations={locations}
         conditionTypes={conditionTypes}
+        exchangeRate={exchangeRate}
         onApprove={() => handleApprove(true)}
         isApproving={isPending}
       />

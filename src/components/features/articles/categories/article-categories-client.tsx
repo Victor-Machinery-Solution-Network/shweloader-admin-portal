@@ -58,10 +58,11 @@ export function ArticleCategoriesClient({
           columns={columns}
           data={categories}
           searchKey="name"
-          searchPlaceholder="Search categories…"
+          searchPlaceholder="Search categories"
           enableSelection
           enablePagination
           pageSize={10}
+          getRowId={(row) => row.category_id}
           toolbar={renderToolbar}
         />
       ) : (

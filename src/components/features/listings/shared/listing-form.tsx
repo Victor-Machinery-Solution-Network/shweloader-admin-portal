@@ -9,7 +9,6 @@ import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { ImageInput } from "@/components/ui/image-input";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { SortableImageGallery } from "@/components/shared/sortable-image-gallery";
-import { SYSTEM_EXCHANGE_RATE } from "@/lib/constants";
 import {
   Combobox,
   ComboboxInput,
@@ -57,6 +56,7 @@ interface ListingFormProps {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
   onApprove?: () => void;
   isApproving?: boolean;
 }
@@ -72,6 +72,7 @@ export function ListingForm({
   attachmentModels,
   locations,
   conditionTypes,
+  exchangeRate,
   onApprove,
   isApproving = false,
 }: ListingFormProps) {
@@ -119,21 +120,47 @@ export function ListingForm({
     listing?.thumbnail_url ?? null,
   );
 
-  // Price calculation state
+  // Price state
   const [usdPrice, setUsdPrice] = useState<string>(
     listing?.usd_price?.toString() ?? "",
   );
+  const [mmkPrice, setMmkPrice] = useState<string>(
+    listing?.mmk_price?.toString() ?? "",
+  );
   const [useSystemRate, setUseSystemRate] = useState<boolean>(true);
-  const [customRate, setCustomRate] = useState<string>("3200");
+  const [customRate, setCustomRate] = useState<string>(
+    String(exchangeRate),
+  );
 
-  // Calculate MMK price
-  const mmkPrice = useMemo(() => {
+  // Auto-calculate MMK when USD or rate changes
+  function handleUsdChange(value: string) {
+    setUsdPrice(value);
+    const usd = parseFloat(value);
+    if (!isNaN(usd) && usd > 0) {
+      const rate = useSystemRate
+        ? exchangeRate
+        : parseFloat(customRate) || 0;
+      setMmkPrice(String(Math.round(usd * rate)));
+    }
+  }
+
+  function handleRateToggle(system: boolean) {
+    setUseSystemRate(system);
     const usd = parseFloat(usdPrice);
-    const rate = useSystemRate
-      ? SYSTEM_EXCHANGE_RATE
-      : parseFloat(customRate) || 0;
-    return isNaN(usd) ? 0 : Math.round(usd * rate);
-  }, [usdPrice, useSystemRate, customRate]);
+    if (!isNaN(usd) && usd > 0) {
+      const rate = system ? exchangeRate : parseFloat(customRate) || 0;
+      setMmkPrice(String(Math.round(usd * rate)));
+    }
+  }
+
+  function handleCustomRateChange(value: string) {
+    setCustomRate(value);
+    const usd = parseFloat(usdPrice);
+    const rate = parseFloat(value) || 0;
+    if (!isNaN(usd) && usd > 0 && rate > 0) {
+      setMmkPrice(String(Math.round(usd * rate)));
+    }
+  }
 
   // Build maps for ID lookups
   const partnerMap = useMemo(
@@ -193,8 +220,9 @@ export function ListingForm({
         );
         setThumbnail(listing?.thumbnail_url ?? null);
         setUsdPrice(listing?.usd_price?.toString() ?? "");
+        setMmkPrice(listing?.mmk_price?.toString() ?? "");
         setUseSystemRate(true);
-        setCustomRate("3200");
+        setCustomRate(String(exchangeRate));
         setForSale(pageType === "sale");
         setForRent(pageType === "rent");
       }
@@ -207,6 +235,7 @@ export function ListingForm({
       existingImages,
       onOpenChange,
       pageType,
+      exchangeRate,
     ],
   );
 
@@ -240,7 +269,7 @@ export function ListingForm({
 
     // Set prices
     formData.set("usd_price", usdPrice || "");
-    formData.set("mmk_price", mmkPrice.toString());
+    formData.set("mmk_price", mmkPrice || "0");
 
     // Listing type flags
     formData.set("for_sale", forSale ? "1" : "0");
@@ -511,10 +540,8 @@ export function ListingForm({
                 type="number"
                 placeholder="0"
                 value={usdPrice}
-                onChange={(e) => setUsdPrice(e.target.value)}
+                onChange={(e) => handleUsdChange(e.target.value)}
                 onWheel={(e) => {
-                  // Prevent mouse wheel from incrementing the number input;
-                  // let the dialog scroll instead.
                   e.currentTarget.blur();
                 }}
                 autoComplete="off"
@@ -530,15 +557,15 @@ export function ListingForm({
                   type="button"
                   variant={useSystemRate ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setUseSystemRate(true)}
+                  onClick={() => handleRateToggle(true)}
                 >
-                  System Rate ({SYSTEM_EXCHANGE_RATE})
+                  System Rate ({exchangeRate.toLocaleString()})
                 </Button>
                 <Button
                   type="button"
                   variant={!useSystemRate ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setUseSystemRate(false)}
+                  onClick={() => handleRateToggle(false)}
                 >
                   Custom Rate
                 </Button>
@@ -548,7 +575,7 @@ export function ListingForm({
                   type="number"
                   placeholder="Enter custom rate"
                   value={customRate}
-                  onChange={(e) => setCustomRate(e.target.value)}
+                  onChange={(e) => handleCustomRateChange(e.target.value)}
                   onWheel={(e) => {
                     e.currentTarget.blur();
                   }}
@@ -559,13 +586,17 @@ export function ListingForm({
           </Field>
 
           <Field orientation="vertical">
-            <FieldLabel>MMK Price (Calculated)</FieldLabel>
+            <FieldLabel>MMK Price</FieldLabel>
             <FieldContent>
               <Input
-                type="text"
-                value={mmkPrice.toLocaleString()}
-                readOnly
-                className="bg-muted"
+                type="number"
+                inputMode="numeric"
+                placeholder="0"
+                value={mmkPrice}
+                onChange={(e) => setMmkPrice(e.target.value)}
+                onWheel={(e) => {
+                  e.currentTarget.blur();
+                }}
                 autoComplete="off"
               />
             </FieldContent>

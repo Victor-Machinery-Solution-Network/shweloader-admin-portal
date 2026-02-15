@@ -95,7 +95,7 @@ export async function updateDisplayOrder(
  * Get the last (highest) display_order from a table.
  * Used when creating new items to place them at the end.
  */
-export async function getLastDisplayOrder(
+async function getLastDisplayOrder(
   table: OrderableTable,
   scopeColumn?: string,
   scopeId?: number,

@@ -70,13 +70,23 @@ export type { Carousel, CarouselImageWithDetails } from "./carousel";
 // Re-export announcement types
 export type { AnnouncementText } from "./announcement";
 
-/** Matches the admin_user table in D1 */
-export interface AdminUser {
-  user_id: number;
-  username: string;
-  email: string;
-  password_hash: string;
-  role_id: number | null;
-  active: number;
-  created_at: string;
-}
+// Re-export role types
+export type {
+  Role,
+  FeaturePermission,
+  RoleWithPermissionCount,
+} from "./role";
+
+// Re-export admin types
+export type { AdminUser, AdminWithRole } from "./admin";
+
+// Re-export setting types
+export type { AppSetting, SettingKey } from "./setting";
+export { SETTING_KEYS } from "./setting";
+
+// Re-export enquiry types
+export type {
+  Enquiry,
+  EnquiryWithDetails,
+  EnquiryStatusType,
+} from "./enquiry";

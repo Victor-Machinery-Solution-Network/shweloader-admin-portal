@@ -90,4 +90,8 @@ export const CACHE_TAGS = {
   ARTICLES: "articles",
   CAROUSELS: "carousels",
   CONDITION_TYPES: "condition-types",
+  ROLES: "roles",
+  ADMINS: "admins",
+  SETTINGS: "settings",
+  ENQUIRIES: "enquiries",
 } as const;

@@ -274,6 +274,7 @@ interface ReferenceData {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
 }
 
 // --- Sale Columns ---
@@ -284,6 +285,7 @@ export function createSaleColumns(
   attachmentModels: AttachmentModel[],
   locations: Location[],
   conditionTypes: ConditionType[],
+  exchangeRate: number,
 ): ColumnDef<SaleListingWithDetails>[] {
   const ref: ReferenceData = {
     partners,
@@ -291,6 +293,7 @@ export function createSaleColumns(
     attachmentModels,
     locations,
     conditionTypes,
+    exchangeRate,
   };
 
   return [
@@ -359,6 +362,7 @@ export function createRentColumns(
   attachmentModels: AttachmentModel[],
   locations: Location[],
   conditionTypes: ConditionType[],
+  exchangeRate: number,
 ): ColumnDef<RentListingWithDetails>[] {
   const ref: ReferenceData = {
     partners,
@@ -366,6 +370,7 @@ export function createRentColumns(
     attachmentModels,
     locations,
     conditionTypes,
+    exchangeRate,
   };
 
   return [

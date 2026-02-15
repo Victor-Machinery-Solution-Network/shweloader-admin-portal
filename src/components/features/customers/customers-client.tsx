@@ -89,7 +89,7 @@ export function CustomersClient({
               columns={customerColumns}
               data={customers}
               searchKey="username"
-              searchPlaceholder="Search customers…"
+              searchPlaceholder="Search customers"
               enablePagination
               pageSize={10}
             />
@@ -108,10 +108,11 @@ export function CustomersClient({
               columns={businessTypeColumns}
               data={businessTypes}
               searchKey="name"
-              searchPlaceholder="Search business types…"
+              searchPlaceholder="Search business types"
               enableSelection
               enablePagination
               pageSize={10}
+              getRowId={(row) => row.business_type_id}
               toolbar={renderBTToolbar}
             />
           ) : (

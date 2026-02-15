@@ -70,10 +70,11 @@ export function LocationsClient({ locations, linkedCounts }: LocationsClientProp
           columns={columns}
           data={locations}
           searchKey="city_name"
-          searchPlaceholder="Search locations…"
+          searchPlaceholder="Search locations"
           enableSelection
           enablePagination
           pageSize={10}
+          getRowId={(row) => row.location_id}
           toolbar={renderToolbar}
         />
       ) : (

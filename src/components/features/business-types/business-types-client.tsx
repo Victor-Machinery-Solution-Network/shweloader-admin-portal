@@ -75,10 +75,11 @@ export function BusinessTypesClient({
           columns={columns}
           data={businessTypes}
           searchKey="name"
-          searchPlaceholder="Search business types…"
+          searchPlaceholder="Search business types"
           enableSelection
           enablePagination
           pageSize={10}
+          getRowId={(row) => row.business_type_id}
           toolbar={renderToolbar}
         />
       ) : (

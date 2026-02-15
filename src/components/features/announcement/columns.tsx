@@ -6,7 +6,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { formatDate } from "@/lib/utils";
 import { toggleAnnouncementActive } from "@/lib/actions/announcement";
 import { RowActions } from "./row-actions";
@@ -59,17 +59,6 @@ export const columns: ColumnDef<AnnouncementText>[] = [
       <span className="font-medium line-clamp-1 max-w-3xl">
         {row.original.text ?? "—"}
       </span>
-    ),
-  },
-  {
-    accessorKey: "display_order",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Order" />
-    ),
-    cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs">
-        {row.original.display_order}
-      </Badge>
     ),
   },
   {

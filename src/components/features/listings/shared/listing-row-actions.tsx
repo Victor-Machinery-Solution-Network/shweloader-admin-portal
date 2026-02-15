@@ -33,6 +33,7 @@ interface ListingRowActionsProps {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
 }
 
 export function ListingRowActions({
@@ -43,6 +44,7 @@ export function ListingRowActions({
   attachmentModels,
   locations,
   conditionTypes,
+  exchangeRate,
 }: ListingRowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -98,6 +100,7 @@ export function ListingRowActions({
             attachmentModels={attachmentModels}
             locations={locations}
             conditionTypes={conditionTypes}
+            exchangeRate={exchangeRate}
           />
         </Suspense>
       )}

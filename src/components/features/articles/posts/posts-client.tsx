@@ -118,10 +118,11 @@ export function PostsClient({
               columns={publishedColumns}
               data={publishedArticles}
               searchKey="title"
-              searchPlaceholder="Search articles…"
+              searchPlaceholder="Search articles"
               enableSelection
               enablePagination
               pageSize={10}
+              getRowId={(row) => row.article_id}
               toolbar={renderToolbar}
             />
           ) : (
@@ -139,7 +140,7 @@ export function PostsClient({
               columns={pendingColumns}
               data={pendingArticles}
               searchKey="title"
-              searchPlaceholder="Search pending articles…"
+              searchPlaceholder="Search pending articles"
               enablePagination
               pageSize={10}
             />

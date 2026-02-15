@@ -30,6 +30,19 @@ import {
 import { getPartnersWithDetails as fetchPartnersWithDetails } from "@/lib/actions/partner";
 import { getArticlesWithDetails as fetchArticlesWithDetails } from "@/lib/actions/article";
 import { getCarouselImages } from "@/lib/actions/carousel";
+import {
+  getRolesWithPermissionCount,
+  getAllFeaturePermissions,
+} from "@/lib/actions/role";
+import {
+  getAdminsWithRoles,
+  getAssignableRoles,
+} from "@/lib/actions/admin";
+import { getAllSettings } from "@/lib/actions/setting";
+import {
+  getEnquiriesWithDetails,
+  getEnquiryStatusTypes as fetchEnquiryStatusTypes,
+} from "@/lib/actions/enquiry";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -148,4 +161,40 @@ export function getRentListings() {
 
 export function getFeaturedListings() {
   return getFeaturedListingsWithDetails();
+}
+
+// Roles
+
+export function getRoles() {
+  return getRolesWithPermissionCount();
+}
+
+export function getFeaturePermissions() {
+  return getAllFeaturePermissions();
+}
+
+// Admins
+
+export function getAdmins() {
+  return getAdminsWithRoles();
+}
+
+export function getRolesForAssignment() {
+  return getAssignableRoles();
+}
+
+// Settings
+
+export function getSettings() {
+  return getAllSettings();
+}
+
+// Enquiries
+
+export function getEnquiries() {
+  return getEnquiriesWithDetails();
+}
+
+export function getEnquiryStatusTypes() {
+  return fetchEnquiryStatusTypes();
 }

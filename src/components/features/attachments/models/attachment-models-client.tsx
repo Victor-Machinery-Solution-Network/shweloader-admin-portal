@@ -68,10 +68,11 @@ export function AttachmentModelsClient({
           columns={columns}
           data={models}
           searchKey="name"
-          searchPlaceholder="Search models…"
+          searchPlaceholder="Search models"
           enableSelection
           enablePagination
           pageSize={10}
+          getRowId={(row) => row.model_id}
           toolbar={renderToolbar}
         />
       ) : (

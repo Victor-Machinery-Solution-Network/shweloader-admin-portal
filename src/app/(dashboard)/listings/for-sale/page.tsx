@@ -11,7 +11,10 @@ import {
   getAttachmentModels,
   getLocations,
   getConditionTypes,
+  getSettings,
 } from "@/lib/cache";
+import { SETTING_KEYS } from "@/types/setting";
+import { SYSTEM_EXCHANGE_RATE } from "@/lib/constants";
 import { ListingsClient } from "@/components/features/listings/shared/listings-client";
 
 export const metadata = {
@@ -44,6 +47,7 @@ async function SaleListingsContent() {
     CACHE_TAGS.ATTACHMENT_MODELS,
     CACHE_TAGS.LOCATIONS,
     CACHE_TAGS.CONDITION_TYPES,
+    CACHE_TAGS.SETTINGS,
   );
 
   const [
@@ -54,6 +58,7 @@ async function SaleListingsContent() {
     attachmentModels,
     locations,
     conditionTypes,
+    settings,
   ] = await Promise.all([
     getSaleListings(),
     getFeaturedListings(),
@@ -62,7 +67,11 @@ async function SaleListingsContent() {
     getAttachmentModels(),
     getLocations(),
     getConditionTypes(),
+    getSettings(),
   ]);
+
+  const exchangeRate =
+    Number(settings[SETTING_KEYS.EXCHANGE_RATE]) || SYSTEM_EXCHANGE_RATE;
 
   return (
     <ListingsClient
@@ -74,6 +83,7 @@ async function SaleListingsContent() {
       attachmentModels={attachmentModels}
       locations={locations}
       conditionTypes={conditionTypes}
+      exchangeRate={exchangeRate}
     />
   );
 }

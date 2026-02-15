@@ -74,6 +74,7 @@ interface ListingsClientProps {
   attachmentModels: AttachmentModel[];
   locations: Location[];
   conditionTypes: ConditionType[];
+  exchangeRate: number;
 }
 
 export function ListingsClient({
@@ -85,6 +86,7 @@ export function ListingsClient({
   attachmentModels,
   locations,
   conditionTypes,
+  exchangeRate,
 }: ListingsClientProps) {
   const config = PAGE_CONFIG[pageType];
   const Icon = config.icon;
@@ -98,8 +100,9 @@ export function ListingsClient({
       attachmentModels,
       locations,
       conditionTypes,
+      exchangeRate,
     ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes]);
+  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes, exchangeRate]);
 
   const pendingColumns = useMemo(() => {
     const factory =
@@ -110,8 +113,9 @@ export function ListingsClient({
       attachmentModels,
       locations,
       conditionTypes,
+      exchangeRate,
     ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes]);
+  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes, exchangeRate]);
 
   // Split listings by approval status
   const approvedListings = useMemo(
@@ -262,7 +266,7 @@ export function ListingsClient({
               columns={columns}
               data={filteredListings}
               searchKey="model_name"
-              searchPlaceholder="Search by model\u2026"
+              searchPlaceholder="Search by model\"
               enablePagination
               pageSize={10}
               toolbar={filterToolbar}
@@ -287,7 +291,7 @@ export function ListingsClient({
               columns={pendingColumns}
               data={pendingListings}
               searchKey="model_name"
-              searchPlaceholder="Search pending listings\u2026"
+              searchPlaceholder="Search pending listings\"
               enablePagination
               pageSize={10}
             />
@@ -330,6 +334,7 @@ export function ListingsClient({
             attachmentModels={attachmentModels}
             locations={locations}
             conditionTypes={conditionTypes}
+            exchangeRate={exchangeRate}
           />
         </Suspense>
       )}

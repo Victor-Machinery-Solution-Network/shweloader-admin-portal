@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useCallback, useEffect, useTransition } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
-import { keyBetween } from "@/lib/utils/display-order";
+import { keyBetween, nKeysBetween } from "@/lib/utils/display-order";
 import {
   updateDisplayOrder,
   type OrderableTable,
@@ -22,6 +28,12 @@ interface DragInfo {
   newIndex: number;
 }
 
+/** Check if a display_order value is a valid fractional-indexing key */
+function isValidFractionalKey(key: string | null): boolean {
+  if (!key) return true; // null is fine (means start/end boundary)
+  return /^[a-zA-Z][0-9A-Za-z]*$/.test(key);
+}
+
 /**
  * Reusable hook for drag-and-drop reorder with fractional-indexing.
  *
@@ -35,9 +47,13 @@ export function useDragReorder<T extends { display_order: string }>(
   const { getRowId, tableName, scopeId } = options;
   const [data, setData] = useState(serverData);
   const [, startTransition] = useTransition();
+  // Track pending reorders so we don't overwrite optimistic state
+  // when cache revalidation returns stale/old-order data.
+  const pendingReorders = useRef(0);
 
   // Sync local state when server data changes (after create/delete/revalidation)
   useEffect(() => {
+    if (pendingReorders.current > 0) return;
     setData(serverData);
   }, [serverData]);
 
@@ -45,7 +61,46 @@ export function useDragReorder<T extends { display_order: string }>(
     (reordered: T[], dragInfo: DragInfo) => {
       const { activeId, newIndex } = dragInfo;
 
-      // Determine neighbor keys (excluding the moved item itself)
+      // Check if any display_order values are legacy (plain integers).
+      // If so, reassign all items with fresh fractional-indexing keys.
+      const hasLegacyKeys = reordered.some(
+        (item) => !isValidFractionalKey(item.display_order),
+      );
+
+      if (hasLegacyKeys) {
+        // Generate N fresh keys for the entire reordered list
+        const freshKeys = nKeysBetween(null, null, reordered.length);
+        const reorderedWithKeys = reordered.map((item, i) => ({
+          ...item,
+          display_order: freshKeys[i],
+        }));
+
+        pendingReorders.current++;
+        setData(reorderedWithKeys);
+
+        // Update ALL rows with their new fractional keys
+        startTransition(async () => {
+          const results = await Promise.all(
+            reorderedWithKeys.map((item) =>
+              updateDisplayOrder(
+                tableName,
+                getRowId(item),
+                item.display_order,
+                scopeId,
+              ),
+            ),
+          );
+          pendingReorders.current--;
+          const failed = results.find((r) => !r.success);
+          if (failed) {
+            toast.error(failed.error ?? "Failed to reorder");
+            setData(serverData);
+          }
+        });
+        return;
+      }
+
+      // Normal path: compute a single fractional key between neighbors
       const neighbors = reordered.filter(
         (item) => getRowId(item) !== Number(activeId),
       );
@@ -58,10 +113,9 @@ export function useDragReorder<T extends { display_order: string }>(
 
       const newKey = keyBetween(before, after);
 
-      // Optimistic update
+      pendingReorders.current++;
       setData(reordered);
 
-      // Server: single row update
       const movedItemId =
         typeof activeId === "string" ? Number(activeId) : activeId;
 
@@ -72,6 +126,7 @@ export function useDragReorder<T extends { display_order: string }>(
           newKey,
           scopeId,
         );
+        pendingReorders.current--;
         if (!result.success) {
           toast.error(result.error ?? "Failed to reorder");
           setData(serverData); // rollback

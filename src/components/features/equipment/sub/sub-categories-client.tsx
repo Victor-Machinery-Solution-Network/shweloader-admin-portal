@@ -97,7 +97,7 @@ export function SubCategoriesClient({
           columns={columns}
           data={data}
           searchKey="name"
-          searchPlaceholder="Search sub categories…"
+          searchPlaceholder="Search sub categories"
           enableSelection
           enablePagination
           enableDragSort

@@ -179,7 +179,7 @@ function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  searchPlaceholder = "Search\u2026",
+  searchPlaceholder = "Search",
   enableSelection = false,
   enablePagination = true,
   enableDragSort = false,

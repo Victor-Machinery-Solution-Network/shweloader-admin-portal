@@ -9,7 +9,7 @@ import { invalidateTag } from "@/lib/cache-invalidation";
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
 
 /** Get the attachment category IDs linked to a brand */
-export async function getBrandCategoryIds(brandId: number): Promise<number[]> {
+async function getBrandCategoryIds(brandId: number): Promise<number[]> {
   const result = await d1.query<{ category_id: number }>(
     "SELECT category_id FROM attachment_category_brand WHERE brand_id = ? ORDER BY category_id",
     [brandId],
@@ -89,7 +89,7 @@ export async function getAllSubCategoryBrandLinks(): Promise<
 }
 
 /** Get the equipment sub-category IDs linked to a brand */
-export async function getBrandSubCategoryIds(
+async function getBrandSubCategoryIds(
   brandId: number,
 ): Promise<number[]> {
   const result = await d1.query<{ sub_category_id: number }>(

@@ -48,6 +48,7 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
 
   const defaultTab =
     carousels.length > 0 ? String(carousels[0].carousel.carousel_id) : "";
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   function handleDelete() {
     if (!deletingCarousel) return;
@@ -64,14 +65,8 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Carousel
-        </Button>
-      </div>
-
       {carousels.length > 0 ? (
-        <Tabs defaultValue={defaultTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
             <TabsList>
               {carousels.map(({ carousel, images }) => (
@@ -89,6 +84,40 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
                 </TabsTrigger>
               ))}
             </TabsList>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-xs">
+                  <MoreHorizontal />
+                  <span className="sr-only">Carousel options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    const active = carousels.find(
+                      (c) => String(c.carousel.carousel_id) === activeTab,
+                    );
+                    if (active) setEditingCarousel(active.carousel);
+                  }}
+                >
+                  <Pencil /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => {
+                    const active = carousels.find(
+                      (c) => String(c.carousel.carousel_id) === activeTab,
+                    );
+                    if (active) setDeletingCarousel(active.carousel);
+                  }}
+                >
+                  <Trash2 /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => setShowCreate(true)} className="ml-auto">
+              <Plus /> Add Carousel
+            </Button>
           </div>
 
           {carousels.map(({ carousel, images }) => (
@@ -96,39 +125,6 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
               key={carousel.carousel_id}
               value={String(carousel.carousel_id)}
             >
-              {/* Carousel info header */}
-              <div className="mb-4 flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
-                <div>
-                  <h3 className="font-medium">{carousel.name}</h3>
-                  {carousel.description && (
-                    <p className="text-muted-foreground text-sm">
-                      {carousel.description}
-                    </p>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-xs">
-                      <MoreHorizontal />
-                      <span className="sr-only">Carousel options</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => setEditingCarousel(carousel)}
-                    >
-                      <Pencil /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={() => setDeletingCarousel(carousel)}
-                    >
-                      <Trash2 /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
               <CarouselImageGrid
                 carouselId={carousel.carousel_id}
                 initialImages={images}
