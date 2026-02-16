@@ -12,6 +12,17 @@ export function getColumns(
 ): ColumnDef<EquipmentMainCategory>[] {
   return [
     {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm tabular-nums">
+          {row.index + 1}
+        </span>
+      ),
+      size: 40,
+      enableSorting: false,
+    },
+    {
       accessorKey: "name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />

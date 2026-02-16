@@ -36,6 +36,16 @@ function RemoveButton({ featuredId }: { featuredId: number }) {
 
 export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
   {
+    id: "index",
+    header: "#",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {row.index + 1}
+      </span>
+    ),
+    size: 40,
+  },
+  {
     id: "thumbnail",
     header: "",
     cell: ({ row }) => {

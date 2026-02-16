@@ -51,6 +51,17 @@ function ActiveToggle({ announcement }: { announcement: AnnouncementText }) {
 
 export const columns: ColumnDef<AnnouncementText>[] = [
   {
+    id: "index",
+    header: "#",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {row.index + 1}
+      </span>
+    ),
+    size: 40,
+    enableSorting: false,
+  },
+  {
     accessorKey: "text",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Announcement" />
