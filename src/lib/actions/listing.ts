@@ -143,6 +143,7 @@ export async function createListing(formData: FormData) {
         usd_price: formData.get("usd_price")
           ? Number(formData.get("usd_price"))
           : null,
+        hide_price: 0,
         is_hidden: 0,
         is_sold_out: 0,
         created_by,
@@ -160,6 +161,7 @@ export async function createListing(formData: FormData) {
         usd_price: formData.get("usd_price")
           ? Number(formData.get("usd_price"))
           : null,
+        hide_price: 0,
         is_hidden: 0,
         created_by,
       });
@@ -381,6 +383,42 @@ export async function toggleSoldOut(id: number) {
   }
 }
 
+export async function toggleSaleHidePrice(id: number) {
+  try {
+    const current = await d1.query<{ hide_price: number }>(
+      "SELECT hide_price FROM sale_listing WHERE id = ?",
+      [id],
+    );
+    const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
+    await saleListingService.update(id, { hide_price: newVal });
+    invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    return { success: true, hide_price: newVal };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to toggle price visibility"),
+    };
+  }
+}
+
+export async function toggleRentHidePrice(id: number) {
+  try {
+    const current = await d1.query<{ hide_price: number }>(
+      "SELECT hide_price FROM rent_listing WHERE id = ?",
+      [id],
+    );
+    const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
+    await rentListingService.update(id, { hide_price: newVal });
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    return { success: true, hide_price: newVal };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to toggle price visibility"),
+    };
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // FEATURED LISTING ACTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -434,7 +472,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.is_hidden, sl.is_sold_out,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out,
       sl.approve_status_id, sl.rejection_reason,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,
@@ -466,7 +504,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.is_hidden,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden,
       rl.approve_status_id, rl.rejection_reason,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,

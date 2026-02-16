@@ -29,7 +29,7 @@ export default function RolesPermissionsPage() {
 async function RolesContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.ROLES);
+  cacheTag(CACHE_TAGS.ROLES, CACHE_TAGS.FEATURE_PERMISSIONS);
 
   const [roles, featurePermissions] = await Promise.all([
     getRoles(),

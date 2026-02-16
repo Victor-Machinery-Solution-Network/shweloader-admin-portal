@@ -6,20 +6,53 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   Eye,
   EyeOff,
+  DollarSign,
   PackageX,
   PackageCheck,
-  Star,
-  StarOff,
+  Pin,
+  PinOff,
 } from "lucide-react";
+
+/** DollarSign with diagonal slash — short ticks keep the center clean */
+function DollarSignOff(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      <line x1="12" x2="12" y1="2" y2="4" />
+      <line x1="12" x2="12" y1="20" y2="22" />
+      <line x1="2" x2="22" y1="2" y2="22" />
+    </svg>
+  );
+}
+
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ListingRowActions } from "./listing-row-actions";
 import {
   toggleSaleHidden,
   toggleRentHidden,
   toggleSoldOut,
+  toggleSaleHidePrice,
+  toggleRentHidePrice,
   addToFeatured,
   removeFromFeatured,
 } from "@/lib/actions/listing";
@@ -54,23 +87,61 @@ function HiddenToggle({
   onToggle: () => Promise<void>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const label = isHidden ? "Show listing" : "Hide listing";
 
   return (
-    <Button
-      variant={isHidden ? "destructive" : "outline"}
-      size="icon-sm"
-      disabled={isPending}
-      title={isHidden ? "Show listing" : "Hide listing"}
-      aria-label={isHidden ? "Show listing" : "Hide listing"}
-      className={
-        isHidden
-          ? "rounded-full"
-          : "text-muted-foreground rounded-full border-dashed"
-      }
-      onClick={() => startTransition(() => onToggle())}
-    >
-      {isHidden ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isHidden ? "destructive" : "outline"}
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isHidden
+              ? "rounded-full"
+              : "text-muted-foreground rounded-full border-dashed"
+          }
+          onClick={() => startTransition(() => onToggle())}
+        >
+          {isHidden ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function HidePriceToggle({
+  hidePrice,
+  onToggle,
+}: {
+  hidePrice: boolean;
+  onToggle: () => Promise<void>;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const label = hidePrice ? "Show price" : "Hide price";
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={hidePrice ? "destructive" : "outline"}
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            hidePrice
+              ? "rounded-full"
+              : "text-muted-foreground rounded-full border-dashed"
+          }
+          onClick={() => startTransition(() => onToggle())}
+        >
+          {hidePrice ? <DollarSignOff aria-hidden="true" className="size-5" /> : <DollarSign aria-hidden="true" className="size-5" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -82,38 +153,43 @@ function SoldOutToggle({
   listingId: number;
 }) {
   const [isPending, startTransition] = useTransition();
+  const label = isSoldOut ? "Mark available" : "Mark sold out";
 
   return (
-    <Button
-      variant={isSoldOut ? "destructive" : "outline"}
-      size="icon-sm"
-      disabled={isPending}
-      title={isSoldOut ? "Mark available" : "Mark sold out"}
-      aria-label={isSoldOut ? "Mark available" : "Mark sold out"}
-      className={
-        isSoldOut
-          ? "rounded-full"
-          : "text-muted-foreground rounded-full border-dashed"
-      }
-      onClick={() =>
-        startTransition(async () => {
-          const result = await toggleSoldOut(listingId);
-          if (result.success) {
-            toast.success(
-              result.is_sold_out ? "Marked as sold out" : "Marked as available",
-            );
-          } else {
-            toast.error(result.error ?? "Failed to toggle");
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isSoldOut ? "destructive" : "outline"}
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isSoldOut
+              ? "rounded-full"
+              : "text-muted-foreground rounded-full border-dashed"
           }
-        })
-      }
-    >
-      {isSoldOut ? (
-        <PackageX aria-hidden="true" className="size-5" />
-      ) : (
-        <PackageCheck aria-hidden="true" className="size-5" />
-      )}
-    </Button>
+          onClick={() =>
+            startTransition(async () => {
+              const result = await toggleSoldOut(listingId);
+              if (result.success) {
+                toast.success(
+                  result.is_sold_out ? "Marked as sold out" : "Marked as available",
+                );
+              } else {
+                toast.error(result.error ?? "Failed to toggle");
+              }
+            })
+          }
+        >
+          {isSoldOut ? (
+            <PackageX aria-hidden="true" className="size-5" />
+          ) : (
+            <PackageCheck aria-hidden="true" className="size-5" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -128,45 +204,50 @@ function FeatureToggle({
 }) {
   const [isPending, startTransition] = useTransition();
   const isFeatured = featuredId != null;
+  const label = isFeatured ? "Remove from featured" : "Feature on home page";
 
   return (
-    <Button
-      variant={isFeatured ? "default" : "outline"}
-      size="icon-sm"
-      disabled={isPending}
-      title={isFeatured ? "Remove from featured" : "Feature on home page"}
-      aria-label={isFeatured ? "Remove from featured" : "Feature on home page"}
-      className={
-        isFeatured
-          ? "rounded-full"
-          : "text-muted-foreground rounded-full border-dashed"
-      }
-      onClick={() =>
-        startTransition(async () => {
-          if (isFeatured) {
-            const result = await removeFromFeatured(featuredId);
-            if (result.success) {
-              toast.success("Removed from featured");
-            } else {
-              toast.error(result.error ?? "Failed to remove");
-            }
-          } else {
-            const result = await addToFeatured(listingType, listingId);
-            if (result.success) {
-              toast.success("Featured on home page");
-            } else {
-              toast.error(result.error ?? "Failed to feature");
-            }
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isFeatured
+              ? "rounded-full border-transparent bg-blue-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50"
+              : "text-muted-foreground rounded-full border-dashed"
           }
-        })
-      }
-    >
-      {isFeatured ? (
-        <Star aria-hidden="true" className="size-5 fill-current" />
-      ) : (
-        <StarOff aria-hidden="true" className="size-5" />
-      )}
-    </Button>
+          onClick={() =>
+            startTransition(async () => {
+              if (isFeatured) {
+                const result = await removeFromFeatured(featuredId);
+                if (result.success) {
+                  toast.success("Removed from featured");
+                } else {
+                  toast.error(result.error ?? "Failed to remove");
+                }
+              } else {
+                const result = await addToFeatured(listingType, listingId);
+                if (result.success) {
+                  toast.success("Featured on home page");
+                } else {
+                  toast.error(result.error ?? "Failed to feature");
+                }
+              }
+            })
+          }
+        >
+          {isFeatured ? (
+            <Pin aria-hidden="true" className="size-5 fill-current" />
+          ) : (
+            <PinOff aria-hidden="true" className="size-5" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -320,34 +401,49 @@ export function createSaleColumns(
       id: "actions",
       header: "",
       cell: ({ row }) => {
-        const { id, is_hidden, is_sold_out, featured_id } = row.original;
+        const { id, is_hidden, is_sold_out, hide_price, featured_id } = row.original;
         return (
-          <div className="flex items-center justify-end gap-1">
-            <HiddenToggle
-              isHidden={is_hidden === 1}
-              onToggle={async () => {
-                const result = await toggleSaleHidden(id);
-                if (result.success) {
-                  toast.success(
-                    result.is_hidden ? "Listing hidden" : "Listing visible",
-                  );
-                } else {
-                  toast.error(result.error ?? "Failed to toggle");
-                }
-              }}
-            />
-            <SoldOutToggle isSoldOut={is_sold_out === 1} listingId={id} />
-            <FeatureToggle
-              featuredId={featured_id}
-              listingType="sale"
-              listingId={id}
-            />
-            <ListingRowActions
-              listing={row.original}
-              pageType="sale"
-              {...ref}
-            />
-          </div>
+          <TooltipProvider>
+            <div className="flex items-center justify-end gap-1">
+              <HiddenToggle
+                isHidden={is_hidden === 1}
+                onToggle={async () => {
+                  const result = await toggleSaleHidden(id);
+                  if (result.success) {
+                    toast.success(
+                      result.is_hidden ? "Listing hidden" : "Listing visible",
+                    );
+                  } else {
+                    toast.error(result.error ?? "Failed to toggle");
+                  }
+                }}
+              />
+              <HidePriceToggle
+                hidePrice={hide_price === 1}
+                onToggle={async () => {
+                  const result = await toggleSaleHidePrice(id);
+                  if (result.success) {
+                    toast.success(
+                      result.hide_price ? "Price hidden" : "Price visible",
+                    );
+                  } else {
+                    toast.error(result.error ?? "Failed to toggle");
+                  }
+                }}
+              />
+              <SoldOutToggle isSoldOut={is_sold_out === 1} listingId={id} />
+              <FeatureToggle
+                featuredId={featured_id}
+                listingType="sale"
+                listingId={id}
+              />
+              <ListingRowActions
+                listing={row.original}
+                pageType="sale"
+                {...ref}
+              />
+            </div>
+          </TooltipProvider>
         );
       },
     },
@@ -383,33 +479,48 @@ export function createRentColumns(
       id: "actions",
       header: "",
       cell: ({ row }) => {
-        const { id, is_hidden, featured_id } = row.original;
+        const { id, is_hidden, hide_price, featured_id } = row.original;
         return (
-          <div className="flex items-center justify-end gap-1">
-            <HiddenToggle
-              isHidden={is_hidden === 1}
-              onToggle={async () => {
-                const result = await toggleRentHidden(id);
-                if (result.success) {
-                  toast.success(
-                    result.is_hidden ? "Listing hidden" : "Listing visible",
-                  );
-                } else {
-                  toast.error(result.error ?? "Failed to toggle");
-                }
-              }}
-            />
-            <FeatureToggle
-              featuredId={featured_id}
-              listingType="rent"
-              listingId={id}
-            />
-            <ListingRowActions
-              listing={row.original}
-              pageType="rent"
-              {...ref}
-            />
-          </div>
+          <TooltipProvider>
+            <div className="flex items-center justify-end gap-1">
+              <HiddenToggle
+                isHidden={is_hidden === 1}
+                onToggle={async () => {
+                  const result = await toggleRentHidden(id);
+                  if (result.success) {
+                    toast.success(
+                      result.is_hidden ? "Listing hidden" : "Listing visible",
+                    );
+                  } else {
+                    toast.error(result.error ?? "Failed to toggle");
+                  }
+                }}
+              />
+              <HidePriceToggle
+                hidePrice={hide_price === 1}
+                onToggle={async () => {
+                  const result = await toggleRentHidePrice(id);
+                  if (result.success) {
+                    toast.success(
+                      result.hide_price ? "Price hidden" : "Price visible",
+                    );
+                  } else {
+                    toast.error(result.error ?? "Failed to toggle");
+                  }
+                }}
+              />
+              <FeatureToggle
+                featuredId={featured_id}
+                listingType="rent"
+                listingId={id}
+              />
+              <ListingRowActions
+                listing={row.original}
+                pageType="rent"
+                {...ref}
+              />
+            </div>
+          </TooltipProvider>
         );
       },
     },

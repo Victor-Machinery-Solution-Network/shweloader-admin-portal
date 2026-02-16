@@ -37,7 +37,11 @@ export default function BrandsPage() {
 async function BrandsContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.BRANDS);
+  cacheTag(
+    CACHE_TAGS.BRANDS,
+    CACHE_TAGS.ATTACHMENT_CATEGORIES,
+    CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES,
+  );
 
   const [brands, categories, subCategories] = await Promise.all([
     getBrands(),

@@ -11,6 +11,16 @@ interface RequiredInputProps extends React.ComponentProps<typeof Input> {
 }
 
 /**
+ * Inline error for non-native fields (e.g. Combobox).
+ * Must be rendered inside FormDialog's children so it reads the correct context.
+ */
+export function FieldError({ show, message }: { show: boolean; message: string }) {
+  const submitted = useContext(FormSubmittedContext);
+  if (!submitted || !show) return null;
+  return <p className="text-xs text-destructive">{message}</p>;
+}
+
+/**
  * Input that shows an inline error message when the form is submitted and the field is empty.
  * Uses `aria-invalid` to trigger the red border styling from the Input component.
  */

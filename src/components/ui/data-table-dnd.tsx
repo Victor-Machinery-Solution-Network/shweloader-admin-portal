@@ -132,12 +132,19 @@ function DndTable({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
+                {headerGroup.headers.map((header, headerIdx) => {
                   const hasFixedSize = header.column.columnDef.maxSize !== undefined && header.column.columnDef.maxSize < 150;
+                  const isLast = headerIdx === headerGroup.headers.length - 1;
                   return (
                     <TableHead
                       key={header.id}
-                      style={hasFixedSize ? { width: header.column.getSize(), padding: '0 0.25rem' } : undefined}
+                      style={{
+                        ...(hasFixedSize && {
+                          width: header.column.getSize(),
+                          padding: headerIdx === 0 ? '1rem' : '0 0.25rem',
+                        }),
+                        ...(isLast && { paddingRight: '1rem' }),
+                      }}
                     >
                       {header.isPlaceholder
                         ? null
@@ -159,12 +166,19 @@ function DndTable({
                   id={getRowId(row.original)}
                   data-state={row.getIsSelected() ? "selected" : undefined}
                 >
-                  {row.getVisibleCells().map((cell) => {
+                  {row.getVisibleCells().map((cell, cellIdx, cells) => {
                     const hasFixedSize = cell.column.columnDef.maxSize !== undefined && cell.column.columnDef.maxSize < 150;
+                    const isLast = cellIdx === cells.length - 1;
                     return (
                       <TableCell
                         key={cell.id}
-                        style={hasFixedSize ? { width: cell.column.getSize(), padding: '0 0.25rem' } : undefined}
+                        style={{
+                          ...(hasFixedSize && {
+                            width: cell.column.getSize(),
+                            padding: cellIdx === 0 ? '1rem' : '0 0.25rem',
+                          }),
+                          ...(isLast && { paddingRight: '1rem' }),
+                        }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>

@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { Cog, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { RequiredInput } from "@/components/ui/required-input";
+import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
@@ -80,7 +80,7 @@ export function EquipmentModelForm({
     return map;
   }, [subCategoryBrandLinks]);
 
-  // All names (unfiltered)
+  // All names (unfiltered – shown when nothing is selected)
   const allSubCategoryNames = useMemo(
     () => subCategories.map((sc) => sc.name),
     [subCategories],
@@ -106,7 +106,7 @@ export function EquipmentModelForm({
     const brandId = brandMap.get(selectedBrand);
     if (!brandId) return allSubCategoryNames;
     const linkedSubCatIds = subCategoriesByBrand.get(brandId);
-    if (!linkedSubCatIds || linkedSubCatIds.size === 0) return allSubCategoryNames;
+    if (!linkedSubCatIds) return [];
     return subCategories
       .filter((sc) => linkedSubCatIds.has(sc.sub_category_id))
       .map((sc) => sc.name);
@@ -117,7 +117,7 @@ export function EquipmentModelForm({
     const subCatId = subCategoryMap.get(selectedSubCategory);
     if (!subCatId) return allBrandNames;
     const linkedBrandIds = brandsBySubCategory.get(subCatId);
-    if (!linkedBrandIds || linkedBrandIds.size === 0) return allBrandNames;
+    if (!linkedBrandIds) return [];
     return brands
       .filter((b) => linkedBrandIds.has(b.brand_id))
       .map((b) => b.name);
@@ -166,17 +166,12 @@ export function EquipmentModelForm({
   };
 
   function handleSubmit(formData: FormData) {
-    const subCategoryId = subCategoryMap.get(selectedSubCategory);
-    if (!subCategoryId) {
-      toast.error("Please select a sub category");
-      return;
-    }
-    formData.set("sub_category_id", subCategoryId.toString());
-
     const brandId = brandMap.get(selectedBrand);
-    if (brandId) {
-      formData.set("brand_id", brandId.toString());
-    }
+    const subCategoryId = subCategoryMap.get(selectedSubCategory);
+    if (!brandId || !subCategoryId) return;
+
+    formData.set("brand_id", brandId.toString());
+    formData.set("sub_category_id", subCategoryId.toString());
 
     startTransition(async () => {
       const result = isEditing
@@ -228,58 +223,64 @@ export function EquipmentModelForm({
         </Field>
 
         <Field orientation="vertical">
-          <FieldLabel>Sub Category</FieldLabel>
+          <FieldLabel>Brand</FieldLabel>
           <FieldContent>
-            <Combobox
-              value={selectedSubCategory}
-              onValueChange={handleSubCategoryChange}
-              items={filteredSubCategoryNames}
-            >
-              <ComboboxInput
-                placeholder="Search sub category…"
-                showClear={!!selectedSubCategory}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(name) => (
-                      <ComboboxItem key={name} value={name}>
-                        {name}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <div className="space-y-1">
+              <Combobox
+                value={selectedBrand}
+                onValueChange={handleBrandChange}
+                items={filteredBrandNames}
+              >
+                <ComboboxInput
+                  placeholder="Search brand…"
+                  showClear={!!selectedBrand}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No brand found</ComboboxEmpty>
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          {name}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              <FieldError show={!selectedBrand} message="Please select a brand" />
+            </div>
           </FieldContent>
         </Field>
 
         <Field orientation="vertical">
-          <FieldLabel>Brand</FieldLabel>
+          <FieldLabel>Sub Category</FieldLabel>
           <FieldContent>
-            <Combobox
-              value={selectedBrand}
-              onValueChange={handleBrandChange}
-              items={filteredBrandNames}
-            >
-              <ComboboxInput
-                placeholder="Search brand…"
-                showClear={!!selectedBrand}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No brand found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(name) => (
-                      <ComboboxItem key={name} value={name}>
-                        {name}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <div className="space-y-1">
+              <Combobox
+                value={selectedSubCategory}
+                onValueChange={handleSubCategoryChange}
+                items={filteredSubCategoryNames}
+              >
+                <ComboboxInput
+                  placeholder="Search sub category…"
+                  showClear={!!selectedSubCategory}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No sub category found</ComboboxEmpty>
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          {name}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              <FieldError show={!selectedSubCategory} message="Please select a sub category" />
+            </div>
           </FieldContent>
         </Field>
 

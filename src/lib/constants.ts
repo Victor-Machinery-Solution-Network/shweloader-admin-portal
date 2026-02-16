@@ -94,4 +94,5 @@ export const CACHE_TAGS = {
   ADMINS: "admins",
   SETTINGS: "settings",
   ENQUIRIES: "enquiries",
+  FEATURE_PERMISSIONS: "feature-permissions",
 } as const;

@@ -199,7 +199,7 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           align="start"
         >
           <Command>
-            {searchable && <CommandInput placeholder="Search\u2026" />}
+            {searchable && <CommandInput placeholder="Search..." />}
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup>

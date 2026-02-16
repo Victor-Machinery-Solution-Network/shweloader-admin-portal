@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { Pencil, Wrench } from "lucide-react";
 import { toast } from "sonner";
-import { RequiredInput } from "@/components/ui/required-input";
+import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
@@ -80,7 +80,7 @@ export function AttachmentModelForm({
     return map;
   }, [categoryBrandLinks]);
 
-  // All names (unfiltered)
+  // All names (unfiltered – shown when nothing is selected)
   const allCategoryNames = useMemo(
     () => categories.map((c) => c.name),
     [categories],
@@ -106,7 +106,7 @@ export function AttachmentModelForm({
     const brandId = brandMap.get(selectedBrand);
     if (!brandId) return allCategoryNames;
     const linkedCatIds = categoriesByBrand.get(brandId);
-    if (!linkedCatIds || linkedCatIds.size === 0) return allCategoryNames;
+    if (!linkedCatIds) return [];
     return categories
       .filter((c) => linkedCatIds.has(c.category_id))
       .map((c) => c.name);
@@ -117,7 +117,7 @@ export function AttachmentModelForm({
     const catId = categoryMap.get(selectedCategory);
     if (!catId) return allBrandNames;
     const linkedBrandIds = brandsByCategory.get(catId);
-    if (!linkedBrandIds || linkedBrandIds.size === 0) return allBrandNames;
+    if (!linkedBrandIds) return [];
     return brands
       .filter((b) => linkedBrandIds.has(b.brand_id))
       .map((b) => b.name);
@@ -166,17 +166,12 @@ export function AttachmentModelForm({
   };
 
   function handleSubmit(formData: FormData) {
-    const categoryId = categoryMap.get(selectedCategory);
-    if (!categoryId) {
-      toast.error("Please select a category");
-      return;
-    }
-    formData.set("category_id", categoryId.toString());
-
     const brandId = brandMap.get(selectedBrand);
-    if (brandId) {
-      formData.set("brand_id", brandId.toString());
-    }
+    const categoryId = categoryMap.get(selectedCategory);
+    if (!brandId || !categoryId) return;
+
+    formData.set("brand_id", brandId.toString());
+    formData.set("category_id", categoryId.toString());
 
     startTransition(async () => {
       const result = isEditing
@@ -228,58 +223,64 @@ export function AttachmentModelForm({
         </Field>
 
         <Field orientation="vertical">
-          <FieldLabel>Category</FieldLabel>
+          <FieldLabel>Brand</FieldLabel>
           <FieldContent>
-            <Combobox
-              value={selectedCategory}
-              onValueChange={handleCategoryChange}
-              items={filteredCategoryNames}
-            >
-              <ComboboxInput
-                placeholder="Search category…"
-                showClear={!!selectedCategory}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No category found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(name) => (
-                      <ComboboxItem key={name} value={name}>
-                        {name}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <div className="space-y-1">
+              <Combobox
+                value={selectedBrand}
+                onValueChange={handleBrandChange}
+                items={filteredBrandNames}
+              >
+                <ComboboxInput
+                  placeholder="Search brand…"
+                  showClear={!!selectedBrand}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No brand found</ComboboxEmpty>
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          {name}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              <FieldError show={!selectedBrand} message="Please select a brand" />
+            </div>
           </FieldContent>
         </Field>
 
         <Field orientation="vertical">
-          <FieldLabel>Brand</FieldLabel>
+          <FieldLabel>Category</FieldLabel>
           <FieldContent>
-            <Combobox
-              value={selectedBrand}
-              onValueChange={handleBrandChange}
-              items={filteredBrandNames}
-            >
-              <ComboboxInput
-                placeholder="Search brand (optional)…"
-                showClear={!!selectedBrand}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No brand found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(name) => (
-                      <ComboboxItem key={name} value={name}>
-                        {name}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <div className="space-y-1">
+              <Combobox
+                value={selectedCategory}
+                onValueChange={handleCategoryChange}
+                items={filteredCategoryNames}
+              >
+                <ComboboxInput
+                  placeholder="Search category…"
+                  showClear={!!selectedCategory}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No category found</ComboboxEmpty>
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          {name}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              <FieldError show={!selectedCategory} message="Please select a category" />
+            </div>
           </FieldContent>
         </Field>
 

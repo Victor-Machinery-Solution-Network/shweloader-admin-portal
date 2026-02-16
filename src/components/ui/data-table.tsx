@@ -15,12 +15,15 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   GripVertical,
+  X,
 } from "lucide-react";
 import type { DraggableAttributes } from "@dnd-kit/core";
 
@@ -47,6 +50,9 @@ import {
 // Lazy-load the dnd table module (only loaded when enableDragSort is true)
 const LazyDndTable = React.lazy(() => import("./data-table-dnd"));
 
+// --- Internal registry: maps column ID → display title (populated by DataTableColumnHeader) ---
+const ColumnTitleRegistry = React.createContext<Map<string, string>>(new Map());
+
 // --- Helper: sortable header ---
 function DataTableColumnHeader<TData>({
   column,
@@ -57,19 +63,38 @@ function DataTableColumnHeader<TData>({
   title: string;
   className?: string;
 }) {
+  "use no memo"; // TanStack Table column is a mutable object — React Compiler must not cache method results
+  // Register display title so the sort chip can show it
+  const titleRegistry = React.useContext(ColumnTitleRegistry);
+  titleRegistry.set(column.id, title);
+
   if (!column.getCanSort()) {
     return <div className={className}>{title}</div>;
   }
+
+  const sorted = column.getIsSorted();
 
   return (
     <Button
       variant="ghost"
       size="sm"
-      className={cn("-ml-3 h-8", className)}
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className={cn("-ml-3 h-8", sorted && "text-foreground", className)}
+      onClick={() => {
+        if (sorted === "desc") {
+          column.clearSorting();
+        } else {
+          column.toggleSorting(sorted === "asc");
+        }
+      }}
     >
       {title}
-      <ArrowUpDown className="ml-1 size-3.5" />
+      {sorted === "asc" ? (
+        <ArrowUp className="ml-1 size-3.5" />
+      ) : sorted === "desc" ? (
+        <ArrowDown className="ml-1 size-3.5" />
+      ) : (
+        <ArrowUpDown className="ml-1 size-3.5" />
+      )}
     </Button>
   );
 }
@@ -82,9 +107,15 @@ function getSelectColumn<TData>(): ColumnDef<TData> {
       <Checkbox
         checked={
           table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          (table.getIsSomeRowsSelected() && "indeterminate")
         }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        onCheckedChange={(value) => {
+          if (value) {
+            table.toggleAllPageRowsSelected(true);
+          } else {
+            table.toggleAllRowsSelected(false);
+          }
+        }}
         aria-label="Select all"
       />
     ),
@@ -162,7 +193,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   enableSelection?: boolean;
   enablePagination?: boolean;
-  /** Enable drag-and-drop row reordering. Requires getRowId. Column sorting is supported — clicking a sortable header temporarily hides drag handles and sorts by column; a "Custom Order" button lets users return to drag mode. */
+  /** Enable drag-and-drop row reordering. Requires getRowId. Column sorting is supported — clicking a sortable header temporarily hides drag handles; clicking the header a third time clears the sort and restores drag mode. */
   enableDragSort?: boolean;
   /** Unique ID getter for each row (required when enableDragSort is true) */
   getRowId?: (row: TData) => string | number;
@@ -189,6 +220,7 @@ function DataTable<TData, TValue>({
   toolbar,
 }: DataTableProps<TData, TValue>) {
   "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
+  const columnTitlesRef = React.useRef(new Map<string, string>());
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -198,8 +230,9 @@ function DataTable<TData, TValue>({
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   // When drag-sort is enabled, column sorting and drag reordering coexist:
-  // - No column sorted → drag handles visible, DnD active ("custom order" mode)
-  // - Column sorted → drag handles hidden, standard sorted table, "Custom Order" button shown
+  // - No column sorted → drag handles visible, DnD active
+  // - Column sorted → drag handles hidden, standard sorted table
+  // Clicking a sorted column header cycles: asc → desc → clear (restores drag mode)
   const isColumnSorted = sorting.length > 0;
 
   const allColumns = React.useMemo(() => {
@@ -262,18 +295,17 @@ function DataTable<TData, TValue>({
               const hasFixedSize =
                 header.column.columnDef.maxSize !== undefined &&
                 header.column.columnDef.maxSize < 150;
+              const isLast = headerIdx === headerGroup.headers.length - 1;
               return (
                 <TableHead
                   key={header.id}
-                  style={
-                    hasFixedSize
-                      ? {
-                          width: header.column.getSize(),
-                          padding: "0 0.25rem",
-                          ...(headerIdx === 0 && { paddingLeft: "0.75rem" }),
-                        }
-                      : undefined
-                  }
+                  style={{
+                    ...(hasFixedSize && {
+                      width: header.column.getSize(),
+                      padding: headerIdx === 0 ? "1rem" : "0 0.25rem",
+                    }),
+                    ...(isLast && { paddingRight: "1rem" }),
+                  }}
                 >
                   {header.isPlaceholder
                     ? null
@@ -290,22 +322,22 @@ function DataTable<TData, TValue>({
       <TableBody>
         {table.getRowModel().rows?.length ? (
           table.getRowModel().rows.map((row) => {
-            const cells = row.getVisibleCells().map((cell, cellIdx) => {
+            const visibleCells = row.getVisibleCells();
+            const cells = visibleCells.map((cell, cellIdx) => {
               const hasFixedSize =
                 cell.column.columnDef.maxSize !== undefined &&
                 cell.column.columnDef.maxSize < 150;
+              const isLast = cellIdx === visibleCells.length - 1;
               return (
                 <TableCell
                   key={cell.id}
-                  style={
-                    hasFixedSize
-                      ? {
-                          width: cell.column.getSize(),
-                          padding: "0 0.25rem",
-                          ...(cellIdx === 0 && { paddingLeft: "0.75rem" }),
-                        }
-                      : undefined
-                  }
+                  style={{
+                    ...(hasFixedSize && {
+                      width: cell.column.getSize(),
+                      padding: cellIdx === 0 ? "1rem" : "0 0.25rem",
+                    }),
+                    ...(isLast && { paddingRight: "1rem" }),
+                  }}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
@@ -333,10 +365,11 @@ function DataTable<TData, TValue>({
   );
 
   return (
+    <ColumnTitleRegistry.Provider value={columnTitlesRef.current}>
     <DataTableContext.Provider value={{ clearSelection }}>
       <div className="space-y-4">
         {/* Toolbar */}
-        {(searchKey || resolvedToolbar || (enableDragSort && isColumnSorted)) && (
+        {(searchKey || resolvedToolbar || sorting.length > 0) && (
           <div className="flex items-center gap-2">
             {searchKey && (
               <Input
@@ -351,14 +384,15 @@ function DataTable<TData, TValue>({
                 className="max-w-xs"
               />
             )}
-            {enableDragSort && isColumnSorted && (
+            {sorting.length > 0 && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setSorting([])}
               >
-                <GripVertical className="size-3.5" />
-                Custom Order
+                {columnTitlesRef.current.get(sorting[0].id) ?? sorting[0].id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())}
+                {sorting[0].desc ? " (Desc)" : " (Asc)"}
+                <X className="ml-1 size-3.5" />
               </Button>
             )}
             {resolvedToolbar}
@@ -366,7 +400,7 @@ function DataTable<TData, TValue>({
         )}
 
         {/* Table */}
-        <div className="rounded-xl border">
+        <div className="overflow-hidden rounded-xl border">
           {enableDragSort && getRowId && !isColumnSorted ? (
             <React.Suspense fallback={renderTableContent()}>
               <LazyDndTable
@@ -388,15 +422,15 @@ function DataTable<TData, TValue>({
             {enableSelection ? (
               <p className="text-muted-foreground text-sm">
                 {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected
+                {table.getFilteredRowModel().rows.length} rows selected
               </p>
             ) : (
               <div />
             )}
 
             {enablePagination && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-6 lg:gap-8">
+                <div className="flex items-center gap-2">
                   <p className="text-muted-foreground text-sm whitespace-nowrap">
                     Rows per page
                   </p>
@@ -422,42 +456,42 @@ function DataTable<TData, TValue>({
                   {table.getPageCount()}
                 </p>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="outline"
-                    size="icon-xs"
+                    size="icon-sm"
                     aria-label="First page"
                     onClick={() => table.setPageIndex(0)}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    <ChevronsLeft className="size-3.5" aria-hidden="true" />
+                    <ChevronsLeft className="size-4" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
-                    size="icon-xs"
+                    size="icon-sm"
                     aria-label="Previous page"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    <ChevronLeft className="size-3.5" aria-hidden="true" />
+                    <ChevronLeft className="size-4" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
-                    size="icon-xs"
+                    size="icon-sm"
                     aria-label="Next page"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                   >
-                    <ChevronRight className="size-3.5" aria-hidden="true" />
+                    <ChevronRight className="size-4" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="outline"
-                    size="icon-xs"
+                    size="icon-sm"
                     aria-label="Last page"
                     onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                     disabled={!table.getCanNextPage()}
                   >
-                    <ChevronsRight className="size-3.5" aria-hidden="true" />
+                    <ChevronsRight className="size-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -466,6 +500,7 @@ function DataTable<TData, TValue>({
         )}
       </div>
     </DataTableContext.Provider>
+    </ColumnTitleRegistry.Provider>
   );
 }
 

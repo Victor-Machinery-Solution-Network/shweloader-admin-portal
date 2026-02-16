@@ -2,7 +2,6 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import type { AttachmentModel, AttachmentCategory } from "@/types/attachment";
@@ -28,38 +27,27 @@ export function createColumns(
       },
     },
     {
-      id: "category",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Category" />
-      ),
-      cell: ({ row }) => {
-        const name =
-          categoryMap.get(row.original.category_id) ??
-          `#${row.original.category_id}`;
-        return (
-          <Badge variant="secondary" className="text-xs">
-            {name}
-          </Badge>
-        );
-      },
-    },
-    {
       id: "brand",
+      accessorFn: (row) => (row.brand_id ? (brandMap.get(row.brand_id) ?? "") : ""),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Brand" />
       ),
       cell: ({ row }) => {
-        if (!row.original.brand_id) {
-          return <span className="text-muted-foreground text-sm">—</span>;
-        }
-        const name =
-          brandMap.get(row.original.brand_id) ?? `#${row.original.brand_id}`;
-        return (
-          <Badge variant="outline" className="text-xs">
-            {name}
-          </Badge>
-        );
+        const name = row.getValue("brand") as string;
+        return name
+          ? <span className="text-sm">{name}</span>
+          : <span className="text-muted-foreground text-sm">—</span>;
       },
+    },
+    {
+      id: "category",
+      accessorFn: (row) => categoryMap.get(row.category_id) ?? "",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Category" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">{row.getValue("category") || "—"}</span>
+      ),
     },
     {
       accessorKey: "created_at",

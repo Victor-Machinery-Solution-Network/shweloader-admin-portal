@@ -3,7 +3,7 @@
 import { useMemo, useCallback, lazy, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { ShoppingCart, Home, Plus, Star, Filter, Clock } from "lucide-react";
+import { ShoppingCart, Home, Plus, Pin, Filter, Clock } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -255,7 +255,7 @@ export function ListingsClient({
             )}
           </TabsTrigger>
           <TabsTrigger value="featured">
-            <Star className="size-4" aria-hidden="true" />
+            <Pin className="size-4" aria-hidden="true" />
             Featured Listings
           </TabsTrigger>
         </TabsList>
@@ -315,7 +315,7 @@ export function ListingsClient({
             />
           ) : (
             <EmptyState
-              icon={Star}
+              icon={Pin}
               title="No featured listings"
               description="Feature a listing from the Listings tab to show it on the home page."
             />

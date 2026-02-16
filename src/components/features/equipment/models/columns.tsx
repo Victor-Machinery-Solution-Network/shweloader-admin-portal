@@ -2,7 +2,6 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
@@ -34,54 +33,43 @@ export function createColumns(
       },
     },
     {
-      id: "main_category",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Main Category" />
-      ),
-      cell: ({ row }) => {
-        const sc = subCategoryMap.get(row.original.sub_category_id);
-        const name = sc
-          ? (mainCategoryMap.get(sc.category_id) ?? `#${sc.category_id}`)
-          : "—";
-        return (
-          <Badge variant="outline" className="text-xs">
-            {name}
-          </Badge>
-        );
-      },
-    },
-    {
-      id: "sub_category",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sub Category" />
-      ),
-      cell: ({ row }) => {
-        const sc = subCategoryMap.get(row.original.sub_category_id);
-        const name = sc?.name ?? `#${row.original.sub_category_id}`;
-        return (
-          <Badge variant="secondary" className="text-xs">
-            {name}
-          </Badge>
-        );
-      },
-    },
-    {
       id: "brand",
+      accessorFn: (row) => (row.brand_id ? (brandMap.get(row.brand_id) ?? "") : ""),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Brand" />
       ),
       cell: ({ row }) => {
-        if (!row.original.brand_id) {
-          return <span className="text-muted-foreground text-sm">—</span>;
-        }
-        const name =
-          brandMap.get(row.original.brand_id) ?? `#${row.original.brand_id}`;
-        return (
-          <Badge variant="outline" className="text-xs">
-            {name}
-          </Badge>
-        );
+        const name = row.getValue("brand") as string;
+        return name
+          ? <span className="text-sm">{name}</span>
+          : <span className="text-muted-foreground text-sm">—</span>;
       },
+    },
+    {
+      id: "main_category",
+      accessorFn: (row) => {
+        const sc = subCategoryMap.get(row.sub_category_id);
+        return sc ? (mainCategoryMap.get(sc.category_id) ?? "") : "";
+      },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Main Category" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">{row.getValue("main_category") || "—"}</span>
+      ),
+    },
+    {
+      id: "sub_category",
+      accessorFn: (row) => {
+        const sc = subCategoryMap.get(row.sub_category_id);
+        return sc?.name ?? "";
+      },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sub Category" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">{row.getValue("sub_category") || "—"}</span>
+      ),
     },
     {
       accessorKey: "created_at",

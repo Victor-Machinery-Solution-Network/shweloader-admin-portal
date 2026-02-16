@@ -28,7 +28,7 @@ export default function AdminsPage() {
 async function AdminsContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.ADMINS);
+  cacheTag(CACHE_TAGS.ADMINS, CACHE_TAGS.ROLES);
 
   const [admins, roles] = await Promise.all([
     getAdmins(),

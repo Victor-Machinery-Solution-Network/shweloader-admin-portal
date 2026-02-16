@@ -37,13 +37,15 @@ function RemoveButton({ featuredId }: { featuredId: number }) {
 export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
   {
     id: "index",
-    header: "#",
+    header: () => <span className="block text-center">No.</span>,
     cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm tabular-nums">
+      <span className="text-muted-foreground block text-center text-sm tabular-nums">
         {row.index + 1}
       </span>
     ),
     size: 40,
+    minSize: 40,
+    maxSize: 40,
   },
   {
     id: "thumbnail",

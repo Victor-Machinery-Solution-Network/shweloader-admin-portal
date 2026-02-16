@@ -38,6 +38,7 @@ export interface SaleListing {
   condition_type_id: number | null;
   mmk_price: number | null;
   usd_price: number | null;
+  hide_price: number;
   is_hidden: number;
   is_sold_out: number;
   approved_by: number | null;
@@ -56,6 +57,7 @@ export interface RentListing {
   product_list_id: number;
   mmk_price: number | null;
   usd_price: number | null;
+  hide_price: number;
   is_hidden: number;
   approved_by: number | null;
   approved_at: string | null;
@@ -86,6 +88,7 @@ export interface SaleListingWithDetails {
   condition_name: string | null;
   mmk_price: number | null;
   usd_price: number | null;
+  hide_price: number;
   is_hidden: number;
   is_sold_out: number;
   approve_status_id: number | null;
@@ -116,6 +119,7 @@ export interface RentListingWithDetails {
   product_list_id: number;
   mmk_price: number | null;
   usd_price: number | null;
+  hide_price: number;
   is_hidden: number;
   approve_status_id: number | null;
   rejection_reason: string | null;

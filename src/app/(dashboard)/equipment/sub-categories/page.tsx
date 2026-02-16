@@ -33,7 +33,10 @@ export default function EquipmentSubCategoriesPage() {
 async function SubCategoriesContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+  cacheTag(
+    CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES,
+    CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES,
+  );
 
   const [subCategories, categories] = await Promise.all([
     getSubCategories(),
