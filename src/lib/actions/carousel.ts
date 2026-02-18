@@ -1,70 +1,11 @@
 "use server";
 
-import { carouselService } from "@/lib/services/carousel";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import type { CarouselImageWithDetails } from "@/types/carousel";
-
-// ─── Carousel Actions ───────────────────────────────────────────────────────
-
-export async function createCarousel(formData: FormData) {
-  const name = formData.get("name") as string;
-  const description = (formData.get("description") as string) || null;
-
-  if (!name?.trim()) {
-    return { success: false, error: "Carousel name is required" };
-  }
-
-  try {
-    await carouselService.create({
-      name: name.trim(),
-      description,
-    });
-    invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to create carousel"),
-    };
-  }
-}
-
-export async function updateCarousel(id: number, formData: FormData) {
-  const name = formData.get("name") as string;
-  const description = (formData.get("description") as string) || null;
-
-  if (!name?.trim()) {
-    return { success: false, error: "Carousel name is required" };
-  }
-
-  try {
-    await carouselService.update(id, { name: name.trim(), description });
-    invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to update carousel"),
-    };
-  }
-}
-
-export async function deleteCarousel(id: number) {
-  try {
-    await carouselService.delete(id);
-    invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to delete carousel"),
-    };
-  }
-}
 
 // ─── Carousel Image Actions ─────────────────────────────────────────────────
 
@@ -78,6 +19,16 @@ export async function getCarouselImages(
      WHERE ci.carousel_id = ?
      ORDER BY ci.display_order ASC, ci.added_at ASC`,
     [carouselId],
+  );
+  return results;
+}
+
+export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]> {
+  const { results } = await d1.query<CarouselImageWithDetails>(
+    `SELECT ci.*, i.image_url
+     FROM carousel_image ci
+     JOIN image i ON ci.image_id = i.image_id
+     ORDER BY ci.carousel_id ASC, ci.display_order ASC, ci.added_at ASC`,
   );
   return results;
 }

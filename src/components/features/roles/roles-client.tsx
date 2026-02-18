@@ -18,18 +18,20 @@ interface RolesClientProps {
   roles: RoleWithPermissionCount[];
   featurePermissions: FeaturePermission[];
   adminCounts: Record<number, number>;
+  rolePermissionMap: Record<number, number[]>;
 }
 
 export function RolesClient({
   roles,
   featurePermissions,
   adminCounts,
+  rolePermissionMap,
 }: RolesClientProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
-    () => createColumns(featurePermissions, adminCounts),
-    [featurePermissions, adminCounts],
+    () => createColumns(featurePermissions, adminCounts, rolePermissionMap),
+    [featurePermissions, adminCounts, rolePermissionMap],
   );
 
   const handleBulkDelete = useCallback(

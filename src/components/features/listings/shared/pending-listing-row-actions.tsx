@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
-import { ListingForm } from "./listing-form";
 import {
   approveListingSale,
   approveListingRent,
@@ -17,48 +17,28 @@ import {
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
-  ApprovedPartner,
-  ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel } from "@/types/equipment";
-import type { AttachmentModel } from "@/types/attachment";
-import type { Location } from "@/types/location";
 
 interface PendingListingRowActionsProps {
   listing: SaleListingWithDetails | RentListingWithDetails;
   pageType: "sale" | "rent";
-  partners: ApprovedPartner[];
-  equipmentModels: EquipmentModel[];
-  attachmentModels: AttachmentModel[];
-  locations: Location[];
-  conditionTypes: ConditionType[];
-  exchangeRate: number;
 }
 
 export function PendingListingRowActions({
   listing,
   pageType,
-  partners,
-  equipmentModels,
-  attachmentModels,
-  locations,
-  conditionTypes,
-  exchangeRate,
 }: PendingListingRowActionsProps) {
-  const [showView, setShowView] = useState(false);
+  const router = useRouter();
   const [showReject, setShowReject] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  function handleApprove(closeView = false) {
+  function handleApprove() {
     const approveFn =
       pageType === "sale" ? approveListingSale : approveListingRent;
     startTransition(async () => {
       const result = await approveFn(listing.id);
       if (result.success) {
         toast.success("Listing approved");
-        if (closeView) {
-          setShowView(false);
-        }
       } else {
         toast.error(result.error ?? "Failed to approve");
       }
@@ -84,26 +64,24 @@ export function PendingListingRowActions({
     <>
       <RowActionsUI
         actions={[
-          { label: "View", icon: ExternalLink, onClick: () => setShowView(true) },
-          { label: "Approve", icon: CheckCircle, onClick: () => handleApprove(), disabled: isPending },
-          { label: "Reject", icon: XCircle, onClick: () => setShowReject(true) },
+          {
+            label: "View",
+            icon: ExternalLink,
+            onClick: () =>
+              router.push(`/listings/for-${pageType}/${listing.id}/edit`),
+          },
+          {
+            label: "Approve",
+            icon: CheckCircle,
+            onClick: handleApprove,
+            disabled: isPending,
+          },
+          {
+            label: "Reject",
+            icon: XCircle,
+            onClick: () => setShowReject(true),
+          },
         ]}
-      />
-
-      {/* View listing details */}
-      <ListingForm
-        open={showView}
-        onOpenChange={setShowView}
-        pageType={pageType}
-        listing={listing}
-        partners={partners}
-        equipmentModels={equipmentModels}
-        attachmentModels={attachmentModels}
-        locations={locations}
-        conditionTypes={conditionTypes}
-        exchangeRate={exchangeRate}
-        onApprove={() => handleApprove(true)}
-        isApproving={isPending}
       />
 
       {/* Reject with reason dialog */}

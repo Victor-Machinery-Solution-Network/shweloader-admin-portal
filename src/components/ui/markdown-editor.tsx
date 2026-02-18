@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { useEditor, useEditorState, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
 import {
   Bold,
   Italic,
+  Underline as UnderlineIcon,
+  Strikethrough,
   Heading2,
   Heading3,
   List,
   ListOrdered,
+  Quote,
+  Minus,
   Link as LinkIcon,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -56,7 +63,11 @@ export function MarkdownEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        strike: {},
+        blockquote: {},
+        horizontalRule: {},
       }),
+      Underline,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -79,37 +90,79 @@ export function MarkdownEditor({
     },
   });
 
+  const defaultState = {
+    bold: false, italic: false, underline: false, strike: false,
+    h2: false, h3: false, bulletList: false, orderedList: false,
+    blockquote: false, link: false, canUndo: false, canRedo: false,
+  };
+
+  // Reactive state — re-renders toolbar when active marks/nodes change
+  const active = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      if (!e) return defaultState;
+      return {
+        bold: e.isActive("bold"),
+        italic: e.isActive("italic"),
+        underline: e.isActive("underline"),
+        strike: e.isActive("strike"),
+        h2: e.isActive("heading", { level: 2 }),
+        h3: e.isActive("heading", { level: 3 }),
+        bulletList: e.isActive("bulletList"),
+        orderedList: e.isActive("orderedList"),
+        blockquote: e.isActive("blockquote"),
+        link: e.isActive("link"),
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      };
+    },
+  }) ?? defaultState;
+
   return (
     <TooltipProvider>
       <div
         className={cn(
-          "border-input bg-input/30 rounded-xl border overflow-hidden transition-colors",
+          "border-input bg-input/30 flex flex-col rounded-xl border overflow-hidden transition-colors",
           "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
           disabled && "cursor-not-allowed opacity-50",
           className
         )}
       >
         {/* Toolbar */}
-        <div className="flex items-center gap-0.5 border-b border-input px-2 py-1 bg-muted/30">
+        <div className="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-input px-2 py-1 bg-muted/30">
           <ToolbarButton
             icon={Bold}
             label="Bold"
-            isActive={editor?.isActive("bold")}
+            isActive={active.bold}
             onClick={() => editor?.chain().focus().toggleBold().run()}
             disabled={disabled}
           />
           <ToolbarButton
             icon={Italic}
             label="Italic"
-            isActive={editor?.isActive("italic")}
+            isActive={active.italic}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
+            disabled={disabled}
+          />
+          <ToolbarButton
+            icon={UnderlineIcon}
+            label="Underline"
+            isActive={active.underline}
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+            disabled={disabled}
+          />
+          <ToolbarButton
+            icon={Strikethrough}
+            label="Strikethrough"
+            isActive={active.strike}
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
             disabled={disabled}
           />
           <Separator orientation="vertical" className="mx-1 h-4" />
           <ToolbarButton
             icon={Heading2}
             label="Heading 2"
-            isActive={editor?.isActive("heading", { level: 2 })}
+            isActive={active.h2}
             onClick={() =>
               editor?.chain().focus().toggleHeading({ level: 2 }).run()
             }
@@ -118,7 +171,7 @@ export function MarkdownEditor({
           <ToolbarButton
             icon={Heading3}
             label="Heading 3"
-            isActive={editor?.isActive("heading", { level: 3 })}
+            isActive={active.h3}
             onClick={() =>
               editor?.chain().focus().toggleHeading({ level: 3 }).run()
             }
@@ -128,26 +181,52 @@ export function MarkdownEditor({
           <ToolbarButton
             icon={List}
             label="Bullet List"
-            isActive={editor?.isActive("bulletList")}
+            isActive={active.bulletList}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
             disabled={disabled}
           />
           <ToolbarButton
             icon={ListOrdered}
             label="Ordered List"
-            isActive={editor?.isActive("orderedList")}
+            isActive={active.orderedList}
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             disabled={disabled}
           />
+          <ToolbarButton
+            icon={Quote}
+            label="Blockquote"
+            isActive={active.blockquote}
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+            disabled={disabled}
+          />
+          <ToolbarButton
+            icon={Minus}
+            label="Horizontal Rule"
+            onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+            disabled={disabled}
+          />
           <Separator orientation="vertical" className="mx-1 h-4" />
-          <LinkPopover editor={editor} disabled={disabled} />
+          <LinkPopover editor={editor} disabled={disabled} isActive={active.link} />
+          <Separator orientation="vertical" className="mx-1 h-4" />
+          <ToolbarButton
+            icon={Undo2}
+            label="Undo"
+            onClick={() => editor?.chain().focus().undo().run()}
+            disabled={disabled || !active.canUndo}
+          />
+          <ToolbarButton
+            icon={Redo2}
+            label="Redo"
+            onClick={() => editor?.chain().focus().redo().run()}
+            disabled={disabled || !active.canRedo}
+          />
         </div>
 
         {/* Editor content */}
         <EditorContent
           editor={editor}
           className={cn(
-            "prose prose-sm dark:prose-invert max-w-none px-3 py-3",
+            "prose prose-sm dark:prose-invert max-w-none min-h-0 flex-1 overflow-y-auto pt-0 pb-3 px-3",
             "[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-16",
             minHeight && `[&_.ProseMirror]:${minHeight}`,
             "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground",
@@ -208,9 +287,11 @@ function ToolbarButton({
 function LinkPopover({
   editor,
   disabled,
+  isActive = false,
 }: {
   editor: Editor | null;
   disabled?: boolean;
+  isActive?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -247,7 +328,7 @@ function LinkPopover({
           <PopoverTrigger asChild>
             <Button
               type="button"
-              variant={editor?.isActive("link") ? "secondary" : "ghost"}
+              variant={isActive ? "secondary" : "ghost"}
               size="icon-xs"
               disabled={disabled}
               aria-label="Link"
@@ -273,7 +354,7 @@ function LinkPopover({
             autoComplete="off"
           />
           <div className="flex justify-end gap-1.5">
-            {editor?.isActive("link") && (
+            {isActive && (
               <Button
                 type="button"
                 variant="destructive"

@@ -68,16 +68,20 @@ export async function deleteArticleCategory(id: number) {
 export async function getArticleCount(
   categoryIds: number[],
 ): Promise<Record<number, number>> {
-  const entries = await Promise.all(
-    categoryIds.map(async (id) => {
-      const result = await d1.query<{ count: number }>(
-        "SELECT COUNT(*) as count FROM article WHERE category_id = ?",
-        [id],
-      );
-      return [id, result.results[0]?.count ?? 0] as const;
-    }),
+  if (categoryIds.length === 0) return {};
+
+  const placeholders = categoryIds.map(() => "?").join(",");
+  const result = await d1.query<{ category_id: number; count: number }>(
+    `SELECT category_id, COUNT(*) as count FROM article WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+    categoryIds,
   );
-  return Object.fromEntries(entries);
+
+  const countMap = Object.fromEntries(
+    result.results.map((r) => [r.category_id, r.count]),
+  );
+  return Object.fromEntries(
+    categoryIds.map((id) => [id, countMap[id] ?? 0]),
+  );
 }
 
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────

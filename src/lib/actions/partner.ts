@@ -15,11 +15,17 @@ export async function getPartnersWithDetails(): Promise<PartnerWithDetails[]> {
       p.*,
       c.username AS customer_name,
       c.email AS customer_email,
+      c.phone AS customer_phone,
       c.company_name AS customer_company,
+      c.office_address AS customer_address,
+      c.is_verified AS customer_verified,
+      c.created_at AS customer_joined,
+      bt.name AS business_type_name,
       pt.name AS partner_type_name,
       pst.status_name AS status_name
     FROM partner p
     LEFT JOIN customer c ON p.customer_id = c.customer_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
     LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
     LEFT JOIN partner_status_type pst ON p.status_id = pst.id
     ORDER BY p.applied_at DESC`,

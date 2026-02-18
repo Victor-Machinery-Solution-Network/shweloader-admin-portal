@@ -227,33 +227,35 @@ export interface SubCategoryLinkedCounts {
 export async function getSubCategoryLinkedCounts(
   subCategoryIds: number[],
 ): Promise<Record<number, SubCategoryLinkedCounts>> {
-  const entries = await Promise.all(
-    subCategoryIds.map(async (id) => {
-      const [eqModels, brands] = await Promise.all([
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM equipment_model WHERE sub_category_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM equipment_sub_category_brand WHERE sub_category_id = ?",
-          [id],
-        ),
-      ]);
+  if (subCategoryIds.length === 0) return {};
 
-      const equipmentModels = eqModels.results[0]?.count ?? 0;
-      const brandsCount = brands.results[0]?.count ?? 0;
+  const placeholders = subCategoryIds.map(() => "?").join(",");
 
-      return [
-        id,
-        {
-          equipmentModels,
-          brands: brandsCount,
-          total: equipmentModels + brandsCount,
-        },
-      ] as const;
+  const [eqResults, brandResults] = await Promise.all([
+    d1.query<{ sub_category_id: number; count: number }>(
+      `SELECT sub_category_id, COUNT(*) as count FROM equipment_model WHERE sub_category_id IN (${placeholders}) GROUP BY sub_category_id`,
+      subCategoryIds,
+    ),
+    d1.query<{ sub_category_id: number; count: number }>(
+      `SELECT sub_category_id, COUNT(*) as count FROM equipment_sub_category_brand WHERE sub_category_id IN (${placeholders}) GROUP BY sub_category_id`,
+      subCategoryIds,
+    ),
+  ]);
+
+  const eqMap = Object.fromEntries(
+    eqResults.results.map((r) => [r.sub_category_id, r.count]),
+  );
+  const brandMap = Object.fromEntries(
+    brandResults.results.map((r) => [r.sub_category_id, r.count]),
+  );
+
+  return Object.fromEntries(
+    subCategoryIds.map((id) => {
+      const equipmentModels = eqMap[id] ?? 0;
+      const brands = brandMap[id] ?? 0;
+      return [id, { equipmentModels, brands, total: equipmentModels + brands }];
     }),
   );
-  return Object.fromEntries(entries);
 }
 
 export async function formatSubCategoryLinkedSummary(

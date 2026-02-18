@@ -2,11 +2,10 @@
 
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { formatDate } from "@/lib/utils";
 import { toggleAdminActive } from "@/lib/actions/admin";
 import { AdminRowActions } from "./row-actions";
@@ -32,20 +31,11 @@ function ActiveToggle({ admin }: { admin: AdminWithRole }) {
   }
 
   return (
-    <Button
-      variant={isActive ? "outline" : "ghost"}
-      size="sm"
-      onClick={handleToggle}
+    <Switch
+      checked={isActive}
+      onCheckedChange={handleToggle}
       disabled={isPending || isPrimaryAdmin}
-      className="gap-1.5"
-    >
-      {isActive ? (
-        <CheckCircle2 className="size-4" />
-      ) : (
-        <Circle className="size-4" />
-      )}
-      {isActive ? "Active" : "Inactive"}
-    </Button>
+    />
   );
 }
 
@@ -106,6 +96,7 @@ export function createColumns(
     },
     {
       id: "active",
+      header: "Active",
       cell: ({ row }) => <ActiveToggle admin={row.original} />,
     },
     {

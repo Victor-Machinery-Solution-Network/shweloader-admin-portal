@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 interface SortableImageGalleryProps {
   images: string[];
   onChange: (images: string[]) => void;
+  /** Pass `undefined` or omit for unlimited. */
   maxImages?: number;
 }
 
@@ -142,7 +143,7 @@ function SortableImageCard({
 export function SortableImageGallery({
   images,
   onChange,
-  maxImages = 20,
+  maxImages,
 }: SortableImageGalleryProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -227,7 +228,7 @@ export function SortableImageGallery({
             ))}
 
             {/* Add button */}
-            {images.length < maxImages && (
+            {(maxImages == null || images.length < maxImages) && (
               <button
                 type="button"
                 onClick={handleAdd}
@@ -247,7 +248,7 @@ export function SortableImageGallery({
 
       {images.length > 0 && (
         <p className="text-muted-foreground text-xs">
-          Drag to reorder. {images.length} / {maxImages} photos.
+          Drag to reorder. {images.length}{maxImages != null ? ` / ${maxImages}` : ""} photos.
         </p>
       )}
     </div>

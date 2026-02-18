@@ -34,6 +34,7 @@ export const ROUTES = {
   LISTINGS: "/listings",
   LISTINGS_FOR_SALE: "/listings/for-sale",
   LISTINGS_FOR_RENT: "/listings/for-rent",
+  LISTING_TEMPLATES: "/listing-templates",
   ENQUIRIES: "/enquiries",
 
   // Users
@@ -95,4 +96,5 @@ export const CACHE_TAGS = {
   SETTINGS: "settings",
   ENQUIRIES: "enquiries",
   FEATURE_PERMISSIONS: "feature-permissions",
+  CUSTOM_FIELD_TEMPLATES: "custom-field-templates",
 } as const;

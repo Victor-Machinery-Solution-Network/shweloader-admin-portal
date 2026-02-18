@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createColumns } from "./columns";
+import { CustomerDetailDialog } from "./customer-detail-dialog";
 import { columns as businessTypeColumns } from "@/components/features/business-types/columns";
 import { BusinessTypeForm } from "@/components/features/business-types/business-type-form";
 import {
@@ -26,10 +27,28 @@ export function CustomersClient({
   businessTypes,
 }: CustomersClientProps) {
   const [showCreateBT, setShowCreateBT] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
+
+  const businessTypeMap = useMemo(
+    () =>
+      new Map(
+        businessTypes.map((bt) => [
+          bt.business_type_id,
+          { name: bt.name, isListed: bt.is_listed === 1 },
+        ]),
+      ),
+    [businessTypes],
+  );
+
+  const handleViewCustomer = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+  }, []);
 
   const customerColumns = useMemo(
-    () => createColumns(businessTypes),
-    [businessTypes],
+    () => createColumns(businessTypeMap, handleViewCustomer),
+    [businessTypeMap, handleViewCustomer],
   );
 
   const buildBTDescription = useCallback(async (selected: BusinessType[]) => {
@@ -129,6 +148,12 @@ export function CustomersClient({
           )}
         </TabsContent>
       </Tabs>
+
+      <CustomerDetailDialog
+        customer={selectedCustomer}
+        onClose={() => setSelectedCustomer(null)}
+        businessTypeMap={businessTypeMap}
+      />
 
       <BusinessTypeForm open={showCreateBT} onOpenChange={setShowCreateBT} />
     </>

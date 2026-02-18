@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
+import { calculateReadTime } from "@/lib/utils";
 import type { ArticleWithDetails } from "@/types/article";
 
 // ─── Article Actions ─────────────────────────────────────────────────────────
@@ -17,6 +18,8 @@ export async function createArticle(formData: FormData) {
     "article_status_type_id",
   ) as string;
   const publish_date = formData.get("publish_date") as string;
+  const author_name = formData.get("author_name") as string;
+  const cover_image_url = formData.get("cover_image_url") as string;
 
   if (!title?.trim()) {
     return { success: false, error: "Title is required" };
@@ -24,6 +27,7 @@ export async function createArticle(formData: FormData) {
 
   try {
     const created_by = await getCurrentUserId();
+    const estimated_read_time = calculateReadTime(content);
 
     // Default to "Published" status when none provided
     let statusId: number | null = article_status_type_id
@@ -43,6 +47,9 @@ export async function createArticle(formData: FormData) {
       article_status_type_id: statusId,
       created_by,
       publish_date: publish_date || null,
+      author_name: author_name?.trim() || null,
+      cover_image_url: cover_image_url?.trim() || null,
+      estimated_read_time,
     });
     invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
@@ -62,12 +69,16 @@ export async function updateArticle(id: number, formData: FormData) {
     "article_status_type_id",
   ) as string;
   const publish_date = formData.get("publish_date") as string;
+  const author_name = formData.get("author_name") as string;
+  const cover_image_url = formData.get("cover_image_url") as string;
 
   if (!title?.trim()) {
     return { success: false, error: "Title is required" };
   }
 
   try {
+    const estimated_read_time = calculateReadTime(content);
+
     await articleService.update(id, {
       title: title.trim(),
       content: content?.trim() || null,
@@ -76,6 +87,9 @@ export async function updateArticle(id: number, formData: FormData) {
         ? Number(article_status_type_id)
         : null,
       publish_date: publish_date || null,
+      author_name: author_name?.trim() || null,
+      cover_image_url: cover_image_url?.trim() || null,
+      estimated_read_time,
     });
     invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
@@ -129,15 +143,31 @@ export async function getArticlesWithDetails(): Promise<ArticleWithDetails[]> {
     `SELECT
       a.*,
       ac.name AS category_name,
-      ast.status_name AS status_name,
-      au.username AS author_name
+      ast.status_name AS status_name
     FROM article a
     LEFT JOIN article_category ac ON a.category_id = ac.category_id
     LEFT JOIN article_status_type ast ON a.article_status_type_id = ast.id
-    LEFT JOIN admin_user au ON a.created_by = au.user_id
     ORDER BY a.created_at DESC`,
   );
   return result.results;
+}
+
+export async function getArticleById(
+  id: number,
+): Promise<ArticleWithDetails | null> {
+  const result = await d1.query<ArticleWithDetails>(
+    `SELECT
+      a.*,
+      ac.name AS category_name,
+      ast.status_name AS status_name
+    FROM article a
+    LEFT JOIN article_category ac ON a.category_id = ac.category_id
+    LEFT JOIN article_status_type ast ON a.article_status_type_id = ast.id
+    WHERE a.article_id = ?
+    LIMIT 1`,
+    [id],
+  );
+  return result.results[0] ?? null;
 }
 
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────

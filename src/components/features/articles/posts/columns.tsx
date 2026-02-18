@@ -7,10 +7,15 @@ import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/utils";
 import { updateArticleStatus } from "@/lib/actions/article";
-import type { ArticleWithDetails } from "@/types/article";
-import type { ArticleCategory, ArticleStatusType } from "@/types/article";
+import type { ArticleWithDetails, ArticleStatusType } from "@/types/article";
 import { RowActions } from "./row-actions";
 import { PendingRowActions } from "./pending-row-actions";
 
@@ -41,25 +46,52 @@ function VisibilityToggle({
     });
   }
 
+  const label = isHidden ? "Publish article" : "Hide article";
+
   return (
-    <Button
-      variant={isHidden ? "destructive" : "outline"}
-      size="icon-sm"
-      disabled={isPending}
-      title={isHidden ? "Publish article" : "Hide article"}
-      className={
-        isHidden
-          ? "rounded-full"
-          : "text-muted-foreground rounded-full border-dashed"
-      }
-      onClick={handleToggle}
-    >
-      {isHidden ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isHidden ? "destructive" : "outline"}
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isHidden
+              ? "rounded-full"
+              : "text-muted-foreground rounded-full border-dashed"
+          }
+          onClick={handleToggle}
+        >
+          {isHidden ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
 // ─── Shared column helpers ───────────────────────────────────────────────────
+
+const coverImageColumn: ColumnDef<ArticleWithDetails> = {
+  id: "cover_image",
+  header: "",
+  cell: ({ row }) => {
+    const url = row.original.cover_image_url;
+    return url ? (
+      <img
+        src={url}
+        alt=""
+        className="size-10 rounded-md object-cover"
+      />
+    ) : (
+      <div className="bg-muted size-10 rounded-md" />
+    );
+  },
+  size: 44,
+  minSize: 44,
+  maxSize: 44,
+};
 
 const titleColumn: ColumnDef<ArticleWithDetails> = {
   accessorKey: "title",
@@ -83,7 +115,7 @@ const categoryColumn: ColumnDef<ArticleWithDetails> = {
       return <span className="text-muted-foreground text-sm">—</span>;
     }
     return (
-      <Badge variant="secondary" className="text-xs">
+      <Badge variant="outline" className="text-xs">
         {name}
       </Badge>
     );
@@ -132,10 +164,27 @@ const createdAtColumn: ColumnDef<ArticleWithDetails> = {
   },
 };
 
+const readTimeColumn: ColumnDef<ArticleWithDetails> = {
+  accessorKey: "estimated_read_time",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Read Time" />
+  ),
+  cell: ({ row }) => {
+    const minutes = row.getValue("estimated_read_time") as number | null;
+    if (!minutes) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+    return (
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {minutes} min read
+      </span>
+    );
+  },
+};
+
 // ─── Published tab columns ──────────────────────────────────────────────────
 
 export function createPublishedColumns(
-  categories: ArticleCategory[],
   statusTypes: ArticleStatusType[],
 ): ColumnDef<ArticleWithDetails>[] {
   const publishedStatus = statusTypes.find(
@@ -144,9 +193,11 @@ export function createPublishedColumns(
   const hiddenStatus = statusTypes.find((st) => st.status_name === "Hidden");
 
   return [
+    coverImageColumn,
     titleColumn,
     categoryColumn,
     authorColumn,
+    readTimeColumn,
     publishDateColumn,
     createdAtColumn,
     {
@@ -159,17 +210,19 @@ export function createPublishedColumns(
           (statusName === "Published" || statusName === "Hidden");
 
         return (
-          <div className="flex items-center justify-end gap-1">
-            {showToggle && (
-              <VisibilityToggle
-                articleId={row.original.article_id}
-                isHidden={statusName === "Hidden"}
-                publishedStatusId={publishedStatus.id}
-                hiddenStatusId={hiddenStatus.id}
-              />
-            )}
-            <RowActions article={row.original} categories={categories} />
-          </div>
+          <TooltipProvider>
+            <div className="flex items-center justify-end gap-1">
+              {showToggle && (
+                <VisibilityToggle
+                  articleId={row.original.article_id}
+                  isHidden={statusName === "Hidden"}
+                  publishedStatusId={publishedStatus.id}
+                  hiddenStatusId={hiddenStatus.id}
+                />
+              )}
+              <RowActions article={row.original} />
+            </div>
+          </TooltipProvider>
         );
       },
     },
@@ -178,25 +231,20 @@ export function createPublishedColumns(
 
 // ─── Pending tab columns ────────────────────────────────────────────────────
 
-export function createPendingColumns(
-  categories: ArticleCategory[],
-  statusTypes: ArticleStatusType[],
-): ColumnDef<ArticleWithDetails>[] {
+export function createPendingColumns(): ColumnDef<ArticleWithDetails>[] {
   return [
+    coverImageColumn,
     titleColumn,
     categoryColumn,
     authorColumn,
+    readTimeColumn,
     createdAtColumn,
     {
       id: "actions",
       cell: ({ row }) => (
         <div className="flex items-center justify-end gap-1">
-          <PendingRowActions
-            article={row.original}
-            categories={categories}
-            statusTypes={statusTypes}
-          />
-          <RowActions article={row.original} categories={categories} />
+          <PendingRowActions article={row.original} />
+          <RowActions article={row.original} />
         </div>
       ),
     },

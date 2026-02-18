@@ -15,18 +15,28 @@ import {
   ComboboxEmpty,
   ComboboxCollection,
 } from "@/components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FormDialog } from "@/components/shared/form-dialog";
 import {
   createEquipmentModel,
   updateEquipmentModel,
 } from "@/lib/actions/equipment-model";
-import type { EquipmentModel, EquipmentSubCategory } from "@/types/equipment";
+import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
 import type { ProductBrand } from "@/types/brand";
 
 interface EquipmentModelFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   model?: EquipmentModel;
+  mainCategories: EquipmentMainCategory[];
   subCategories: EquipmentSubCategory[];
   brands: ProductBrand[];
   subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[];
@@ -36,6 +46,7 @@ export function EquipmentModelForm({
   open,
   onOpenChange,
   model,
+  mainCategories,
   subCategories,
   brands,
   subCategoryBrandLinks,
@@ -111,6 +122,26 @@ export function EquipmentModelForm({
       .filter((sc) => linkedSubCatIds.has(sc.sub_category_id))
       .map((sc) => sc.name);
   }, [selectedBrand, allSubCategoryNames, brandMap, subCategoriesByBrand, subCategories]);
+
+  // Group filtered sub-categories by main category for the scrollable grouped dropdown
+  const groupedSubCategories = useMemo(() => {
+    const mainCatIdToName = new Map(
+      mainCategories.map((mc) => [mc.category_id, mc.name]),
+    );
+    const filteredSet = new Set(filteredSubCategoryNames);
+    const groups = new Map<string, { name: string; id: number }[]>();
+
+    for (const sc of subCategories) {
+      if (!filteredSet.has(sc.name)) continue;
+      const groupName = mainCatIdToName.get(sc.category_id) ?? "Other";
+      if (!groups.has(groupName)) {
+        groups.set(groupName, []);
+      }
+      groups.get(groupName)!.push({ name: sc.name, id: sc.sub_category_id });
+    }
+
+    return groups;
+  }, [filteredSubCategoryNames, subCategories, mainCategories]);
 
   const filteredBrandNames = useMemo(() => {
     if (!selectedSubCategory) return allBrandNames;
@@ -257,28 +288,28 @@ export function EquipmentModelForm({
           <FieldLabel>Sub Category</FieldLabel>
           <FieldContent>
             <div className="space-y-1">
-              <Combobox
-                value={selectedSubCategory}
+              <Select
+                value={selectedSubCategory || undefined}
                 onValueChange={handleSubCategoryChange}
-                items={filteredSubCategoryNames}
               >
-                <ComboboxInput
-                  placeholder="Search sub category…"
-                  showClear={!!selectedSubCategory}
-                />
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                    <ComboboxCollection>
-                      {(name) => (
-                        <ComboboxItem key={name} value={name}>
-                          {name}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxCollection>
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sub category…" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-60 overflow-y-auto">
+                  {Array.from(groupedSubCategories.entries()).map(
+                    ([groupName, items]) => (
+                      <SelectGroup key={groupName}>
+                        <SelectLabel>{groupName}</SelectLabel>
+                        {items.map((item) => (
+                          <SelectItem key={item.id} value={item.name}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
               <FieldError show={!selectedSubCategory} message="Please select a sub category" />
             </div>
           </FieldContent>

@@ -90,6 +90,7 @@ export function createColumns(
       cell: ({ row }) => (
         <RowActions
           model={row.original}
+          mainCategories={mainCategories}
           subCategories={subCategories}
           brands={brands}
           subCategoryBrandLinks={subCategoryBrandLinks}

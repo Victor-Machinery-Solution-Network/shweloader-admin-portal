@@ -93,6 +93,7 @@ export function EquipmentModelsClient({
       <EquipmentModelForm
         open={showCreate}
         onOpenChange={setShowCreate}
+        mainCategories={mainCategories}
         subCategories={subCategories}
         brands={brands}
         subCategoryBrandLinks={subCategoryBrandLinks}

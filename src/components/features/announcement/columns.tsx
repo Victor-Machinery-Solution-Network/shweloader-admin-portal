@@ -2,10 +2,16 @@
 
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { CheckCircle2, Circle } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { formatDate } from "@/lib/utils";
 import { toggleAnnouncementActive } from "@/lib/actions/announcement";
@@ -31,21 +37,28 @@ function ActiveToggle({ announcement }: { announcement: AnnouncementText }) {
     });
   }
 
+  const label = isActive ? "Hide announcement" : "Activate announcement";
+
   return (
-    <Button
-      variant={isActive ? "outline" : "ghost"}
-      size="sm"
-      onClick={handleToggle}
-      disabled={isPending}
-      className="gap-1.5"
-    >
-      {isActive ? (
-        <CheckCircle2 className="size-4" />
-      ) : (
-        <Circle className="size-4" />
-      )}
-      {isActive ? "Active" : "Inactive"}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isActive ? "outline" : "destructive"}
+          size="icon-sm"
+          onClick={handleToggle}
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isActive
+              ? "text-muted-foreground rounded-full border-dashed"
+              : "rounded-full"
+          }
+        >
+          {isActive ? <Eye aria-hidden="true" className="size-5" /> : <EyeOff aria-hidden="true" className="size-5" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -86,11 +99,14 @@ export const columns: ColumnDef<AnnouncementText>[] = [
     ),
   },
   {
-    id: "active",
-    cell: ({ row }) => <ActiveToggle announcement={row.original} />,
-  },
-  {
     id: "actions",
-    cell: ({ row }) => <RowActions announcement={row.original} />,
+    cell: ({ row }) => (
+      <TooltipProvider>
+        <div className="flex items-center justify-end gap-1">
+          <ActiveToggle announcement={row.original} />
+          <RowActions announcement={row.original} />
+        </div>
+      </TooltipProvider>
+    ),
   },
 ];

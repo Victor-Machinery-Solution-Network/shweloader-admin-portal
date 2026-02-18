@@ -23,7 +23,7 @@ interface ActionItem {
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   onClick: () => void;
-  variant?: "destructive";
+  variant?: "destructive" | "success";
   disabled?: boolean;
   /** Show a separator before this item in the mobile dropdown */
   separatorBefore?: boolean;
@@ -51,6 +51,8 @@ export function RowActions({ actions }: RowActionsProps) {
                     "text-muted-foreground hover:text-foreground",
                     action.variant === "destructive" &&
                       "hover:bg-destructive/10 hover:text-destructive",
+                    action.variant === "success" &&
+                      "bg-green-600/10 text-green-700 hover:bg-green-600/20 hover:text-green-700 dark:text-green-400 dark:hover:text-green-400",
                   )}
                 >
                   <action.icon aria-hidden="true" />
@@ -83,7 +85,11 @@ export function RowActions({ actions }: RowActionsProps) {
                 <DropdownMenuItem
                   onSelect={action.onClick}
                   disabled={action.disabled}
-                  variant={action.variant}
+                  variant={action.variant === "destructive" ? "destructive" : undefined}
+                  className={cn(
+                    action.variant === "success" &&
+                      "text-green-700 focus:bg-green-600/10 focus:text-green-700 dark:text-green-400 dark:focus:text-green-400",
+                  )}
                 >
                   <action.icon aria-hidden="true" />
                   {action.label}

@@ -59,12 +59,7 @@ import {
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
-  ApprovedPartner,
-  ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel } from "@/types/equipment";
-import type { AttachmentModel } from "@/types/attachment";
-import type { Location } from "@/types/location";
 
 // --- Common listing shape (fields shared by sale & rent) ---
 
@@ -260,14 +255,16 @@ function thumbnailColumn<T extends ListingBase>(): ColumnDef<T> {
     cell: ({ row }) => {
       const url = row.original.thumbnail_url;
       return url ? (
-        <Image src={url} alt="" width={40} height={40} className="rounded-md object-cover" unoptimized />
+        <div className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
+          <Image src={url} alt="" width={44} height={44} className="size-full object-cover" unoptimized />
+        </div>
       ) : (
-        <div className="bg-muted size-10 rounded-md" />
+        <div className="size-11 shrink-0 rounded-lg border bg-muted" />
       );
     },
-    size: 44,
-    minSize: 44,
-    maxSize: 44,
+    size: 56,
+    minSize: 56,
+    maxSize: 56,
     enableResizing: false,
   };
 }
@@ -347,36 +344,9 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
   };
 }
 
-// --- Reference data type for column factories ---
-
-interface ReferenceData {
-  partners: ApprovedPartner[];
-  equipmentModels: EquipmentModel[];
-  attachmentModels: AttachmentModel[];
-  locations: Location[];
-  conditionTypes: ConditionType[];
-  exchangeRate: number;
-}
-
 // --- Sale Columns ---
 
-export function createSaleColumns(
-  partners: ApprovedPartner[],
-  equipmentModels: EquipmentModel[],
-  attachmentModels: AttachmentModel[],
-  locations: Location[],
-  conditionTypes: ConditionType[],
-  exchangeRate: number,
-): ColumnDef<SaleListingWithDetails>[] {
-  const ref: ReferenceData = {
-    partners,
-    equipmentModels,
-    attachmentModels,
-    locations,
-    conditionTypes,
-    exchangeRate,
-  };
-
+export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
     thumbnailColumn<SaleListingWithDetails>(),
     modelColumn<SaleListingWithDetails>(),
@@ -440,7 +410,6 @@ export function createSaleColumns(
               <ListingRowActions
                 listing={row.original}
                 pageType="sale"
-                {...ref}
               />
             </div>
           </TooltipProvider>
@@ -452,23 +421,7 @@ export function createSaleColumns(
 
 // --- Rent Columns ---
 
-export function createRentColumns(
-  partners: ApprovedPartner[],
-  equipmentModels: EquipmentModel[],
-  attachmentModels: AttachmentModel[],
-  locations: Location[],
-  conditionTypes: ConditionType[],
-  exchangeRate: number,
-): ColumnDef<RentListingWithDetails>[] {
-  const ref: ReferenceData = {
-    partners,
-    equipmentModels,
-    attachmentModels,
-    locations,
-    conditionTypes,
-    exchangeRate,
-  };
-
+export function createRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
     thumbnailColumn<RentListingWithDetails>(),
     modelColumn<RentListingWithDetails>(),
@@ -517,7 +470,6 @@ export function createRentColumns(
               <ListingRowActions
                 listing={row.original}
                 pageType="rent"
-                {...ref}
               />
             </div>
           </TooltipProvider>

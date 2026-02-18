@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { GripVertical, Trash2, Eye, EyeOff, Link, ExternalLink } from "lucide-react";
+import {
+  GripVertical,
+  Trash2,
+  Eye,
+  EyeOff,
+  Link,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -24,9 +31,10 @@ import type { CarouselImageWithDetails } from "@/types/carousel";
 
 interface CarouselImageCardProps {
   image: CarouselImageWithDetails;
+  index: number;
 }
 
-export function CarouselImageCard({ image }: CarouselImageCardProps) {
+export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
   const [showDelete, setShowDelete] = useState(false);
   const [showLinkEdit, setShowLinkEdit] = useState(false);
   const [linkUrl, setLinkUrl] = useState(image.link_url ?? "");
@@ -99,12 +107,12 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
         ref={setNodeRef}
         style={style}
         className={cn(
-          "group relative rounded-lg border bg-card overflow-hidden",
-          isDragging && "z-50 shadow-lg ring-2 ring-primary opacity-90",
-          !isActive && "opacity-50",
+          "group relative overflow-hidden rounded-lg border bg-card transition-shadow",
+          isDragging && "z-50 shadow-lg ring-2 ring-primary",
+          !isActive && "opacity-60",
         )}
       >
-        {/* Image */}
+        {/* Image area */}
         <div className="relative aspect-video w-full">
           <img
             src={image.image_url}
@@ -114,118 +122,142 @@ export function CarouselImageCard({ image }: CarouselImageCardProps) {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
+
+          {/* Order badge — always visible */}
+          <span className="absolute left-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-black/60 text-[10px] font-semibold text-white backdrop-blur-sm">
+            {index}
+          </span>
+
+          {/* Hover overlay controls */}
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+            {/* Drag handle — offset below order badge */}
+            <button
+              type="button"
+              aria-label="Reorder image"
+              className="mt-6 cursor-grab rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-black/70 active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical aria-hidden="true" className="size-4" />
+            </button>
+
+            <TooltipProvider>
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "rounded p-1 text-white backdrop-blur-sm",
+                        isActive
+                          ? "bg-black/50 hover:bg-black/70"
+                          : "bg-amber-600/80 hover:bg-amber-600",
+                      )}
+                      aria-label={isActive ? "Hide image" : "Show image"}
+                      onClick={handleToggleActive}
+                      disabled={isToggling}
+                    >
+                      {isActive ? (
+                        <Eye aria-hidden="true" className="size-4" />
+                      ) : (
+                        <EyeOff aria-hidden="true" className="size-4" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isActive ? "Hide image" : "Show image"}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "rounded p-1 text-white backdrop-blur-sm",
+                        image.link_url
+                          ? "bg-blue-600/80 hover:bg-blue-600"
+                          : "bg-black/50 hover:bg-black/70",
+                      )}
+                      aria-label={image.link_url ? "Edit link" : "Add link"}
+                      onClick={() => setShowLinkEdit(!showLinkEdit)}
+                    >
+                      <Link aria-hidden="true" className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {image.link_url ? "Edit link" : "Add link"}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Remove image"
+                      className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-red-600"
+                      onClick={() => setShowDelete(true)}
+                    >
+                      <Trash2 aria-hidden="true" className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove image</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          </div>
+
+          {/* Inline link edit */}
+          {showLinkEdit && (
+            <div className="absolute inset-x-0 bottom-0 bg-black/80 p-2 backdrop-blur-sm">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveLink();
+                }}
+                className="flex gap-1"
+              >
+                <Input
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://\u2026"
+                  className="h-7 bg-white/90 text-xs text-black"
+                  autoFocus
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={isLinkSaving}
+                >
+                  Save
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
 
-        {/* Overlay controls */}
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
-            aria-label="Reorder image"
-            className="cursor-grab rounded bg-black/50 p-1 text-white hover:bg-black/70 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical aria-hidden="true" className="size-4" />
-          </button>
-
-          <TooltipProvider>
-            <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      "rounded p-1 text-white",
-                      isActive
-                        ? "bg-black/50 hover:bg-black/70"
-                        : "bg-orange-600/80 hover:bg-orange-600",
-                    )}
-                    aria-label={isActive ? "Hide image" : "Show image"}
-                    onClick={handleToggleActive}
-                    disabled={isToggling}
-                  >
-                    {isActive ? (
-                      <Eye aria-hidden="true" className="size-4" />
-                    ) : (
-                      <EyeOff aria-hidden="true" className="size-4" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isActive ? "Hide image" : "Show image"}
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      "rounded p-1 text-white",
-                      image.link_url
-                        ? "bg-blue-600/80 hover:bg-blue-600"
-                        : "bg-black/50 hover:bg-black/70",
-                    )}
-                    aria-label={image.link_url ? "Edit link" : "Add link"}
-                    onClick={() => setShowLinkEdit(!showLinkEdit)}
-                  >
-                    <Link aria-hidden="true" className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {image.link_url ? "Edit link" : "Add link"}
-                </TooltipContent>
-              </Tooltip>
-
-              <button
-                type="button"
-                aria-label="Remove image"
-                className="rounded bg-black/50 p-1 text-white hover:bg-red-600"
-                onClick={() => setShowDelete(true)}
-              >
-                <Trash2 aria-hidden="true" className="size-4" />
-              </button>
-            </div>
-          </TooltipProvider>
+        {/* Status footer — always visible */}
+        <div className="flex items-center gap-1.5 border-t px-2 py-1.5">
+          <span
+            className={cn(
+              "size-1.5 shrink-0 rounded-full",
+              isActive ? "bg-green-500" : "bg-amber-500",
+            )}
+          />
+          <span className="text-[11px] text-muted-foreground">
+            {isActive ? "Active" : "Hidden"}
+          </span>
+          {image.link_url && !showLinkEdit && (
+            <>
+              <span className="text-muted-foreground/50">&middot;</span>
+              <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
+              <span className="max-w-[120px] truncate text-[11px] text-muted-foreground">
+                {image.link_url}
+              </span>
+            </>
+          )}
         </div>
-
-        {/* Link indicator */}
-        {image.link_url && !showLinkEdit && (
-          <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1 text-xs text-white truncate flex items-center gap-1">
-            <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
-            <span className="truncate">{image.link_url}</span>
-          </div>
-        )}
-
-        {/* Inactive badge */}
-        {!isActive && (
-          <div className="absolute bottom-0 right-0 m-1.5 rounded bg-orange-600 px-1.5 py-0.5 text-xs font-medium text-white">
-            Hidden
-          </div>
-        )}
-
-        {/* Link edit input */}
-        {showLinkEdit && (
-          <div className="absolute inset-x-0 bottom-0 bg-black/80 p-2">
-            <div className="flex gap-1">
-              <Input
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="https://…"
-                className="h-7 text-xs bg-white/90 text-black"
-                autoFocus
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleSaveLink}
-                disabled={isLinkSaving}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       <DeleteDialog

@@ -20,12 +20,13 @@ import {
   MapPin,
   ShoppingCart,
   MessageSquare,
-  UserCheck,
+  Handshake,
   FileText,
   Image as ImageIcon,
   Megaphone,
   Shield,
   UserCog,
+  ClipboardList,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -372,7 +373,7 @@ export function AppSidebar() {
                   isActive={pathname === ROUTES.PARTNERS}
                 >
                   <Link href={ROUTES.PARTNERS}>
-                    <UserCheck aria-hidden="true" />
+                    <Handshake aria-hidden="true" />
                     <span>Partners</span>
                   </Link>
                 </SidebarMenuButton>
@@ -476,6 +477,18 @@ export function AppSidebar() {
                   <Link href={ROUTES.ROLES_PERMISSIONS}>
                     <UserCog aria-hidden="true" />
                     <span>Roles & Permissions</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.LISTING_TEMPLATES}
+                >
+                  <Link href={ROUTES.LISTING_TEMPLATES}>
+                    <ClipboardList aria-hidden="true" />
+                    <span>Listing Templates</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

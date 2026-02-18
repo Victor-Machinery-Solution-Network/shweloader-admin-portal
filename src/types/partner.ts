@@ -26,7 +26,12 @@ export interface PartnerStatusType {
 export interface PartnerWithDetails extends Partner {
   customer_name: string | null;
   customer_email: string | null;
+  customer_phone: string | null;
   customer_company: string | null;
+  customer_address: string | null;
+  customer_verified: number | null;
+  customer_joined: string | null;
+  business_type_name: string | null;
   partner_type_name: string | null;
   status_name: string | null;
 }

@@ -38,8 +38,12 @@ async function SettingsContent() {
 function SettingsSkeleton() {
   return (
     <div className="rounded-xl border">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between px-4 py-3.5 border-b last:border-0">
+      {/* Feature Toggles section */}
+      <div className="px-4 pt-4 pb-1">
+        <Skeleton className="h-3 w-28" />
+      </div>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className={`flex items-center justify-between px-4 py-4 ${i < 2 ? "border-b" : ""}`}>
           <div className="flex items-center gap-3">
             <Skeleton className="size-8 rounded-lg" />
             <div className="space-y-1.5">
@@ -50,6 +54,26 @@ function SettingsSkeleton() {
           <Skeleton className="h-5 w-9 rounded-full" />
         </div>
       ))}
+
+      {/* Currency section */}
+      <div className="border-t">
+        <div className="px-4 pt-4 pb-1">
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-8 rounded-lg" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-52" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 ml-11">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-7 w-10 rounded-md" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

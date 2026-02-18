@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, lazy, Suspense } from "react";
+import { useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import { ShoppingCart, Home, Plus, Pin, Filter, Clock } from "lucide-react";
@@ -18,29 +18,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { createSaleColumns, createRentColumns } from "./listing-columns";
 import {
   createPendingSaleColumns,
   createPendingRentColumns,
 } from "./pending-listing-columns";
 import { featuredColumns } from "./featured-columns";
-const LazyListingForm = lazy(() =>
-  import("./listing-form").then((mod) => ({ default: mod.ListingForm }))
-);
 import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   FeaturedListingWithDetails,
-  ApprovedPartner,
-  ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel } from "@/types/equipment";
-import type { AttachmentModel } from "@/types/attachment";
-import type { Location } from "@/types/location";
 
 type ListingRow = SaleListingWithDetails | RentListingWithDetails;
 
@@ -69,53 +60,26 @@ interface ListingsClientProps {
   pageType: "sale" | "rent";
   listings: ListingRow[];
   featured: FeaturedListingWithDetails[];
-  partners: ApprovedPartner[];
-  equipmentModels: EquipmentModel[];
-  attachmentModels: AttachmentModel[];
-  locations: Location[];
-  conditionTypes: ConditionType[];
-  exchangeRate: number;
 }
 
 export function ListingsClient({
   pageType,
   listings,
   featured,
-  partners,
-  equipmentModels,
-  attachmentModels,
-  locations,
-  conditionTypes,
-  exchangeRate,
 }: ListingsClientProps) {
   const config = PAGE_CONFIG[pageType];
   const Icon = config.icon;
 
   const columns = useMemo(() => {
     const factory = pageType === "sale" ? createSaleColumns : createRentColumns;
-    // Cast is safe: the correct factory is always paired with matching data
-    return factory(
-      partners,
-      equipmentModels,
-      attachmentModels,
-      locations,
-      conditionTypes,
-      exchangeRate,
-    ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes, exchangeRate]);
+    return factory() as ColumnDef<ListingRow>[];
+  }, [pageType]);
 
   const pendingColumns = useMemo(() => {
     const factory =
       pageType === "sale" ? createPendingSaleColumns : createPendingRentColumns;
-    return factory(
-      partners,
-      equipmentModels,
-      attachmentModels,
-      locations,
-      conditionTypes,
-      exchangeRate,
-    ) as ColumnDef<ListingRow>[];
-  }, [pageType, partners, equipmentModels, attachmentModels, locations, conditionTypes, exchangeRate]);
+    return factory() as ColumnDef<ListingRow>[];
+  }, [pageType]);
 
   // Split listings by approval status
   const approvedListings = useMemo(
@@ -138,7 +102,6 @@ export function ListingsClient({
   const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured";
   const hiddenFilter = (searchParams.get("visibility") ?? "all") as "all" | "visible" | "hidden";
   const soldFilter = (searchParams.get("sold") ?? "all") as "all" | "available" | "sold";
-  const showCreate = searchParams.get("create") === "1";
 
   const setParam = useCallback(
     (key: string, value: string, defaultValue: string) => {
@@ -157,10 +120,6 @@ export function ListingsClient({
   const setTab = useCallback((v: string) => setParam("tab", v, "listings"), [setParam]);
   const setHiddenFilter = useCallback((v: string) => setParam("visibility", v, "all"), [setParam]);
   const setSoldFilter = useCallback((v: string) => setParam("sold", v, "all"), [setParam]);
-  const setShowCreate = useCallback(
-    (open: boolean) => setParam("create", open ? "1" : "0", "0"),
-    [setParam],
-  );
 
   const filteredListings = useMemo(() => {
     return approvedListings.filter((listing) => {
@@ -223,7 +182,7 @@ export function ListingsClient({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button onClick={() => setShowCreate(true)} className="ml-auto">
+      <Button onClick={() => router.push(`/listings/for-${pageType}/new`)} className="ml-auto">
         <Plus aria-hidden="true" /> Add Listing
       </Button>
     </>
@@ -246,12 +205,7 @@ export function ListingsClient({
             <Clock className="size-4" aria-hidden="true" />
             Pending
             {pendingCount > 0 && (
-              <Badge
-                variant="outline"
-                className="ml-1 size-5 justify-center border-blue-200 bg-blue-50 p-0 tabular-nums text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
-              >
-                {pendingCount}
-              </Badge>
+              <TabCount>{pendingCount}</TabCount>
             )}
           </TabsTrigger>
           <TabsTrigger value="featured">
@@ -266,7 +220,7 @@ export function ListingsClient({
               columns={columns}
               data={filteredListings}
               searchKey="model_name"
-              searchPlaceholder="Search by model\"
+              searchPlaceholder="Search by model"
               enablePagination
               pageSize={10}
               toolbar={filterToolbar}
@@ -277,7 +231,7 @@ export function ListingsClient({
               title={config.emptyTitle}
               description={config.emptyDescription}
               action={
-                <Button onClick={() => setShowCreate(true)}>
+                <Button onClick={() => router.push(`/listings/for-${pageType}/new`)}>
                   <Plus aria-hidden="true" /> Add Listing
                 </Button>
               }
@@ -291,7 +245,7 @@ export function ListingsClient({
               columns={pendingColumns}
               data={pendingListings}
               searchKey="model_name"
-              searchPlaceholder="Search pending listings\"
+              searchPlaceholder="Search pending listings"
               enablePagination
               pageSize={10}
             />
@@ -323,21 +277,6 @@ export function ListingsClient({
         </TabsContent>
       </Tabs>
 
-      {showCreate && (
-        <Suspense fallback={<div className="flex items-center justify-center p-8"><Spinner className="size-6" /></div>}>
-          <LazyListingForm
-            open={showCreate}
-            onOpenChange={setShowCreate}
-            pageType={pageType}
-            partners={partners}
-            equipmentModels={equipmentModels}
-            attachmentModels={attachmentModels}
-            locations={locations}
-            conditionTypes={conditionTypes}
-            exchangeRate={exchangeRate}
-          />
-        </Suspense>
-      )}
     </>
   );
 }

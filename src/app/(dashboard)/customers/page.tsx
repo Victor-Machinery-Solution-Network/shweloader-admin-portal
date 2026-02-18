@@ -28,7 +28,7 @@ export default function CustomersPage() {
 async function CustomersContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.CUSTOMERS, CACHE_TAGS.BUSINESS_TYPES);
+  cacheTag(CACHE_TAGS.CUSTOMERS, CACHE_TAGS.BUSINESS_TYPES, CACHE_TAGS.PARTNERS);
 
   const [customers, businessTypes] = await Promise.all([
     getCustomers(),

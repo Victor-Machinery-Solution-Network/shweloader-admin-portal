@@ -8,6 +8,7 @@ export interface Customer {
   company_name: string | null;
   office_address: string | null;
   business_type_id: number | null;
+  is_approved_partner: number;
   created_at: string;
 }
 

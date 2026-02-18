@@ -37,6 +37,22 @@ export async function getAllFeaturePermissions(): Promise<FeaturePermission[]> {
   return result.results;
 }
 
+/** Get all role → permission mappings as a map */
+export async function getAllRolePermissionMap(): Promise<
+  Record<number, number[]>
+> {
+  const result = await d1.query<{
+    role_id: number;
+    feature_permission_id: number;
+  }>("SELECT role_id, feature_permission_id FROM role_permission");
+
+  const map: Record<number, number[]> = {};
+  for (const row of result.results) {
+    (map[row.role_id] ??= []).push(row.feature_permission_id);
+  }
+  return map;
+}
+
 /** Get the feature_permission_ids assigned to a role */
 export async function getRolePermissionIds(
   roleId: number,

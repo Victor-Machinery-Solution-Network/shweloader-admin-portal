@@ -108,33 +108,35 @@ export interface AttachmentCategoryLinkedCounts {
 export async function getAttachmentCategoryLinkedCounts(
   categoryIds: number[],
 ): Promise<Record<number, AttachmentCategoryLinkedCounts>> {
-  const entries = await Promise.all(
-    categoryIds.map(async (id) => {
-      const [atModels, brands] = await Promise.all([
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM attachment_model WHERE category_id = ?",
-          [id],
-        ),
-        d1.query<{ count: number }>(
-          "SELECT COUNT(*) as count FROM attachment_category_brand WHERE category_id = ?",
-          [id],
-        ),
-      ]);
+  if (categoryIds.length === 0) return {};
 
-      const attachmentModels = atModels.results[0]?.count ?? 0;
-      const brandsCount = brands.results[0]?.count ?? 0;
+  const placeholders = categoryIds.map(() => "?").join(",");
 
-      return [
-        id,
-        {
-          attachmentModels,
-          brands: brandsCount,
-          total: attachmentModels + brandsCount,
-        },
-      ] as const;
+  const [modelResults, brandResults] = await Promise.all([
+    d1.query<{ category_id: number; count: number }>(
+      `SELECT category_id, COUNT(*) as count FROM attachment_model WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+      categoryIds,
+    ),
+    d1.query<{ category_id: number; count: number }>(
+      `SELECT category_id, COUNT(*) as count FROM attachment_category_brand WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+      categoryIds,
+    ),
+  ]);
+
+  const modelMap = Object.fromEntries(
+    modelResults.results.map((r) => [r.category_id, r.count]),
+  );
+  const brandMap = Object.fromEntries(
+    brandResults.results.map((r) => [r.category_id, r.count]),
+  );
+
+  return Object.fromEntries(
+    categoryIds.map((id) => {
+      const attachmentModels = modelMap[id] ?? 0;
+      const brands = brandMap[id] ?? 0;
+      return [id, { attachmentModels, brands, total: attachmentModels + brands }];
     }),
   );
-  return Object.fromEntries(entries);
 }
 
 export async function formatAttachmentCategoryLinkedSummary(

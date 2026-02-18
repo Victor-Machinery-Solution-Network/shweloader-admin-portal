@@ -1,11 +1,13 @@
 'use client';
 
-import * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import Image from 'next/image';
-import { ImagePlus, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+
+interface FileInfo {
+  name: string;
+  size: number;
+}
 
 interface ImageInputProps {
   name: string;
@@ -16,6 +18,8 @@ interface ImageInputProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** CSS class for the aspect ratio container. Defaults to "aspect-video". */
+  aspectClassName?: string;
 }
 
 /**
@@ -29,13 +33,15 @@ export function ImageInput({
   onChange,
   accept = 'image/*',
   maxSizeMB = 5,
-  placeholder = 'Drag & drop an image here, or click to browse',
+  placeholder = 'Drop an image here or click to browse',
   className,
   disabled = false,
+  aspectClassName = 'aspect-video',
 }: ImageInputProps) {
   const [internalValue, setInternalValue] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const value = controlledValue !== undefined ? controlledValue : internalValue;
@@ -63,6 +69,8 @@ export function ImageInput({
         setError(`Image must be smaller than ${maxSizeMB}MB`);
         return;
       }
+
+      setFileInfo({ name: file.name, size: file.size });
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -117,10 +125,17 @@ export function ImageInput({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setValue(null);
+      setFileInfo(null);
       setError(null);
     },
     [setValue]
   );
+
+  function formatSize(bytes: number) {
+    return bytes < 1024 * 1024
+      ? `${(bytes / 1024).toFixed(0)} KB`
+      : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -137,62 +152,62 @@ export function ImageInput({
         disabled={disabled}
       />
 
-      {value ? (
-        /* Preview state */
-        <div className="relative group">
-          <div className="relative h-32 overflow-hidden rounded-xl border bg-muted">
-            <Image
-              src={value}
-              alt="Preview"
-              fill
-              className="object-contain"
-              unoptimized
-            />
+      <div className={aspectClassName}>
+        {value ? (
+          /* Preview state */
+          <div className="flex h-full flex-col overflow-hidden rounded-lg border">
+            <div className="relative min-h-0 flex-1">
+              <img
+                src={value}
+                alt="Selected image preview"
+                className="size-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={disabled}
+                className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white backdrop-blur-sm transition-colors hover:bg-black/80 disabled:opacity-50"
+                aria-label="Remove image"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            {fileInfo && (
+              <div className="shrink-0 border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+                {fileInfo.name}
+                <span className="ml-1.5 text-muted-foreground/60">
+                  ({formatSize(fileInfo.size)})
+                </span>
+              </div>
+            )}
           </div>
-          <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-            >
-              Replace
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon-sm"
-              aria-label="Remove image"
-              onClick={handleRemove}
-              disabled={disabled}
-            >
-              <X aria-hidden="true" />
-            </Button>
+        ) : (
+          /* Upload zone */
+          <div
+            onClick={() => !disabled && fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={cn(
+              'flex h-full cursor-pointer flex-col items-center justify-center gap-2 border border-dashed rounded-lg text-center transition-colors',
+              isDragging
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50',
+              disabled && 'cursor-not-allowed opacity-50',
+            )}
+          >
+            <div className="rounded-full bg-muted p-2.5">
+              <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{placeholder}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Max {maxSizeMB}MB
+              </p>
+            </div>
           </div>
-        </div>
-      ) : (
-        /* Upload zone */
-        <div
-          onClick={() => !disabled && fileInputRef.current?.click()}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={cn(
-            'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors',
-            isDragging
-              ? 'border-primary bg-primary/5'
-              : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50',
-            disabled && 'cursor-not-allowed opacity-50',
-          )}
-        >
-          <div className="rounded-full bg-muted p-2">
-            <ImagePlus className="size-5 text-muted-foreground" aria-hidden="true" />
-          </div>
-          <p className="text-sm text-muted-foreground">{placeholder}</p>
-          <p className="text-xs text-muted-foreground/60">Max {maxSizeMB}MB</p>
-        </div>
-      )}
+        )}
+      </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState, useTransition, useRef } from "react";
-import { ImagePlus, Upload } from "lucide-react";
+import { useCallback, useState, useTransition } from "react";
+import { ImagePlus, Plus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -17,24 +17,31 @@ import {
   SortableContext,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
-import { cn } from "@/lib/utils";
-import { CarouselImageCard } from "./carousel-image-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  addCarouselImage,
-  getCarouselImages,
-} from "@/lib/actions/carousel";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field";
+import { ImageInput } from "@/components/ui/image-input";
+import { CarouselImageCard } from "./carousel-image-card";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
-const MAX_SIZE_MB = 5;
-
 interface CarouselImageGridProps {
   carouselId: number;
+  carouselName: string;
   initialImages: CarouselImageWithDetails[];
 }
 
 export function CarouselImageGrid({
   carouselId,
+  carouselName,
   initialImages,
 }: CarouselImageGridProps) {
   const { data: images, setData: setImages, handleReorder } = useDragReorder(
@@ -45,9 +52,11 @@ export function CarouselImageGrid({
       scopeId: carouselId,
     },
   );
+
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [imageValue, setImageValue] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState("");
   const [isAdding, startAddTransition] = useTransition();
-  const [isDraggingFile, setIsDraggingFile] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -69,151 +78,153 @@ export function CarouselImageGrid({
     [images, handleReorder],
   );
 
-  const processFile = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please select an image file");
-        return;
-      }
-      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        toast.error(`Image must be smaller than ${MAX_SIZE_MB}MB`);
-        return;
-      }
+  function openAddDialog() {
+    setImageValue(null);
+    setLinkUrl("");
+    setShowAddDialog(true);
+  }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        startAddTransition(async () => {
-          const result = await addCarouselImage(carouselId, dataUrl);
-          if (result.success) {
-            toast.success("Image added");
-            const updated = await getCarouselImages(carouselId);
-            setImages(updated);
-          } else {
-            toast.error(result.error ?? "Failed to add image");
-          }
-        });
-      };
-      reader.readAsDataURL(file);
-    },
-    [carouselId, setImages],
-  );
+  function handleAddImage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!imageValue) return;
 
-  const handleFileDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDraggingFile(false);
-      if (isAdding) return;
+    // TODO: Implement actual file upload to storage service
+    // For now, placeholder — will be wired to upload endpoint later
+    startAddTransition(async () => {
+      toast.info("Image upload not yet implemented — coming soon!");
+      setShowAddDialog(false);
+    });
+  }
 
-      const files = Array.from(e.dataTransfer.files);
-      files.forEach(processFile);
-    },
-    [isAdding, processFile],
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files ?? []);
-      files.forEach(processFile);
-      e.target.value = "";
-    },
-    [processFile],
-  );
+  const activeCount = images.filter((img) => img.active === 1).length;
+  const hiddenCount = images.length - activeCount;
 
   return (
-    <div className="space-y-4">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-
-      {/* Image grid with sortable */}
+    <>
       {images.length > 0 ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={images.map((img) => img.image_id)}
-            strategy={rectSortingStrategy}
+        <div className="space-y-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {images.map((image) => (
-                <CarouselImageCard key={image.image_id} image={image} />
-              ))}
+            <SortableContext
+              items={images.map((img) => img.image_id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {images.map((image, index) => (
+                  <CarouselImageCard
+                    key={image.image_id}
+                    image={image}
+                    index={index + 1}
+                  />
+                ))}
 
-              {/* Add more button (inline in grid) */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isAdding}
-                className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50 disabled:opacity-50"
-              >
-                <div className="text-center">
-                  <ImagePlus className="text-muted-foreground mx-auto size-5" />
-                  <span className="text-muted-foreground mt-1 block text-xs">
-                    {isAdding ? "Uploading…" : "Add Image"}
-                  </span>
-                </div>
-              </button>
-            </div>
-          </SortableContext>
-        </DndContext>
-      ) : null}
+                {/* Add image placeholder card */}
+                <button
+                  type="button"
+                  onClick={openAddDialog}
+                  className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
+                >
+                  <div className="text-center">
+                    <ImagePlus className="mx-auto size-5 text-muted-foreground" />
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Add Image
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </SortableContext>
+          </DndContext>
 
-      {/* Drop zone / empty state */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!isAdding) setIsDraggingFile(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDraggingFile(false);
-        }}
-        onDrop={handleFileDrop}
-        onClick={() => !isAdding && fileInputRef.current?.click()}
-        className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors",
-          isDraggingFile
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50",
-          isAdding && "pointer-events-none opacity-50",
-        )}
-      >
-        <div className="rounded-full bg-muted p-2.5">
-          <Upload className="size-5 text-muted-foreground" />
+          {/* Footer stats + action */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Drag to reorder &middot; {activeCount} active
+              {hiddenCount > 0 && `, ${hiddenCount} hidden`}
+            </span>
+            <Button variant="outline" size="sm" onClick={openAddDialog}>
+              <Plus /> Add Image
+            </Button>
+          </div>
         </div>
-        {images.length === 0 ? (
-          <>
-            <p className="text-sm font-medium">
-              {isAdding ? "Uploading…" : "Drop images here or click to browse"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Supports JPG, PNG, WebP. Max {MAX_SIZE_MB}MB per image.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              {isAdding ? "Uploading…" : "Drop more images here or click to add"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {images.length} {images.length === 1 ? "image" : "images"} — drag
-              to reorder
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+      ) : (
+        /* Empty state for this carousel */
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-3 rounded-full bg-muted p-3">
+            <ImageIcon className="size-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No images yet</p>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Add your first image to the &ldquo;{carouselName}&rdquo; carousel
+          </p>
+          <Button variant="outline" size="sm" onClick={openAddDialog}>
+            <Plus /> Add Image
+          </Button>
+        </div>
+      )}
+
+      {/* ── Add Image Dialog ─────────────────────────────────────── */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Image</DialogTitle>
+            <DialogDescription>
+              Upload an image to the &ldquo;{carouselName}&rdquo; carousel.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddImage} className="space-y-4">
+            <ImageInput
+              name="image"
+              value={imageValue}
+              onChange={setImageValue}
+              accept="image/jpeg,image/png,image/webp"
+              maxSizeMB={5}
+              placeholder="Drag & drop an image here, or click to browse"
+              disabled={isAdding}
+            />
+
+            <Field orientation="vertical">
+              <FieldLabel>
+                Link URL{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://example.com/promo"
+                  autoComplete="off"
+                />
+                <FieldDescription>
+                  Where users navigate when they click this carousel image
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddDialog(false)}
+                disabled={isAdding}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!imageValue || isAdding}
+              >
+                {isAdding ? "Uploading\u2026" : "Add Image"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

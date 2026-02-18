@@ -1,21 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
-import { ArticleForm } from "./article-form";
 import { deleteArticle } from "@/lib/actions/article";
-import type { ArticleWithDetails, ArticleCategory } from "@/types/article";
+import type { ArticleWithDetails } from "@/types/article";
 
 interface RowActionsProps {
   article: ArticleWithDetails;
-  categories: ArticleCategory[];
 }
 
-export function RowActions({ article, categories }: RowActionsProps) {
-  const [showEdit, setShowEdit] = useState(false);
+export function RowActions({ article }: RowActionsProps) {
+  const router = useRouter();
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -35,16 +34,20 @@ export function RowActions({ article, categories }: RowActionsProps) {
     <>
       <RowActionsUI
         actions={[
-          { label: "Edit", icon: Pencil, onClick: () => setShowEdit(true) },
-          { label: "Delete", icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive", separatorBefore: true },
+          {
+            label: "Edit",
+            icon: Pencil,
+            onClick: () =>
+              router.push(`/articles/posts/${article.article_id}/edit`),
+          },
+          {
+            label: "Delete",
+            icon: Trash2,
+            onClick: () => setShowDelete(true),
+            variant: "destructive",
+            separatorBefore: true,
+          },
         ]}
-      />
-
-      <ArticleForm
-        open={showEdit}
-        onOpenChange={setShowEdit}
-        article={article}
-        categories={categories}
       />
 
       <DeleteDialog

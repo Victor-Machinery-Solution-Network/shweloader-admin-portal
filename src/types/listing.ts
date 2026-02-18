@@ -8,6 +8,7 @@ export interface ProductList {
   description: string | null;
   thumbnail_url: string | null;
   location_id: number | null;
+  hide_partner: number;
   created_by: number | null;
   created_at: string;
   updated_at: string;
@@ -101,6 +102,8 @@ export interface SaleListingWithDetails {
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
+  hide_partner: number;
+  custom_fields: string | null;
   // Joined names
   model_name: string | null;
   product_type: "equipment" | "attachment";
@@ -131,6 +134,8 @@ export interface RentListingWithDetails {
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
+  hide_partner: number;
+  custom_fields: string | null;
   // Joined names
   model_name: string | null;
   product_type: "equipment" | "attachment";

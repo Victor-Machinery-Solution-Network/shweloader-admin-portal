@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { Handshake, Clock, ShieldCheck, ShieldX } from "lucide-react";
+import { Handshake, Clock, ShieldX } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { approvedColumns, pendingColumns, rejectedColumns } from "./columns";
 import type { PartnerWithDetails } from "@/types/partner";
 
@@ -36,19 +35,14 @@ export function PartnersClient({ partners }: PartnersClientProps) {
       <Tabs defaultValue="partners">
         <TabsList>
           <TabsTrigger value="partners">
-            <ShieldCheck className="size-4" />
+            <Handshake className="size-4" />
             Partners
           </TabsTrigger>
           <TabsTrigger value="pending">
             <Clock className="size-4" />
             Pending
             {pendingCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-1 size-5 justify-center p-0"
-              >
-                {pendingCount}
-              </Badge>
+              <TabCount>{pendingCount}</TabCount>
             )}
           </TabsTrigger>
           <TabsTrigger value="rejected">

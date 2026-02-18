@@ -26,11 +26,13 @@ export interface Article {
   approved_at: string | null;
   rejection_reason: string | null;
   publish_date: string | null;
+  author_name: string | null;
+  cover_image_url: string | null;
+  estimated_read_time: number | null;
 }
 
 /** Article with resolved display names for table rendering */
 export interface ArticleWithDetails extends Article {
   category_name: string | null;
   status_name: string | null;
-  author_name: string | null;
 }

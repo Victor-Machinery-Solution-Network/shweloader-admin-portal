@@ -81,6 +81,10 @@ function extractProductFields(formData: FormData) {
     (formData.get("thumbnail_url") as string)?.trim() || null;
   const description = (formData.get("description") as string)?.trim() || null;
 
+  const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
+  const customFields =
+    (formData.get("custom_fields") as string)?.trim() || null;
+
   return {
     partner_id: partnerId,
     equipment_model_id: productType === "equipment" ? modelId : null,
@@ -88,7 +92,48 @@ function extractProductFields(formData: FormData) {
     thumbnail_url: thumbnailUrl,
     description,
     location_id: locationId,
+    hide_partner: hidePartner,
+    custom_fields: customFields,
   };
+}
+
+// ─── Helper: generate unique alphanumeric listing ID ─────────────────────────
+
+const ID_CHARSET = "0123456789ABCDEFGHJKMNPQRSTUVWXYZ"; // 33 chars (excludes O, I, L)
+
+function randomIdSuffix(length: number): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => ID_CHARSET[b % ID_CHARSET.length]).join("");
+}
+
+function getIdPrefix(
+  listingType: "sale" | "rent",
+  productType: "equipment" | "attachment",
+): string {
+  if (listingType === "sale" && productType === "equipment") return "SLE";
+  if (listingType === "sale" && productType === "attachment") return "SLA";
+  if (listingType === "rent" && productType === "equipment") return "RLE";
+  return "RLA";
+}
+
+async function generateListingId(
+  listingType: "sale" | "rent",
+  productType: "equipment" | "attachment",
+): Promise<string> {
+  const prefix = getIdPrefix(listingType, productType);
+  const table = listingType === "sale" ? "sale_listing" : "rent_listing";
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const suffix = randomIdSuffix(6);
+    const candidate = `${prefix}-${suffix}`;
+    const existing = await d1.query<{ custom_id: string }>(
+      `SELECT custom_id FROM ${table} WHERE custom_id = ? LIMIT 1`,
+      [candidate],
+    );
+    if (existing.results.length === 0) return candidate;
+  }
+  throw new Error("Failed to generate unique listing ID after 3 attempts");
 }
 
 // ─── Helper: create product_list and get its ID ─────────────────────────────
@@ -121,19 +166,29 @@ export async function createListing(formData: FormData) {
     const productFields = extractProductFields(formData);
     const forSale = formData.get("for_sale") === "1";
     const forRent = formData.get("for_rent") === "1";
+    const productType = formData.get("product_type") as
+      | "equipment"
+      | "attachment";
+
+    // Publishing options
+    const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
+    const hidePrice = formData.get("hide_price") === "1" ? 1 : 0;
+    const addToFeatured = formData.get("add_to_featured") === "1";
 
     if (!forSale && !forRent) {
       return { success: false, error: "Select at least one listing type" };
     }
 
-    // 1. Create product_list
+    // 1. Create product_list (hide_partner comes from extractProductFields)
     const productId = await createProductAndGetId(productFields, created_by);
 
     // 2. Create sale_listing if selected
+    let saleListingId: number | null = null;
     if (forSale) {
-      await saleListingService.create({
+      const saleCustomId = await generateListingId("sale", productType);
+      const saleResult = await saleListingService.create({
         product_list_id: productId,
-        custom_id: (formData.get("custom_id") as string)?.trim() || null,
+        custom_id: saleCustomId,
         condition_type_id: formData.get("condition_type_id")
           ? Number(formData.get("condition_type_id"))
           : null,
@@ -143,28 +198,46 @@ export async function createListing(formData: FormData) {
         usd_price: formData.get("usd_price")
           ? Number(formData.get("usd_price"))
           : null,
-        hide_price: 0,
-        is_hidden: 0,
+        hide_price: hidePrice,
+        is_hidden: isHidden,
         is_sold_out: 0,
         created_by,
       });
+      saleListingId =
+        (saleResult as unknown as { id: number })?.id ?? null;
+      if (!saleListingId) {
+        const lastRow = await d1.query<{ id: number }>(
+          "SELECT id FROM sale_listing ORDER BY id DESC LIMIT 1",
+        );
+        saleListingId = lastRow.results[0]?.id ?? null;
+      }
     }
 
     // 3. Create rent_listing if selected
+    let rentListingId: number | null = null;
     if (forRent) {
-      await rentListingService.create({
+      const rentCustomId = await generateListingId("rent", productType);
+      const rentResult = await rentListingService.create({
         product_list_id: productId,
-        custom_id: (formData.get("custom_id") as string)?.trim() || null,
+        custom_id: rentCustomId,
         mmk_price: formData.get("mmk_price")
           ? Number(formData.get("mmk_price"))
           : null,
         usd_price: formData.get("usd_price")
           ? Number(formData.get("usd_price"))
           : null,
-        hide_price: 0,
-        is_hidden: 0,
+        hide_price: hidePrice,
+        is_hidden: isHidden,
         created_by,
       });
+      rentListingId =
+        (rentResult as unknown as { id: number })?.id ?? null;
+      if (!rentListingId) {
+        const lastRow = await d1.query<{ id: number }>(
+          "SELECT id FROM rent_listing ORDER BY id DESC LIMIT 1",
+        );
+        rentListingId = lastRow.results[0]?.id ?? null;
+      }
     }
 
     // 4. Create product images
@@ -173,8 +246,29 @@ export async function createListing(formData: FormData) {
       await syncProductImages(productId, imageUrls, created_by);
     }
 
+    // 5. Add to featured if requested
+    if (addToFeatured) {
+      const display_order = await getNextDisplayOrder("featured_listing");
+      if (forSale && saleListingId) {
+        await featuredListingService.create({
+          sale_listing_id: saleListingId,
+          rent_listing_id: null,
+          display_order,
+          created_by,
+        });
+      } else if (forRent && rentListingId) {
+        await featuredListingService.create({
+          sale_listing_id: null,
+          rent_listing_id: rentListingId,
+          display_order,
+          created_by,
+        });
+      }
+    }
+
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    if (addToFeatured) invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
     return { success: true };
   } catch (error) {
     return {
@@ -202,12 +296,11 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
 
     const productFields = extractProductFields(formData);
 
-    // 1. Update product_list
+    // 1. Update product_list (includes hide_partner)
     await productListService.update(productListId, productFields);
 
     // 2. Update sale_listing
     await saleListingService.update(saleId, {
-      custom_id: (formData.get("custom_id") as string)?.trim() || null,
       condition_type_id: formData.get("condition_type_id")
         ? Number(formData.get("condition_type_id"))
         : null,
@@ -217,6 +310,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
       usd_price: formData.get("usd_price")
         ? Number(formData.get("usd_price"))
         : null,
+      hide_price: formData.get("hide_price") === "1" ? 1 : 0,
+      is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
     });
 
     // 3. Sync product images
@@ -279,13 +374,14 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await productListService.update(productListId, productFields);
 
     await rentListingService.update(rentId, {
-      custom_id: (formData.get("custom_id") as string)?.trim() || null,
       mmk_price: formData.get("mmk_price")
         ? Number(formData.get("mmk_price"))
         : null,
       usd_price: formData.get("usd_price")
         ? Number(formData.get("usd_price"))
         : null,
+      hide_price: formData.get("hide_price") === "1" ? 1 : 0,
+      is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
     });
 
     const imageUrls = parseImageUrls(formData);
@@ -472,7 +568,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,
@@ -504,7 +600,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.location_id,
@@ -587,6 +683,74 @@ export async function getApprovedPartners(): Promise<
     ORDER BY c.username ASC`,
   );
   return result.results;
+}
+
+// ─── Get single listing by ID (for edit page) ────────────────────────────────
+
+export async function getSaleListingWithDetailsById(
+  id: number,
+): Promise<SaleListingWithDetails | null> {
+  const result = await d1.query<SaleListingWithDetails>(
+    `SELECT
+      sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
+      ct.name AS condition_name,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, pl.hide_partner,
+      sl.approve_status_id, sl.rejection_reason,
+      sl.created_at,
+      pl.thumbnail_url, pl.description, pl.location_id,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
+      COALESCE(em.name, am.name) AS model_name,
+      CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
+      c.username AS partner_name,
+      l.city_name AS location_name,
+      ast.status_name AS approve_status_name,
+      fl.id AS featured_id
+    FROM sale_listing sl
+    JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
+    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN partner p ON pl.partner_id = p.id
+    LEFT JOIN customer c ON p.customer_id = c.customer_id
+    LEFT JOIN location l ON pl.location_id = l.location_id
+    LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
+    LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
+    WHERE sl.id = ?`,
+    [id],
+  );
+  return result.results[0] ?? null;
+}
+
+export async function getRentListingWithDetailsById(
+  id: number,
+): Promise<RentListingWithDetails | null> {
+  const result = await d1.query<RentListingWithDetails>(
+    `SELECT
+      rl.id, rl.custom_id, rl.product_list_id,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, pl.hide_partner,
+      rl.approve_status_id, rl.rejection_reason,
+      rl.created_at,
+      pl.thumbnail_url, pl.description, pl.location_id,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
+      COALESCE(em.name, am.name) AS model_name,
+      CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
+      c.username AS partner_name,
+      l.city_name AS location_name,
+      ast.status_name AS approve_status_name,
+      fl.id AS featured_id
+    FROM rent_listing rl
+    JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN partner p ON pl.partner_id = p.id
+    LEFT JOIN customer c ON p.customer_id = c.customer_id
+    LEFT JOIN location l ON pl.location_id = l.location_id
+    LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
+    LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    WHERE rl.id = ?`,
+    [id],
+  );
+  return result.results[0] ?? null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,43 +1,32 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { RoleForm } from "./role-form";
-import { deleteRole, getRolePermissionIds } from "@/lib/actions/role";
+import { deleteRole } from "@/lib/actions/role";
 import type { RoleWithPermissionCount, FeaturePermission } from "@/types/role";
 
 interface RoleRowActionsProps {
   role: RoleWithPermissionCount;
   featurePermissions: FeaturePermission[];
   adminCount: number;
+  rolePermissionIds: number[];
 }
 
 export function RoleRowActions({
   role,
   featurePermissions,
   adminCount,
+  rolePermissionIds,
 }: RoleRowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [rolePermissionIds, setRolePermissionIds] = useState<number[]>([]);
 
   const isSuperAdmin = role.name === "Super Admin";
-
-  useEffect(() => {
-    if (!showEdit) return;
-    let cancelled = false;
-    getRolePermissionIds(role.role_id).then((ids) => {
-      if (!cancelled) setRolePermissionIds(ids);
-    });
-    return () => {
-      cancelled = true;
-      setRolePermissionIds([]);
-    };
-  }, [showEdit, role.role_id]);
 
   function handleDelete() {
     startTransition(async () => {

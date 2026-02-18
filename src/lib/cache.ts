@@ -9,10 +9,9 @@ import {
   attachmentCategoryService,
   attachmentModelService,
 } from "@/lib/services/attachment";
-import {
-  customerService,
-  businessTypeService,
-} from "@/lib/services/customer";
+import { businessTypeService } from "@/lib/services/customer";
+import { d1 } from "@/lib/api/d1-client";
+import type { Customer } from "@/types/customer";
 import { announcementTextService } from "@/lib/services/announcement";
 import {
   articleCategoryService,
@@ -26,13 +25,20 @@ import {
   getSaleListingsWithDetails,
   getRentListingsWithDetails,
   getFeaturedListingsWithDetails,
+  getSaleListingWithDetailsById,
+  getRentListingWithDetailsById,
+  getProductImages,
 } from "@/lib/actions/listing";
 import { getPartnersWithDetails as fetchPartnersWithDetails } from "@/lib/actions/partner";
-import { getArticlesWithDetails as fetchArticlesWithDetails } from "@/lib/actions/article";
-import { getCarouselImages } from "@/lib/actions/carousel";
+import {
+  getArticlesWithDetails as fetchArticlesWithDetails,
+  getArticleById as fetchArticleById,
+} from "@/lib/actions/article";
+import { getAllCarouselImages } from "@/lib/actions/carousel";
 import {
   getRolesWithPermissionCount,
   getAllFeaturePermissions,
+  getAllRolePermissionMap,
 } from "@/lib/actions/role";
 import {
   getAdminsWithRoles,
@@ -43,6 +49,7 @@ import {
   getEnquiriesWithDetails,
   getEnquiryStatusTypes as fetchEnquiryStatusTypes,
 } from "@/lib/actions/enquiry";
+import { getCustomFieldTemplates as fetchCustomFieldTemplates } from "@/lib/actions/custom-field-template";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -103,8 +110,16 @@ export function getPartnersWithDetails() {
 
 // Customers, announcements, articles
 
-export function getCustomers() {
-  return customerService.list({ sort_by: "created_at", order: "desc" });
+export async function getCustomers() {
+  const result = await d1.query<Customer>(
+    `SELECT c.*,
+      CASE WHEN p.id IS NOT NULL AND pst.status_name = 'Approved' THEN 1 ELSE 0 END AS is_approved_partner
+    FROM customer c
+    LEFT JOIN partner p ON c.customer_id = p.customer_id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    ORDER BY c.created_at DESC`,
+  );
+  return result.results;
 }
 
 export function getBusinessTypes() {
@@ -132,17 +147,21 @@ export function getArticlesWithDetails() {
   return fetchArticlesWithDetails();
 }
 
+export function getArticleById(id: number) {
+  return fetchArticleById(id);
+}
+
 export async function getCarouselsWithImages() {
-  const carousels = await carouselService.list({
-    sort_by: "created_at",
-    order: "asc",
-  });
-  return Promise.all(
-    carousels.map(async (c) => ({
-      carousel: c,
-      images: await getCarouselImages(c.carousel_id),
-    })),
-  );
+  const carouselsPromise = carouselService.list({ sort_by: "created_at", order: "asc" });
+  const imagesPromise = getAllCarouselImages();
+  const [carousels, allImages] = await Promise.all([carouselsPromise, imagesPromise]);
+
+  const imagesByCarousel = Map.groupBy(allImages, (img) => img.carousel_id);
+
+  return carousels.map((c) => ({
+    carousel: c,
+    images: imagesByCarousel.get(c.carousel_id) ?? [],
+  }));
 }
 
 export function getConditionTypes() {
@@ -163,6 +182,18 @@ export function getFeaturedListings() {
   return getFeaturedListingsWithDetails();
 }
 
+export function getSaleListingById(id: number) {
+  return getSaleListingWithDetailsById(id);
+}
+
+export function getRentListingById(id: number) {
+  return getRentListingWithDetailsById(id);
+}
+
+export function getListingImages(productListId: number) {
+  return getProductImages(productListId);
+}
+
 // Roles
 
 export function getRoles() {
@@ -171,6 +202,10 @@ export function getRoles() {
 
 export function getFeaturePermissions() {
   return getAllFeaturePermissions();
+}
+
+export function getRolePermissionMap() {
+  return getAllRolePermissionMap();
 }
 
 // Admins
@@ -197,4 +232,10 @@ export function getEnquiries() {
 
 export function getEnquiryStatusTypes() {
   return fetchEnquiryStatusTypes();
+}
+
+// Custom field templates
+
+export function getCustomFieldTemplates() {
+  return fetchCustomFieldTemplates();
 }

@@ -5,7 +5,7 @@ import { Shield, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RequiredInput } from "@/components/ui/required-input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { createRole, updateRole } from "@/lib/actions/role";
@@ -240,11 +240,10 @@ export function RoleForm({
           <Field orientation="vertical">
             <FieldLabel>Description</FieldLabel>
             <FieldContent>
-              <Textarea
+              <Input
                 name="description"
                 placeholder="Optional description..."
                 defaultValue={role?.description ?? ""}
-                rows={1}
               />
             </FieldContent>
           </Field>

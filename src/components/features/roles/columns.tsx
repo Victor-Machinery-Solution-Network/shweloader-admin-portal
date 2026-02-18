@@ -13,6 +13,7 @@ import type {
 export function createColumns(
   featurePermissions: FeaturePermission[],
   adminCounts: Record<number, number>,
+  rolePermissionMap: Record<number, number[]>,
 ): ColumnDef<RoleWithPermissionCount>[] {
   const totalPermissions = featurePermissions.length;
 
@@ -83,6 +84,7 @@ export function createColumns(
           role={row.original}
           featurePermissions={featurePermissions}
           adminCount={adminCounts[row.original.role_id] ?? 0}
+          rolePermissionIds={rolePermissionMap[row.original.role_id] ?? []}
         />
       ),
     },

@@ -8,12 +8,7 @@ import { PendingListingRowActions } from "./pending-listing-row-actions";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
-  ApprovedPartner,
-  ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel } from "@/types/equipment";
-import type { AttachmentModel } from "@/types/attachment";
-import type { Location } from "@/types/location";
 
 // --- Common listing shape ---
 
@@ -35,14 +30,16 @@ function thumbnailColumn<T extends ListingBase>(): ColumnDef<T> {
     cell: ({ row }) => {
       const url = row.original.thumbnail_url;
       return url ? (
-        <img src={url} alt="" className="size-10 rounded-md object-cover" />
+        <div className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
+          <img src={url} alt="" className="size-full object-cover" />
+        </div>
       ) : (
-        <div className="bg-muted size-10 rounded-md" />
+        <div className="size-11 shrink-0 rounded-lg border bg-muted" />
       );
     },
-    size: 44,
-    minSize: 44,
-    maxSize: 44,
+    size: 56,
+    minSize: 56,
+    maxSize: 56,
     enableResizing: false,
   };
 }
@@ -122,27 +119,9 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
   };
 }
 
-// --- Reference data ---
-
-interface ReferenceData {
-  partners: ApprovedPartner[];
-  equipmentModels: EquipmentModel[];
-  attachmentModels: AttachmentModel[];
-  locations: Location[];
-  conditionTypes: ConditionType[];
-  exchangeRate: number;
-}
-
 // --- Pending Sale Columns ---
 
-export function createPendingSaleColumns(
-  partners: ApprovedPartner[],
-  equipmentModels: EquipmentModel[],
-  attachmentModels: AttachmentModel[],
-  locations: Location[],
-  conditionTypes: ConditionType[],
-  exchangeRate: number,
-): ColumnDef<SaleListingWithDetails>[] {
+export function createPendingSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
     thumbnailColumn<SaleListingWithDetails>(),
     modelColumn<SaleListingWithDetails>(),
@@ -166,12 +145,6 @@ export function createPendingSaleColumns(
         <PendingListingRowActions
           listing={row.original}
           pageType="sale"
-          partners={partners}
-          equipmentModels={equipmentModels}
-          attachmentModels={attachmentModels}
-          locations={locations}
-          conditionTypes={conditionTypes}
-          exchangeRate={exchangeRate}
         />
       ),
     },
@@ -180,14 +153,7 @@ export function createPendingSaleColumns(
 
 // --- Pending Rent Columns ---
 
-export function createPendingRentColumns(
-  partners: ApprovedPartner[],
-  equipmentModels: EquipmentModel[],
-  attachmentModels: AttachmentModel[],
-  locations: Location[],
-  conditionTypes: ConditionType[],
-  exchangeRate: number,
-): ColumnDef<RentListingWithDetails>[] {
+export function createPendingRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
     thumbnailColumn<RentListingWithDetails>(),
     modelColumn<RentListingWithDetails>(),
@@ -211,12 +177,6 @@ export function createPendingRentColumns(
         <PendingListingRowActions
           listing={row.original}
           pageType="rent"
-          partners={partners}
-          equipmentModels={equipmentModels}
-          attachmentModels={attachmentModels}
-          locations={locations}
-          conditionTypes={conditionTypes}
-          exchangeRate={exchangeRate}
         />
       ),
     },

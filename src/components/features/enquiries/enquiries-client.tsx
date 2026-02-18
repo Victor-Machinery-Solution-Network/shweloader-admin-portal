@@ -3,10 +3,10 @@
 import { useMemo, useState, useCallback } from "react";
 import { MessageSquare, Clock, CheckCircle } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { createEnquiryColumns } from "./columns";
 import { deleteEnquiries } from "@/lib/actions/enquiry";
 import type { EnquiryWithDetails, EnquiryStatusType } from "@/types/enquiry";
@@ -76,12 +76,7 @@ export function EnquiriesClient({
           <Clock className="size-4" aria-hidden="true" />
           Pending
           {pendingCount > 0 && (
-            <Badge
-              variant="outline"
-              className="ml-1 size-5 justify-center border-blue-200 bg-blue-50 p-0 tabular-nums text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
-            >
-              {pendingCount}
-            </Badge>
+            <TabCount>{pendingCount}</TabCount>
           )}
         </TabsTrigger>
         <TabsTrigger value="resolved">

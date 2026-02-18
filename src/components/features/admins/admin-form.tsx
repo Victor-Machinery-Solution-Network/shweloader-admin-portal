@@ -71,18 +71,42 @@ export function AdminForm({
       submitLabel={isEditing ? "Update" : "Create"}
     >
       <div className="space-y-4">
-        <Field orientation="vertical">
-          <FieldLabel>Username</FieldLabel>
-          <FieldContent>
-            <RequiredInput
-              name="username"
-              placeholder="e.g. john_doe"
-              defaultValue={admin?.username ?? ""}
-              errorMessage="Username is required"
-              autoComplete="off"
-            />
-          </FieldContent>
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field orientation="vertical">
+            <FieldLabel>Username</FieldLabel>
+            <FieldContent>
+              <RequiredInput
+                name="username"
+                placeholder="e.g. john_doe"
+                defaultValue={admin?.username ?? ""}
+                errorMessage="Username is required"
+                autoComplete="off"
+              />
+            </FieldContent>
+          </Field>
+
+          <Field orientation="vertical">
+            <FieldLabel>Role</FieldLabel>
+            <FieldContent>
+              <Select
+                name="roleId"
+                defaultValue={admin?.role_id ? String(admin.role_id) : undefined}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.role_id} value={String(role.role_id)}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
+        </div>
 
         <Field orientation="vertical">
           <FieldLabel>Email</FieldLabel>
@@ -125,28 +149,6 @@ export function AdminForm({
                 autoComplete="new-password"
               />
             )}
-          </FieldContent>
-        </Field>
-
-        <Field orientation="vertical">
-          <FieldLabel>Role</FieldLabel>
-          <FieldContent>
-            <Select
-              name="roleId"
-              defaultValue={admin?.role_id ? String(admin.role_id) : undefined}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role.role_id} value={String(role.role_id)}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </FieldContent>
         </Field>
       </div>

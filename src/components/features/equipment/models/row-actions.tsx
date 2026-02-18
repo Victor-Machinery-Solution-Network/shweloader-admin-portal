@@ -7,17 +7,18 @@ import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { EquipmentModelForm } from "./equipment-model-form";
 import { deleteEquipmentModel } from "@/lib/actions/equipment-model";
-import type { EquipmentModel, EquipmentSubCategory } from "@/types/equipment";
+import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
 import type { ProductBrand } from "@/types/brand";
 
 interface RowActionsProps {
   model: EquipmentModel;
+  mainCategories: EquipmentMainCategory[];
   subCategories: EquipmentSubCategory[];
   brands: ProductBrand[];
   subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[];
 }
 
-export function RowActions({ model, subCategories, brands, subCategoryBrandLinks }: RowActionsProps) {
+export function RowActions({ model, mainCategories, subCategories, brands, subCategoryBrandLinks }: RowActionsProps) {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -48,6 +49,7 @@ export function RowActions({ model, subCategories, brands, subCategoryBrandLinks
           open={showEdit}
           onOpenChange={setShowEdit}
           model={model}
+          mainCategories={mainCategories}
           subCategories={subCategories}
           brands={brands}
           subCategoryBrandLinks={subCategoryBrandLinks}

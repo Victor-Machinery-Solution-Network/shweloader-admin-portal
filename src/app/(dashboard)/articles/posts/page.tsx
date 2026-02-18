@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import {
   getArticlesWithDetails,
-  getArticleCategories,
   getArticleStatusTypes,
 } from "@/lib/cache";
 import { PostsClient } from "@/components/features/articles/posts/posts-client";
@@ -32,18 +31,16 @@ export default function PostsPage() {
 async function PostsContent() {
   "use cache";
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
-  cacheTag(CACHE_TAGS.ARTICLES, CACHE_TAGS.ARTICLE_CATEGORIES);
+  cacheTag(CACHE_TAGS.ARTICLES);
 
-  const [articles, categories, statusTypes] = await Promise.all([
+  const [articles, statusTypes] = await Promise.all([
     getArticlesWithDetails(),
-    getArticleCategories(),
     getArticleStatusTypes(),
   ]);
 
   return (
     <PostsClient
       articles={articles}
-      categories={categories}
       statusTypes={statusTypes}
     />
   );
