@@ -1,7 +1,7 @@
 "use server";
 
 import { customFieldTemplateService } from "@/lib/services/custom-field-template";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import type {
@@ -24,17 +24,6 @@ export async function getCustomFieldTemplates(): Promise<
   }));
 }
 
-export async function getCustomFieldTemplateById(
-  id: number,
-): Promise<CustomFieldTemplateWithFields | null> {
-  const template = await customFieldTemplateService.getById(id);
-  if (!template) return null;
-  return {
-    ...template,
-    fields: JSON.parse(template.fields || "[]") as CustomFieldDefinition[],
-  };
-}
-
 // ─── Create ─────────────────────────────────────────────────────────────────
 
 export async function createCustomFieldTemplate(formData: FormData) {
@@ -51,7 +40,7 @@ export async function createCustomFieldTemplate(formData: FormData) {
       return { success: false, error: "At least one field is required" };
     }
 
-    const created_by = await getCurrentUserId();
+    const created_by = await requirePermission("listing_templates", "create");
     await customFieldTemplateService.create({
       name,
       fields: JSON.stringify(fields),
@@ -82,6 +71,7 @@ export async function updateCustomFieldTemplate(
   }
 
   try {
+    await requirePermission("listing_templates", "edit");
     const fields: CustomFieldDefinition[] = JSON.parse(fieldsJson || "[]");
     if (fields.length === 0) {
       return { success: false, error: "At least one field is required" };
@@ -106,6 +96,7 @@ export async function updateCustomFieldTemplate(
 
 export async function deleteCustomFieldTemplate(id: number) {
   try {
+    await requirePermission("listing_templates", "delete");
     await customFieldTemplateService.delete(id);
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
     return { success: true };
@@ -120,6 +111,8 @@ export async function deleteCustomFieldTemplate(id: number) {
 // ─── Bulk Delete ────────────────────────────────────────────────────────────
 
 export async function deleteCustomFieldTemplates(ids: number[]) {
+  await requirePermission("listing_templates", "delete");
+  assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map((id) => customFieldTemplateService.delete(id)),
   );

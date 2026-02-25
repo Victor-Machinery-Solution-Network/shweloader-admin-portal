@@ -3,7 +3,7 @@ export interface Enquiry {
   id: number;
   sale_listing_id: number | null;
   rent_listing_id: number | null;
-  customer_id: number | null;
+  app_user_id: number | null;
   message: string | null;
   enquiry_status_id: number | null;
   created_at: string;
@@ -14,10 +14,10 @@ export interface Enquiry {
 /** Enquiry with JOINed details for display */
 export interface EnquiryWithDetails extends Enquiry {
   status_name: string | null;
-  customer_name: string | null;
-  customer_email: string | null;
-  customer_phone: string | null;
-  customer_company: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  user_phone: string | null;
+  user_company: string | null;
   /** Product model name from sale or rent listing */
   model_name: string | null;
   /** "sale" or "rent" */

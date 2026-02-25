@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
+import { assetUrl } from "@/lib/r2-url";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { PendingListingRowActions } from "./pending-listing-row-actions";
 import type {
   SaleListingWithDetails,
@@ -23,37 +25,34 @@ type ListingBase = {
 
 // --- Shared column helpers ---
 
-function thumbnailColumn<T extends ListingBase>(): ColumnDef<T> {
-  return {
-    id: "thumbnail",
-    header: "",
-    cell: ({ row }) => {
-      const url = row.original.thumbnail_url;
-      return url ? (
-        <div className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
-          <img src={url} alt="" className="size-full object-cover" />
-        </div>
-      ) : (
-        <div className="size-11 shrink-0 rounded-lg border bg-muted" />
-      );
-    },
-    size: 56,
-    minSize: 56,
-    maxSize: 56,
-    enableResizing: false,
-  };
-}
-
-function modelColumn<T extends ListingBase>(): ColumnDef<T> {
+function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
   return {
     accessorKey: "model_name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Model" />
+      <DataTableColumnHeader column={column} title="Product" />
     ),
-    cell: ({ row }) => (
-      <span className="font-medium">{row.original.model_name ?? "\u2014"}</span>
-    ),
-    minSize: 120,
+    cell: ({ row }) => {
+      const src = assetUrl(row.original.thumbnail_url);
+      const customId = (row.original as Record<string, unknown>).custom_id as string | null;
+      return (
+        <div className="flex items-center gap-3">
+          {src ? (
+            <div className="size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
+              <Image src={src} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+            </div>
+          ) : (
+            <div className="size-10 shrink-0 rounded-lg border bg-muted" />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{row.original.model_name ?? "\u2014"}</p>
+            {customId && (
+              <p className="truncate text-xs text-muted-foreground font-mono">{customId}</p>
+            )}
+          </div>
+        </div>
+      );
+    },
+    minSize: 200,
   };
 }
 
@@ -72,14 +71,21 @@ function partnerColumn<T extends ListingBase>(): ColumnDef<T> {
 function productTypeColumn<T extends ListingBase>(): ColumnDef<T> {
   return {
     id: "product_type",
+    accessorFn: (row) => row.product_type,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Type" />
     ),
-    cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs capitalize">
-        {row.original.product_type}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const type = row.original.product_type;
+      return (
+        <Badge
+          variant={type === "equipment" ? "equipment" : "attachment"}
+          className="text-xs capitalize"
+        >
+          {type}
+        </Badge>
+      );
+    },
   };
 }
 
@@ -95,24 +101,47 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
       const hasUsd = usd_price != null;
 
       if (!hasMmk && !hasUsd) {
-        return (
-          <span className="text-muted-foreground text-sm">{"\u2014"}</span>
-        );
+        return <span className="text-muted-foreground">{"\u2014"}</span>;
       }
 
       return (
-        <div className="text-sm tabular-nums">
+        <div className="tabular-nums">
           {hasMmk && (
-            <span className="font-medium">
-              {Number(mmk_price).toLocaleString()} MMK
-            </span>
+            <p className="text-sm font-medium">
+              {Number(mmk_price).toLocaleString()}{" "}
+              <span className="text-muted-foreground font-normal">MMK</span>
+            </p>
           )}
           {hasUsd && (
-            <span className="text-muted-foreground ml-1.5">
-              {hasMmk ? "(" : ""}${Number(usd_price).toLocaleString()}
-              {hasMmk ? ")" : ""}
-            </span>
+            <p className="text-xs text-muted-foreground">
+              ${Number(usd_price).toLocaleString()}
+            </p>
           )}
+        </div>
+      );
+    },
+  };
+}
+
+function statusColumn<T extends { approve_status_name: string | null }>(): ColumnDef<T> {
+  return {
+    id: "status",
+    accessorFn: (row) => row.approve_status_name ?? "",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.original.approve_status_name;
+      const isRework = status === "Rework";
+      return (
+        <div className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              "size-2 rounded-full",
+              isRework ? "bg-amber-500" : "bg-blue-500",
+            )}
+          />
+          <span className="text-sm">{status ?? "—"}</span>
         </div>
       );
     },
@@ -123,11 +152,11 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
 
 export function createPendingSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
-    thumbnailColumn<SaleListingWithDetails>(),
-    modelColumn<SaleListingWithDetails>(),
+    productInfoColumn<SaleListingWithDetails>(),
     partnerColumn<SaleListingWithDetails>(),
     productTypeColumn<SaleListingWithDetails>(),
     priceColumn<SaleListingWithDetails>(),
+    statusColumn<SaleListingWithDetails>(),
     {
       accessorKey: "created_at",
       header: ({ column }) => (
@@ -155,11 +184,11 @@ export function createPendingSaleColumns(): ColumnDef<SaleListingWithDetails>[] 
 
 export function createPendingRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
-    thumbnailColumn<RentListingWithDetails>(),
-    modelColumn<RentListingWithDetails>(),
+    productInfoColumn<RentListingWithDetails>(),
     partnerColumn<RentListingWithDetails>(),
     productTypeColumn<RentListingWithDetails>(),
     priceColumn<RentListingWithDetails>(),
+    statusColumn<RentListingWithDetails>(),
     {
       accessorKey: "created_at",
       header: ({ column }) => (

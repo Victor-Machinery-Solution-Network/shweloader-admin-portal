@@ -10,7 +10,7 @@ import {
   createBusinessType,
   updateBusinessType,
 } from "@/lib/actions/business-type";
-import type { BusinessType } from "@/types/customer";
+import type { BusinessType } from "@/types/app-user";
 
 interface BusinessTypeFormProps {
   open: boolean;

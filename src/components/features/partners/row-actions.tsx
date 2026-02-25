@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ClipboardPen, Eye, X } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,10 +18,13 @@ interface RowActionsProps {
 }
 
 export function RowActions({ partner }: RowActionsProps) {
+  const canApprove = useHasPermission("partners", "approve");
   const [showReview, setShowReview] = useState(false);
   const status = partner.status_name?.toLowerCase();
   const Icon = status === "approved" ? Eye : status === "rejected" ? X : ClipboardPen;
   const label = status === "approved" ? "View" : "Review";
+
+  if (!canApprove) return null;
 
   return (
     <div className="flex justify-end">
@@ -31,7 +35,7 @@ export function RowActions({ partner }: RowActionsProps) {
               variant="ghost"
               size="icon-sm"
               onClick={() => setShowReview(true)}
-              className={status === "rejected" ? "text-destructive hover:text-destructive" : "text-muted-foreground hover:text-foreground"}
+              className={status === "rejected" ? "text-muted-foreground hover:text-destructive" : "text-muted-foreground hover:text-foreground"}
             >
               <Icon aria-hidden="true" />
               <span className="sr-only">{label}</span>

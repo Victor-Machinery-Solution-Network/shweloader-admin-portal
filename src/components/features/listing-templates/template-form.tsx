@@ -79,8 +79,11 @@ export function TemplateForm({
   template,
 }: TemplateFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [fields, setFields] = useState<CustomFieldDefinition[]>([]);
+  const [fields, setFields] = useState<CustomFieldDefinition[]>(
+    template?.fields.map((f, i) => ({ ...f, order: i })) ?? [],
+  );
   const [newFieldKey, setNewFieldKey] = useState<string | null>(null);
+  const [validationAttempt, setValidationAttempt] = useState(0);
   const isEditing = !!template;
 
   const sensors = useSensors(
@@ -95,6 +98,7 @@ export function TemplateForm({
           template?.fields.map((f, i) => ({ ...f, order: i })) ?? [],
         );
         setNewFieldKey(null);
+        setValidationAttempt(0);
       }
       onOpenChange(nextOpen);
     },
@@ -141,6 +145,11 @@ export function TemplateForm({
   // ─── Submit ───────────────────────────────────────────────────────────
 
   function handleSubmit(formData: FormData) {
+    if (fields.some((f) => !f.label.trim())) {
+      setValidationAttempt((v) => v + 1);
+      return;
+    }
+
     // Re-key fields based on final labels before saving
     const existingKeys: string[] = [];
     const finalFields = fields.map((f, i) => {
@@ -247,6 +256,10 @@ export function TemplateForm({
                         key={field.key}
                         field={field}
                         defaultExpanded={field.key === newFieldKey}
+                        showLabelError={
+                          validationAttempt > 0 && !field.label.trim()
+                        }
+                        validationAttempt={validationAttempt}
                         onChange={(updated) =>
                           updateField(field.key, updated)
                         }

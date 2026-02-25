@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { getArticleCategories } from "@/lib/cache";
 import { getArticleCount } from "@/lib/actions/article-category";
 import { ArticleCategoriesClient } from "@/components/features/articles/categories/article-categories-client";
@@ -20,7 +21,9 @@ export default function ArticleCategoriesPage() {
         description="Organize your articles into categories"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <ArticleCategoriesContent />
+        <PermissionGate feature="article_categories">
+          <ArticleCategoriesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

@@ -1,16 +1,14 @@
 # Data Fetching Guide
 
-Complete guide to data fetching patterns in the Next.js admin portal using Server Components, Server Actions, and API routes.
+Complete guide to data fetching patterns in the Next.js admin portal using Server Components, Server Actions, and the D1 REST API.
 
 ## Table of Contents
 - [Overview](#overview)
 - [Cloudflare D1 REST API](#cloudflare-d1-rest-api)
 - [Server Components](#server-components)
 - [Server Actions](#server-actions)
-- [Client-Side Fetching](#client-side-fetching)
 - [Caching Strategies](#caching-strategies)
 - [Error Handling](#error-handling)
-- [Best Practices](#best-practices)
 
 ---
 
@@ -18,28 +16,20 @@ Complete guide to data fetching patterns in the Next.js admin portal using Serve
 
 ### Data Fetching Methods
 
-| Method | Use Case | Location | Can be Async |
-|--------|----------|----------|--------------|
-| Server Components | Reading data | Server | ✅ Yes |
-| Server Actions | Mutations (Create, Update, Delete) | Server | ✅ Yes |
-| Route Handlers | External APIs, Webhooks | Server | ✅ Yes |
-| Client Fetching | Dynamic client data | Client | ✅ Yes (with async/await) |
+| Method | Use Case | Location |
+|--------|----------|----------|
+| Server Components | Reading data | Server |
+| Server Actions | Mutations (Create, Update, Delete) | Server |
 
 ### Decision Tree
 
 ```
 Need to fetch data?
 ├─ For initial page load?
-│  └─ Use Server Component ✅
+│  └─ Use Server Component with "use cache" ✅
 │
-├─ For form submission / mutation?
-│  └─ Use Server Action ✅
-│
-├─ For external webhook / API?
-│  └─ Use Route Handler ✅
-│
-└─ For client-side dynamic data?
-   └─ Use Client Component with fetch ✅
+└─ For form submission / mutation?
+   └─ Use Server Action + invalidateTag() ✅
 ```
 
 ---
@@ -53,11 +43,11 @@ Need to fetch data?
 Environment variables (`.env.local`):
 
 ```bash
-# Public URL (can be exposed to client)
-NEXT_PUBLIC_D1_API_URL=https://cloudflare-d1-rest-api.shweloader.workers.dev
+# Cloudflare Worker REST API
+CLOUDFLARE_WORKER_API_URL=https://api.staging.shweloader.com.mm
 
 # API Token (server-side only)
-D1_API_TOKEN=your-secret-token
+CLOUDFLARE_WORKER_API_TOKEN=your-secret-token
 ```
 
 ### D1 Client
@@ -239,58 +229,7 @@ interface D1Response<T> {
 
 ### Basic Pattern
 
-```typescript
-// app/(dashboard)/users/page.tsx
-export default async function UsersPage() {
-  // Fetch data directly in component
-  const users = await fetchUsers();
-
-  return (
-    <div>
-      <h1>Users</h1>
-      <UserTable users={users} />
-    </div>
-  );
-}
-
-// Data fetching function
-async function fetchUsers() {
-  const res = await fetch('https://api.example.com/users', {
-    next: { revalidate: 3600 } // Cache for 1 hour
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch users');
-  }
-
-  return res.json();
-}
-```
-
-### With Database
-
-```typescript
-// Using Prisma
-import { prisma } from '@/lib/db';
-
-export default async function UsersPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-  });
-
-  return <UserTable users={users} />;
-}
-
-// Using Drizzle
-import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-
-export default async function UsersPage() {
-  const data = await db.select().from(users).limit(20);
-  return <UserTable users={data} />;
-}
-```
+See the [Page Pattern](#page-pattern-component-level-caching) in the Caching Strategies section for the recommended sync page + Suspense + `"use cache"` approach.
 
 ### With Search Params
 
@@ -423,463 +362,30 @@ async function RecentUsers() {
 
 ## Server Actions
 
-**Preferred way to handle mutations.**
-
-### Basic Server Action
-
-```typescript
-// lib/actions/users.ts
-'use server';
-
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { z } from 'zod';
-
-const userSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  role: z.enum(['admin', 'user']),
-});
-
-export async function createUser(formData: FormData) {
-  // 1. Extract and validate data
-  const data = {
-    name: formData.get('name'),
-    email: formData.get('email'),
-    role: formData.get('role'),
-  };
-
-  const validated = userSchema.parse(data);
-
-  // 2. Database operation
-  try {
-    const user = await db.user.create({
-      data: validated,
-    });
-
-    // 3. Revalidate cache
-    revalidatePath('/users');
-
-    // 4. Return success
-    return { success: true, data: user };
-  } catch (error) {
-    // 5. Handle errors
-    return { success: false, error: 'Failed to create user' };
-  }
-}
-```
+**Preferred way to handle mutations.** See the [Service Factory](#service-factory-recommended) section above for complete CRUD examples using the D1 service + `invalidateTag()`.
 
 ### Using Server Actions in Forms
 
 ```typescript
-// components/features/users/user-form.tsx
 'use client';
 
 import { useActionState } from 'react';
-import { createUser } from '@/lib/actions/users';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { createBrand } from '@/lib/actions/brand';
 
-export function UserForm() {
-  const [state, formAction, isPending] = useActionState(createUser, null);
+export function BrandForm() {
+  const [state, formAction, isPending] = useActionState(createBrand, null);
 
   return (
     <form action={formAction} className="space-y-4">
-      <div>
-        <label>Name</label>
-        <Input name="name" required />
-      </div>
-
-      <div>
-        <label>Email</label>
-        <Input name="email" type="email" required />
-      </div>
+      <Input name="name" required />
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Creating...' : 'Create User'}
+        {isPending ? 'Creating...' : 'Create Brand'}
       </Button>
 
-      {state?.error && (
-        <p className="text-red-500">{state.error}</p>
-      )}
-
-      {state?.success && (
-        <p className="text-green-500">User created successfully!</p>
-      )}
+      {state?.error && <p className="text-red-500">{state.error}</p>}
     </form>
   );
-}
-```
-
-### Programmatic Server Actions
-
-```typescript
-'use client';
-
-import { createUser } from '@/lib/actions/users';
-
-export function CreateUserButton() {
-  async function handleClick() {
-    const formData = new FormData();
-    formData.append('name', 'John Doe');
-    formData.append('email', 'john@example.com');
-    formData.append('role', 'user');
-
-    const result = await createUser(formData);
-
-    if (result.success) {
-      console.log('User created:', result.data);
-    } else {
-      console.error('Error:', result.error);
-    }
-  }
-
-  return <Button onClick={handleClick}>Create User</Button>;
-}
-```
-
-### Update Action
-
-```typescript
-'use server';
-
-export async function updateUser(id: string, formData: FormData) {
-  const data = {
-    name: formData.get('name'),
-    email: formData.get('email'),
-  };
-
-  const validated = userSchema.parse(data);
-
-  try {
-    const user = await db.user.update({
-      where: { id },
-      data: validated,
-    });
-
-    revalidatePath('/users');
-    revalidatePath(`/users/${id}`);
-
-    return { success: true, data: user };
-  } catch (error) {
-    return { success: false, error: 'Failed to update user' };
-  }
-}
-```
-
-### Delete Action
-
-```typescript
-'use server';
-
-export async function deleteUser(id: string) {
-  try {
-    await db.user.delete({
-      where: { id },
-    });
-
-    revalidatePath('/users');
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: 'Failed to delete user' };
-  }
-}
-```
-
-### With Redirect
-
-```typescript
-'use server';
-
-import { redirect } from 'next/navigation';
-
-export async function createUserAndRedirect(formData: FormData) {
-  const result = await createUser(formData);
-
-  if (!result.success) {
-    return result;
-  }
-
-  // Redirect to user detail page
-  redirect(`/users/${result.data.id}`);
-}
-```
-
----
-
-## Client-Side Fetching
-
-**For dynamic data that needs client-side updates.**
-
-### Basic Client Fetch
-
-```typescript
-'use client';
-
-import { useState, useEffect } from 'react';
-import type { User } from '@/types';
-
-export function UserList() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch('/api/users');
-
-        if (!res.ok) {
-          throw new Error('Failed to fetch');
-        }
-
-        const data = await res.json();
-        setUsers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchUsers();
-  }, []);
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return <UserTable users={users} />;
-}
-```
-
-### With SWR (Recommended)
-
-```bash
-npm install swr
-```
-
-```typescript
-'use client';
-
-import useSWR from 'swr';
-import type { User } from '@/types';
-
-const fetcher = (url: string) => fetch(url).then(r => r.json());
-
-export function UserList() {
-  const { data, error, isLoading, mutate } = useSWR<User[]>(
-    '/api/users',
-    fetcher
-  );
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  return (
-    <div>
-      <Button onClick={() => mutate()}>Refresh</Button>
-      <UserTable users={data || []} />
-    </div>
-  );
-}
-```
-
-### With React Query (TanStack Query)
-
-```bash
-npm install @tanstack/react-query
-```
-
-```typescript
-'use client';
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createUser } from '@/lib/actions/users';
-
-export function UserList() {
-  const queryClient = useQueryClient();
-
-  // Fetch users
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const res = await fetch('/api/users');
-      return res.json();
-    },
-  });
-
-  // Create user mutation
-  const createMutation = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      // Refetch users after creation
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  return (
-    <div>
-      <Button onClick={() => createMutation.mutate(formData)}>
-        Create User
-      </Button>
-      <UserTable users={data || []} />
-    </div>
-  );
-}
-```
-
----
-
-## Route Handlers
-
-**For external APIs and webhooks.**
-
-### Basic Route Handler
-
-```typescript
-// app/api/users/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  try {
-    const users = await db.user.findMany();
-    return NextResponse.json(users);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const user = await db.user.create({ data: body });
-    return NextResponse.json(user, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### Dynamic Route Handler
-
-```typescript
-// app/api/users/[id]/route.ts
-interface RouteParams {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export async function GET(request: Request, { params }: RouteParams) {
-  const { id } = await params;
-
-  try {
-    const user = await db.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(user);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch user' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: Request, { params }: RouteParams) {
-  const { id } = await params;
-  const body = await request.json();
-
-  try {
-    const user = await db.user.update({
-      where: { id },
-      data: body,
-    });
-
-    return NextResponse.json(user);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to update user' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: Request, { params }: RouteParams) {
-  const { id } = await params;
-
-  try {
-    await db.user.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to delete user' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### Webhook Handler
-
-```typescript
-// app/api/webhooks/stripe/route.ts
-import { headers } from 'next/headers';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-export async function POST(request: Request) {
-  const body = await request.text();
-  const headersList = await headers();
-  const signature = headersList.get('stripe-signature')!;
-
-  let event: Stripe.Event;
-
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (err) {
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
-    );
-  }
-
-  // Handle event
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      await handlePaymentSuccess(paymentIntent);
-      break;
-    // ... other event types
-  }
-
-  return NextResponse.json({ received: true });
 }
 ```
 
@@ -948,7 +454,7 @@ async function BrandsContent() {
 
 | Tier | TTL | `cacheLife` | Used For |
 |------|-----|-------------|----------|
-| Tier 1 (Lookup) | 5 min / 1 hr | `{ stale: 300, revalidate: 300, expire: 3600 }` | Brands, locations, categories, customers, announcements |
+| Tier 1 (Lookup) | 5 min / 1 hr | `{ stale: 300, revalidate: 300, expire: 3600 }` | Brands, locations, categories, users, announcements |
 | Tier 2 (Model) | 2 min / 30 min | `{ stale: 120, revalidate: 120, expire: 1800 }` | Equipment/attachment models, partners, articles, carousels, listings |
 
 ### Cache Tags
@@ -1083,105 +589,4 @@ export default async function UserPage({
 
 ---
 
-## Best Practices
-
-### 1. Prefer Server Components
-
-✅ **Good**:
-```typescript
-// Server Component - fetch data directly
-export default async function UsersPage() {
-  const users = await db.user.findMany();
-  return <UserTable users={users} />;
-}
-```
-
-❌ **Avoid**:
-```typescript
-// Client Component - extra roundtrip
-'use client';
-export default function UsersPage() {
-  const [users, setUsers] = useState([]);
-  useEffect(() => {
-    fetch('/api/users').then(r => r.json()).then(setUsers);
-  }, []);
-  return <UserTable users={users} />;
-}
-```
-
-### 2. Use Server Actions for Mutations
-
-✅ **Good**:
-```typescript
-'use server';
-export async function createUser(data: FormData) {
-  await db.user.create({ data });
-  revalidatePath('/users');
-}
-```
-
-❌ **Avoid**:
-```typescript
-// Unnecessary API route
-export async function POST(request: Request) {
-  await db.user.create({ data: await request.json() });
-  return NextResponse.json({ success: true });
-}
-```
-
-### 3. Avoid Waterfalls
-
-✅ **Good**:
-```typescript
-const [users, posts] = await Promise.all([
-  fetchUsers(),
-  fetchPosts(),
-]);
-```
-
-❌ **Avoid**:
-```typescript
-const users = await fetchUsers();
-const posts = await fetchPosts(); // Waits for users
-```
-
-### 4. Use Suspense for Streaming
-
-✅ **Good**:
-```typescript
-<Suspense fallback={<Skeleton />}>
-  <DataComponent />
-</Suspense>
-```
-
-### 5. Cache at Component Level
-
-```typescript
-// Use "use cache" on async data components, not on data functions
-async function DataContent() {
-  "use cache";
-  cacheLife({ stale: 300, revalidate: 300, expire: 3600 }); // Tier 1
-  cacheTag(CACHE_TAGS.YOUR_ENTITY);
-
-  const data = await getData(); // Plain function from cache.ts
-  return <DataClient data={data} />;
-}
-```
-
-### 6. Type Safety
-
-```typescript
-// Define types
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-// Use in fetch
-const users: User[] = await fetchUsers();
-```
-
----
-
-This data fetching guide provides comprehensive patterns for loading and mutating data in the admin portal using modern Next.js patterns.
+This data fetching guide covers the D1 REST API, server components, server actions, caching, and error handling patterns used in the admin portal.

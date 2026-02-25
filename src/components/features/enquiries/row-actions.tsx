@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, CheckCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { EnquiryDetailDialog } from "./enquiry-detail-dialog";
@@ -21,6 +22,8 @@ export function EnquiryRowActions({
   enquiry,
   statusTypes,
 }: EnquiryRowActionsProps) {
+  const canEdit = useHasPermission("enquiries", "edit");
+  const canDelete = useHasPermission("enquiries", "delete");
   const [showDetail, setShowDetail] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -70,35 +73,45 @@ export function EnquiryRowActions({
             icon: Eye,
             onClick: () => setShowDetail(true),
           },
-          {
-            label: isResolved ? "Mark Pending" : "Mark Resolved",
-            icon: CheckCircle,
-            onClick: handleToggleStatus,
-            disabled: isPending,
-          },
-          {
-            label: "Delete",
-            icon: Trash2,
-            onClick: () => setShowDelete(true),
-            variant: "destructive",
-            separatorBefore: true,
-          },
+          ...(canEdit
+            ? [
+                {
+                  label: (isResolved ? "Mark Pending" : "Mark Resolved") as string,
+                  icon: CheckCircle,
+                  onClick: handleToggleStatus,
+                  disabled: isPending,
+                },
+              ]
+            : []),
+          ...(canDelete
+            ? [
+                {
+                  label: "Delete" as const,
+                  icon: Trash2,
+                  onClick: () => setShowDelete(true),
+                  variant: "destructive" as const,
+                  separatorBefore: true,
+                },
+              ]
+            : []),
         ]}
       />
 
-      <EnquiryDetailDialog
-        enquiry={enquiry}
-        open={showDetail}
-        onOpenChange={setShowDetail}
-        statusTypes={statusTypes}
-      />
+      {showDetail && (
+        <EnquiryDetailDialog
+          enquiry={enquiry}
+          open={showDetail}
+          onOpenChange={setShowDetail}
+          statusTypes={statusTypes}
+        />
+      )}
 
       <DeleteDialog
         open={showDelete}
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete enquiry?"
-        description={`This will permanently delete the enquiry from "${enquiry.customer_name ?? "Unknown"}". This action cannot be undone.`}
+        description={`This will permanently delete the enquiry from "${enquiry.user_name ?? "Unknown"}". This action cannot be undone.`}
         isPending={isPending}
       />
     </>

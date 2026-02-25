@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { deleteArticle } from "@/lib/actions/article";
@@ -15,6 +16,8 @@ interface RowActionsProps {
 
 export function RowActions({ article }: RowActionsProps) {
   const router = useRouter();
+  const canEdit = useHasPermission("articles", "edit");
+  const canDelete = useHasPermission("articles", "delete");
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -30,25 +33,35 @@ export function RowActions({ article }: RowActionsProps) {
     });
   }
 
-  return (
-    <>
-      <RowActionsUI
-        actions={[
+  const actions = [
+    ...(canEdit
+      ? [
           {
-            label: "Edit",
+            label: "Edit" as const,
             icon: Pencil,
             onClick: () =>
               router.push(`/articles/posts/${article.article_id}/edit`),
           },
+        ]
+      : []),
+    ...(canDelete
+      ? [
           {
-            label: "Delete",
+            label: "Delete" as const,
             icon: Trash2,
             onClick: () => setShowDelete(true),
-            variant: "destructive",
+            variant: "destructive" as const,
             separatorBefore: true,
           },
-        ]}
-      />
+        ]
+      : []),
+  ];
+
+  if (actions.length === 0) return null;
+
+  return (
+    <>
+      <RowActionsUI actions={actions} />
 
       <DeleteDialog
         open={showDelete}

@@ -2,13 +2,16 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { Shield, Plus } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { RoleForm } from "./role-form";
 import { createColumns } from "./columns";
 import { deleteRoles } from "@/lib/actions/role";
+import { SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
 import type {
   RoleWithPermissionCount,
   FeaturePermission,
@@ -27,11 +30,18 @@ export function RolesClient({
   adminCounts,
   rolePermissionMap,
 }: RolesClientProps) {
+  const canCreate = useHasPermission("roles", "create");
+  const canDelete = useHasPermission("roles", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
     () => createColumns(featurePermissions, adminCounts, rolePermissionMap),
     [featurePermissions, adminCounts, rolePermissionMap],
+  );
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [{ columnId: "created_at", label: "Created", type: "date-range" }],
+    [],
   );
 
   const handleBulkDelete = useCallback(
@@ -44,8 +54,8 @@ export function RolesClient({
 
   const buildDescription = useCallback(
     async (selected: RoleWithPermissionCount[]) => {
-      const hasSuperAdmin = selected.some((r) => r.name === "Super Admin");
-      if (hasSuperAdmin) {
+      const hasSystemRole = selected.some((r) => r.role_id === SUPER_ADMIN_ROLE_ID);
+      if (hasSystemRole) {
         return "Selection includes the Super Admin role which cannot be deleted. It will be skipped.";
       }
       const count = selected.length;
@@ -58,18 +68,22 @@ export function RolesClient({
   const renderToolbar = useCallback(
     (selected: RoleWithPermissionCount[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="role"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Role
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="role"
+          />
+        )}
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)} className="ml-auto">
+            <Plus /> Add Role
+          </Button>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
@@ -78,8 +92,10 @@ export function RolesClient({
         <DataTable
           columns={columns}
           data={roles}
-          searchKey="name"
+          searchKeys={["name", "description"]}
           searchPlaceholder="Search roles"
+          filterConfig={filterConfig}
+          filterStorageKey="roles-filters"
           enableSelection
           enablePagination
           pageSize={10}
@@ -92,9 +108,11 @@ export function RolesClient({
           title="No roles yet"
           description="Get started by creating your first role."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Role
-            </Button>
+            canCreate ? (
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus /> Add Role
+              </Button>
+            ) : undefined
           }
         />
       )}

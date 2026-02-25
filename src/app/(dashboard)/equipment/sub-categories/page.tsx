@@ -9,6 +9,7 @@ import {
   formatSubCategoryLinkedSummary,
 } from "@/lib/actions/equipment";
 import { SubCategoriesClient } from "@/components/features/equipment/sub/sub-categories-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 
 export const metadata = {
@@ -24,7 +25,9 @@ export default function EquipmentSubCategoriesPage() {
         description="Manage equipment sub categories"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <SubCategoriesContent />
+        <PermissionGate feature="equipment_sub_categories">
+          <SubCategoriesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

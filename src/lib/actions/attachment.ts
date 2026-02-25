@@ -3,23 +3,26 @@
 import { attachmentCategoryService } from "@/lib/services/attachment";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
 
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
 export async function createAttachmentCategory(formData: FormData) {
   const name = formData.get("name") as string;
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
   }
 
   try {
+    const image_url = await processFileField(
+      formData, "image_url", "categories/attachments/", name.trim(),
+    );
     const [created_by, display_order] = await Promise.all([
-      getCurrentUserId(),
+      requirePermission("attachment_categories", "create"),
       getNextDisplayOrder("attachment_category"),
     ]);
     await attachmentCategoryService.create({
@@ -40,17 +43,22 @@ export async function createAttachmentCategory(formData: FormData) {
 
 export async function updateAttachmentCategory(id: number, formData: FormData) {
   const name = formData.get("name") as string;
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
   }
 
   try {
+    await requirePermission("attachment_categories", "edit");
+    const existing = await attachmentCategoryService.getById(id);
+    const image_url = await processFileField(
+      formData, "image_url", "categories/attachments/", name.trim(), existing?.image_url,
+    );
     await attachmentCategoryService.update(id, {
       name: name.trim(),
       image_url,
     });
+    await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -63,7 +71,10 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
 
 export async function deleteAttachmentCategory(id: number) {
   try {
+    await requirePermission("attachment_categories", "delete");
+    const existing = await attachmentCategoryService.getById(id);
     await attachmentCategoryService.delete(id);
+    await deleteFile(existing?.image_url);
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -75,9 +86,22 @@ export async function deleteAttachmentCategory(id: number) {
 }
 
 export async function deleteAttachmentCategories(ids: number[]) {
+  await requirePermission("attachment_categories", "delete");
+  assertBulkLimit(ids);
+  const existingRecords = await Promise.all(
+    ids.map((id) => attachmentCategoryService.getById(id)),
+  );
+
   const results = await Promise.allSettled(
     ids.map((id) => attachmentCategoryService.delete(id)),
   );
+
+  const deletePromises = results.map((r, i) => {
+    if (r.status === "fulfilled") {
+      return deleteFile(existingRecords[i]?.image_url);
+    }
+  });
+  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")

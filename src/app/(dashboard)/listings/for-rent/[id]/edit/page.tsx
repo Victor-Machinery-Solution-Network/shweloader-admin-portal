@@ -8,13 +8,16 @@ import {
   getApprovedPartners,
   getEquipmentModels,
   getAttachmentModels,
-  getLocations,
+  getStateRegions,
+  getDistricts,
+  getTownships,
   getConditionTypes,
   getSettings,
   getCustomFieldTemplates,
 } from "@/lib/cache";
 import { ListingEditor } from "@/components/features/listings/shared/listing-editor";
 import { EditorSkeleton } from "@/components/features/listings/shared/editor-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Edit Rent Listing",
@@ -32,7 +35,9 @@ export default function EditRentListingPage({
 }) {
   return (
     <Suspense fallback={<EditorSkeleton />}>
-      <EditRentListingContent params={params} />
+      <PermissionGate feature="rent_listings">
+        <EditRentListingContent params={params} />
+      </PermissionGate>
     </Suspense>
   );
 }
@@ -49,7 +54,9 @@ async function EditRentListingContent({
     partners,
     equipmentModels,
     attachmentModels,
-    locations,
+    stateRegions,
+    districts,
+    townships,
     conditionTypes,
     settings,
     templates,
@@ -58,7 +65,9 @@ async function EditRentListingContent({
     getApprovedPartners(),
     getEquipmentModels(),
     getAttachmentModels(),
-    getLocations(),
+    getStateRegions(),
+    getDistricts(),
+    getTownships(),
     getConditionTypes(),
     getSettings(),
     getCustomFieldTemplates(),
@@ -79,7 +88,9 @@ async function EditRentListingContent({
       partners={partners}
       equipmentModels={equipmentModels}
       attachmentModels={attachmentModels}
-      locations={locations}
+      stateRegions={stateRegions}
+      districts={districts}
+      townships={townships}
       conditionTypes={conditionTypes}
       exchangeRate={exchangeRate}
       templates={templates}

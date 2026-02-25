@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Cog, Plus } from "lucide-react";
+import { ChevronDown, Cog, FileSpreadsheet, FileText, Plus } from "lucide-react";
+import Link from "next/link";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { AttachmentModelForm } from "./attachment-model-form";
@@ -30,11 +39,32 @@ export function AttachmentModelsClient({
   brands,
   categoryBrandLinks,
 }: AttachmentModelsClientProps) {
+  const canCreate = useHasPermission("attachment_models", "create");
+  const canDelete = useHasPermission("attachment_models", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(
     () => createColumns(categories, brands, categoryBrandLinks),
     [categories, brands, categoryBrandLinks],
+  );
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "brand",
+        label: "Brand",
+        type: "multi-select",
+        options: brands.map((b) => ({ label: b.name, value: b.name })),
+      },
+      {
+        columnId: "category",
+        label: "Category",
+        type: "multi-select",
+        options: categories.map((c) => ({ label: c.name, value: c.name })),
+      },
+      { columnId: "created_at", label: "Created", type: "date-range" },
+    ],
+    [brands, categories],
   );
 
   const handleBulkDelete = useCallback(
@@ -48,17 +78,35 @@ export function AttachmentModelsClient({
   const renderToolbar = useCallback(
     (selected: AttachmentModel[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          itemLabel="model"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Model
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            itemLabel="model"
+          />
+        )}
+        {canCreate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus /> Add Model <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/attachment-models">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </>
     ),
-    [handleBulkDelete],
+    [handleBulkDelete, canCreate, canDelete],
   );
 
   return (
@@ -67,8 +115,10 @@ export function AttachmentModelsClient({
         <DataTable
           columns={columns}
           data={models}
-          searchKey="name"
+          searchKeys={["name"]}
           searchPlaceholder="Search models"
+          filterConfig={filterConfig}
+          filterStorageKey="attachment-models-filters"
           enableSelection
           enablePagination
           pageSize={10}
@@ -81,9 +131,25 @@ export function AttachmentModelsClient({
           title="No attachment models yet"
           description="Get started by creating your first attachment model."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Model
-            </Button>
+            canCreate ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus /> Add Model <ChevronDown className="ml-1 size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                    <FileText /> Fill Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bulk-upload/attachment-models">
+                      <FileSpreadsheet /> Excel Upload
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
           }
         />
       )}

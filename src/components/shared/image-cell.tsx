@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { assetUrl } from "@/lib/r2-url";
 
 interface ImageCellProps {
   name: string;
@@ -17,17 +18,18 @@ interface ImageCellProps {
 export function ImageCell({ name, imageUrl }: ImageCellProps) {
   const [showPreview, setShowPreview] = useState(false);
   const initial = name.charAt(0).toUpperCase();
+  const src = assetUrl(imageUrl);
 
   return (
     <div className="flex items-center gap-3">
-      {imageUrl ? (
+      {src ? (
         <button
           type="button"
           onClick={() => setShowPreview(true)}
           className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
           <img
-            src={imageUrl}
+            src={src}
             alt={name}
             className="size-full object-cover"
           />
@@ -42,7 +44,7 @@ export function ImageCell({ name, imageUrl }: ImageCellProps) {
 
       <span className="font-medium">{name}</span>
 
-      {showPreview && imageUrl && (
+      {showPreview && src && (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -51,7 +53,7 @@ export function ImageCell({ name, imageUrl }: ImageCellProps) {
             </DialogHeader>
             <div className="overflow-hidden rounded-lg border bg-muted">
               <img
-                src={imageUrl}
+                src={src}
                 alt={name}
                 className="w-full object-contain"
               />

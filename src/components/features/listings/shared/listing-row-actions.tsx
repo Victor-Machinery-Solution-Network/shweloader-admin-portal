@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import {
@@ -25,6 +26,9 @@ export function ListingRowActions({
   pageType,
 }: ListingRowActionsProps) {
   const router = useRouter();
+  const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
+  const canEdit = useHasPermission(feature, "edit");
+  const canDelete = useHasPermission(feature, "delete");
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -42,25 +46,35 @@ export function ListingRowActions({
     });
   }
 
-  return (
-    <>
-      <RowActionsUI
-        actions={[
+  const actions = [
+    ...(canEdit
+      ? [
           {
-            label: "Edit",
+            label: "Edit" as const,
             icon: Pencil,
             onClick: () =>
               router.push(`/listings/for-${pageType}/${listing.id}/edit`),
           },
+        ]
+      : []),
+    ...(canDelete
+      ? [
           {
-            label: "Delete",
+            label: "Delete" as const,
             icon: Trash2,
             onClick: () => setShowDelete(true),
-            variant: "destructive",
+            variant: "destructive" as const,
             separatorBefore: true,
           },
-        ]}
-      />
+        ]
+      : []),
+  ];
+
+  if (actions.length === 0) return null;
+
+  return (
+    <>
+      <RowActionsUI actions={actions} />
 
       <DeleteDialog
         open={showDelete}

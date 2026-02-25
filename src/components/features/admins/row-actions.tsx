@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { AdminForm } from "./admin-form";
 import { deleteAdmin } from "@/lib/actions/admin";
+import { PRIMARY_ADMIN_ID } from "@/lib/constants";
 import type { AdminWithRole } from "@/types/admin";
 import type { Role } from "@/types/role";
 
@@ -16,12 +18,13 @@ interface AdminRowActionsProps {
 }
 
 export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
+  const canEdit = useHasPermission("admin_users", "edit");
+  const canDelete = useHasPermission("admin_users", "delete");
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const isPrimaryAdmin = admin.user_id === 1;
-  const isSuperAdmin = admin.role_name === "Super Admin";
+  const isPrimaryAdmin = admin.user_id === PRIMARY_ADMIN_ID;
 
   function handleDelete() {
     startTransition(async () => {
@@ -35,26 +38,36 @@ export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
     });
   }
 
-  return (
-    <>
-      <RowActions
-        actions={[
+  const actions = [
+    ...(canEdit
+      ? [
           {
-            label: "Edit",
+            label: "Edit" as const,
             icon: Pencil,
             onClick: () => setShowEdit(true),
-            disabled: isPrimaryAdmin || isSuperAdmin,
+            disabled: isPrimaryAdmin,
           },
+        ]
+      : []),
+    ...(canDelete
+      ? [
           {
-            label: "Delete",
+            label: "Delete" as const,
             icon: Trash2,
             onClick: () => setShowDelete(true),
-            variant: "destructive",
-            disabled: isPrimaryAdmin || isSuperAdmin,
+            variant: "destructive" as const,
+            disabled: isPrimaryAdmin,
             separatorBefore: true,
           },
-        ]}
-      />
+        ]
+      : []),
+  ];
+
+  if (actions.length === 0) return null;
+
+  return (
+    <>
+      <RowActions actions={actions} />
 
       {showEdit && (
         <AdminForm

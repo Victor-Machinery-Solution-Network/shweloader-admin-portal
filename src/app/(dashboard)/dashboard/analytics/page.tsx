@@ -1,12 +1,19 @@
+import { Suspense } from "react";
+import { PermissionGate } from "@/components/shared/permission-gate";
+
 export const metadata = {
   title: 'Dashboard Analytics',
   description: 'Analytics and insights for your admin portal',
 };
-// This is a Server Component - it can be async and fetch data directly
-export default async function DashboardAnalyticsPage() {
+
+export default function DashboardAnalyticsPage() {
   return (
-    <div>
-      {/* Content will be added here */}
-    </div>
+    <Suspense>
+      <PermissionGate feature="analytics">
+        <div>
+          {/* Content will be added here */}
+        </div>
+      </PermissionGate>
+    </Suspense>
   );
 }

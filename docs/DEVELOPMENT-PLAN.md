@@ -2,7 +2,7 @@
 
 ## Current State
 
-Phases 1–6 are substantially complete. The admin portal has full auth, equipment/attachment catalog (categories + models), customer/partner management with approval workflows, sale/rent listings with featured content management, and CMS (articles, carousel, announcements). Phase 7 (RBAC + Settings) has schema + seed data ready but UI is still placeholder.
+Phases 1–6 are substantially complete. The admin portal has full auth, equipment/attachment catalog (categories + models), user/partner management with approval workflows, sale/rent listings with featured content management, and CMS (articles, carousel, announcements). Phase 7 (RBAC + Settings) has schema + seed data ready but UI is still placeholder.
 
 ---
 
@@ -17,7 +17,7 @@ Lookup Tables (status types, locations, brands)
   ↓
 Catalog (categories → sub-categories → models)
   ↓
-Business (customers → partners → products → listings)
+Business (users → partners → products → listings)
   ↓
 CMS (articles, carousel, announcements)
   ↓
@@ -56,7 +56,7 @@ RBAC + Settings (roles, permissions, admin users, app settings)
 
 - `product_brand` — Full CRUD with DataTable, search, pagination, drag-and-drop reordering, many-to-many junction table management (attachment_category_brand, equipment_sub_category_brand), multi-select UI, badge overflow with "+X more" tooltips, detailed delete warnings with linked counts, bulk delete
 - `location` — Full CRUD with DataTable, linked listing count in delete warnings
-- `business_type` — Full CRUD, embedded as second tab in Customers page, linked customer count tracking
+- `business_type` — Full CRUD, embedded as second tab in Users page, linked user count tracking
 
 **Still pending (no CRUD pages yet):**
 
@@ -88,13 +88,13 @@ RBAC + Settings (roles, permissions, admin users, app settings)
 
 ---
 
-## Phase 4 — Customers & Partners
+## Phase 4 — Users & Partners
 
-**Why fourth:** Customers/partners are the marketplace users whose data feeds into listings.
+**Why fourth:** Users/partners are the marketplace participants whose data feeds into listings.
 
 **Completed:**
 
-- `customer` — List page with dual-tab interface (Customers + Business Types), columns for id/name/phone/email/business type/verified status, business type filtering
+- `app_user` — List page with dual-tab interface (Users + Business Types), columns for id/name/phone/email/business type/verified status, business type filtering
 - `partner` — List page with 3-tab approval workflow (Approved | Pending | Rejected), status badges with pending count indicator, approve/reject actions
 
 **Status: COMPLETE**

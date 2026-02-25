@@ -1,14 +1,15 @@
 /** Matches the product_list table in D1 */
 export interface ProductList {
   id: number;
-  partner_id: number;
+  partner_id: number | null;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   custom_fields: string | null;
   description: string | null;
   thumbnail_url: string | null;
-  location_id: number | null;
+  township_id: number | null;
   hide_partner: number;
+  is_draft: number;
   created_by: number | null;
   created_at: string;
   updated_at: string;
@@ -98,7 +99,7 @@ export interface SaleListingWithDetails {
   // Product info
   thumbnail_url: string | null;
   description: string | null;
-  location_id: number | null;
+  township_id: number | null;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
@@ -108,9 +109,10 @@ export interface SaleListingWithDetails {
   model_name: string | null;
   product_type: "equipment" | "attachment";
   partner_name: string | null;
-  location_name: string | null;
+  township_name: string | null;
   // Approval status
   approve_status_name: string | null;
+  approved_at: string | null;
   // Featured status
   featured_id: number | null;
 }
@@ -130,7 +132,7 @@ export interface RentListingWithDetails {
   // Product info
   thumbnail_url: string | null;
   description: string | null;
-  location_id: number | null;
+  township_id: number | null;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
@@ -140,17 +142,12 @@ export interface RentListingWithDetails {
   model_name: string | null;
   product_type: "equipment" | "attachment";
   partner_name: string | null;
-  location_name: string | null;
+  township_name: string | null;
   // Approval status
   approve_status_name: string | null;
+  approved_at: string | null;
   // Featured status
   featured_id: number | null;
-}
-
-/** Approval status type lookup */
-export interface ApprovalStatusType {
-  id: number;
-  status_name: string;
 }
 
 /** JOIN view for featured listings tab */
@@ -160,14 +157,36 @@ export interface FeaturedListingWithDetails {
   rent_listing_id: number | null;
   display_order: string;
   listing_type: "sale" | "rent";
+  custom_id: string | null;
   model_name: string | null;
+  product_type: "equipment" | "attachment";
   partner_name: string | null;
   thumbnail_url: string | null;
+  approved_at: string | null;
 }
 
 /** Partner with approved status, used in listing form dropdowns */
 export interface ApprovedPartner {
   id: number;
-  customer_name: string;
+  user_name: string;
   company_name: string | null;
+}
+
+/** Draft product_list with JOINed names (for Drafts tab and edit page) */
+export interface DraftListingWithDetails {
+  id: number;
+  equipment_model_id: number | null;
+  attachment_model_id: number | null;
+  partner_id: number | null;
+  township_id: number | null;
+  description: string | null;
+  thumbnail_url: string | null;
+  hide_partner: number;
+  custom_fields: string | null;
+  model_name: string | null;
+  product_type: "equipment" | "attachment" | null;
+  partner_name: string | null;
+  township_name: string | null;
+  created_at: string;
+  updated_at: string;
 }

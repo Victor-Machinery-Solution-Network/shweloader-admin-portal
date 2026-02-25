@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { getPartnersWithDetails } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
 
@@ -20,7 +21,9 @@ export default function PartnersPage() {
         description="Review and manage partner applications"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <PartnersContent />
+        <PermissionGate feature="partners">
+          <PartnersContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

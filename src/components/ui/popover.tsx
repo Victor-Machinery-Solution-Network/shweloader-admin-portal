@@ -5,6 +5,14 @@ import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * When a Popover is rendered inside a Dialog (e.g. FormDialog), the Dialog's
+ * scroll-lock blocks wheel events on portaled content outside its DOM tree.
+ * Provide this context with a ref to an element *inside* the Dialog so that
+ * PopoverContent portals there instead of document.body.
+ */
+const PopoverPortalContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
+
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
@@ -23,8 +31,10 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const portalRef = React.useContext(PopoverPortalContext);
+
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={portalRef?.current ?? undefined}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
@@ -84,6 +94,7 @@ export {
   PopoverContent,
   PopoverDescription,
   PopoverHeader,
+  PopoverPortalContext,
   PopoverTitle,
   PopoverTrigger,
 }

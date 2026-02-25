@@ -2,7 +2,7 @@
 
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { AppSetting } from "@/types/setting";
 
@@ -15,7 +15,7 @@ export async function getAllSettings(): Promise<Record<string, string>> {
   );
   const map: Record<string, string> = {};
   for (const row of result.results) {
-    map[row.setting_key] = row.value;
+    map[row.setting_key] = row.value ?? "";
   }
   return map;
 }
@@ -27,7 +27,7 @@ export async function updateSettings(
   settings: Record<string, string>,
 ) {
   try {
-    const updatedBy = await getCurrentUserId();
+    const updatedBy = await requirePermission("app_settings", "edit");
 
     await Promise.all(
       Object.entries(settings).map(([key, value]) =>
@@ -36,7 +36,8 @@ export async function updateSettings(
            VALUES (?, ?, ?)
            ON CONFLICT(setting_key) DO UPDATE SET
              value = excluded.value,
-             updated_by = excluded.updated_by`,
+             updated_by = excluded.updated_by,
+             updated_at = CURRENT_TIMESTAMP`,
           [key, value, updatedBy],
         ),
       ),

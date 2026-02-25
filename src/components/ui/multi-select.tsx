@@ -21,6 +21,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 const multiSelectVariants = cva('m-1 transition-colors', {
   variants: {
@@ -198,56 +199,58 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           className="w-[var(--radix-popover-trigger-width)] p-0"
           align="start"
         >
-          <Command>
+          <Command disablePointerSelection>
             {searchable && <CommandInput placeholder="Search..." />}
-            <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup>
-                <CommandItem onSelect={toggleAll} className="cursor-pointer">
-                  <div
-                    className={cn(
-                      'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
-                      selectedValues.length ===
-                        options.filter((o) => !o.disabled).length
-                        ? 'bg-primary text-primary-foreground'
-                        : 'opacity-50 [&_svg]:invisible'
-                    )}
-                  >
-                    <Check className="size-3" />
-                  </div>
-                  <span>Select All</span>
-                </CommandItem>
-              </CommandGroup>
-              <CommandSeparator />
-              <CommandGroup>
-                {options.map((option) => {
-                  const isSelected = selectedValues.includes(option.value)
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      onSelect={() => toggleOption(option.value)}
-                      disabled={option.disabled}
-                      className="cursor-pointer"
-                    >
-                      <div
-                        className={cn(
-                          'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
-                          isSelected
-                            ? 'bg-primary text-primary-foreground'
-                            : 'opacity-50 [&_svg]:invisible'
-                        )}
-                      >
-                        <Check className="size-3" />
-                      </div>
-                      {option.icon && (
-                        <option.icon className="text-muted-foreground mr-2 size-4" />
+            <ScrollArea className="max-h-72">
+              <CommandList className="max-h-none overflow-y-visible">
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem onSelect={toggleAll} className="cursor-pointer">
+                    <div
+                      className={cn(
+                        'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
+                        selectedValues.length ===
+                          options.filter((o) => !o.disabled).length
+                          ? 'bg-primary text-primary-foreground'
+                          : 'opacity-50 [&_svg]:invisible'
                       )}
-                      <span>{option.label}</span>
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
-            </CommandList>
+                    >
+                      <Check className="size-3" />
+                    </div>
+                    <span>Select All</span>
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup>
+                  {options.map((option) => {
+                    const isSelected = selectedValues.includes(option.value)
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        onSelect={() => toggleOption(option.value)}
+                        disabled={option.disabled}
+                        className="cursor-pointer"
+                      >
+                        <div
+                          className={cn(
+                            'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'opacity-50 [&_svg]:invisible'
+                          )}
+                        >
+                          <Check className="size-3" />
+                        </div>
+                        {option.icon && (
+                          <option.icon className="text-muted-foreground mr-2 size-4" />
+                        )}
+                        <span>{option.label}</span>
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </ScrollArea>
           </Command>
         </PopoverContent>
       </Popover>

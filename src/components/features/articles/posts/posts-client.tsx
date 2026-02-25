@@ -2,14 +2,16 @@
 
 import { useCallback, useMemo } from "react";
 import Link from "next/link";
-import { FileText, Plus, Clock, BookOpen } from "lucide-react";
+import { FileText, Plus, Clock, BookOpen, FileEdit, XCircle } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
-import { createPublishedColumns, createPendingColumns } from "./columns";
+import { createPublishedColumns, createPendingColumns, createDraftColumns, createReworkColumns } from "./columns";
 import { deleteArticles } from "@/lib/actions/article";
 import type {
   ArticleWithDetails,
@@ -25,7 +27,15 @@ export function PostsClient({
   articles,
   statusTypes,
 }: PostsClientProps) {
+  const canCreate = useHasPermission("articles", "create");
+  const canDelete = useHasPermission("articles", "delete");
+
   // Split articles by status
+  const draftArticles = useMemo(
+    () => articles.filter((a) => a.status_name === "Draft"),
+    [articles],
+  );
+
   const publishedArticles = useMemo(
     () =>
       articles.filter(
@@ -35,11 +45,20 @@ export function PostsClient({
   );
 
   const pendingArticles = useMemo(
-    () => articles.filter((a) => !a.status_name || a.status_name === "Pending"),
+    () => articles.filter((a) => a.status_name === "Pending Review"),
     [articles],
   );
 
+  const reworkArticles = useMemo(
+    () => articles.filter((a) => a.status_name === "Rework"),
+    [articles],
+  );
+
+  const draftCount = draftArticles.length;
   const pendingCount = pendingArticles.length;
+  const reworkCount = reworkArticles.length;
+
+  const draftColumns = useMemo(() => createDraftColumns(), []);
 
   const publishedColumns = useMemo(
     () => createPublishedColumns(statusTypes),
@@ -48,6 +67,45 @@ export function PostsClient({
 
   const pendingColumns = useMemo(
     () => createPendingColumns(),
+    [],
+  );
+
+  const reworkColumns = useMemo(() => createReworkColumns(), []);
+
+  const draftFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      { columnId: "category", label: "Category", type: "multi-select" },
+      { columnId: "author", label: "Author", type: "multi-select" },
+      { columnId: "updated_at", label: "Last Saved", type: "date-range" },
+      { columnId: "created_at", label: "Created", type: "date-range" },
+    ],
+    [],
+  );
+
+  const publishedFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      { columnId: "category", label: "Category", type: "multi-select" },
+      { columnId: "author", label: "Author", type: "multi-select" },
+      { columnId: "publish_date", label: "Published", type: "date-range" },
+    ],
+    [],
+  );
+
+  const pendingFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      { columnId: "category", label: "Category", type: "multi-select" },
+      { columnId: "author", label: "Author", type: "multi-select" },
+      { columnId: "created_at", label: "Created", type: "date-range" },
+    ],
+    [],
+  );
+
+  const reworkFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      { columnId: "category", label: "Category", type: "multi-select" },
+      { columnId: "author", label: "Author", type: "multi-select" },
+      { columnId: "updated_at", label: "Last Saved", type: "date-range" },
+    ],
     [],
   );
 
@@ -71,25 +129,36 @@ export function PostsClient({
   const renderToolbar = useCallback(
     (selected: ArticleWithDetails[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="article"
-        />
-        <Button asChild className="ml-auto">
-          <Link href="/articles/posts/new">
-            <Plus /> Create Post
-          </Link>
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="article"
+          />
+        )}
+        {canCreate && (
+          <Button asChild className="ml-auto">
+            <Link href="/articles/posts/new">
+              <Plus /> Create Post
+            </Link>
+          </Button>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
-    <Tabs defaultValue="published">
+    <Tabs defaultValue="drafts">
       <TabsList>
+        <TabsTrigger value="drafts">
+          <FileEdit className="size-4" />
+          Drafts
+          {draftCount > 0 && (
+            <TabCount>{draftCount}</TabCount>
+          )}
+        </TabsTrigger>
         <TabsTrigger value="published">
           <BookOpen className="size-4" />
           Published
@@ -101,15 +170,58 @@ export function PostsClient({
             <TabCount>{pendingCount}</TabCount>
           )}
         </TabsTrigger>
+        <TabsTrigger value="rework">
+          <XCircle className="size-4" />
+          Rework
+          {reworkCount > 0 && (
+            <TabCount>{reworkCount}</TabCount>
+          )}
+        </TabsTrigger>
       </TabsList>
+
+      <TabsContent value="drafts">
+        {draftArticles.length > 0 ? (
+          <DataTable
+            columns={draftColumns}
+            data={draftArticles}
+            searchKeys={["title"]}
+            searchPlaceholder="Search drafts"
+            filterConfig={draftFilterConfig}
+            filterStorageKey="articles-draft-filters"
+            enableSelection
+            enablePagination
+            pageSize={10}
+            getRowId={(row) => row.article_id}
+            toolbar={renderToolbar}
+          />
+        ) : (
+          <EmptyState
+            icon={FileEdit}
+            title="No drafts yet"
+            description="Create a new post to start writing."
+            fullPage={false}
+            action={
+              canCreate ? (
+                <Button asChild>
+                  <Link href="/articles/posts/new">
+                    <Plus /> Create Post
+                  </Link>
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
+      </TabsContent>
 
       <TabsContent value="published">
         {publishedArticles.length > 0 ? (
           <DataTable
             columns={publishedColumns}
             data={publishedArticles}
-            searchKey="title"
+            searchKeys={["title"]}
             searchPlaceholder="Search articles"
+            filterConfig={publishedFilterConfig}
+            filterStorageKey="articles-published-filters"
             enableSelection
             enablePagination
             pageSize={10}
@@ -121,6 +233,7 @@ export function PostsClient({
             icon={FileText}
             title="No published articles yet"
             description="Published articles will appear here."
+            fullPage={false}
           />
         )}
       </TabsContent>
@@ -130,8 +243,10 @@ export function PostsClient({
           <DataTable
             columns={pendingColumns}
             data={pendingArticles}
-            searchKey="title"
+            searchKeys={["title"]}
             searchPlaceholder="Search pending articles"
+            filterConfig={pendingFilterConfig}
+            filterStorageKey="articles-pending-filters"
             enablePagination
             pageSize={10}
           />
@@ -140,6 +255,32 @@ export function PostsClient({
             icon={Clock}
             title="No pending articles"
             description="All articles have been reviewed."
+            fullPage={false}
+          />
+        )}
+      </TabsContent>
+
+      <TabsContent value="rework">
+        {reworkArticles.length > 0 ? (
+          <DataTable
+            columns={reworkColumns}
+            data={reworkArticles}
+            searchKeys={["title"]}
+            searchPlaceholder="Search articles needing rework"
+            filterConfig={reworkFilterConfig}
+            filterStorageKey="articles-rework-filters"
+            enableSelection
+            enablePagination
+            pageSize={10}
+            getRowId={(row) => row.article_id}
+            toolbar={renderToolbar}
+          />
+        ) : (
+          <EmptyState
+            icon={XCircle}
+            title="No articles need rework"
+            description="Articles sent back for rework will appear here."
+            fullPage={false}
           />
         )}
       </TabsContent>

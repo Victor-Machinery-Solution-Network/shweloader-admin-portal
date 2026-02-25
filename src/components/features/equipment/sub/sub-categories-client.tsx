@@ -1,9 +1,18 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { FolderTree, Plus } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, FolderTree, Plus } from "lucide-react";
+import Link from "next/link";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { SubCategoryForm } from "./sub-category-form";
@@ -30,14 +39,36 @@ export function SubCategoriesClient({
   categories,
   linkedInfo,
 }: SubCategoriesClientProps) {
+  const canCreate = useHasPermission("equipment_sub_categories", "create");
+  const canDelete = useHasPermission("equipment_sub_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
-  const { data, handleReorder } = useDragReorder(subCategories, {
-    getRowId: (r) => r.sub_category_id,
-    tableName: "equipment_sub_category",
-  });
+  const { data, handleReorder, handleMoveToPosition } = useDragReorder(
+    subCategories,
+    {
+      getRowId: (r) => r.sub_category_id,
+      tableName: "equipment_sub_category",
+      feature: "equipment_sub_categories",
+    },
+  );
   const columns = useMemo(
     () => getColumns(categories, linkedInfo),
     [categories, linkedInfo],
+  );
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "category_id",
+        label: "Main Category",
+        type: "multi-select",
+        options: categories.map((c) => ({
+          label: c.name,
+          value: String(c.category_id),
+        })),
+      },
+      { columnId: "created_at", label: "Created", type: "date-range" },
+    ],
+    [categories],
   );
 
   const handleBulkDelete = useCallback(
@@ -76,18 +107,36 @@ export function SubCategoriesClient({
   const renderToolbar = useCallback(
     (selected: EquipmentSubCategory[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="sub category"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Sub Category
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="sub category"
+          />
+        )}
+        {canCreate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus /> Add Sub Category <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/equipment-sub-categories">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
@@ -96,13 +145,16 @@ export function SubCategoriesClient({
         <DataTable
           columns={columns}
           data={data}
-          searchKey="name"
+          searchKeys={["name"]}
           searchPlaceholder="Search sub categories"
+          filterConfig={filterConfig}
+          filterStorageKey="equipment-sub-filters"
           enableSelection
           enablePagination
           enableDragSort
           getRowId={(row) => row.sub_category_id}
           onReorder={handleReorder}
+          onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
         />
@@ -112,9 +164,25 @@ export function SubCategoriesClient({
           title="No sub categories yet"
           description="Get started by creating your first equipment sub category."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Sub Category
-            </Button>
+            canCreate ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus /> Add Sub Category <ChevronDown className="ml-1 size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                    <FileText /> Fill Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bulk-upload/equipment-sub-categories">
+                      <FileSpreadsheet /> Excel Upload
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
           }
         />
       )}

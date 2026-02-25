@@ -1,5 +1,6 @@
 "use client";
 
+import { Folder, Wrench } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { ImageCell } from "@/components/shared/image-cell";
@@ -54,8 +55,25 @@ export function getColumns(
       ),
       cell: ({ row }) => {
         const categoryId = row.getValue("category_id") as number;
+        const name = categoryMap.get(categoryId);
         return (
-          <span>{categoryMap.get(categoryId) ?? `ID: ${categoryId}`}</span>
+          <span className="flex items-center gap-1.5 text-sm">
+            <Folder className="size-3.5 text-muted-foreground" />
+            {name ?? `ID: ${categoryId}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "models",
+      header: "Models",
+      cell: ({ row }) => {
+        const count = linkedInfo[row.original.sub_category_id]?.total ?? 0;
+        return (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+            <Wrench className="size-3.5" />
+            {count}
+          </span>
         );
       },
     },

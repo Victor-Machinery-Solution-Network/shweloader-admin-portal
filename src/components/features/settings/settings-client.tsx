@@ -8,6 +8,8 @@ import {
   DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,27 +26,31 @@ const TOGGLE_SETTINGS = [
   {
     key: SETTING_KEYS.CAROUSEL_ENABLED,
     label: "Carousel",
-    description:
-      "Show the image carousel on the homepage.",
+    description: "Show the image carousel on the homepage.",
     icon: Image,
+    iconColor: "text-violet-500",
+    iconBg: "bg-violet-500/10",
   },
   {
     key: SETTING_KEYS.ANNOUNCEMENT_BAR_ENABLED,
     label: "Announcement Bar",
-    description:
-      "Show the scrolling announcement bar at the top of the page.",
+    description: "Show the scrolling announcement bar at the top of the page.",
     icon: Megaphone,
+    iconColor: "text-amber-500",
+    iconBg: "bg-amber-500/10",
   },
   {
     key: SETTING_KEYS.ARTICLES_ENABLED,
     label: "Articles",
-    description:
-      "Show the articles section on the site.",
+    description: "Show the articles section on the site.",
     icon: Newspaper,
+    iconColor: "text-blue-500",
+    iconBg: "bg-blue-500/10",
   },
 ] as const;
 
 export function SettingsClient({ settings }: SettingsClientProps) {
+  const canEdit = useHasPermission("app_settings", "edit");
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
@@ -90,58 +96,61 @@ export function SettingsClient({ settings }: SettingsClientProps) {
     exchangeRate !== (settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200");
 
   return (
-    <div className="rounded-xl border bg-card">
+    <div className="flex flex-col gap-6">
       {/* Feature Toggles Section */}
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 pt-4 pb-1">
-        Feature Toggles
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Feature Toggles
+        </p>
+        {TOGGLE_SETTINGS.map((setting) => {
+          const Icon = setting.icon;
+          const checked = settings[setting.key] === "true";
+          const isThisPending = isPending && pendingKey === setting.key;
 
-      {TOGGLE_SETTINGS.map((setting, index) => {
-        const Icon = setting.icon;
-        const checked = settings[setting.key] === "true";
-        const isThisPending = isPending && pendingKey === setting.key;
-
-        return (
-          <div
-            key={setting.key}
-            className={`flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/50 ${
-              index < TOGGLE_SETTINGS.length - 1 ? "border-b" : ""
-            }`}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-                <Icon className="size-4" />
+          return (
+            <label
+              key={setting.key}
+              className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3 transition-colors hover:bg-muted/50 cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                    setting.iconBg,
+                  )}
+                >
+                  <Icon className={cn("size-4", setting.iconColor)} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{setting.label}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {setting.description}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{setting.label}</p>
-                <p className="text-muted-foreground text-xs">
-                  {setting.description}
-                </p>
-              </div>
-            </div>
-            {isThisPending ? (
-              <Spinner className="size-4" />
-            ) : (
-              <Switch
-                checked={checked}
-                onCheckedChange={(v) => handleToggle(setting.key, v === true)}
-                disabled={isPending}
-              />
-            )}
-          </div>
-        );
-      })}
+              {isThisPending ? (
+                <Spinner className="size-4" />
+              ) : (
+                <Switch
+                  checked={checked}
+                  onCheckedChange={(v) => handleToggle(setting.key, v === true)}
+                  disabled={isPending || !canEdit}
+                />
+              )}
+            </label>
+          );
+        })}
+      </div>
 
       {/* Currency Section */}
-      <div className="border-t">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 pt-4 pb-1">
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
           Currency
         </p>
-
-        <div className="px-4 py-4 transition-colors hover:bg-muted/50">
+        <div className="rounded-lg border px-4 py-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-              <DollarSign className="size-4" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+              <DollarSign className="size-4 text-emerald-500" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium">Exchange Rate</p>
@@ -161,14 +170,15 @@ export function SettingsClient({ settings }: SettingsClientProps) {
               step={1}
               value={exchangeRate}
               onChange={(e) => setExchangeRate(e.target.value)}
-              disabled={isPending}
+              onWheel={(e) => e.currentTarget.blur()}
+              disabled={isPending || !canEdit}
               className="w-28 text-right"
             />
             <span className="text-muted-foreground text-xs shrink-0">MMK</span>
             <Button
               size="xs"
               onClick={handleExchangeRateSave}
-              disabled={isPending || !exchangeRateChanged}
+              disabled={isPending || !exchangeRateChanged || !canEdit}
             >
               {pendingKey === SETTING_KEYS.EXCHANGE_RATE ? (
                 <Spinner className="size-3" />

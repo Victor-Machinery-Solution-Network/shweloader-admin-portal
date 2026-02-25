@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getCustomFieldTemplates } from "@/lib/cache";
 import { TemplatesClient } from "@/components/features/listing-templates/templates-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Listing Templates",
@@ -19,7 +20,9 @@ export default function ListingTemplatesPage() {
         description="Create reusable sets of custom fields for listings"
       />
       <Suspense fallback={<DataTableSkeleton columns={5} />}>
-        <TemplatesContent />
+        <PermissionGate feature="listing_templates">
+          <TemplatesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { FolderOpen, Pencil } from "lucide-react";
+import { FolderOpen, Pencil, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxEmpty,
-  ComboboxCollection,
-} from "@/components/ui/combobox";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { ImageInput } from "@/components/ui/image-input";
@@ -37,6 +42,7 @@ export function SubCategoryForm({
 }: SubCategoryFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!subCategory;
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Build a name→id lookup map
   const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
@@ -100,28 +106,42 @@ export function SubCategoryForm({
         <Field orientation="vertical">
           <FieldLabel>Main Category</FieldLabel>
           <FieldContent>
-            <Combobox
-              value={selectedName}
-              onValueChange={(val) => setSelectedName(val ?? "")}
-              items={categoryNames}
-            >
-              <ComboboxInput
-                placeholder="Search main category…"
-                showClear={!!selectedName}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No category found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(categoryName) => (
-                      <ComboboxItem key={categoryName} value={categoryName}>
-                        {categoryName}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={popoverOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedName || "Select main category..."}
+                  <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] min-w-60 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search main category..." />
+                  <CommandList className="max-h-60 overflow-y-auto">
+                    <CommandEmpty>No category found.</CommandEmpty>
+                    <CommandGroup>
+                      {categoryNames.map((name) => (
+                        <CommandItem
+                          key={name}
+                          value={name}
+                          data-checked={selectedName === name}
+                          onSelect={() => {
+                            setSelectedName(name);
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          {name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </FieldContent>
         </Field>
         <Field orientation="vertical">

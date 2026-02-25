@@ -19,6 +19,8 @@ interface UseDragReorderOptions<T> {
   getRowId: (row: T) => number;
   /** DB table name (must be in the ORDERABLE_TABLES whitelist) */
   tableName: OrderableTable;
+  /** RBAC feature name for permission checks */
+  feature: string;
   /** For scoped tables (e.g. carousel_image), the parent scope ID */
   scopeId?: number;
 }
@@ -44,7 +46,7 @@ export function useDragReorder<T extends { display_order: string }>(
   serverData: T[],
   options: UseDragReorderOptions<T>,
 ) {
-  const { getRowId, tableName, scopeId } = options;
+  const { getRowId, tableName, feature, scopeId } = options;
   const [data, setData] = useState(serverData);
   const [, startTransition] = useTransition();
   // Track pending reorders so we don't overwrite optimistic state
@@ -86,6 +88,7 @@ export function useDragReorder<T extends { display_order: string }>(
                 tableName,
                 getRowId(item),
                 item.display_order,
+                feature,
                 scopeId,
               ),
             ),
@@ -124,6 +127,7 @@ export function useDragReorder<T extends { display_order: string }>(
           tableName,
           movedItemId,
           newKey,
+          feature,
           scopeId,
         );
         pendingReorders.current--;
@@ -133,8 +137,34 @@ export function useDragReorder<T extends { display_order: string }>(
         }
       });
     },
-    [getRowId, tableName, scopeId, serverData, startTransition],
+    [getRowId, tableName, feature, scopeId, serverData, startTransition],
   );
 
-  return { data, setData, handleReorder };
+  const handleMoveToPosition = useCallback(
+    (itemId: string | number, targetPosition: number) => {
+      const numericId =
+        typeof itemId === "string" ? Number(itemId) : itemId;
+      const currentIndex = data.findIndex(
+        (item) => getRowId(item) === numericId,
+      );
+      if (currentIndex === -1) return;
+
+      const clamped = Math.max(
+        1,
+        Math.min(Math.floor(targetPosition), data.length),
+      );
+      const targetIndex = clamped - 1;
+      if (targetIndex === currentIndex) return;
+
+      // Reorder array (equivalent to arrayMove from dnd-kit)
+      const reordered = [...data];
+      const [moved] = reordered.splice(currentIndex, 1);
+      reordered.splice(targetIndex, 0, moved);
+
+      handleReorder(reordered, { activeId: numericId, newIndex: targetIndex });
+    },
+    [data, getRowId, handleReorder],
+  );
+
+  return { data, setData, handleReorder, handleMoveToPosition };
 }

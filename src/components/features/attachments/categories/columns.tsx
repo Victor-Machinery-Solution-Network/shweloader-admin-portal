@@ -1,5 +1,6 @@
 "use client";
 
+import { Box } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { ImageCell } from "@/components/shared/image-cell";
@@ -35,6 +36,19 @@ export function getColumns(
           imageUrl={row.original.image_url}
         />
       ),
+    },
+    {
+      id: "models",
+      header: "Models",
+      cell: ({ row }) => {
+        const count = linkedInfo[row.original.category_id]?.total ?? 0;
+        return (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+            <Box className="size-3.5" />
+            {count}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "created_at",

@@ -64,7 +64,7 @@ Fully implemented with Auth.js v5:
 
 See [.env.example](.env.example) for all required variables:
 
-- `NEXT_PUBLIC_D1_API_URL` / `D1_API_TOKEN` — Cloudflare D1 REST API
+- `CLOUDFLARE_WORKER_API_URL` / `CLOUDFLARE_WORKER_API_TOKEN` — Cloudflare Worker REST API
 - `AUTH_SECRET` / `AUTH_URL` — Auth.js v5
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` — Cloudflare Turnstile
 

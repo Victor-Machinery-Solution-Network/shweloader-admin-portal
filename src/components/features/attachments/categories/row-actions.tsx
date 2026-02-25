@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { CategoryForm } from "./category-form";
@@ -16,6 +17,8 @@ interface RowActionsProps {
 }
 
 export function RowActions({ category, linkedCount, linkedSummary }: RowActionsProps) {
+  const canEdit = useHasPermission("attachment_categories", "edit");
+  const canDelete = useHasPermission("attachment_categories", "delete");
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -37,14 +40,16 @@ export function RowActions({ category, linkedCount, linkedSummary }: RowActionsP
     });
   }
 
+  const actions = [
+    ...(canEdit ? [{ label: "Edit" as const, icon: Pencil, onClick: () => setShowEdit(true) }] : []),
+    ...(canDelete ? [{ label: "Delete" as const, icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive" as const }] : []),
+  ];
+
+  if (actions.length === 0) return null;
+
   return (
     <>
-      <RowActionsUI
-        actions={[
-          { label: "Edit", icon: Pencil, onClick: () => setShowEdit(true) },
-          { label: "Delete", icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive" },
-        ]}
-      />
+      <RowActionsUI actions={actions} />
 
       {showEdit && (
         <CategoryForm

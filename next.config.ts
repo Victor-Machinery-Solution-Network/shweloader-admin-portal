@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     { source: "/(.*)", headers: securityHeaders },
   ],
   experimental: {
+    serverActions: {
+      bodySizeLimit: "50mb",
+    },
     optimizePackageImports: [
       "lucide-react",
       "@hugeicons/core-free-icons",

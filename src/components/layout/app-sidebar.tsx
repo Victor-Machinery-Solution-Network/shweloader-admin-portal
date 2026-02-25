@@ -56,11 +56,19 @@ import { MoreVertical, User, LogOut, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { logoutAction } from "@/lib/actions/auth-actions";
+import { usePermissions } from "@/components/providers/permissions-provider";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const { permissions, isLoaded: permsLoaded } = usePermissions();
+
+  /** Check read permission for a feature. Shows all while loading to avoid flash. */
+  function canRead(feature: string): boolean {
+    if (!permsLoaded) return true;
+    return permissions.includes(`${feature}:read`);
+  }
 
   const userName = session?.user?.name ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
@@ -70,6 +78,29 @@ export function AppSidebar() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  // Derived visibility for parent collapsible items
+  const showEquipment =
+    canRead("equipment_main_categories") ||
+    canRead("equipment_sub_categories") ||
+    canRead("equipment_models");
+  const showAttachments =
+    canRead("attachment_categories") || canRead("attachment_models");
+  const showListings =
+    canRead("sale_listings") || canRead("rent_listings");
+  const showArticles =
+    canRead("articles") || canRead("article_categories");
+
+  // Derived visibility for entire groups
+  const showDashboard = canRead("dashboard") || canRead("analytics");
+  const showCatalog =
+    showEquipment || showAttachments || canRead("brands") || canRead("locations");
+  const showMarketplace = showListings || canRead("enquiries");
+  const showUsers = canRead("users") || canRead("partners");
+  const showContent =
+    showArticles || canRead("carousels") || canRead("announcements");
+  const showSettings =
+    canRead("admin_users") || canRead("roles") || canRead("listing_templates") || canRead("app_settings");
 
   // Auto-open collapsible sections based on current route
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
@@ -137,10 +168,12 @@ export function AppSidebar() {
 
       <SidebarContent>
         {/* Dashboard Section */}
+        {showDashboard && (
         <SidebarGroup>
           <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {canRead("dashboard") && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
@@ -155,7 +188,9 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("analytics") && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
@@ -167,346 +202,275 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Catalog Management Section */}
+        {showCatalog && (
         <SidebarGroup>
           <SidebarGroupLabel>Catalog Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Equipment */}
+              {showEquipment && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setIsEquipmentOpen(!isEquipmentOpen)}
-                >
+                <SidebarMenuButton onClick={() => setIsEquipmentOpen(!isEquipmentOpen)}>
                   <Wrench aria-hidden="true" />
                   <span>Equipment</span>
-                  <ChevronDown
-                    className={`ml-auto transition-transform ${isEquipmentOpen ? "" : "-rotate-90"}`}
-                    aria-hidden="true"
-                  />
+                  <ChevronDown className={`ml-auto transition-transform ${isEquipmentOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
                 </SidebarMenuButton>
                 {isEquipmentOpen && (
                   <SidebarMenuSub>
+                    {canRead("equipment_main_categories") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.EQUIPMENT_MAIN_CATEGORIES}
-                      >
-                        <Link href={ROUTES.EQUIPMENT_MAIN_CATEGORIES}>
-                          <span>Main Categories</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_MAIN_CATEGORIES}>
+                        <Link href={ROUTES.EQUIPMENT_MAIN_CATEGORIES}><span>Main Categories</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
+                    {canRead("equipment_sub_categories") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.EQUIPMENT_SUB_CATEGORIES}
-                      >
-                        <Link href={ROUTES.EQUIPMENT_SUB_CATEGORIES}>
-                          <span>Sub Categories</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_SUB_CATEGORIES}>
+                        <Link href={ROUTES.EQUIPMENT_SUB_CATEGORIES}><span>Sub Categories</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
+                    {canRead("equipment_models") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.EQUIPMENT_MODELS}
-                      >
-                        <Link href={ROUTES.EQUIPMENT_MODELS}>
-                          <span>Models</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.EQUIPMENT_MODELS}>
+                        <Link href={ROUTES.EQUIPMENT_MODELS}><span>Models</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
+              )}
 
               {/* Attachments */}
+              {showAttachments && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setIsAttachmentsOpen(!isAttachmentsOpen)}
-                >
+                <SidebarMenuButton onClick={() => setIsAttachmentsOpen(!isAttachmentsOpen)}>
                   <Package aria-hidden="true" />
                   <span>Attachments</span>
-                  <ChevronDown
-                    className={`ml-auto transition-transform ${isAttachmentsOpen ? "" : "-rotate-90"}`}
-                    aria-hidden="true"
-                  />
+                  <ChevronDown className={`ml-auto transition-transform ${isAttachmentsOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
                 </SidebarMenuButton>
                 {isAttachmentsOpen && (
                   <SidebarMenuSub>
+                    {canRead("attachment_categories") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.ATTACHMENT_CATEGORIES}
-                      >
-                        <Link href={ROUTES.ATTACHMENT_CATEGORIES}>
-                          <span>Categories</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ATTACHMENT_CATEGORIES}>
+                        <Link href={ROUTES.ATTACHMENT_CATEGORIES}><span>Categories</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
+                    {canRead("attachment_models") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.ATTACHMENT_MODELS}
-                      >
-                        <Link href={ROUTES.ATTACHMENT_MODELS}>
-                          <span>Models</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ATTACHMENT_MODELS}>
+                        <Link href={ROUTES.ATTACHMENT_MODELS}><span>Models</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
+              )}
 
               {/* Brands */}
+              {canRead("brands") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.BRANDS}
-                >
-                  <Link href={ROUTES.BRANDS}>
-                    <Tag aria-hidden="true" />
-                    <span>Brands</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.BRANDS}>
+                  <Link href={ROUTES.BRANDS}><Tag aria-hidden="true" /><span>Brands</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
               {/* Locations */}
+              {canRead("locations") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.LOCATIONS}
-                >
-                  <Link href={ROUTES.LOCATIONS}>
-                    <MapPin aria-hidden="true" />
-                    <span>Locations</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.LOCATIONS}>
+                  <Link href={ROUTES.LOCATIONS}><MapPin aria-hidden="true" /><span>Locations</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Marketplace Section */}
+        {showMarketplace && (
         <SidebarGroup>
           <SidebarGroupLabel>Marketplace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Listings */}
+              {showListings && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setIsListingsOpen(!isListingsOpen)}
-                >
+                <SidebarMenuButton onClick={() => setIsListingsOpen(!isListingsOpen)}>
                   <ShoppingCart aria-hidden="true" />
                   <span>Listings</span>
-                  <ChevronDown
-                    className={`ml-auto transition-transform ${isListingsOpen ? "" : "-rotate-90"}`}
-                    aria-hidden="true"
-                  />
+                  <ChevronDown className={`ml-auto transition-transform ${isListingsOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
                 </SidebarMenuButton>
                 {isListingsOpen && (
                   <SidebarMenuSub>
+                    {canRead("sale_listings") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.LISTINGS_FOR_SALE}
-                      >
-                        <Link href={ROUTES.LISTINGS_FOR_SALE}>
-                          <span>For Sale</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE}>
+                        <Link href={ROUTES.LISTINGS_FOR_SALE}><span>For Sale</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
+                    {canRead("rent_listings") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.LISTINGS_FOR_RENT}
-                      >
-                        <Link href={ROUTES.LISTINGS_FOR_RENT}>
-                          <span>For Rent</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT}>
+                        <Link href={ROUTES.LISTINGS_FOR_RENT}><span>For Rent</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
+              )}
 
               {/* Enquiries */}
+              {canRead("enquiries") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.ENQUIRIES}
-                >
-                  <Link href={ROUTES.ENQUIRIES}>
-                    <MessageSquare aria-hidden="true" />
-                    <span>Enquiries</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.ENQUIRIES}>
+                  <Link href={ROUTES.ENQUIRIES}><MessageSquare aria-hidden="true" /><span>Enquiries</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Users Section */}
+        {showUsers && (
         <SidebarGroup>
           <SidebarGroupLabel>Users</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {canRead("users") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.CUSTOMERS}
-                >
-                  <Link href={ROUTES.CUSTOMERS}>
-                    <Users aria-hidden="true" />
-                    <span>Customers</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.USERS}>
+                  <Link href={ROUTES.USERS}><Users aria-hidden="true" /><span>Users</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("partners") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.PARTNERS}
-                >
-                  <Link href={ROUTES.PARTNERS}>
-                    <Handshake aria-hidden="true" />
-                    <span>Partners</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.PARTNERS}>
+                  <Link href={ROUTES.PARTNERS}><Handshake aria-hidden="true" /><span>Partners</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Content Section */}
+        {showContent && (
         <SidebarGroup>
           <SidebarGroupLabel>Content</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Articles */}
+              {showArticles && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setIsArticlesOpen(!isArticlesOpen)}
-                >
+                <SidebarMenuButton onClick={() => setIsArticlesOpen(!isArticlesOpen)}>
                   <FileText aria-hidden="true" />
                   <span>Articles</span>
-                  <ChevronDown
-                    className={`ml-auto transition-transform ${isArticlesOpen ? "" : "-rotate-90"}`}
-                    aria-hidden="true"
-                  />
+                  <ChevronDown className={`ml-auto transition-transform ${isArticlesOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
                 </SidebarMenuButton>
                 {isArticlesOpen && (
                   <SidebarMenuSub>
+                    {canRead("article_categories") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.ARTICLE_CATEGORIES}
-                      >
-                        <Link href={ROUTES.ARTICLE_CATEGORIES}>
-                          <span>Categories</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.ARTICLE_CATEGORIES}>
+                        <Link href={ROUTES.ARTICLE_CATEGORIES}><span>Categories</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
+                    {canRead("articles") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname === ROUTES.POSTS}
-                      >
-                        <Link href={ROUTES.POSTS}>
-                          <span>Posts</span>
-                        </Link>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.POSTS}>
+                        <Link href={ROUTES.POSTS}><span>Posts</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    )}
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
+              )}
 
+              {canRead("carousels") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.CAROUSEL_IMAGES}
-                >
-                  <Link href={ROUTES.CAROUSEL_IMAGES}>
-                    <ImageIcon aria-hidden="true" />
-                    <span>Carousel Images</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.CAROUSEL_IMAGES}>
+                  <Link href={ROUTES.CAROUSEL_IMAGES}><ImageIcon aria-hidden="true" /><span>Carousel Images</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("announcements") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.ANNOUNCEMENT_BAR}
-                >
-                  <Link href={ROUTES.ANNOUNCEMENT_BAR}>
-                    <Megaphone aria-hidden="true" />
-                    <span>Announcement Bar</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.ANNOUNCEMENT_BAR}>
+                  <Link href={ROUTES.ANNOUNCEMENT_BAR}><Megaphone aria-hidden="true" /><span>Announcement Bar</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Settings Section */}
+        {showSettings && (
         <SidebarGroup>
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {canRead("admin_users") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.ADMINS}
-                >
-                  <Link href={ROUTES.ADMINS}>
-                    <Shield aria-hidden="true" />
-                    <span>Admins</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.ADMINS}>
+                  <Link href={ROUTES.ADMINS}><Shield aria-hidden="true" /><span>Admins</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("roles") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.ROLES_PERMISSIONS}
-                >
-                  <Link href={ROUTES.ROLES_PERMISSIONS}>
-                    <UserCog aria-hidden="true" />
-                    <span>Roles & Permissions</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.ROLES_PERMISSIONS}>
+                  <Link href={ROUTES.ROLES_PERMISSIONS}><UserCog aria-hidden="true" /><span>Roles & Permissions</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("listing_templates") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.LISTING_TEMPLATES}
-                >
-                  <Link href={ROUTES.LISTING_TEMPLATES}>
-                    <ClipboardList aria-hidden="true" />
-                    <span>Listing Templates</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.LISTING_TEMPLATES}>
+                  <Link href={ROUTES.LISTING_TEMPLATES}><ClipboardList aria-hidden="true" /><span>Listing Templates</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {canRead("app_settings") && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === ROUTES.SETTINGS}
-                >
-                  <Link href={ROUTES.SETTINGS}>
-                    <Settings aria-hidden="true" />
-                    <span>General Settings</span>
-                  </Link>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.SETTINGS}>
+                  <Link href={ROUTES.SETTINGS}><Settings aria-hidden="true" /><span>General Settings</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
@@ -559,7 +523,10 @@ export function AppSidebar() {
                   <User className="mr-2 h-4 w-4" aria-hidden="true" />
                   Account
                 </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground">
+                <DropdownMenuItem
+                  className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:!text-sidebar-hover-foreground"
+                  onClick={() => router.push(ROUTES.NOTIFICATIONS)}
+                >
                   <Bell className="mr-2 h-4 w-4" aria-hidden="true" />
                   Notifications
                 </DropdownMenuItem>

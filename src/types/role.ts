@@ -14,6 +14,9 @@ export interface FeaturePermission {
   permission_id: number;
   feature_name: string;
   permission_name: string;
+  group_name: string;
+  feature_display_order: number;
+  permission_display_order: number;
 }
 
 /** Role with aggregated permission count for list view */

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { TemplateForm } from "./template-form";
@@ -14,6 +15,8 @@ interface TemplateRowActionsProps {
 }
 
 export function TemplateRowActions({ template }: TemplateRowActionsProps) {
+  const canEdit = useHasPermission("listing_templates", "edit");
+  const canDelete = useHasPermission("listing_templates", "delete");
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -30,24 +33,34 @@ export function TemplateRowActions({ template }: TemplateRowActionsProps) {
     });
   }
 
-  return (
-    <>
-      <RowActions
-        actions={[
+  const actions = [
+    ...(canEdit
+      ? [
           {
-            label: "Edit",
+            label: "Edit" as const,
             icon: Pencil,
             onClick: () => setShowEdit(true),
           },
+        ]
+      : []),
+    ...(canDelete
+      ? [
           {
-            label: "Delete",
+            label: "Delete" as const,
             icon: Trash2,
             onClick: () => setShowDelete(true),
-            variant: "destructive",
+            variant: "destructive" as const,
             separatorBefore: true,
           },
-        ]}
-      />
+        ]
+      : []),
+  ];
+
+  if (actions.length === 0) return null;
+
+  return (
+    <>
+      <RowActions actions={actions} />
 
       {showEdit && (
         <TemplateForm

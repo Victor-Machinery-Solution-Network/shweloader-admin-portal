@@ -1,5 +1,6 @@
 "use client";
 
+import { Handshake, Building2, Phone } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -9,284 +10,242 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatDate, timeAgo } from "@/lib/utils";
+import { cn, formatDate, timeAgo } from "@/lib/utils";
 import { RowActions } from "./row-actions";
 import type { PartnerWithDetails } from "@/types/partner";
 
-// ─── Approved (Partners tab) ─────────────────────────────────────────────────
+// ─── Shared column helpers ──────────────────────────────────────────────────
 
-export const approvedColumns: ColumnDef<PartnerWithDetails>[] = [
-  {
-    accessorKey: "customer_name",
+const STATUS_DOT: Record<string, string> = {
+  approved: "bg-emerald-500",
+  pending: "bg-amber-500",
+  rejected: "bg-rose-500",
+};
+
+function partnerColumn(title: string): ColumnDef<PartnerWithDetails> {
+  return {
+    accessorKey: "user_name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Partner" />
+      <DataTableColumnHeader column={column} title={title} />
     ),
     cell: ({ row }) => {
-      const { customer_name, customer_email } = row.original;
+      const { user_name, user_email } = row.original;
       return (
-        <div className="min-w-0">
-          <span className="font-medium block truncate">
-            {customer_name ?? "—"}
-          </span>
-          {customer_email && (
-            <span className="text-muted-foreground text-xs block truncate">
-              {customer_email}
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+            <Handshake className="size-3.5 text-emerald-500" />
+          </div>
+          <div className="min-w-0">
+            <span className="font-medium block truncate">
+              {user_name ?? "—"}
             </span>
-          )}
+            {user_email && (
+              <span className="text-muted-foreground text-xs block truncate">
+                {user_email}
+              </span>
+            )}
+          </div>
         </div>
       );
     },
     minSize: 160,
-  },
-  {
-    accessorKey: "customer_company",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Company" />
-    ),
-    cell: ({ row }) => {
-      const company = row.original.customer_company;
-      return (
-        <span className={`text-sm max-w-48 truncate block ${company ? "" : "text-muted-foreground"}`}>
-          {company ?? "—"}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: "customer_phone",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Phone" />
-    ),
-    cell: ({ row }) => {
-      const phone = row.original.customer_phone;
-      return (
-        <span className={`text-sm whitespace-nowrap ${phone ? "" : "text-muted-foreground"}`}>
-          {phone ?? "—"}
-        </span>
-      );
-    },
-  },
-  {
-    id: "business",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Business Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.business_type_name;
-      return type ? (
-        <Badge variant="outline" className="text-xs">
-          {type}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
-  },
-  {
-    accessorKey: "partner_type_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Partner Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.partner_type_name;
-      return type ? (
-        <Badge variant="outline" className="text-xs">
-          {type}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
-  },
-  {
-    accessorKey: "reviewed_at",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Approved" />
-    ),
-    cell: ({ row }) => {
-      const date = row.original.reviewed_at;
-      return date ? (
-        <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-          {formatDate(date)}
-        </span>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions partner={row.original} />,
-  },
-];
+  };
+}
 
-// ─── Pending tab ─────────────────────────────────────────────────────────────
+const companyColumn: ColumnDef<PartnerWithDetails> = {
+  accessorKey: "user_company",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Company" />
+  ),
+  cell: ({ row }) => {
+    const company = row.original.user_company;
+    if (!company) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+    return (
+      <div className="flex items-center gap-1.5">
+        <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-sm max-w-48 truncate">{company}</span>
+      </div>
+    );
+  },
+};
 
-export const pendingColumns: ColumnDef<PartnerWithDetails>[] = [
-  {
-    accessorKey: "customer_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Applicant" />
-    ),
-    cell: ({ row }) => {
-      const { customer_name, customer_email } = row.original;
-      return (
-        <div className="min-w-0">
-          <span className="font-medium block truncate">
-            {customer_name ?? "—"}
-          </span>
-          {customer_email && (
-            <span className="text-muted-foreground text-xs block truncate">
-              {customer_email}
-            </span>
-          )}
-        </div>
-      );
-    },
-    minSize: 160,
+const phoneColumn: ColumnDef<PartnerWithDetails> = {
+  accessorKey: "user_phone",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Phone" />
+  ),
+  cell: ({ row }) => {
+    const phone = row.original.user_phone;
+    if (!phone) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+    return (
+      <div className="flex items-center gap-1.5">
+        <Phone className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-sm whitespace-nowrap">{phone}</span>
+      </div>
+    );
   },
-  {
-    accessorKey: "customer_company",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Company" />
-    ),
-    cell: ({ row }) => {
-      const company = row.original.customer_company;
-      return (
-        <span className={`text-sm max-w-48 truncate block ${company ? "" : "text-muted-foreground"}`}>
-          {company ?? "—"}
-        </span>
-      );
-    },
+};
+
+const businessTypeColumn: ColumnDef<PartnerWithDetails> = {
+  id: "business",
+  accessorFn: (row) => row.business_type_name ?? "",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Business Type" />
+  ),
+  cell: ({ row }) => {
+    const type = row.original.business_type_name;
+    return type ? (
+      <Badge variant="outline" className="text-xs">
+        {type}
+      </Badge>
+    ) : (
+      <span className="text-muted-foreground text-sm">—</span>
+    );
   },
-  {
-    accessorKey: "customer_phone",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Phone" />
-    ),
-    cell: ({ row }) => {
-      const phone = row.original.customer_phone;
-      return (
-        <span className={`text-sm whitespace-nowrap ${phone ? "" : "text-muted-foreground"}`}>
-          {phone ?? "—"}
-        </span>
-      );
-    },
+};
+
+const partnerTypeColumn: ColumnDef<PartnerWithDetails> = {
+  accessorKey: "partner_type_name",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Partner Type" />
+  ),
+  cell: ({ row }) => {
+    const type = row.original.partner_type_name;
+    return type ? (
+      <Badge variant="outline" className="text-xs">
+        {type}
+      </Badge>
+    ) : (
+      <span className="text-muted-foreground text-sm">—</span>
+    );
   },
-  {
-    id: "business",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Business Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.business_type_name;
-      return type ? (
-        <Badge variant="outline" className="text-xs">
-          {type}
+};
+
+const statusColumn: ColumnDef<PartnerWithDetails> = {
+  accessorKey: "status_name",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Status" />
+  ),
+  cell: ({ row }) => {
+    const status = row.original.status_name;
+    if (!status) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+
+    const variant =
+      status === "Approved"
+        ? "success"
+        : status === "Pending"
+          ? "warning"
+          : "destructive";
+
+    const dotColor = STATUS_DOT[status.toLowerCase()] ?? "bg-muted-foreground/40";
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className={cn("size-2 rounded-full", dotColor)} />
+        <Badge variant={variant} className="text-xs">
+          {status}
         </Badge>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
+      </div>
+    );
   },
-  {
-    accessorKey: "partner_type_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Partner Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.partner_type_name;
-      return type ? (
-        <Badge variant="outline" className="text-xs">
-          {type}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
-  },
-  {
+};
+
+function appliedAtColumn(): ColumnDef<PartnerWithDetails> {
+  return {
     accessorKey: "applied_at",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Waiting" />
+      <DataTableColumnHeader column={column} title="Applied" />
     ),
     cell: ({ row }) => {
       const date = row.original.applied_at;
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-sm tabular-nums whitespace-nowrap cursor-default">
-                {timeAgo(date)}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">{formatDate(date)}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions partner={row.original} />,
-  },
-];
-
-// ─── Rejected tab ────────────────────────────────────────────────────────────
-
-export const rejectedColumns: ColumnDef<PartnerWithDetails>[] = [
-  {
-    accessorKey: "customer_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Applicant" />
-    ),
-    cell: ({ row }) => {
-      const { customer_name, customer_email } = row.original;
-      return (
-        <div className="min-w-0">
-          <span className="font-medium block truncate">
-            {customer_name ?? "—"}
+        <div className="text-sm tabular-nums whitespace-nowrap">
+          <span>{formatDate(date)}</span>
+          <span className="text-muted-foreground text-xs ml-1">
+            ({timeAgo(date)})
           </span>
-          {customer_email && (
-            <span className="text-muted-foreground text-xs block truncate">
-              {customer_email}
-            </span>
-          )}
         </div>
       );
     },
-    minSize: 160,
-  },
-  {
-    accessorKey: "customer_company",
+  };
+}
+
+function reviewedAtColumn(title: string): ColumnDef<PartnerWithDetails> {
+  return {
+    accessorKey: "reviewed_at",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Company" />
+      <DataTableColumnHeader column={column} title={title} />
     ),
     cell: ({ row }) => {
-      const company = row.original.customer_company;
-      return (
-        <span className={`text-sm max-w-48 truncate block ${company ? "" : "text-muted-foreground"}`}>
-          {company ?? "—"}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: "partner_type_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Partner Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.partner_type_name;
-      return type ? (
-        <Badge variant="outline" className="text-xs">
-          {type}
-        </Badge>
+      const date = row.original.reviewed_at;
+      return date ? (
+        <div className="text-sm tabular-nums whitespace-nowrap">
+          <span>{formatDate(date)}</span>
+          <span className="text-muted-foreground text-xs ml-1">
+            ({timeAgo(date)})
+          </span>
+        </div>
       ) : (
         <span className="text-muted-foreground text-sm">—</span>
       );
     },
-  },
+  };
+}
+
+const actionsColumn: ColumnDef<PartnerWithDetails> = {
+  id: "actions",
+  cell: ({ row }) => <RowActions partner={row.original} />,
+};
+
+// ─── All (Master table) ─────────────────────────────────────────────────────
+
+export const allColumns: ColumnDef<PartnerWithDetails>[] = [
+  partnerColumn("Partner"),
+  companyColumn,
+  phoneColumn,
+  businessTypeColumn,
+  partnerTypeColumn,
+  statusColumn,
+  appliedAtColumn(),
+  actionsColumn,
+];
+
+// ─── Approved (Partners tab) ────────────────────────────────────────────────
+
+export const approvedColumns: ColumnDef<PartnerWithDetails>[] = [
+  partnerColumn("Partner"),
+  companyColumn,
+  phoneColumn,
+  businessTypeColumn,
+  partnerTypeColumn,
+  reviewedAtColumn("Approved"),
+  actionsColumn,
+];
+
+// ─── Pending tab ────────────────────────────────────────────────────────────
+
+export const pendingColumns: ColumnDef<PartnerWithDetails>[] = [
+  partnerColumn("Applicant"),
+  companyColumn,
+  phoneColumn,
+  businessTypeColumn,
+  partnerTypeColumn,
+  appliedAtColumn(),
+  actionsColumn,
+];
+
+// ─── Rejected tab ───────────────────────────────────────────────────────────
+
+export const rejectedColumns: ColumnDef<PartnerWithDetails>[] = [
+  partnerColumn("Applicant"),
+  companyColumn,
+  partnerTypeColumn,
   {
     accessorKey: "rejection_reason",
     header: ({ column }) => (
@@ -314,35 +273,7 @@ export const rejectedColumns: ColumnDef<PartnerWithDetails>[] = [
     },
     minSize: 200,
   },
-  {
-    accessorKey: "applied_at",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Applied" />
-    ),
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-        {formatDate(row.original.applied_at)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "reviewed_at",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Rejected" />
-    ),
-    cell: ({ row }) => {
-      const date = row.original.reviewed_at;
-      return date ? (
-        <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-          {formatDate(date)}
-        </span>
-      ) : (
-        <span className="text-muted-foreground text-sm">—</span>
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions partner={row.original} />,
-  },
+  appliedAtColumn(),
+  reviewedAtColumn("Rejected"),
+  actionsColumn,
 ];

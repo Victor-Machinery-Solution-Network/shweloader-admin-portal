@@ -26,11 +26,17 @@
 import { d1, D1Error } from "./d1-client";
 import type { D1QueryParams, D1Response } from "@/types/d1";
 
-/** Create payload - accepts partial of T without id/timestamps */
-type CreateData<T> = Omit<Partial<T>, "id" | "created_at" | "updated_at">;
+/** Fields auto-managed by the database — always stripped from create/update payloads */
+type AutoFields = "created_at" | "updated_at";
 
-/** Update payload - same as create, all fields optional */
-type UpdateData<T> = CreateData<T>;
+/** Create payload - strips PK + auto-managed timestamp fields */
+type CreateData<T, K extends keyof T = "id" & keyof T> = Omit<
+  Partial<T>,
+  K | AutoFields
+>;
+
+/** Update payload - same shape as create */
+type UpdateData<T, K extends keyof T = "id" & keyof T> = CreateData<T, K>;
 
 export { D1Error };
 
@@ -41,7 +47,7 @@ export interface ServiceOptions {
   primaryKey?: string;
 }
 
-export interface Service<T> {
+export interface Service<T, K extends keyof T = "id" & keyof T> {
   /** Table name */
   readonly table: string;
 
@@ -58,10 +64,10 @@ export interface Service<T> {
   getByIdOrThrow(id: string | number): Promise<T>;
 
   /** Create a new record */
-  create(data: CreateData<T>): Promise<T>;
+  create(data: CreateData<T, K>): Promise<T>;
 
   /** Update an existing record */
-  update(id: string | number, data: UpdateData<T>): Promise<T>;
+  update(id: string | number, data: UpdateData<T, K>): Promise<T>;
 
   /** Delete a record */
   delete(id: string | number): Promise<void>;
@@ -79,10 +85,10 @@ export interface Service<T> {
  * @param table - The database table name
  * @param options - Optional service configuration
  */
-export function createService<T>(
+export function createService<T, K extends keyof T = "id" & keyof T>(
   table: string,
   options: ServiceOptions = {},
-): Service<T> {
+): Service<T, K> {
   const { defaultParams = {}, primaryKey = "id" } = options;
   const usesCustomPK = primaryKey !== "id";
 
@@ -127,7 +133,7 @@ export function createService<T>(
       return record;
     },
 
-    async create(data: CreateData<T>): Promise<T> {
+    async create(data: CreateData<T, K>): Promise<T> {
       const response = await d1.create<T>(
         table,
         data as Record<string, unknown>,
@@ -135,9 +141,14 @@ export function createService<T>(
       return response.results[0];
     },
 
-    async update(id: string | number, data: UpdateData<T>): Promise<T> {
+    async update(id: string | number, data: UpdateData<T, K>): Promise<T> {
+      const payload = {
+        ...(data as Record<string, unknown>),
+        updated_at: new Date().toISOString(),
+      };
+
       if (usesCustomPK) {
-        const entries = Object.entries(data as Record<string, unknown>).filter(
+        const entries = Object.entries(payload).filter(
           ([, v]) => v !== undefined,
         );
         const setClauses = entries.map(([key]) => `${key} = ?`).join(", ");
@@ -149,11 +160,7 @@ export function createService<T>(
         );
         return response.results[0];
       }
-      const response = await d1.update<T>(
-        table,
-        id,
-        data as Record<string, unknown>,
-      );
+      const response = await d1.update<T>(table, id, payload);
       return response.results[0];
     },
 

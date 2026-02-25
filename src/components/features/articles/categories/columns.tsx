@@ -1,5 +1,6 @@
 "use client";
 
+import { FolderOpen, FileText } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/utils";
@@ -16,8 +17,29 @@ export function getColumns(
         <DataTableColumnHeader column={column} title="Name" />
       ),
       cell: ({ row }) => (
-        <span className="font-medium">{row.getValue("name")}</span>
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-cyan-500/10">
+            <FolderOpen className="size-3.5 text-cyan-500" />
+          </div>
+          <span className="font-medium">{row.getValue("name")}</span>
+        </div>
       ),
+    },
+    {
+      id: "articles",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Articles" />
+      ),
+      accessorFn: (row) => linkedCounts[row.category_id] ?? 0,
+      cell: ({ row }) => {
+        const count = linkedCounts[row.original.category_id] ?? 0;
+        return (
+          <div className="flex items-center gap-1.5">
+            <FileText className="size-3.5 text-muted-foreground" />
+            <span className="text-sm tabular-nums">{count}</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "created_at",

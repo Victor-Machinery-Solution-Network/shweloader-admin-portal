@@ -1,5 +1,11 @@
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
 import { brandService } from "@/lib/services/brand";
-import { locationService } from "@/lib/services/location";
+import {
+  stateRegionService,
+  districtService,
+  townshipService,
+} from "@/lib/services/location";
 import {
   mainCategoryService,
   subCategoryService,
@@ -9,9 +15,9 @@ import {
   attachmentCategoryService,
   attachmentModelService,
 } from "@/lib/services/attachment";
-import { businessTypeService } from "@/lib/services/customer";
+import { businessTypeService } from "@/lib/services/app-user";
 import { d1 } from "@/lib/api/d1-client";
-import type { Customer } from "@/types/customer";
+import type { AppUser } from "@/types/app-user";
 import { announcementTextService } from "@/lib/services/announcement";
 import {
   articleCategoryService,
@@ -71,8 +77,16 @@ export function getCategoryBrandLinks() {
   return getAllCategoryBrandLinks();
 }
 
-export function getLocations() {
-  return locationService.list({ sort_by: "city_name", order: "asc" });
+export function getStateRegions() {
+  return stateRegionService.list({ sort_by: "name", order: "asc" });
+}
+
+export function getDistricts() {
+  return districtService.list({ sort_by: "name", order: "asc" });
+}
+
+export function getTownships() {
+  return townshipService.list({ sort_by: "name", order: "asc" });
 }
 
 export function getMainCategories() {
@@ -108,14 +122,14 @@ export function getPartnersWithDetails() {
   return fetchPartnersWithDetails();
 }
 
-// Customers, announcements, articles
+// Users, announcements, articles
 
-export async function getCustomers() {
-  const result = await d1.query<Customer>(
+export async function getUsers() {
+  const result = await d1.query<AppUser>(
     `SELECT c.*,
       CASE WHEN p.id IS NOT NULL AND pst.status_name = 'Approved' THEN 1 ELSE 0 END AS is_approved_partner
-    FROM customer c
-    LEFT JOIN partner p ON c.customer_id = p.customer_id
+    FROM app_user c
+    LEFT JOIN partner p ON c.app_user_id = p.app_user_id
     LEFT JOIN partner_status_type pst ON p.status_id = pst.id
     ORDER BY c.created_at DESC`,
   );
@@ -124,6 +138,10 @@ export async function getCustomers() {
 
 export function getBusinessTypes() {
   return businessTypeService.list({ sort_by: "name", order: "asc" });
+}
+
+export function getListedBusinessTypes() {
+  return businessTypeService.list({ sort_by: "name", order: "asc", is_listed: 1 });
 }
 
 export function getAnnouncements() {
@@ -238,4 +256,17 @@ export function getEnquiryStatusTypes() {
 
 export function getCustomFieldTemplates() {
   return fetchCustomFieldTemplates();
+}
+
+// Permissions (cached at function level — called from server actions)
+
+import { getPermissionsForRole } from "@/lib/actions/permission";
+
+export async function getCachedPermissionsForRole(
+  roleId: number,
+): Promise<string[]> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag(CACHE_TAGS.PERMISSIONS);
+  return getPermissionsForRole(roleId);
 }

@@ -3,12 +3,15 @@
  */
 
 import { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
   icon?: LucideIcon;
   title: string;
   description?: string;
   action?: React.ReactNode;
+  /** Expands to fill page height and visually centers content (default: true) */
+  fullPage?: boolean;
 }
 
 export function EmptyState({
@@ -16,9 +19,13 @@ export function EmptyState({
   title,
   description,
   action,
+  fullPage = true,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
+    <div className={cn(
+      "flex flex-col items-center justify-center px-8 text-center",
+      fullPage ? "flex-1 pt-4 pb-24" : "flex-1 pb-24"
+    )}>
       {Icon && (
         <div className="rounded-full bg-muted p-3 mb-4">
           <Icon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />

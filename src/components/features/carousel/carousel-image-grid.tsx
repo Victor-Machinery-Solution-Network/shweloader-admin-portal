@@ -17,6 +17,7 @@ import {
   SortableContext,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,18 +45,20 @@ export function CarouselImageGrid({
   carouselName,
   initialImages,
 }: CarouselImageGridProps) {
+  const canCreate = useHasPermission("carousels", "create");
   const { data: images, setData: setImages, handleReorder } = useDragReorder(
     initialImages,
     {
       getRowId: (img) => img.image_id,
       tableName: "carousel_image",
+      feature: "carousels",
       scopeId: carouselId,
     },
   );
 
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [imageValue, setImageValue] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
+  const [hasFile, setHasFile] = useState(false);
   const [isAdding, startAddTransition] = useTransition();
 
   const sensors = useSensors(
@@ -79,20 +82,25 @@ export function CarouselImageGrid({
   );
 
   function openAddDialog() {
-    setImageValue(null);
+    setHasFile(false);
     setLinkUrl("");
     setShowAddDialog(true);
   }
 
-  function handleAddImage(e: React.FormEvent) {
+  function handleAddImage(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!imageValue) return;
+    const formData = new FormData(e.currentTarget);
 
-    // TODO: Implement actual file upload to storage service
-    // For now, placeholder — will be wired to upload endpoint later
     startAddTransition(async () => {
-      toast.info("Image upload not yet implemented — coming soon!");
-      setShowAddDialog(false);
+      const { addCarouselImage } = await import("@/lib/actions/carousel");
+      const result = await addCarouselImage(carouselId, formData);
+
+      if (result.success) {
+        toast.success("Image added");
+        setShowAddDialog(false);
+      } else {
+        toast.error(result.error ?? "Failed to add image");
+      }
     });
   }
 
@@ -122,18 +130,20 @@ export function CarouselImageGrid({
                 ))}
 
                 {/* Add image placeholder card */}
-                <button
-                  type="button"
-                  onClick={openAddDialog}
-                  className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
-                >
-                  <div className="text-center">
-                    <ImagePlus className="mx-auto size-5 text-muted-foreground" />
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      Add Image
-                    </span>
-                  </div>
-                </button>
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={openAddDialog}
+                    className="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
+                  >
+                    <div className="text-center">
+                      <ImagePlus className="mx-auto size-5 text-muted-foreground" />
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Add Image
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
             </SortableContext>
           </DndContext>
@@ -144,9 +154,11 @@ export function CarouselImageGrid({
               Drag to reorder &middot; {activeCount} active
               {hiddenCount > 0 && `, ${hiddenCount} hidden`}
             </span>
-            <Button variant="outline" size="sm" onClick={openAddDialog}>
-              <Plus /> Add Image
-            </Button>
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={openAddDialog}>
+                <Plus /> Add Image
+              </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -159,9 +171,11 @@ export function CarouselImageGrid({
           <p className="mb-4 text-xs text-muted-foreground">
             Add your first image to the &ldquo;{carouselName}&rdquo; carousel
           </p>
-          <Button variant="outline" size="sm" onClick={openAddDialog}>
-            <Plus /> Add Image
-          </Button>
+          {canCreate && (
+            <Button variant="outline" size="sm" onClick={openAddDialog}>
+              <Plus /> Add Image
+            </Button>
+          )}
         </div>
       )}
 
@@ -178,10 +192,8 @@ export function CarouselImageGrid({
           <form onSubmit={handleAddImage} className="space-y-4">
             <ImageInput
               name="image"
-              value={imageValue}
-              onChange={setImageValue}
+              onChange={(val) => setHasFile(!!val)}
               accept="image/jpeg,image/png,image/webp"
-              maxSizeMB={5}
               placeholder="Drag & drop an image here, or click to browse"
               disabled={isAdding}
             />
@@ -195,6 +207,7 @@ export function CarouselImageGrid({
               </FieldLabel>
               <FieldContent>
                 <Input
+                  name="link_url"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://example.com/promo"
@@ -217,7 +230,7 @@ export function CarouselImageGrid({
               </Button>
               <Button
                 type="submit"
-                disabled={!imageValue || isAdding}
+                disabled={!hasFile || isAdding}
               >
                 {isAdding ? "Uploading\u2026" : "Add Image"}
               </Button>

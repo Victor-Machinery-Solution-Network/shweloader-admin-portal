@@ -2,6 +2,9 @@
  * Application-wide constants
  */
 
+export const SUPER_ADMIN_ROLE_ID = 1;
+export const PRIMARY_ADMIN_ID = 1;
+
 export const APP_NAME = "Admin Portal";
 export const APP_DESCRIPTION =
   "Admin portal for managing application resources";
@@ -38,7 +41,7 @@ export const ROUTES = {
   ENQUIRIES: "/enquiries",
 
   // Users
-  CUSTOMERS: "/customers",
+  USERS: "/users",
   PARTNERS: "/partners",
 
   // Content
@@ -51,18 +54,15 @@ export const ROUTES = {
   ADMINS: "/admins",
   ROLES_PERMISSIONS: "/roles-permissions",
   SETTINGS: "/settings",
-} as const;
 
-export const API_ROUTES = {
-  USERS: "/api/users",
-  PRODUCTS: "/api/products",
-  ORDERS: "/api/orders",
+  // Bulk Upload
+  BULK_UPLOAD: "/bulk-upload",
+
+  // Notifications
+  NOTIFICATIONS: "/notifications",
 } as const;
 
 export const ITEMS_PER_PAGE = 20;
-
-export const DATE_FORMAT = "MMM dd, yyyy";
-export const DATETIME_FORMAT = "MMM dd, yyyy HH:mm";
 
 // System exchange rate (USD to MMK)
 export const SYSTEM_EXCHANGE_RATE = 3200;
@@ -84,7 +84,7 @@ export const CACHE_TAGS = {
   SALE_LISTINGS: "sale-listings",
   RENT_LISTINGS: "rent-listings",
   FEATURED_LISTINGS: "featured-listings",
-  CUSTOMERS: "customers",
+  USERS: "users",
   BUSINESS_TYPES: "business-types",
   ANNOUNCEMENTS: "announcements",
   ARTICLE_CATEGORIES: "article-categories",
@@ -97,4 +97,6 @@ export const CACHE_TAGS = {
   ENQUIRIES: "enquiries",
   FEATURE_PERMISSIONS: "feature-permissions",
   CUSTOM_FIELD_TEMPLATES: "custom-field-templates",
+  PERMISSIONS: "permissions",
+  NOTIFICATIONS: "notifications",
 } as const;

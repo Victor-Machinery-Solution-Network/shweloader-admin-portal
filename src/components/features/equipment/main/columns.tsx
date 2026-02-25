@@ -1,5 +1,6 @@
 "use client";
 
+import { FolderOpen } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { ImageCell } from "@/components/shared/image-cell";
@@ -35,6 +36,19 @@ export function getColumns(
           imageUrl={row.original.image_url}
         />
       ),
+    },
+    {
+      id: "sub_categories",
+      header: "Sub Categories",
+      cell: ({ row }) => {
+        const count = linkedCounts[row.original.category_id] ?? 0;
+        return (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+            <FolderOpen className="size-3.5" />
+            {count}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "created_at",

@@ -18,29 +18,22 @@ export function formatDate(value: string | Date): string {
 }
 
 /**
- * Format a date as relative time, e.g. "3 days ago", "2 months ago".
+ * Format a date string as relative time, e.g. "3m ago", "2h ago".
+ * Falls back to `formatDate` for dates older than 7 days.
+ * Appends "Z" to the input because D1 stores UTC timestamps without it.
  */
-export function timeAgo(value: string | Date): string {
-  const date = typeof value === "string" ? new Date(value) : value;
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (seconds < 60) return "Just now";
-
-  const minutes = Math.floor(seconds / 60);
+export function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr + "Z").getTime(); // D1 stores UTC without Z
+  const diff = Math.max(0, now - then);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
-
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-
-  const years = Math.floor(months / 12);
-  return `${years}y ago`;
+  if (days < 7) return `${days}d ago`;
+  return formatDate(dateStr);
 }
 
 /**

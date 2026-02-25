@@ -11,6 +11,7 @@ import {
   getSubCategoryBrandLinks,
 } from "@/lib/cache";
 import { EquipmentModelsClient } from "@/components/features/equipment/models/equipment-models-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Models | Equipment",
@@ -25,7 +26,9 @@ export default function EquipmentModelsPage() {
         description="Manage equipment models"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <EquipmentModelsContent />
+        <PermissionGate feature="equipment_models">
+          <EquipmentModelsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

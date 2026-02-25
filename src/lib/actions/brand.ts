@@ -3,7 +3,7 @@
 import { brandService } from "@/lib/services/brand";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
@@ -163,7 +163,7 @@ export async function createBrand(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const created_by = await requirePermission("brands", "create");
     await brandService.create({
       name: name.trim(),
       created_by,
@@ -221,8 +221,8 @@ export async function updateBrand(id: number, formData: FormData) {
   }
 
   try {
+    const userId = await requirePermission("brands", "edit");
     await brandService.update(id, { name: name.trim() });
-    const userId = await getCurrentUserId();
 
     // Sync attachment category links
     if (categoryIdsRaw) {
@@ -248,6 +248,7 @@ export async function updateBrand(id: number, formData: FormData) {
 
 export async function deleteBrand(id: number) {
   try {
+    await requirePermission("brands", "delete");
     await brandService.delete(id);
     invalidateTag(CACHE_TAGS.BRANDS);
     return { success: true };
@@ -323,27 +324,3 @@ export async function formatBrandLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
-// ─── Bulk Delete ────────────────────────────────────────────────────────────
-
-export async function deleteBrands(ids: number[]) {
-  const results = await Promise.allSettled(
-    ids.map((id) => brandService.delete(id)),
-  );
-
-  const errors = results
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .map((r, i) =>
-      getErrorMessage(r.reason, `Failed to delete brand ${ids[i]}`),
-    );
-  const deleted = results.filter((r) => r.status === "fulfilled").length;
-
-  invalidateTag(CACHE_TAGS.BRANDS);
-
-  if (errors.length > 0) {
-    return {
-      success: false,
-      error: `Deleted ${deleted} of ${ids.length}. ${errors[0]}`,
-    };
-  }
-  return { success: true };
-}

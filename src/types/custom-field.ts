@@ -1,3 +1,13 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Type,
+  Hash,
+  ChevronDown,
+  ToggleLeft,
+  Calendar,
+  Link,
+} from "lucide-react";
+
 // ─── Field Types ──────────────────────────────────────────────────────────
 
 export const CUSTOM_FIELD_TYPES = [
@@ -19,6 +29,16 @@ export const FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
   boolean: "Yes / No",
   date: "Date",
   url: "URL",
+};
+
+/** Icons for each field type */
+export const FIELD_TYPE_ICONS: Record<CustomFieldType, LucideIcon> = {
+  text: Type,
+  number: Hash,
+  dropdown: ChevronDown,
+  boolean: ToggleLeft,
+  date: Calendar,
+  url: Link,
 };
 
 // ─── Field Definition (template storage) ─────────────────────────────────

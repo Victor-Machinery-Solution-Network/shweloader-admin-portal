@@ -24,23 +24,15 @@
  */
 
 // D1 REST API client
-export { d1, D1Error, default as d1Client } from './d1-client';
+export { d1, D1Error } from './d1-client';
 
 // Service factory
 export { createService, type Service, type ServiceOptions } from './create-service';
 
-// Legacy client (for backwards compatibility)
-export { ApiError, apiGet, apiPost, apiPut, apiDelete } from './client';
-
 // Re-export types
 export type {
   D1Response,
-  D1ErrorResponse,
-  D1ApiResponse,
   D1Meta,
   D1QueryParams,
   D1RawQueryRequest,
-  D1CreatePayload,
-  D1UpdatePayload,
-  WithId,
 } from '@/types/d1';

@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
-import { MessageSquare, Clock, CheckCircle } from "lucide-react";
+import { useMemo, useCallback } from "react";
+import { MessageSquare } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { DataTable } from "@/components/ui/data-table";
-
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
-import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { createEnquiryColumns } from "./columns";
 import { deleteEnquiries } from "@/lib/actions/enquiry";
 import type { EnquiryWithDetails, EnquiryStatusType } from "@/types/enquiry";
+import type { FilterConfig } from "@/types/data-table-filters";
 
 interface EnquiriesClientProps {
   enquiries: EnquiryWithDetails[];
@@ -20,31 +20,36 @@ export function EnquiriesClient({
   enquiries,
   statusTypes,
 }: EnquiriesClientProps) {
-  const [tab, setTab] = useState<"all" | "pending" | "resolved">("all");
-
+  const canDelete = useHasPermission("enquiries", "delete");
   const columns = useMemo(
     () => createEnquiryColumns(statusTypes),
     [statusTypes],
   );
 
-  const pendingEnquiries = useMemo(
-    () => enquiries.filter((e) => e.status_name === "Pending"),
-    [enquiries],
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "status_name",
+        label: "Status",
+        type: "multi-select",
+        options: statusTypes.map((s) => ({
+          label: s.status_name,
+          value: s.status_name,
+        })),
+      },
+      {
+        columnId: "listing_type",
+        label: "Listing Type",
+        type: "multi-select",
+        options: [
+          { label: "For Sale", value: "sale" },
+          { label: "For Rent", value: "rent" },
+        ],
+      },
+      { columnId: "created_at", label: "Date", type: "date-range" },
+    ],
+    [statusTypes],
   );
-
-  const resolvedEnquiries = useMemo(
-    () => enquiries.filter((e) => e.status_name === "Resolved"),
-    [enquiries],
-  );
-
-  const pendingCount = pendingEnquiries.length;
-
-  const currentData =
-    tab === "pending"
-      ? pendingEnquiries
-      : tab === "resolved"
-        ? resolvedEnquiries
-        : enquiries;
 
   async function handleBulkDelete(rows: EnquiryWithDetails[]) {
     const ids = rows.map((r) => r.id);
@@ -53,77 +58,39 @@ export function EnquiriesClient({
 
   const renderToolbar = useCallback(
     (selected: EnquiryWithDetails[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        itemLabel="enquiry"
-      />
-    ),
-    [],
-  );
-
-  return (
-    <Tabs
-      value={tab}
-      onValueChange={(v) => setTab(v as typeof tab)}
-    >
-      <TabsList>
-        <TabsTrigger value="all">
-          <MessageSquare className="size-4" aria-hidden="true" />
-          All Enquiries
-        </TabsTrigger>
-        <TabsTrigger value="pending">
-          <Clock className="size-4" aria-hidden="true" />
-          Pending
-          {pendingCount > 0 && (
-            <TabCount>{pendingCount}</TabCount>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="resolved">
-          <CheckCircle className="size-4" aria-hidden="true" />
-          Resolved
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value={tab}>
-        {currentData.length > 0 ? (
-          <DataTable
-            columns={columns}
-            data={currentData}
-            searchKey="customer_name"
-            searchPlaceholder="Search by customer"
-            enablePagination
-            pageSize={10}
-            enableSelection
-            getRowId={(row) => row.id}
-            toolbar={renderToolbar}
-          />
-        ) : (
-          <EmptyState
-            icon={
-              tab === "pending"
-                ? Clock
-                : tab === "resolved"
-                  ? CheckCircle
-                  : MessageSquare
-            }
-            title={
-              tab === "pending"
-                ? "No pending enquiries"
-                : tab === "resolved"
-                  ? "No resolved enquiries"
-                  : "No enquiries yet"
-            }
-            description={
-              tab === "pending"
-                ? "All enquiries have been resolved."
-                : tab === "resolved"
-                  ? "No enquiries have been resolved yet."
-                  : "Customer enquiries will appear here."
-            }
+      <>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            itemLabel="enquiry"
           />
         )}
-      </TabsContent>
-    </Tabs>
+      </>
+    ),
+    [canDelete],
+  );
+
+  return enquiries.length > 0 ? (
+    <DataTable
+      columns={columns}
+      data={enquiries}
+      searchKeys={["user_name", "user_email", "user_company", "model_name", "message"]}
+      searchPlaceholder="Search enquiries"
+      filterConfig={filterConfig}
+      filterStorageKey="enquiries-filters"
+      initialColumnVisibility={{ listing_type: false }}
+      enablePagination
+      pageSize={10}
+      enableSelection
+      getRowId={(row) => row.id}
+      toolbar={renderToolbar}
+    />
+  ) : (
+    <EmptyState
+      icon={MessageSquare}
+      title="No enquiries yet"
+      description="User enquiries will appear here."
+    />
   );
 }

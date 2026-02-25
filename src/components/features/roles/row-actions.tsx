@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { RoleForm } from "./role-form";
 import { deleteRole } from "@/lib/actions/role";
+import { SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
 import type { RoleWithPermissionCount, FeaturePermission } from "@/types/role";
 
 interface RoleRowActionsProps {
@@ -22,11 +24,13 @@ export function RoleRowActions({
   adminCount,
   rolePermissionIds,
 }: RoleRowActionsProps) {
+  const canEdit = useHasPermission("roles", "edit");
+  const canDelete = useHasPermission("roles", "delete");
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const isSuperAdmin = role.name === "Super Admin";
+  const isSuperAdmin = role.role_id === SUPER_ADMIN_ROLE_ID;
 
   function handleDelete() {
     startTransition(async () => {
@@ -59,26 +63,36 @@ export function RoleRowActions({
       </>
     );
 
-  return (
-    <>
-      <RowActionsUI
-        actions={[
+  const actions = [
+    ...(canEdit
+      ? [
           {
-            label: "Edit",
+            label: "Edit" as const,
             icon: Pencil,
             onClick: () => setShowEdit(true),
             disabled: isSuperAdmin,
           },
+        ]
+      : []),
+    ...(canDelete
+      ? [
           {
-            label: "Delete",
+            label: "Delete" as const,
             icon: Trash2,
             onClick: () => setShowDelete(true),
-            variant: "destructive",
+            variant: "destructive" as const,
             disabled: isSuperAdmin,
             separatorBefore: true,
           },
-        ]}
-      />
+        ]
+      : []),
+  ];
+
+  if (actions.length === 0) return null;
+
+  return (
+    <>
+      <RowActionsUI actions={actions} />
 
       {showEdit && (
         <RoleForm

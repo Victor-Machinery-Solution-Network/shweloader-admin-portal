@@ -1,6 +1,6 @@
 /**
  * Cloudflare D1 REST API types
- * Based on: cloudflare-d1-rest-api.shweloader.workers.dev
+ * Based on: api.staging.shweloader.com.mm
  */
 
 /** D1 API response metadata */
@@ -27,15 +27,6 @@ export interface D1Response<T> {
   results: T[];
 }
 
-/** Error D1 API response */
-export interface D1ErrorResponse {
-  success: false;
-  error: string;
-}
-
-/** Union type for all D1 responses */
-export type D1ApiResponse<T> = D1Response<T> | D1ErrorResponse;
-
 /** Query parameters for D1 REST API */
 export interface D1QueryParams {
   /** Column to sort by */
@@ -56,9 +47,3 @@ export interface D1RawQueryRequest {
   params?: (string | number | boolean | null)[];
 }
 
-/** Type helper for record with ID */
-export type WithId<T> = T & { id: number | string };
-
-/** Create/Update payload (omit id and timestamps) */
-export type D1CreatePayload<T> = Omit<T, 'id' | 'created_at' | 'updated_at'>;
-export type D1UpdatePayload<T> = Partial<D1CreatePayload<T>>;

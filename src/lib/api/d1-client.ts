@@ -1,7 +1,7 @@
 /**
  * Cloudflare D1 REST API Client
  *
- * Connects to: cloudflare-d1-rest-api.shweloader.workers.dev
+ * Connects to: api.staging.shweloader.com.mm
  *
  * @example
  * // List records with filtering
@@ -27,10 +27,10 @@ import type { D1Response, D1QueryParams, D1RawQueryRequest } from "@/types/d1";
 
 // Configuration
 const D1_BASE_URL =
-  process.env.NEXT_PUBLIC_D1_API_URL ||
-  "https://cloudflare-d1-rest-api.shweloader.workers.dev";
+  process.env.CLOUDFLARE_WORKER_API_URL ||
+  "https://api.staging.shweloader.com.mm";
 
-const D1_API_TOKEN = process.env.D1_API_TOKEN || "";
+const D1_API_TOKEN = process.env.CLOUDFLARE_WORKER_API_TOKEN || "";
 
 /** Custom error class for D1 API errors */
 export class D1Error extends Error {
@@ -88,6 +88,10 @@ async function handleD1Response<T>(response: Response): Promise<D1Response<T>> {
   if (data.success !== undefined) {
     if (!data.success) {
       throw new D1Error(data.error, response.status);
+    }
+    // Ensure results is always an array (API may omit it for empty tables)
+    if (!Array.isArray(data.results)) {
+      data.results = [];
     }
     return data as D1Response<T>;
   }

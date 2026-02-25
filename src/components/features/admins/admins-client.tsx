@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { Users, Plus } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { AdminForm } from "./admin-form";
@@ -18,9 +20,31 @@ interface AdminsClientProps {
 }
 
 export function AdminsClient({ admins, roles }: AdminsClientProps) {
+  const canCreate = useHasPermission("admin_users", "create");
+  const canDelete = useHasPermission("admin_users", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
   const columns = useMemo(() => createColumns(roles), [roles]);
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "role_name",
+        label: "Role",
+        type: "multi-select",
+        options: roles.map((r) => ({ label: r.name, value: r.name })),
+      },
+      {
+        columnId: "active",
+        label: "Status",
+        type: "boolean",
+        trueLabel: "Active",
+        falseLabel: "Inactive",
+      },
+      { columnId: "created_at", label: "Created", type: "date-range" },
+    ],
+    [roles],
+  );
 
   const handleBulkDelete = useCallback(
     async (selected: AdminWithRole[]) => {
@@ -46,18 +70,22 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
   const renderToolbar = useCallback(
     (selected: AdminWithRole[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="admin"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Admin
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="admin"
+          />
+        )}
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)} className="ml-auto">
+            <Plus /> Add Admin
+          </Button>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
@@ -66,8 +94,10 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
         <DataTable
           columns={columns}
           data={admins}
-          searchKey="username"
+          searchKeys={["username", "email"]}
           searchPlaceholder="Search admins"
+          filterConfig={filterConfig}
+          filterStorageKey="admins-filters"
           enableSelection
           enablePagination
           pageSize={10}
@@ -80,9 +110,11 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
           title="No admins yet"
           description="Get started by creating your first admin account."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Admin
-            </Button>
+            canCreate ? (
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus /> Add Admin
+              </Button>
+            ) : undefined
           }
         />
       )}

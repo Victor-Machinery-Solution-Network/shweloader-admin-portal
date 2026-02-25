@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { assetUrl } from "@/lib/r2-url";
 import {
   GripVertical,
   Trash2,
@@ -12,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +37,8 @@ interface CarouselImageCardProps {
 }
 
 export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
+  const canEdit = useHasPermission("carousels", "edit");
+  const canDelete = useHasPermission("carousels", "delete");
   const [showDelete, setShowDelete] = useState(false);
   const [showLinkEdit, setShowLinkEdit] = useState(false);
   const [linkUrl, setLinkUrl] = useState(image.link_url ?? "");
@@ -115,7 +119,7 @@ export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
         {/* Image area */}
         <div className="relative aspect-video w-full">
           <img
-            src={image.image_url}
+            src={assetUrl(image.image_url) ?? ""}
             alt=""
             className="size-full object-cover"
             onError={(e) => {
@@ -143,66 +147,72 @@ export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
 
             <TooltipProvider>
               <div className="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "rounded p-1 text-white backdrop-blur-sm",
-                        isActive
-                          ? "bg-black/50 hover:bg-black/70"
-                          : "bg-amber-600/80 hover:bg-amber-600",
-                      )}
-                      aria-label={isActive ? "Hide image" : "Show image"}
-                      onClick={handleToggleActive}
-                      disabled={isToggling}
-                    >
-                      {isActive ? (
-                        <Eye aria-hidden="true" className="size-4" />
-                      ) : (
-                        <EyeOff aria-hidden="true" className="size-4" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isActive ? "Hide image" : "Show image"}
-                  </TooltipContent>
-                </Tooltip>
+                {canEdit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "rounded p-1 text-white backdrop-blur-sm",
+                          isActive
+                            ? "bg-black/50 hover:bg-black/70"
+                            : "bg-amber-600/80 hover:bg-amber-600",
+                        )}
+                        aria-label={isActive ? "Hide image" : "Show image"}
+                        onClick={handleToggleActive}
+                        disabled={isToggling}
+                      >
+                        {isActive ? (
+                          <Eye aria-hidden="true" className="size-4" />
+                        ) : (
+                          <EyeOff aria-hidden="true" className="size-4" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isActive ? "Hide image" : "Show image"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "rounded p-1 text-white backdrop-blur-sm",
-                        image.link_url
-                          ? "bg-blue-600/80 hover:bg-blue-600"
-                          : "bg-black/50 hover:bg-black/70",
-                      )}
-                      aria-label={image.link_url ? "Edit link" : "Add link"}
-                      onClick={() => setShowLinkEdit(!showLinkEdit)}
-                    >
-                      <Link aria-hidden="true" className="size-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {image.link_url ? "Edit link" : "Add link"}
-                  </TooltipContent>
-                </Tooltip>
+                {canEdit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "rounded p-1 text-white backdrop-blur-sm",
+                          image.link_url
+                            ? "bg-blue-600/80 hover:bg-blue-600"
+                            : "bg-black/50 hover:bg-black/70",
+                        )}
+                        aria-label={image.link_url ? "Edit link" : "Add link"}
+                        onClick={() => setShowLinkEdit(!showLinkEdit)}
+                      >
+                        <Link aria-hidden="true" className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {image.link_url ? "Edit link" : "Add link"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Remove image"
-                      className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-red-600"
-                      onClick={() => setShowDelete(true)}
-                    >
-                      <Trash2 aria-hidden="true" className="size-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Remove image</TooltipContent>
-                </Tooltip>
+                {canDelete && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Remove image"
+                        className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-red-600"
+                        onClick={() => setShowDelete(true)}
+                      >
+                        <Trash2 aria-hidden="true" className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Remove image</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </TooltipProvider>
           </div>
@@ -242,7 +252,7 @@ export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
           <span
             className={cn(
               "size-1.5 shrink-0 rounded-full",
-              isActive ? "bg-green-500" : "bg-amber-500",
+              isActive ? "bg-emerald-500" : "bg-muted-foreground/40",
             )}
           />
           <span className="text-[11px] text-muted-foreground">

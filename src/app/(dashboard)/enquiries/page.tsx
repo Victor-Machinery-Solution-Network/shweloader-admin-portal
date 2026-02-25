@@ -3,12 +3,13 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { getEnquiries, getEnquiryStatusTypes } from "@/lib/cache";
 import { EnquiriesClient } from "@/components/features/enquiries/enquiries-client";
 
 export const metadata = {
   title: "Enquiries",
-  description: "Manage customer enquiries",
+  description: "Manage user enquiries",
 };
 
 export default function EnquiriesPage() {
@@ -16,10 +17,12 @@ export default function EnquiriesPage() {
     <>
       <PageHeader
         title="Enquiries"
-        description="View and manage customer enquiries"
+        description="View and manage user enquiries"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <EnquiriesContent />
+        <PermissionGate feature="enquiries">
+          <EnquiriesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

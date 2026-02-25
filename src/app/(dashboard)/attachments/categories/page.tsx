@@ -9,6 +9,7 @@ import {
   formatAttachmentCategoryLinkedSummary,
 } from "@/lib/actions/attachment";
 import { AttachmentCategoriesClient } from "@/components/features/attachments/categories/attachment-categories-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 
 export const metadata = {
@@ -24,7 +25,9 @@ export default function AttachmentCategoriesPage() {
         description="Manage attachment categories"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <AttachmentCategoriesContent />
+        <PermissionGate feature="attachment_categories">
+          <AttachmentCategoriesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

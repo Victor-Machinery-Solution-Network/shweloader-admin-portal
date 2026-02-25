@@ -2,24 +2,20 @@
 
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Eye, EyeOff } from "lucide-react";
+import { assetUrl } from "@/lib/r2-url";
+import { Tag, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { formatDate } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { cn, formatDate } from "@/lib/utils";
 import { updateArticleStatus } from "@/lib/actions/article";
 import type { ArticleWithDetails, ArticleStatusType } from "@/types/article";
 import { RowActions } from "./row-actions";
 import { PendingRowActions } from "./pending-row-actions";
 
-// --- Inline visibility toggle (matches listing HiddenToggle pattern) ---
+// --- Inline visibility toggle (Published/Hidden status) ---
 
 function VisibilityToggle({
   articleId,
@@ -32,6 +28,7 @@ function VisibilityToggle({
   publishedStatusId: number;
   hiddenStatusId: number;
 }) {
+  const canEdit = useHasPermission("articles", "edit");
   const [isPending, startTransition] = useTransition();
 
   function handleToggle() {
@@ -46,52 +43,37 @@ function VisibilityToggle({
     });
   }
 
-  const label = isHidden ? "Publish article" : "Hide article";
-
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant={isHidden ? "destructive" : "outline"}
-          size="icon-sm"
-          disabled={isPending}
-          aria-label={label}
-          className={
-            isHidden
-              ? "rounded-full"
-              : "text-muted-foreground rounded-full border-dashed"
-          }
-          onClick={handleToggle}
+    <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-1.5">
+        <div
+          className={cn(
+            "size-2 rounded-full",
+            isHidden ? "bg-muted-foreground/40" : "bg-emerald-500",
+          )}
+        />
+        <span
+          className={cn(
+            "text-sm",
+            isHidden ? "text-muted-foreground" : "text-foreground",
+          )}
         >
-          {isHidden ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="top">{label}</TooltipContent>
-    </Tooltip>
+          {isHidden ? "Hidden" : "Published"}
+        </span>
+      </div>
+      {canEdit && (
+        <Switch
+          size="sm"
+          checked={!isHidden}
+          onCheckedChange={handleToggle}
+          disabled={isPending}
+        />
+      )}
+    </div>
   );
 }
 
 // ─── Shared column helpers ───────────────────────────────────────────────────
-
-const coverImageColumn: ColumnDef<ArticleWithDetails> = {
-  id: "cover_image",
-  header: "",
-  cell: ({ row }) => {
-    const url = row.original.cover_image_url;
-    return url ? (
-      <img
-        src={url}
-        alt=""
-        className="size-10 rounded-md object-cover"
-      />
-    ) : (
-      <div className="bg-muted size-10 rounded-md" />
-    );
-  },
-  size: 44,
-  minSize: 44,
-  maxSize: 44,
-};
 
 const titleColumn: ColumnDef<ArticleWithDetails> = {
   accessorKey: "title",
@@ -100,12 +82,29 @@ const titleColumn: ColumnDef<ArticleWithDetails> = {
   ),
   cell: ({ row }) => {
     const title = row.getValue("title") as string;
-    return <span className="font-medium line-clamp-1 max-w-72">{title}</span>;
+    const src = assetUrl(row.original.cover_image_url);
+    return (
+      <div className="flex items-center gap-2.5">
+        {src ? (
+          <img
+            src={src}
+            alt=""
+            className="size-9 shrink-0 rounded-md object-cover"
+          />
+        ) : (
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-cyan-500/10">
+            <Tag className="size-3.5 text-cyan-500" />
+          </div>
+        )}
+        <span className="font-medium line-clamp-1 max-w-72">{title}</span>
+      </div>
+    );
   },
 };
 
 const categoryColumn: ColumnDef<ArticleWithDetails> = {
   id: "category",
+  accessorFn: (row) => row.category_name ?? "",
   header: ({ column }) => (
     <DataTableColumnHeader column={column} title="Category" />
   ),
@@ -116,6 +115,7 @@ const categoryColumn: ColumnDef<ArticleWithDetails> = {
     }
     return (
       <Badge variant="outline" className="text-xs">
+        <Tag className="size-3" />
         {name}
       </Badge>
     );
@@ -124,13 +124,20 @@ const categoryColumn: ColumnDef<ArticleWithDetails> = {
 
 const authorColumn: ColumnDef<ArticleWithDetails> = {
   id: "author",
+  accessorFn: (row) => row.author_name ?? "",
   header: ({ column }) => (
     <DataTableColumnHeader column={column} title="Author" />
   ),
   cell: ({ row }) => {
     const author = row.original.author_name;
+    if (!author) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
     return (
-      <span className="text-muted-foreground text-sm">{author ?? "—"}</span>
+      <div className="flex items-center gap-1.5">
+        <UserRound className="size-3.5 text-muted-foreground" />
+        <span className="text-sm">{author}</span>
+      </div>
     );
   },
 };
@@ -158,6 +165,19 @@ const createdAtColumn: ColumnDef<ArticleWithDetails> = {
   ),
   cell: ({ row }) => {
     const date = row.getValue("created_at") as string;
+    return (
+      <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
+    );
+  },
+};
+
+const updatedAtColumn: ColumnDef<ArticleWithDetails> = {
+  accessorKey: "updated_at",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Last Saved" />
+  ),
+  cell: ({ row }) => {
+    const date = row.getValue("updated_at") as string;
     return (
       <span className="text-muted-foreground text-sm tabular-nums">{formatDate(date)}</span>
     );
@@ -193,15 +213,17 @@ export function createPublishedColumns(
   const hiddenStatus = statusTypes.find((st) => st.status_name === "Hidden");
 
   return [
-    coverImageColumn,
     titleColumn,
     categoryColumn,
     authorColumn,
     readTimeColumn,
     publishDateColumn,
-    createdAtColumn,
     {
-      id: "actions",
+      id: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      accessorFn: (row) => row.status_name,
       cell: ({ row }) => {
         const statusName = row.original.status_name;
         const showToggle =
@@ -209,22 +231,23 @@ export function createPublishedColumns(
           hiddenStatus &&
           (statusName === "Published" || statusName === "Hidden");
 
+        if (!showToggle) {
+          return <span className="text-muted-foreground text-sm">—</span>;
+        }
+
         return (
-          <TooltipProvider>
-            <div className="flex items-center justify-end gap-1">
-              {showToggle && (
-                <VisibilityToggle
-                  articleId={row.original.article_id}
-                  isHidden={statusName === "Hidden"}
-                  publishedStatusId={publishedStatus.id}
-                  hiddenStatusId={hiddenStatus.id}
-                />
-              )}
-              <RowActions article={row.original} />
-            </div>
-          </TooltipProvider>
+          <VisibilityToggle
+            articleId={row.original.article_id}
+            isHidden={statusName === "Hidden"}
+            publishedStatusId={publishedStatus.id}
+            hiddenStatusId={hiddenStatus.id}
+          />
         );
       },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => <RowActions article={row.original} />,
     },
   ];
 }
@@ -233,7 +256,6 @@ export function createPublishedColumns(
 
 export function createPendingColumns(): ColumnDef<ArticleWithDetails>[] {
   return [
-    coverImageColumn,
     titleColumn,
     categoryColumn,
     authorColumn,
@@ -241,12 +263,56 @@ export function createPendingColumns(): ColumnDef<ArticleWithDetails>[] {
     createdAtColumn,
     {
       id: "actions",
-      cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-1">
-          <PendingRowActions article={row.original} />
-          <RowActions article={row.original} />
-        </div>
-      ),
+      cell: ({ row }) => <PendingRowActions article={row.original} />,
+    },
+  ];
+}
+
+// ─── Draft tab columns ─────────────────────────────────────────────────────
+
+export function createDraftColumns(): ColumnDef<ArticleWithDetails>[] {
+  return [
+    titleColumn,
+    categoryColumn,
+    authorColumn,
+    readTimeColumn,
+    updatedAtColumn,
+    createdAtColumn,
+    {
+      id: "actions",
+      cell: ({ row }) => <RowActions article={row.original} />,
+    },
+  ];
+}
+
+// ─── Rework tab columns ───────────────────────────────────────────────────
+
+const reworkReasonColumn: ColumnDef<ArticleWithDetails> = {
+  accessorKey: "rejection_reason",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Reason" />
+  ),
+  cell: ({ row }) => {
+    const reason = row.getValue("rejection_reason") as string | null;
+    if (!reason) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+    return (
+      <span className="text-sm text-muted-foreground line-clamp-2 max-w-60">{reason}</span>
+    );
+  },
+};
+
+export function createReworkColumns(): ColumnDef<ArticleWithDetails>[] {
+  return [
+    titleColumn,
+    categoryColumn,
+    authorColumn,
+    reworkReasonColumn,
+    updatedAtColumn,
+    {
+      id: "actions",
+      cell: ({ row }) => <RowActions article={row.original} />,
     },
   ];
 }

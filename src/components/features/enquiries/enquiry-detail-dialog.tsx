@@ -78,29 +78,29 @@ export function EnquiryDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Customer Info */}
+          {/* User Info */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <User className="size-4 text-muted-foreground" />
-              Customer
+              User
             </div>
             <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
               <p className="font-medium">
-                {enquiry.customer_name ?? "Unknown"}
+                {enquiry.user_name ?? "Unknown"}
               </p>
-              {enquiry.customer_email && (
+              {enquiry.user_email && (
                 <p className="text-muted-foreground">
-                  {enquiry.customer_email}
+                  {enquiry.user_email}
                 </p>
               )}
-              {enquiry.customer_phone && (
+              {enquiry.user_phone && (
                 <p className="text-muted-foreground">
-                  {enquiry.customer_phone}
+                  {enquiry.user_phone}
                 </p>
               )}
-              {enquiry.customer_company && (
+              {enquiry.user_company && (
                 <p className="text-muted-foreground">
-                  {enquiry.customer_company}
+                  {enquiry.user_company}
                 </p>
               )}
             </div>

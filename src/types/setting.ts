@@ -2,7 +2,7 @@
 export interface AppSetting {
   id: number;
   setting_key: string;
-  value: string;
+  value: string | null;
   updated_by: number | null;
   updated_at: string;
 }

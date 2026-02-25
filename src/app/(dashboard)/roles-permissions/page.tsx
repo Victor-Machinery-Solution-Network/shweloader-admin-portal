@@ -6,6 +6,7 @@ import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getRoles, getFeaturePermissions, getRolePermissionMap } from "@/lib/cache";
 import { getAdminCountByRole } from "@/lib/actions/role";
 import { RolesClient } from "@/components/features/roles/roles-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Roles & Permissions",
@@ -19,8 +20,10 @@ export default function RolesPermissionsPage() {
         title="Roles & Permissions"
         description="Define roles and assign feature-level permissions"
       />
-      <Suspense fallback={<DataTableSkeleton columns={5} />}>
-        <RolesContent />
+      <Suspense fallback={<DataTableSkeleton columns={6} />}>
+        <PermissionGate feature="roles">
+          <RolesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

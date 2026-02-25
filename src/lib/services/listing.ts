@@ -12,7 +12,7 @@ export const productListService = createService<ProductList>("product_list", {
   primaryKey: "id",
 });
 
-export const productImageService = createService<ProductImage>(
+export const productImageService = createService<ProductImage, "image_id">(
   "product_image",
   { primaryKey: "image_id" },
 );

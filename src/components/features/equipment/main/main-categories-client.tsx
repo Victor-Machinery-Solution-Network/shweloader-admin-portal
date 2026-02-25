@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Layers, Plus } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Layers, Plus } from "lucide-react";
+import Link from "next/link";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
@@ -24,12 +33,23 @@ export function MainCategoriesClient({
   categories,
   linkedCounts,
 }: MainCategoriesClientProps) {
+  const canCreate = useHasPermission("equipment_main_categories", "create");
+  const canDelete = useHasPermission("equipment_main_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
-  const { data, handleReorder } = useDragReorder(categories, {
-    getRowId: (r) => r.category_id,
-    tableName: "equipment_main_category",
-  });
+  const { data, handleReorder, handleMoveToPosition } = useDragReorder(
+    categories,
+    {
+      getRowId: (r) => r.category_id,
+      tableName: "equipment_main_category",
+      feature: "equipment_main_categories",
+    },
+  );
   const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [{ columnId: "created_at", label: "Created", type: "date-range" }],
+    [],
+  );
 
   const buildDescription = useCallback(
     async (selected: EquipmentMainCategory[]) => {
@@ -60,18 +80,36 @@ export function MainCategoriesClient({
   const renderToolbar = useCallback(
     (selected: EquipmentMainCategory[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="category"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Category
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="category"
+          />
+        )}
+        {canCreate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus /> Add Category <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/equipment-main-categories">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
@@ -80,13 +118,16 @@ export function MainCategoriesClient({
         <DataTable
           columns={columns}
           data={data}
-          searchKey="name"
+          searchKeys={["name"]}
           searchPlaceholder="Search categories"
+          filterConfig={filterConfig}
+          filterStorageKey="equipment-main-filters"
           enableSelection
           enablePagination
           enableDragSort
           getRowId={(row) => row.category_id}
           onReorder={handleReorder}
+          onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
         />
@@ -96,9 +137,25 @@ export function MainCategoriesClient({
           title="No categories yet"
           description="Get started by creating your first equipment main category."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Category
-            </Button>
+            canCreate ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus /> Add Category <ChevronDown className="ml-1 size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                    <FileText /> Fill Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bulk-upload/equipment-main-categories">
+                      <FileSpreadsheet /> Excel Upload
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
           }
         />
       )}

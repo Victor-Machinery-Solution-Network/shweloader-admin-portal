@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import {
   getRentListings,
   getFeaturedListings,
@@ -22,7 +23,9 @@ export default function ListingsForRentPage() {
         description="Manage rental listings and featured items"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <RentListingsContent />
+        <PermissionGate feature="rent_listings">
+          <RentListingsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

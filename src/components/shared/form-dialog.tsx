@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FormSubmittedContext } from "@/components/ui/required-input";
 import { ComboboxPortalContext } from "@/components/ui/combobox";
+import { PopoverPortalContext } from "@/components/ui/popover";
 import {
   Dialog,
   DialogClose,
@@ -70,6 +71,7 @@ export function FormDialog({
           className,
         )}
       >
+        <PopoverPortalContext value={portalRef}>
         <ComboboxPortalContext value={portalRef}>
           <DialogHeader className="items-center text-center">
             {icon && (
@@ -117,6 +119,7 @@ export function FormDialog({
               Absolutely positioned so it doesn't affect form layout. */}
           <div ref={portalRef} className="absolute" />
         </ComboboxPortalContext>
+        </PopoverPortalContext>
       </DialogContent>
     </Dialog>
   );

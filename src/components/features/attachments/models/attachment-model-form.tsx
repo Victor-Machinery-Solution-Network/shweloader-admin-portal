@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Pencil, Wrench } from "lucide-react";
+import { Box, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
@@ -202,7 +202,7 @@ export function AttachmentModelForm({
       icon={
         isEditing
           ? <Pencil className="text-primary-foreground size-6" />
-          : <Wrench className="text-primary-foreground size-6" />
+          : <Box className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
       isPending={isPending}

@@ -2,7 +2,7 @@
 
 import { articleCategoryService } from "@/lib/services/article";
 import { d1 } from "@/lib/api/d1-client";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 
@@ -16,7 +16,7 @@ export async function createArticleCategory(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const created_by = await requirePermission("article_categories", "create");
     await articleCategoryService.create({
       name: name.trim(),
       created_by,
@@ -39,6 +39,7 @@ export async function updateArticleCategory(id: number, formData: FormData) {
   }
 
   try {
+    await requirePermission("article_categories", "edit");
     await articleCategoryService.update(id, { name: name.trim() });
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
@@ -52,6 +53,7 @@ export async function updateArticleCategory(id: number, formData: FormData) {
 
 export async function deleteArticleCategory(id: number) {
   try {
+    await requirePermission("article_categories", "delete");
     await articleCategoryService.delete(id);
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
@@ -87,6 +89,8 @@ export async function getArticleCount(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteArticleCategories(ids: number[]) {
+  await requirePermission("article_categories", "delete");
+  assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map((id) => articleCategoryService.delete(id)),
   );

@@ -8,9 +8,9 @@
 import { generateNKeysBetween } from "fractional-indexing";
 
 const D1_BASE_URL =
-  process.env.NEXT_PUBLIC_D1_API_URL ||
-  "https://cloudflare-d1-rest-api.shweloader.workers.dev";
-const D1_API_TOKEN = process.env.D1_API_TOKEN || "";
+  process.env.CLOUDFLARE_WORKER_API_URL ||
+  "https://api.staging.shweloader.com.mm";
+const D1_API_TOKEN = process.env.CLOUDFLARE_WORKER_API_TOKEN || "";
 
 interface QueryResult<T> {
   success: boolean;

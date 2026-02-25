@@ -14,6 +14,8 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AuthSessionProvider } from '@/components/providers/session-provider';
+import { PermissionsProvider } from '@/components/providers/permissions-provider';
+import { PusherProvider } from '@/components/providers/pusher-provider';
 
 export default function DashboardLayout({
   children,
@@ -22,6 +24,8 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthSessionProvider>
+      <PermissionsProvider>
+      <PusherProvider>
       <SidebarProvider>
         <a
           href="#main-content"
@@ -32,11 +36,13 @@ export default function DashboardLayout({
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
-          <main id="main-content" className="flex flex-1 flex-col p-6">
+          <main id="main-content" className="flex min-w-0 flex-1 flex-col p-6">
             {children}
           </main>
         </SidebarInset>
       </SidebarProvider>
+      </PusherProvider>
+      </PermissionsProvider>
     </AuthSessionProvider>
   );
 }

@@ -888,10 +888,9 @@ src/components/features/
 │       └── row-actions.tsx              # Delete with linked count warnings
 │
 └── brands/
-    ├── columns.tsx                      # Columns with BadgeList overflow (+X more tooltip)
+    ├── brand-card.tsx                   # Brand card component for card-based layout
     ├── brands-client.tsx                # Client with multi-junction bulk delete
-    ├── brand-form.tsx                   # Form with 2 MultiSelect (categories + sub-categories)
-    └── row-actions.tsx                  # Delete with detailed linked count breakdown
+    └── brand-form.tsx                   # Form with 2 MultiSelect (categories + sub-categories)
 ```
 
 ### Component Pattern Per Feature

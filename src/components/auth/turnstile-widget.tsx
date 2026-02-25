@@ -55,7 +55,7 @@ export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>
         callback: (token: string) => onTokenChange(token),
         'expired-callback': () => onTokenChange(''),
         'error-callback': () => onTokenChange(''),
-        theme: 'auto',
+        theme: 'light',
         size: 'normal',
       });
     }, [onTokenChange]);

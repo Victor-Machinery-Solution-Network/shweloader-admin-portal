@@ -3,8 +3,8 @@
 import bcrypt from "bcryptjs";
 import { adminUserService } from "@/lib/services/admin";
 import { d1 } from "@/lib/api/d1-client";
-import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage } from "@/lib/actions/utils";
+import { CACHE_TAGS, PRIMARY_ADMIN_ID, SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
+import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { AdminWithRole } from "@/types/admin";
 import type { Role } from "@/types/role";
@@ -30,8 +30,9 @@ export async function getAssignableRoles(): Promise<Role[]> {
   const result = await d1.query<Role>(
     `SELECT role_id, name, description, created_by, created_at
      FROM role
-     WHERE name != 'Super Admin'
+     WHERE role_id != ?
      ORDER BY name ASC`,
+    [SUPER_ADMIN_ROLE_ID],
   );
   return result.results;
 }
@@ -58,6 +59,13 @@ export async function createAdmin(formData: FormData) {
   }
 
   try {
+    await requirePermission("admin_users", "create");
+
+    // Prevent assigning the Super Admin role via form manipulation
+    if (Number(roleId) === SUPER_ADMIN_ROLE_ID) {
+      return { success: false, error: "Cannot assign the Super Admin role" };
+    }
+
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     await adminUserService.create({
@@ -95,6 +103,13 @@ export async function updateAdmin(userId: number, formData: FormData) {
   }
 
   try {
+    await requirePermission("admin_users", "edit");
+
+    // Prevent assigning the Super Admin role via form manipulation
+    if (Number(roleId) === SUPER_ADMIN_ROLE_ID) {
+      return { success: false, error: "Cannot assign the Super Admin role" };
+    }
+
     const updateData: Record<string, string | number | null> = {
       username: username.trim(),
       email: email.trim().toLowerCase(),
@@ -114,7 +129,7 @@ export async function updateAdmin(userId: number, formData: FormData) {
 
     await adminUserService.update(userId, updateData);
 
-    invalidateTag(CACHE_TAGS.ADMINS);
+    invalidateTag(CACHE_TAGS.ADMINS, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -126,6 +141,7 @@ export async function updateAdmin(userId: number, formData: FormData) {
 
 export async function toggleAdminActive(userId: number) {
   try {
+    await requirePermission("admin_users", "edit");
     await d1.query(
       "UPDATE admin_user SET active = 1 - active WHERE user_id = ?",
       [userId],
@@ -142,8 +158,8 @@ export async function toggleAdminActive(userId: number) {
 
 export async function deleteAdmin(userId: number) {
   try {
-    // Guard: don't delete the seed admin (user_id = 1)
-    if (userId === 1) {
+    await requirePermission("admin_users", "delete");
+    if (userId === PRIMARY_ADMIN_ID) {
       return { success: false, error: "Cannot delete the primary admin" };
     }
     await adminUserService.delete(userId);
@@ -158,9 +174,10 @@ export async function deleteAdmin(userId: number) {
 }
 
 export async function deleteAdmins(ids: number[]) {
+  await requirePermission("admin_users", "delete");
   const results = await Promise.allSettled(
     ids.map((id) => {
-      if (id === 1) return Promise.reject(new Error("Cannot delete the primary admin"));
+      if (id === PRIMARY_ADMIN_ID) return Promise.reject(new Error("Cannot delete the primary admin"));
       return adminUserService.delete(id);
     }),
   );

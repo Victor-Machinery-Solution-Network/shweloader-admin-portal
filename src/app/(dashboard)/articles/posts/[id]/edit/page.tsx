@@ -7,6 +7,7 @@ import {
 } from "@/lib/cache";
 import { ArticleEditor } from "@/components/features/articles/posts/article-editor";
 import { EditorSkeleton } from "../../new/skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Edit Article",
@@ -24,7 +25,9 @@ export default function EditArticlePage({
 }) {
   return (
     <Suspense fallback={<EditorSkeleton />}>
-      <EditArticleContent params={params} />
+      <PermissionGate feature="articles">
+        <EditArticleContent params={params} />
+      </PermissionGate>
     </Suspense>
   );
 }

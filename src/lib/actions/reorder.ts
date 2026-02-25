@@ -3,7 +3,7 @@
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { invalidateTag } from "@/lib/cache-invalidation";
-import { getErrorMessage } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { keyBetween } from "@/lib/utils/display-order";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -55,6 +55,7 @@ export async function updateDisplayOrder(
   table: OrderableTable,
   id: number,
   newKey: string,
+  feature: string,
   scopeId?: number,
 ) {
   const config = ORDERABLE_TABLES[table];
@@ -63,6 +64,7 @@ export async function updateDisplayOrder(
   }
 
   try {
+    await requirePermission(feature, "edit");
     if (!newKey || !/^[0-9A-Za-z]+$/.test(newKey)) {
       return { success: false, error: "Invalid display order key" };
     }

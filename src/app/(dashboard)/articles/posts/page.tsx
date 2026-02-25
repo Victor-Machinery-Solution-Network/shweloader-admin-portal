@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import {
   getArticlesWithDetails,
   getArticleStatusTypes,
@@ -22,7 +23,9 @@ export default function PostsPage() {
         description="Manage article posts for the website"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <PostsContent />
+        <PermissionGate feature="articles">
+          <PostsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

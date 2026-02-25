@@ -1,27 +1,14 @@
 "use server";
 
 import { d1 } from "@/lib/api/d1-client";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { processFileWithOriginalName, deleteFile } from "@/lib/actions/upload-helpers";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 // ─── Carousel Image Actions ─────────────────────────────────────────────────
-
-export async function getCarouselImages(
-  carouselId: number,
-): Promise<CarouselImageWithDetails[]> {
-  const { results } = await d1.query<CarouselImageWithDetails>(
-    `SELECT ci.*, i.image_url
-     FROM carousel_image ci
-     JOIN image i ON ci.image_id = i.image_id
-     WHERE ci.carousel_id = ?
-     ORDER BY ci.display_order ASC, ci.added_at ASC`,
-    [carouselId],
-  );
-  return results;
-}
 
 export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]> {
   const { results } = await d1.query<CarouselImageWithDetails>(
@@ -35,21 +22,27 @@ export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]
 
 export async function addCarouselImage(
   carouselId: number,
-  imageUrl: string,
-  linkUrl?: string,
+  formData: FormData,
 ) {
-  if (!imageUrl?.trim()) {
-    return { success: false, error: "Image URL is required" };
-  }
-
   try {
+    // Upload file to R2
+    const imageKey = await processFileWithOriginalName(
+      formData, "image", "carousels/",
+    );
+
+    if (!imageKey) {
+      return { success: false, error: "Image file is required" };
+    }
+
+    const linkUrl = (formData.get("link_url") as string) || null;
+
     // Parallel: get user, create image record, and get next display_order
     const [added_by, { results: imageResults }, nextOrder] =
       await Promise.all([
-        getCurrentUserId(),
+        requirePermission("carousels", "create"),
         d1.create("image", {
-          image_url: imageUrl.trim(),
-          uploaded_by: null, // will be set by the DB default if needed
+          image_url: imageKey,
+          uploaded_by: null,
         }),
         getNextDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
@@ -60,7 +53,7 @@ export async function addCarouselImage(
     await d1.query(
       `INSERT INTO carousel_image (carousel_id, image_id, display_order, added_by, active, link_url)
        VALUES (?, ?, ?, ?, 1, ?)`,
-      [carouselId, imageId, nextOrder, added_by, linkUrl || null],
+      [carouselId, imageId, nextOrder, added_by, linkUrl],
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
@@ -78,10 +71,23 @@ export async function removeCarouselImage(
   imageId: number,
 ) {
   try {
+    await requirePermission("carousels", "delete");
+    // Get image key for R2 cleanup
+    const { results } = await d1.query<{ image_url: string }>(
+      "SELECT image_url FROM image WHERE image_id = ?",
+      [imageId],
+    );
+    const imageKey = results[0]?.image_url;
+
+    // Delete junction record
     await d1.query(
       "DELETE FROM carousel_image WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],
     );
+
+    // Delete from R2
+    await deleteFile(imageKey);
+
     invalidateTag(CACHE_TAGS.CAROUSELS);
     return { success: true };
   } catch (error) {
@@ -98,6 +104,7 @@ export async function updateCarouselImageLink(
   linkUrl: string | null,
 ) {
   try {
+    await requirePermission("carousels", "edit");
     await d1.query(
       "UPDATE carousel_image SET link_url = ? WHERE carousel_id = ? AND image_id = ?",
       [linkUrl, carouselId, imageId],
@@ -117,6 +124,7 @@ export async function toggleCarouselImageActive(
   imageId: number,
 ) {
   try {
+    await requirePermission("carousels", "edit");
     await d1.query(
       "UPDATE carousel_image SET active = 1 - active WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],

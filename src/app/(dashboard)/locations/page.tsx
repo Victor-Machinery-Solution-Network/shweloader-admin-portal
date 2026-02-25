@@ -3,9 +3,16 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
-import { getLocations } from "@/lib/cache";
-import { getListingCount } from "@/lib/actions/location";
+import { getStateRegions, getDistricts } from "@/lib/cache";
+import {
+  getTownshipsWithParents,
+  getDistrictsWithParents,
+  getListingCount,
+  getDistrictCount,
+  getTownshipCount,
+} from "@/lib/actions/location";
 import { LocationsClient } from "@/components/features/locations/locations-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 
 export const metadata = {
@@ -16,9 +23,11 @@ export const metadata = {
 export default function LocationsPage() {
   return (
     <>
-      <PageHeader title="Locations" description="Manage locations" />
+      <PageHeader title="Locations" description="Manage Myanmar locations (State/Region, District, Township)" />
       <Suspense fallback={<DataTableSkeleton />}>
-        <LocationsContent />
+        <PermissionGate feature="locations">
+          <LocationsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );
@@ -29,12 +38,28 @@ async function LocationsContent() {
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag(CACHE_TAGS.LOCATIONS);
 
-  const locations = await getLocations();
-  const linkedCounts = await getListingCount(
-    locations.map((l) => l.location_id),
-  );
+  const [townships, stateRegions, districts, districtsWithParents] = await Promise.all([
+    getTownshipsWithParents(),
+    getStateRegions(),
+    getDistricts(),
+    getDistrictsWithParents(),
+  ]);
+
+  const [listingCounts, districtCounts, townshipCounts] = await Promise.all([
+    getListingCount(),
+    getDistrictCount(),
+    getTownshipCount(),
+  ]);
 
   return (
-    <LocationsClient locations={locations} linkedCounts={linkedCounts} />
+    <LocationsClient
+      townships={townships}
+      stateRegions={stateRegions}
+      districts={districts}
+      districtsWithParents={districtsWithParents}
+      listingCounts={listingCounts}
+      districtCounts={districtCounts}
+      townshipCounts={townshipCounts}
+    />
   );
 }

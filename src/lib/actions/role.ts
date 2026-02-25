@@ -2,8 +2,8 @@
 
 import { roleService } from "@/lib/services/role";
 import { d1 } from "@/lib/api/d1-client";
-import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { CACHE_TAGS, SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { RoleWithPermissionCount, FeaturePermission } from "@/types/role";
 
@@ -28,11 +28,13 @@ export async function getRolesWithPermissionCount(): Promise<
 export async function getAllFeaturePermissions(): Promise<FeaturePermission[]> {
   const result = await d1.query<FeaturePermission>(
     `SELECT fp.feature_permission_id, fp.feature_id, fp.permission_id,
-            f.name as feature_name, p.name as permission_name
+            f.name AS feature_name, p.name AS permission_name,
+            f.group_name, f.display_order AS feature_display_order,
+            p.display_order AS permission_display_order
      FROM feature_permission fp
      JOIN feature f ON fp.feature_id = f.feature_id
      JOIN permission p ON fp.permission_id = p.permission_id
-     ORDER BY f.name, p.name`,
+     ORDER BY f.display_order, p.display_order`,
   );
   return result.results;
 }
@@ -54,7 +56,7 @@ export async function getAllRolePermissionMap(): Promise<
 }
 
 /** Get the feature_permission_ids assigned to a role */
-export async function getRolePermissionIds(
+async function getRolePermissionIds(
   roleId: number,
 ): Promise<number[]> {
   const result = await d1.query<{ feature_permission_id: number }>(
@@ -105,7 +107,7 @@ export async function createRole(formData: FormData) {
   }
 
   try {
-    const created_by = await getCurrentUserId();
+    const created_by = await requirePermission("roles", "create");
 
     await roleService.create({
       name: name.trim(),
@@ -128,7 +130,7 @@ export async function createRole(formData: FormData) {
       }
     }
 
-    invalidateTag(CACHE_TAGS.ROLES);
+    invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -148,6 +150,7 @@ export async function updateRole(roleId: number, formData: FormData) {
   }
 
   try {
+    const grantedBy = await requirePermission("roles", "edit");
     await roleService.update(roleId, {
       name: name.trim(),
       description: description?.trim() || null,
@@ -155,11 +158,10 @@ export async function updateRole(roleId: number, formData: FormData) {
 
     if (permissionIdsRaw) {
       const permissionIds = JSON.parse(permissionIdsRaw) as number[];
-      const grantedBy = await getCurrentUserId();
       await syncRolePermissions(roleId, permissionIds, grantedBy);
     }
 
-    invalidateTag(CACHE_TAGS.ROLES);
+    invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -171,13 +173,13 @@ export async function updateRole(roleId: number, formData: FormData) {
 
 export async function deleteRole(roleId: number) {
   try {
-    const role = await roleService.getById(roleId);
-    if (role?.name === "Super Admin") {
+    await requirePermission("roles", "delete");
+    if (roleId === SUPER_ADMIN_ROLE_ID) {
       return { success: false, error: "The Super Admin role cannot be deleted" };
     }
 
     await roleService.delete(roleId);
-    invalidateTag(CACHE_TAGS.ROLES);
+    invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -188,10 +190,11 @@ export async function deleteRole(roleId: number) {
 }
 
 export async function deleteRoles(ids: number[]) {
+  await requirePermission("roles", "delete");
+  assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map(async (id) => {
-      const role = await roleService.getById(id);
-      if (role?.name === "Super Admin") {
+      if (id === SUPER_ADMIN_ROLE_ID) {
         throw new Error("The Super Admin role cannot be deleted");
       }
       return roleService.delete(id);
@@ -203,7 +206,7 @@ export async function deleteRoles(ids: number[]) {
     .map((r) => getErrorMessage(r.reason, "Failed to delete role"));
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
-  invalidateTag(CACHE_TAGS.ROLES);
+  invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
 
   if (errors.length > 0) {
     return {

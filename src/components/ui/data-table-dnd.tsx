@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -32,7 +33,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SortableRowContext } from "./data-table";
+import {
+  SortableRowContext,
+  PINNED_LEFT,
+  PINNED_RIGHT,
+  getStickyStyles,
+  getPinEdge,
+} from "./data-table";
 
 // --- SortableRow ---
 function SortableRow({
@@ -130,62 +137,97 @@ function DndTable({
       >
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header, headerIdx) => {
-                  const hasFixedSize = header.column.columnDef.maxSize !== undefined && header.column.columnDef.maxSize < 150;
-                  const isLast = headerIdx === headerGroup.headers.length - 1;
-                  return (
-                    <TableHead
-                      key={header.id}
-                      style={{
-                        ...(hasFixedSize && {
-                          width: header.column.getSize(),
-                          padding: headerIdx === 0 ? '1rem' : '0 0.25rem',
-                        }),
-                        ...(isLast && { paddingRight: '1rem' }),
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
+            {table.getHeaderGroups().map((headerGroup) => {
+              const visibleIds = headerGroup.headers.map((h) => h.column.id);
+              return (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header, headerIdx) => {
+                    const colId = header.column.id;
+                    const isPinned = PINNED_LEFT.has(colId) || PINNED_RIGHT.has(colId);
+                    const stickyStyle = getStickyStyles(colId, visibleIds, true);
+                    const pinEdge = getPinEdge(colId, visibleIds);
+
+                    const hasFixedSize =
+                      !isPinned &&
+                      header.column.columnDef.maxSize !== undefined &&
+                      header.column.columnDef.maxSize < 150;
+                    const isLast = headerIdx === headerGroup.headers.length - 1;
+                    return (
+                      <TableHead
+                        key={header.id}
+                        data-pin-edge={pinEdge}
+                        className={cn(isPinned && "bg-muted")}
+                        style={{
+                          ...(hasFixedSize && {
+                            width: header.column.getSize(),
+                            padding: headerIdx === 0 ? '1rem' : '0 0.25rem',
+                          }),
+                          ...(isLast && !isPinned && { paddingRight: '1rem' }),
+                          ...stickyStyle,
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <SortableRow
-                  key={row.id}
-                  id={getRowId(row.original)}
-                  data-state={row.getIsSelected() ? "selected" : undefined}
-                >
-                  {row.getVisibleCells().map((cell, cellIdx, cells) => {
-                    const hasFixedSize = cell.column.columnDef.maxSize !== undefined && cell.column.columnDef.maxSize < 150;
-                    const isLast = cellIdx === cells.length - 1;
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        style={{
-                          ...(hasFixedSize && {
-                            width: cell.column.getSize(),
-                            padding: cellIdx === 0 ? '1rem' : '0 0.25rem',
-                          }),
-                          ...(isLast && { paddingRight: '1rem' }),
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    );
-                  })}
-                </SortableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const visibleCells = row.getVisibleCells();
+                const visibleIds = visibleCells.map((c) => c.column.id);
+                return (
+                  <SortableRow
+                    key={row.id}
+                    id={getRowId(row.original)}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                  >
+                    {visibleCells.map((cell, cellIdx) => {
+                      const colId = cell.column.id;
+                      const isPinned = PINNED_LEFT.has(colId) || PINNED_RIGHT.has(colId);
+                      const stickyStyle = getStickyStyles(colId, visibleIds, false);
+                      const pinEdge = getPinEdge(colId, visibleIds);
+
+                      const hasFixedSize =
+                        !isPinned &&
+                        cell.column.columnDef.maxSize !== undefined &&
+                        cell.column.columnDef.maxSize < 150;
+                      const isLast = cellIdx === visibleCells.length - 1;
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          data-pin-edge={pinEdge}
+                          className={cn(
+                            isPinned && [
+                              "bg-background",
+                              "group-hover:bg-[color-mix(in_srgb,var(--muted)_50%,var(--background))]",
+                              "group-data-[state=selected]:bg-muted",
+                            ],
+                          )}
+                          style={{
+                            ...(hasFixedSize && {
+                              width: cell.column.getSize(),
+                              padding: cellIdx === 0 ? '1rem' : '0 0.25rem',
+                            }),
+                            ...(isLast && !isPinned && { paddingRight: '1rem' }),
+                            ...stickyStyle,
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      );
+                    })}
+                  </SortableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={colCount} className="h-24 text-center">

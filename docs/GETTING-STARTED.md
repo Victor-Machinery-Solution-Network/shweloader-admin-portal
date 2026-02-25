@@ -50,7 +50,7 @@ src/
 - `/dashboard` - Redirects to `/dashboard/overview`
 - `/dashboard/overview` - Overview page with UI component showcase
 - `/dashboard/analytics` - Analytics dashboard
-- `/admins`, `/brands`, `/customers`, `/equipment`, `/listings`, `/locations`, `/partners`, `/articles`, `/enquiries`, `/attachments`, `/carousel-images`, `/announcement-bar`, `/roles-permissions`, `/settings` - Feature pages
+- `/admins`, `/brands`, `/users`, `/equipment`, `/listings`, `/locations`, `/partners`, `/articles`, `/enquiries`, `/attachments`, `/carousel-images`, `/announcement-bar`, `/roles-permissions`, `/settings` - Feature pages
 
 ### ✅ Components
 - **Layout**: Sidebar navigation, header, auth layout
@@ -72,131 +72,8 @@ This project uses **Cloudflare D1** via REST API. Configuration:
 
 ```bash
 # .env.local
-NEXT_PUBLIC_D1_API_URL=https://cloudflare-d1-rest-api.shweloader.workers.dev
-D1_API_TOKEN=your-secret-token
-```
-
-### 2. Create Entity Services
-
-Create type-safe services for your database tables:
-
-```typescript
-// src/lib/services/brands.ts
-import { createService } from '@/lib/api';
-
-export interface Brand {
-  id: number;
-  name: string;
-  logo_url: string | null;
-  status: 'active' | 'inactive';
-  created_at: string;
-}
-
-export const brandService = createService<Brand>('brands');
-```
-
-### 3. Add Authentication
-
-Recommended: NextAuth.js v5 (Auth.js)
-```bash
-pnpm add next-auth@beta
-```
-
-Create [src/auth.ts](../src/auth.ts) and configure providers.
-
-### 4. Connect Data
-
-Use the D1 client in your pages and actions:
-
-```typescript
-// src/app/(dashboard)/brands/page.tsx
-import { brandService } from '@/lib/services/brands';
-
-export default async function BrandsPage() {
-  const brands = await brandService.list({ sort_by: 'name' });
-  return <BrandTable brands={brands} />;
-}
-```
-
-### 4. Build Features
-
-Use the existing patterns:
-
-**Create a new page:**
-```bash
-# Create directory
-mkdir -p src/app/\(dashboard\)/products
-
-# Create page
-touch src/app/\(dashboard\)/products/page.tsx
-```
-
-**Add Server Action:**
-```typescript
-// src/lib/actions/products.ts
-'use server'
-export async function createProduct(data: FormData) {
-  // Implementation
-}
-```
-
-**Create feature component:**
-```typescript
-// src/components/features/products/product-form.tsx
-'use client'
-export function ProductForm() {
-  // Implementation
-}
-```
-
-## Development Tips
-
-### Server vs Client Components
-
-**Use Server Components (default) for:**
-- Data fetching
-- Database access
-- Rendering static content
-- SEO metadata
-
-**Use Client Components (`'use client'`) for:**
-- Event handlers (onClick, onChange)
-- React hooks (useState, useEffect)
-- Browser APIs (localStorage, window)
-
-### Data Fetching Pattern
-
-```typescript
-// ✅ Server Component - Using D1 service
-import { brandService } from '@/lib/services/brands';
-
-export default async function BrandsPage() {
-  const brands = await brandService.list({ limit: 20 });
-  return <BrandList brands={brands} />;
-}
-
-// ✅ Server Action - Mutations with D1
-'use server'
-import { brandService } from '@/lib/services/brands';
-
-export async function deleteBrand(id: number) {
-  await brandService.delete(id);
-  revalidatePath('/brands');
-}
-```
-
-### Avoid Waterfalls
-
-```typescript
-// ❌ Waterfall - slow
-const user = await getUser(id);
-const posts = await getPosts(user.id);
-
-// ✅ Parallel - fast
-const [user, posts] = await Promise.all([
-  getUser(id),
-  getPosts(id)
-]);
+CLOUDFLARE_WORKER_API_URL=https://api.staging.shweloader.com.mm
+CLOUDFLARE_WORKER_API_TOKEN=your-secret-token
 ```
 
 ## Common Tasks
@@ -211,21 +88,8 @@ const [user, posts] = await Promise.all([
 2. Add server actions in `src/lib/actions/`
 3. Add types in `src/types/`
 
-### Style components
-- Use Tailwind CSS classes
-- Use shadcn/ui components from `src/components/ui/`
-- Use `cn()` utility for conditional classes
-
 ## Resources
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [React 19 Documentation](https://react.dev)
-- [shadcn/ui](https://ui.shadcn.com)
-- [Tailwind CSS](https://tailwindcss.com)
-
-## Need Help?
-
-- Check [DATA-FETCHING.md](./DATA-FETCHING.md) for D1 API usage
-- Check [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed patterns
-- Review example implementations in `src/app/(dashboard)/`
-- Follow Next.js best practices from the skill documentation
+- [DATA-FETCHING.md](./DATA-FETCHING.md) for D1 API usage and caching patterns
+- [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architectural patterns
+- [COMPONENTS.md](./COMPONENTS.md) for component documentation

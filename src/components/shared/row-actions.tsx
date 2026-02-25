@@ -102,5 +102,3 @@ export function RowActions({ actions }: RowActionsProps) {
     </>
   );
 }
-
-export type { ActionItem };

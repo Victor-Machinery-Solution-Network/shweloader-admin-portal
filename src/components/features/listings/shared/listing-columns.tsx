@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { assetUrl } from "@/lib/r2-url";
+import { formatDate } from "@/lib/utils";
 import {
   Eye,
   EyeOff,
@@ -46,6 +48,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { ListingRowActions } from "./listing-row-actions";
 import {
   toggleSaleHidden,
@@ -248,37 +251,35 @@ function FeatureToggle({
 
 // --- Shared column factories ---
 
-function thumbnailColumn<T extends ListingBase>(): ColumnDef<T> {
-  return {
-    id: "thumbnail",
-    header: "",
-    cell: ({ row }) => {
-      const url = row.original.thumbnail_url;
-      return url ? (
-        <div className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
-          <Image src={url} alt="" width={44} height={44} className="size-full object-cover" unoptimized />
-        </div>
-      ) : (
-        <div className="size-11 shrink-0 rounded-lg border bg-muted" />
-      );
-    },
-    size: 56,
-    minSize: 56,
-    maxSize: 56,
-    enableResizing: false,
-  };
-}
-
-function modelColumn<T extends ListingBase>(): ColumnDef<T> {
+/** Combined thumbnail + model name + custom ID — the "hero" cell of every listing table. */
+function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
   return {
     accessorKey: "model_name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Model" />
+      <DataTableColumnHeader column={column} title="Product" />
     ),
-    cell: ({ row }) => (
-      <span className="font-medium">{row.original.model_name ?? "\u2014"}</span>
-    ),
-    minSize: 120,
+    cell: ({ row }) => {
+      const src = assetUrl(row.original.thumbnail_url);
+      const customId = (row.original as Record<string, unknown>).custom_id as string | null;
+      return (
+        <div className="flex items-center gap-3">
+          {src ? (
+            <div className="size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
+              <Image src={src} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+            </div>
+          ) : (
+            <div className="size-10 shrink-0 rounded-lg border bg-muted" />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{row.original.model_name ?? "\u2014"}</p>
+            {customId && (
+              <p className="truncate text-xs text-muted-foreground font-mono">{customId}</p>
+            )}
+          </div>
+        </div>
+      );
+    },
+    minSize: 200,
   };
 }
 
@@ -297,17 +298,25 @@ function partnerColumn<T extends ListingBase>(): ColumnDef<T> {
 function productTypeColumn<T extends ListingBase>(): ColumnDef<T> {
   return {
     id: "product_type",
+    accessorFn: (row) => row.product_type,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Type" />
     ),
-    cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs capitalize">
-        {row.original.product_type}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const type = row.original.product_type;
+      return (
+        <Badge
+          variant={type === "equipment" ? "equipment" : "attachment"}
+          className="text-xs capitalize"
+        >
+          {type}
+        </Badge>
+      );
+    },
   };
 }
 
+/** Stacked dual-currency price: MMK bold on top, USD muted below. */
 function priceColumn<T extends ListingBase>(): ColumnDef<T> {
   return {
     id: "price",
@@ -320,23 +329,21 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
       const hasUsd = usd_price != null;
 
       if (!hasMmk && !hasUsd) {
-        return (
-          <span className="text-sm text-muted-foreground">{"\u2014"}</span>
-        );
+        return <span className="text-muted-foreground">{"\u2014"}</span>;
       }
 
       return (
-        <div className="text-sm tabular-nums">
+        <div className="tabular-nums">
           {hasMmk && (
-            <span className="font-medium">
-              {Number(mmk_price).toLocaleString()} MMK
-            </span>
+            <p className="text-sm font-medium">
+              {Number(mmk_price).toLocaleString()}{" "}
+              <span className="text-muted-foreground font-normal">MMK</span>
+            </p>
           )}
           {hasUsd && (
-            <span className="text-muted-foreground ml-1.5">
-              {hasMmk ? "(" : ""}${Number(usd_price).toLocaleString()}
-              {hasMmk ? ")" : ""}
-            </span>
+            <p className="text-xs text-muted-foreground">
+              ${Number(usd_price).toLocaleString()}
+            </p>
           )}
         </div>
       );
@@ -344,12 +351,153 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
   };
 }
 
+function listedDateColumn<T extends { approved_at: string | null }>(): ColumnDef<T> {
+  return {
+    accessorKey: "approved_at",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Listed" />
+    ),
+    cell: ({ row }) => {
+      const date = row.original.approved_at;
+      return (
+        <span className="text-muted-foreground text-sm tabular-nums">
+          {date ? formatDate(date) : "\u2014"}
+        </span>
+      );
+    },
+  };
+}
+
+// --- Sale Actions Cell ---
+
+function SaleActionsCell({ row }: { row: { original: SaleListingWithDetails } }) {
+  const canEdit = useHasPermission("sale_listings", "edit");
+  const { id, is_hidden, is_sold_out, hide_price, featured_id } = row.original;
+  return (
+    <TooltipProvider>
+      <div className="flex items-center justify-end gap-1">
+        {canEdit && (
+          <>
+            <HiddenToggle
+              isHidden={is_hidden === 1}
+              onToggle={async () => {
+                const result = await toggleSaleHidden(id);
+                if (result.success) {
+                  toast.success(
+                    result.is_hidden ? "Listing hidden" : "Listing visible",
+                  );
+                } else {
+                  toast.error(result.error ?? "Failed to toggle");
+                }
+              }}
+            />
+            <HidePriceToggle
+              hidePrice={hide_price === 1}
+              onToggle={async () => {
+                const result = await toggleSaleHidePrice(id);
+                if (result.success) {
+                  toast.success(
+                    result.hide_price ? "Price hidden" : "Price visible",
+                  );
+                } else {
+                  toast.error(result.error ?? "Failed to toggle");
+                }
+              }}
+            />
+            <SoldOutToggle isSoldOut={is_sold_out === 1} listingId={id} />
+            <FeatureToggle
+              featuredId={featured_id}
+              listingType="sale"
+              listingId={id}
+            />
+          </>
+        )}
+        <ListingRowActions
+          listing={row.original}
+          pageType="sale"
+        />
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// --- Rent Actions Cell ---
+
+function RentActionsCell({ row }: { row: { original: RentListingWithDetails } }) {
+  const canEdit = useHasPermission("rent_listings", "edit");
+  const { id, is_hidden, hide_price, featured_id } = row.original;
+  return (
+    <TooltipProvider>
+      <div className="flex items-center justify-end gap-1">
+        {canEdit && (
+          <>
+            <HiddenToggle
+              isHidden={is_hidden === 1}
+              onToggle={async () => {
+                const result = await toggleRentHidden(id);
+                if (result.success) {
+                  toast.success(
+                    result.is_hidden ? "Listing hidden" : "Listing visible",
+                  );
+                } else {
+                  toast.error(result.error ?? "Failed to toggle");
+                }
+              }}
+            />
+            <HidePriceToggle
+              hidePrice={hide_price === 1}
+              onToggle={async () => {
+                const result = await toggleRentHidePrice(id);
+                if (result.success) {
+                  toast.success(
+                    result.hide_price ? "Price hidden" : "Price visible",
+                  );
+                } else {
+                  toast.error(result.error ?? "Failed to toggle");
+                }
+              }}
+            />
+            <FeatureToggle
+              featuredId={featured_id}
+              listingType="rent"
+              listingId={id}
+            />
+          </>
+        )}
+        <ListingRowActions
+          listing={row.original}
+          pageType="rent"
+        />
+      </div>
+    </TooltipProvider>
+  );
+}
+
 // --- Sale Columns ---
+
+// Filter-only columns (hidden via initialColumnVisibility on the DataTable)
+function saleFilterColumns(): ColumnDef<SaleListingWithDetails>[] {
+  return [
+    { id: "visibility", accessorFn: (row) => row.is_hidden === 1 ? "Hidden" : "Visible", enableSorting: false },
+    { id: "sold_status", accessorFn: (row) => row.is_sold_out === 1 ? "Sold" : "Available", enableSorting: false },
+    { id: "is_featured", accessorFn: (row) => row.featured_id != null ? "Yes" : "No", enableSorting: false },
+    { id: "mmk_price", accessorFn: (row) => row.mmk_price, enableSorting: false },
+    { id: "created_at", accessorFn: (row) => row.created_at, enableSorting: false },
+  ];
+}
+
+function rentFilterColumns(): ColumnDef<RentListingWithDetails>[] {
+  return [
+    { id: "visibility", accessorFn: (row) => row.is_hidden === 1 ? "Hidden" : "Visible", enableSorting: false },
+    { id: "is_featured", accessorFn: (row) => row.featured_id != null ? "Yes" : "No", enableSorting: false },
+    { id: "mmk_price", accessorFn: (row) => row.mmk_price, enableSorting: false },
+    { id: "created_at", accessorFn: (row) => row.created_at, enableSorting: false },
+  ];
+}
 
 export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
-    thumbnailColumn<SaleListingWithDetails>(),
-    modelColumn<SaleListingWithDetails>(),
+    productInfoColumn<SaleListingWithDetails>(),
     partnerColumn<SaleListingWithDetails>(),
     productTypeColumn<SaleListingWithDetails>(),
     {
@@ -360,62 +508,22 @@ export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
       cell: ({ row }) => {
         const condition = row.original.condition_name;
         return condition ? (
-          <span className="text-sm">{condition}</span>
+          <Badge variant="outline" className="text-xs font-normal">
+            {condition}
+          </Badge>
         ) : (
-          <span className="text-muted-foreground text-sm">{"\u2014"}</span>
+          <span className="text-muted-foreground">{"\u2014"}</span>
         );
       },
     },
     priceColumn<SaleListingWithDetails>(),
+    listedDateColumn<SaleListingWithDetails>(),
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => {
-        const { id, is_hidden, is_sold_out, hide_price, featured_id } = row.original;
-        return (
-          <TooltipProvider>
-            <div className="flex items-center justify-end gap-1">
-              <HiddenToggle
-                isHidden={is_hidden === 1}
-                onToggle={async () => {
-                  const result = await toggleSaleHidden(id);
-                  if (result.success) {
-                    toast.success(
-                      result.is_hidden ? "Listing hidden" : "Listing visible",
-                    );
-                  } else {
-                    toast.error(result.error ?? "Failed to toggle");
-                  }
-                }}
-              />
-              <HidePriceToggle
-                hidePrice={hide_price === 1}
-                onToggle={async () => {
-                  const result = await toggleSaleHidePrice(id);
-                  if (result.success) {
-                    toast.success(
-                      result.hide_price ? "Price hidden" : "Price visible",
-                    );
-                  } else {
-                    toast.error(result.error ?? "Failed to toggle");
-                  }
-                }}
-              />
-              <SoldOutToggle isSoldOut={is_sold_out === 1} listingId={id} />
-              <FeatureToggle
-                featuredId={featured_id}
-                listingType="sale"
-                listingId={id}
-              />
-              <ListingRowActions
-                listing={row.original}
-                pageType="sale"
-              />
-            </div>
-          </TooltipProvider>
-        );
-      },
+      cell: ({ row }) => <SaleActionsCell row={row} />,
     },
+    ...saleFilterColumns(),
   ];
 }
 
@@ -423,58 +531,16 @@ export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
 
 export function createRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
-    thumbnailColumn<RentListingWithDetails>(),
-    modelColumn<RentListingWithDetails>(),
+    productInfoColumn<RentListingWithDetails>(),
     partnerColumn<RentListingWithDetails>(),
     productTypeColumn<RentListingWithDetails>(),
     priceColumn<RentListingWithDetails>(),
+    listedDateColumn<RentListingWithDetails>(),
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => {
-        const { id, is_hidden, hide_price, featured_id } = row.original;
-        return (
-          <TooltipProvider>
-            <div className="flex items-center justify-end gap-1">
-              <HiddenToggle
-                isHidden={is_hidden === 1}
-                onToggle={async () => {
-                  const result = await toggleRentHidden(id);
-                  if (result.success) {
-                    toast.success(
-                      result.is_hidden ? "Listing hidden" : "Listing visible",
-                    );
-                  } else {
-                    toast.error(result.error ?? "Failed to toggle");
-                  }
-                }}
-              />
-              <HidePriceToggle
-                hidePrice={hide_price === 1}
-                onToggle={async () => {
-                  const result = await toggleRentHidePrice(id);
-                  if (result.success) {
-                    toast.success(
-                      result.hide_price ? "Price hidden" : "Price visible",
-                    );
-                  } else {
-                    toast.error(result.error ?? "Failed to toggle");
-                  }
-                }}
-              />
-              <FeatureToggle
-                featuredId={featured_id}
-                listingType="rent"
-                listingId={id}
-              />
-              <ListingRowActions
-                listing={row.original}
-                pageType="rent"
-              />
-            </div>
-          </TooltipProvider>
-        );
-      },
+      cell: ({ row }) => <RentActionsCell row={row} />,
     },
+    ...rentFilterColumns(),
   ];
 }

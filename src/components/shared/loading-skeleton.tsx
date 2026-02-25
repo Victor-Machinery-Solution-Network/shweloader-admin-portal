@@ -70,3 +70,40 @@ export function DataTableSkeleton({
     </div>
   );
 }
+
+/**
+ * Skeleton matching the BrandCard list layout: search bar + card placeholders.
+ */
+export function BrandCardSkeleton({ cards = 4 }: { cards?: number }) {
+  return (
+    <div className="space-y-4">
+      {/* Toolbar: search + add button */}
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-9 w-full max-w-sm" />
+        <Skeleton className="h-9 w-32 ml-auto" />
+      </div>
+
+      {/* Cards */}
+      <div className="space-y-3">
+        {Array.from({ length: cards }).map((_, i) => (
+          <div
+            key={i}
+            className="ring-foreground/10 flex items-center gap-4 rounded-2xl px-5 py-4 ring-1"
+          >
+            <Skeleton className="size-10 shrink-0 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+            <div className="flex flex-1 flex-wrap gap-1.5 pl-4">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <Skeleton key={j} className="h-5 w-24 rounded-full" />
+              ))}
+            </div>
+            <Skeleton className="size-5 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -6,7 +6,8 @@
 
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Bell, User } from 'lucide-react';
+import { NotificationBell } from '@/components/layout/notification-bell';
+import { User } from 'lucide-react';
 
 export function AppHeader() {
   return (
@@ -14,9 +15,7 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <div className="flex flex-1 items-center justify-end">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label="Notifications">
-            <Bell className="h-4 w-4" aria-hidden="true" />
-          </Button>
+          <NotificationBell />
           <Button variant="ghost" size="icon" aria-label="User profile">
             <User className="h-4 w-4" aria-hidden="true" />
           </Button>

@@ -3,6 +3,7 @@
 import { Images } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { cn } from "@/lib/utils";
 import { CarouselImageGrid } from "./carousel-image-grid";
 import type { Carousel, CarouselImageWithDetails } from "@/types/carousel";
 
@@ -36,12 +37,17 @@ export function CarouselClient({ carousels }: CarouselClientProps) {
           {/* Section header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-base font-semibold">{carousel.name}</h2>
-              {carousel.description && (
-                <span className="hidden text-sm text-muted-foreground sm:inline">
-                  {carousel.description}
-                </span>
-              )}
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
+                <Images className={cn("size-4 text-blue-500")} />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">{carousel.name}</h2>
+                {carousel.description && (
+                  <p className="text-xs text-muted-foreground">
+                    {carousel.description}
+                  </p>
+                )}
+              </div>
             </div>
             <Badge variant="secondary">
               {images.length} {images.length === 1 ? "image" : "images"}

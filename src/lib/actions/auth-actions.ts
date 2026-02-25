@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut, isRateLimited } from "@/lib/auth";
+import { signIn, signOut, isRateLimited, AccountDeactivatedError } from "@/lib/auth";
 import { AuthError } from "next-auth";
 
 export interface LoginState {
@@ -76,6 +76,9 @@ export async function loginAction(
       redirect: false,
     });
   } catch (error) {
+    if (error instanceof AccountDeactivatedError) {
+      return { error: "Your account has been deactivated. Please contact an administrator." };
+    }
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":

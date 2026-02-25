@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Plus, Trash2, GripVertical, ImagePlus, Link } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Plus, Trash2, GripVertical, ImagePlus } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -18,13 +18,18 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+export interface GalleryItem {
+  id: string;
+  url?: string;    // existing R2 URL (edit mode)
+  file?: File;     // new file to upload
+  preview: string; // display source (R2 URL or object URL)
+}
+
 interface SortableImageGalleryProps {
-  images: string[];
-  onChange: (images: string[]) => void;
-  /** Pass `undefined` or omit for unlimited. */
+  items: GalleryItem[];
+  onChange: (items: GalleryItem[]) => void;
   maxImages?: number;
 }
 
@@ -32,16 +37,13 @@ interface SortableImageGalleryProps {
 
 function SortableImageCard({
   id,
-  url,
+  preview,
   onRemove,
-  onUrlChange,
 }: {
   id: string;
-  url: string;
+  preview: string;
   onRemove: () => void;
-  onUrlChange: (url: string) => void;
 }) {
-  const [showUrlInput, setShowUrlInput] = useState(!url);
   const {
     attributes,
     listeners,
@@ -65,41 +67,22 @@ function SortableImageCard({
         isDragging && "z-50 shadow-lg ring-2 ring-primary opacity-90",
       )}
     >
-      {/* Image preview or URL input */}
-      {url && !showUrlInput ? (
-        <div className="relative aspect-square w-full">
-          <img
-            src={url}
-            alt=""
-            className="size-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-              (
-                e.target as HTMLImageElement
-              ).nextElementSibling?.classList.remove("hidden");
-            }}
-          />
-          <div className="bg-muted hidden size-full items-center justify-center">
-            <ImagePlus className="text-muted-foreground size-6" aria-hidden="true" />
-          </div>
+      <div className="relative aspect-square w-full">
+        <img
+          src={preview}
+          alt=""
+          className="size-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+            (
+              e.target as HTMLImageElement
+            ).nextElementSibling?.classList.remove("hidden");
+          }}
+        />
+        <div className="bg-muted hidden size-full items-center justify-center">
+          <ImagePlus className="text-muted-foreground size-6" aria-hidden="true" />
         </div>
-      ) : (
-        <div className="flex aspect-square w-full items-center justify-center bg-muted/50 p-2">
-          <div className="w-full space-y-2 text-center">
-            <ImagePlus className="text-muted-foreground mx-auto size-6" aria-hidden="true" />
-            <Input
-              placeholder="Paste image URL\u2026"
-              value={url}
-              onChange={(e) => onUrlChange(e.target.value)}
-              onBlur={() => {
-                if (url) setShowUrlInput(false);
-              }}
-              className="h-7 text-xs"
-              autoFocus
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Overlay controls */}
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -121,19 +104,6 @@ function SortableImageCard({
           <Trash2 className="size-3.5" aria-hidden="true" />
         </button>
       </div>
-
-      {/* Edit URL button (when showing image) */}
-      {url && !showUrlInput && (
-        <div className="absolute inset-x-0 bottom-0 p-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-1 rounded bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70"
-            onClick={() => setShowUrlInput(true)}
-          >
-            <Link className="size-3" aria-hidden="true" /> Edit URL
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -141,7 +111,7 @@ function SortableImageCard({
 // ─── Main Gallery Component ─────────────────────────────────────────────────
 
 export function SortableImageGallery({
-  images,
+  items,
   onChange,
   maxImages,
 }: SortableImageGalleryProps) {
@@ -149,63 +119,66 @@ export function SortableImageGallery({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const [nextId, setNextId] = useState(() => items.length);
 
-  // Each image needs a stable ID for DnD
-  const [nextId, setNextId] = useState(() => images.length);
-  const [ids, setIds] = useState<string[]>(() =>
-    images.map((_, i) => `img-${i}`),
-  );
-
-  // Keep IDs in sync with images array length
-  const currentIds = (() => {
-    if (ids.length >= images.length) return ids.slice(0, images.length);
-    // Need to grow — handled via event handlers, but safety fallback
-    const extra = Array.from(
-      { length: images.length - ids.length },
-      (_, i) => `img-${nextId + i}`,
-    );
-    return [...ids, ...extra];
-  })();
+  // Revoke all file-based object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      itemsRef.current.forEach((item) => {
+        if (item.file) URL.revokeObjectURL(item.preview);
+      });
+    };
+  }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const oldIndex = currentIds.indexOf(active.id as string);
-      const newIndex = currentIds.indexOf(over.id as string);
+      const oldIndex = items.findIndex((item) => item.id === active.id);
+      const newIndex = items.findIndex((item) => item.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newImages = arrayMove([...images], oldIndex, newIndex);
-        const newIds = arrayMove([...currentIds], oldIndex, newIndex);
-        setIds(newIds);
-        onChange(newImages);
+        onChange(arrayMove([...items], oldIndex, newIndex));
       }
     },
-    [images, currentIds, onChange],
+    [items, onChange],
   );
 
-  const handleAdd = useCallback(() => {
-    setIds((prev) => [...prev, `img-${nextId}`]);
-    setNextId((n) => n + 1);
-    onChange([...images, ""]);
-  }, [images, nextId, onChange]);
+  const handleFilesSelected = useCallback(
+    (files: FileList) => {
+      const remaining =
+        maxImages != null ? maxImages - items.length : files.length;
+      const newItems: GalleryItem[] = [];
+      let id = nextId;
+
+      for (let i = 0; i < Math.min(files.length, remaining); i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        newItems.push({
+          id: `img-${id}`,
+          file,
+          preview: URL.createObjectURL(file),
+        });
+        id++;
+      }
+
+      setNextId(id);
+      onChange([...items, ...newItems]);
+    },
+    [items, nextId, maxImages, onChange],
+  );
 
   const handleRemove = useCallback(
     (index: number) => {
-      setIds((prev) => prev.filter((_, i) => i !== index));
-      onChange(images.filter((_, i) => i !== index));
+      const item = items[index];
+      if (item.file) URL.revokeObjectURL(item.preview);
+      onChange(items.filter((_, i) => i !== index));
     },
-    [images, onChange],
-  );
-
-  const handleUrlChange = useCallback(
-    (index: number, url: string) => {
-      const updated = [...images];
-      updated[index] = url;
-      onChange(updated);
-    },
-    [images, onChange],
+    [items, onChange],
   );
 
   return (
@@ -215,23 +188,25 @@ export function SortableImageGallery({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={currentIds} strategy={rectSortingStrategy}>
+        <SortableContext
+          items={items.map((item) => item.id)}
+          strategy={rectSortingStrategy}
+        >
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {currentIds.map((id, index) => (
+            {items.map((item, index) => (
               <SortableImageCard
-                key={id}
-                id={id}
-                url={images[index]}
+                key={item.id}
+                id={item.id}
+                preview={item.preview}
                 onRemove={() => handleRemove(index)}
-                onUrlChange={(url) => handleUrlChange(index, url)}
               />
             ))}
 
             {/* Add button */}
-            {(maxImages == null || images.length < maxImages) && (
+            {(maxImages == null || items.length < maxImages) && (
               <button
                 type="button"
-                onClick={handleAdd}
+                onClick={() => fileInputRef.current?.click()}
                 className="flex aspect-square items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
               >
                 <div className="text-center">
@@ -246,9 +221,22 @@ export function SortableImageGallery({
         </SortableContext>
       </DndContext>
 
-      {images.length > 0 && (
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) handleFilesSelected(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      {items.length > 0 && (
         <p className="text-muted-foreground text-xs">
-          Drag to reorder. {images.length}{maxImages != null ? ` / ${maxImages}` : ""} photos.
+          Drag to reorder. {items.length}
+          {maxImages != null ? ` / ${maxImages}` : ""} photos. Max 10MB each.
         </p>
       )}
     </div>

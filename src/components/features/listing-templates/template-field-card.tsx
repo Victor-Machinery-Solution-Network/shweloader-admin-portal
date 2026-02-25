@@ -1,16 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   GripVertical,
   Trash2,
   ChevronDown,
-  Type,
-  Hash,
-  ChevronDownIcon,
-  ToggleLeft,
   CalendarDays,
-  Link,
+  Asterisk,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -19,6 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Collapsible,
@@ -29,19 +31,20 @@ import { cn } from "@/lib/utils";
 import {
   CUSTOM_FIELD_TYPES,
   FIELD_TYPE_LABELS,
+  FIELD_TYPE_ICONS,
   type CustomFieldDefinition,
   type CustomFieldType,
 } from "@/types/custom-field";
 
-// ─── Field type icons ──────────────────────────────────────────────────────
+// ─── Field type config ─────────────────────────────────────────────────────
 
-const FIELD_TYPE_ICONS: Record<CustomFieldType, React.ComponentType<{ className?: string }>> = {
-  text: Type,
-  number: Hash,
-  dropdown: ChevronDownIcon,
-  boolean: ToggleLeft,
-  date: CalendarDays,
-  url: Link,
+const FIELD_TYPE_COLORS: Record<CustomFieldType, { iconColor: string; iconBg: string }> = {
+  text: { iconColor: "text-blue-500", iconBg: "bg-blue-500/10" },
+  number: { iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10" },
+  dropdown: { iconColor: "text-violet-500", iconBg: "bg-violet-500/10" },
+  boolean: { iconColor: "text-amber-500", iconBg: "bg-amber-500/10" },
+  date: { iconColor: "text-rose-500", iconBg: "bg-rose-500/10" },
+  url: { iconColor: "text-cyan-500", iconBg: "bg-cyan-500/10" },
 };
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ const FIELD_TYPE_ICONS: Record<CustomFieldType, React.ComponentType<{ className?
 interface TemplateFieldCardProps {
   field: CustomFieldDefinition;
   defaultExpanded?: boolean;
+  showLabelError?: boolean;
+  validationAttempt?: number;
   onChange: (updated: CustomFieldDefinition) => void;
   onRemove: () => void;
 }
@@ -56,10 +61,17 @@ interface TemplateFieldCardProps {
 export function TemplateFieldCard({
   field,
   defaultExpanded = false,
+  showLabelError,
+  validationAttempt,
   onChange,
   onRemove,
 }: TemplateFieldCardProps) {
   const [isOpen, setIsOpen] = useState(defaultExpanded);
+
+  // Auto-expand when validation fails and this field has an empty label
+  useEffect(() => {
+    if (showLabelError) setIsOpen(true);
+  }, [validationAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     attributes,
@@ -80,6 +92,7 @@ export function TemplateFieldCard({
   }
 
   const Icon = FIELD_TYPE_ICONS[field.type];
+  const colors = FIELD_TYPE_COLORS[field.type];
 
   return (
     <div
@@ -103,6 +116,15 @@ export function TemplateFieldCard({
             <GripVertical className="size-4" />
           </button>
 
+          <div
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-md",
+              colors.iconBg,
+            )}
+          >
+            <Icon className={cn("size-3.5", colors.iconColor)} />
+          </div>
+
           <CollapsibleTrigger asChild>
             <button
               type="button"
@@ -111,10 +133,9 @@ export function TemplateFieldCard({
               <span className="truncate text-sm font-medium">
                 {field.label || "Untitled field"}
               </span>
-              <Badge variant="secondary" className="shrink-0 text-xs gap-1">
-                <Icon className="size-3" />
+              <span className={cn("shrink-0 text-xs", colors.iconColor)}>
                 {FIELD_TYPE_LABELS[field.type]}
-              </Badge>
+              </span>
               {field.required && (
                 <Badge variant="outline" className="shrink-0 text-xs">
                   Required
@@ -152,7 +173,13 @@ export function TemplateFieldCard({
                 onChange={(e) => updateField({ label: e.target.value })}
                 placeholder="e.g. Engine Hours"
                 autoComplete="off"
+                className={cn(showLabelError && "border-destructive")}
               />
+              {showLabelError && (
+                <p className="text-xs text-destructive">
+                  Field label is required
+                </p>
+              )}
             </div>
 
             {/* Type picker */}
@@ -181,13 +208,20 @@ export function TemplateFieldCard({
               >
                 {CUSTOM_FIELD_TYPES.map((type) => {
                   const TypeIcon = FIELD_TYPE_ICONS[type];
+                  const typeColors = FIELD_TYPE_COLORS[type];
+                  const isSelected = field.type === type;
                   return (
                     <ToggleGroupItem
                       key={type}
                       value={type}
                       className="gap-1.5 px-3 text-xs"
                     >
-                      <TypeIcon className="size-3.5" />
+                      <TypeIcon
+                        className={cn(
+                          "size-3.5",
+                          isSelected ? "text-black" : typeColors.iconColor,
+                        )}
+                      />
                       {FIELD_TYPE_LABELS[type]}
                     </ToggleGroupItem>
                   );
@@ -196,18 +230,18 @@ export function TemplateFieldCard({
             </div>
 
             {/* Required toggle */}
-            <div className="flex items-center gap-2">
+            <label className="flex items-center justify-between rounded-lg border px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Asterisk className="size-4 text-muted-foreground" />
+                <span className="text-sm">Required field</span>
+              </div>
               <Switch
                 checked={field.required}
                 onCheckedChange={(checked) =>
                   updateField({ required: checked })
                 }
-                id={`required-${field.key}`}
               />
-              <Label htmlFor={`required-${field.key}`} className="text-xs">
-                Required
-              </Label>
-            </div>
+            </label>
 
             {/* Dropdown options (only for dropdown type) */}
             {field.type === "dropdown" && (
@@ -243,21 +277,60 @@ export function TemplateFieldCard({
                     (optional)
                   </span>
                 </Label>
-                <Input
-                  value={field.defaultValue ?? ""}
-                  onChange={(e) =>
-                    updateField({ defaultValue: e.target.value || undefined })
-                  }
-                  placeholder={
-                    field.type === "number"
-                      ? "e.g. 0"
-                      : field.type === "url"
-                        ? "e.g. https://..."
-                        : "e.g. N/A"
-                  }
-                  type={field.type === "number" ? "number" : "text"}
-                  autoComplete="off"
-                />
+                {field.type === "date" ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !field.defaultValue && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarDays className="mr-2 size-4" />
+                        {field.defaultValue
+                          ? new Date(field.defaultValue).toLocaleDateString()
+                          : "Pick a date..."}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          field.defaultValue
+                            ? new Date(field.defaultValue)
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          updateField({
+                            defaultValue: date
+                              ? date.toISOString().split("T")[0]
+                              : undefined,
+                          })
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Input
+                    value={field.defaultValue ?? ""}
+                    onChange={(e) =>
+                      updateField({
+                        defaultValue: e.target.value || undefined,
+                      })
+                    }
+                    placeholder={
+                      field.type === "number"
+                        ? "e.g. 0"
+                        : field.type === "url"
+                          ? "e.g. https://..."
+                          : "e.g. N/A"
+                    }
+                    type={field.type === "number" ? "number" : "text"}
+                    autoComplete="off"
+                  />
+                )}
               </div>
             )}
           </div>

@@ -12,18 +12,11 @@ import {
   ComboboxContent,
   ComboboxList,
   ComboboxItem,
+  ComboboxGroup,
+  ComboboxLabel,
   ComboboxEmpty,
   ComboboxCollection,
 } from "@/components/ui/combobox";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { FormDialog } from "@/components/shared/form-dialog";
 import {
   createEquipmentModel,
@@ -288,28 +281,33 @@ export function EquipmentModelForm({
           <FieldLabel>Sub Category</FieldLabel>
           <FieldContent>
             <div className="space-y-1">
-              <Select
-                value={selectedSubCategory || undefined}
+              <Combobox
+                value={selectedSubCategory}
                 onValueChange={handleSubCategoryChange}
+                items={filteredSubCategoryNames}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sub category…" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="max-h-60 overflow-y-auto">
-                  {Array.from(groupedSubCategories.entries()).map(
-                    ([groupName, items]) => (
-                      <SelectGroup key={groupName}>
-                        <SelectLabel>{groupName}</SelectLabel>
-                        {items.map((item) => (
-                          <SelectItem key={item.id} value={item.name}>
-                            {item.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
+                <ComboboxInput
+                  placeholder="Search sub category…"
+                  showClear={!!selectedSubCategory}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No sub category found</ComboboxEmpty>
+                    {Array.from(groupedSubCategories.entries()).map(
+                      ([groupName, items]) => (
+                        <ComboboxGroup key={groupName}>
+                          <ComboboxLabel>{groupName}</ComboboxLabel>
+                          {items.map((item) => (
+                            <ComboboxItem key={item.id} value={item.name}>
+                              {item.name}
+                            </ComboboxItem>
+                          ))}
+                        </ComboboxGroup>
+                      ),
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
               <FieldError show={!selectedSubCategory} message="Please select a sub category" />
             </div>
           </FieldContent>

@@ -2,13 +2,13 @@
 
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { EnquiryWithDetails, EnquiryStatusType } from "@/types/enquiry";
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
 
-/** Get all enquiries with customer and listing details */
+/** Get all enquiries with user and listing details */
 export async function getEnquiriesWithDetails(): Promise<
   EnquiryWithDetails[]
 > {
@@ -17,17 +17,17 @@ export async function getEnquiriesWithDetails(): Promise<
        e.id,
        e.sale_listing_id,
        e.rent_listing_id,
-       e.customer_id,
+       e.app_user_id,
        e.message,
        e.enquiry_status_id,
        e.created_at,
        e.updated_at,
        e.updated_by,
        est.status_name,
-       c.username AS customer_name,
-       c.email AS customer_email,
-       c.phone AS customer_phone,
-       c.company_name AS customer_company,
+       c.username AS user_name,
+       c.email AS user_email,
+       c.phone AS user_phone,
+       c.company_name AS user_company,
        CASE
          WHEN e.sale_listing_id IS NOT NULL THEN
            (SELECT COALESCE(em.name, am.name) FROM sale_listing sl
@@ -52,7 +52,7 @@ export async function getEnquiriesWithDetails(): Promise<
        END AS listing_type
      FROM enquiry e
      LEFT JOIN enquiry_status_type est ON e.enquiry_status_id = est.id
-     LEFT JOIN customer c ON e.customer_id = c.customer_id
+     LEFT JOIN app_user c ON e.app_user_id = c.app_user_id
      ORDER BY e.created_at DESC`,
   );
   return result.results;
@@ -74,7 +74,7 @@ export async function updateEnquiryStatus(
   statusId: number,
 ) {
   try {
-    const updatedBy = await getCurrentUserId();
+    const updatedBy = await requirePermission("enquiries", "edit");
 
     await d1.query(
       `UPDATE enquiry
@@ -96,6 +96,7 @@ export async function updateEnquiryStatus(
 /** Delete a single enquiry */
 export async function deleteEnquiry(enquiryId: number) {
   try {
+    await requirePermission("enquiries", "delete");
     await d1.query("DELETE FROM enquiry WHERE id = ?", [enquiryId]);
     invalidateTag(CACHE_TAGS.ENQUIRIES);
     return { success: true };
@@ -110,6 +111,8 @@ export async function deleteEnquiry(enquiryId: number) {
 /** Bulk delete enquiries */
 export async function deleteEnquiries(ids: number[]) {
   if (ids.length === 0) return { success: true };
+  await requirePermission("enquiries", "delete");
+  assertBulkLimit(ids);
 
   try {
     const placeholders = ids.map(() => "?").join(",");

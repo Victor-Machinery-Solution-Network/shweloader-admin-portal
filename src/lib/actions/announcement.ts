@@ -2,7 +2,7 @@
 
 import { announcementTextService } from "@/lib/services/announcement";
 import { d1 } from "@/lib/api/d1-client";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
@@ -18,7 +18,7 @@ export async function createAnnouncement(formData: FormData) {
 
   try {
     const [created_by, display_order] = await Promise.all([
-      getCurrentUserId(),
+      requirePermission("announcements", "create"),
       getNextDisplayOrder("announcement_text"),
     ]);
 
@@ -46,6 +46,7 @@ export async function updateAnnouncement(id: number, formData: FormData) {
   }
 
   try {
+    await requirePermission("announcements", "edit");
     await announcementTextService.update(id, { text: text.trim() });
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
@@ -59,6 +60,7 @@ export async function updateAnnouncement(id: number, formData: FormData) {
 
 export async function deleteAnnouncement(id: number) {
   try {
+    await requirePermission("announcements", "delete");
     await announcementTextService.delete(id);
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
@@ -71,6 +73,8 @@ export async function deleteAnnouncement(id: number) {
 }
 
 export async function deleteAnnouncements(ids: number[]) {
+  await requirePermission("announcements", "delete");
+  assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map((id) => announcementTextService.delete(id)),
   );
@@ -94,6 +98,7 @@ export async function deleteAnnouncements(ids: number[]) {
 
 export async function toggleAnnouncementActive(id: number) {
   try {
+    await requirePermission("announcements", "edit");
     await d1.query(
       "UPDATE announcement_text SET is_active = 1 - is_active WHERE announcement_id = ?",
       [id],

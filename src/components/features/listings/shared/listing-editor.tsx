@@ -1,21 +1,46 @@
 "use client";
 
-import { lazy, Suspense, useState, useMemo, useTransition } from "react";
+import {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
-  Layers,
   Package,
-  CircleDollarSign,
+  MapPin,
   Camera,
-  FileText,
   ChevronRight,
   ArrowUpDown,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Wrench,
+  Puzzle,
+  Tag,
+  RotateCcw,
+  ShoppingCart,
+  Sparkles,
+  ClipboardList,
+  FileText,
+  Handshake,
+  EyeOff,
+  Map as MapIcon,
+  Image as ImageIcon,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { ImageInput } from "@/components/ui/image-input";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
@@ -29,25 +54,39 @@ import {
   ComboboxEmpty,
   ComboboxCollection,
 } from "@/components/ui/combobox";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { FormDialog } from "@/components/shared/form-dialog";
+import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
   createListing,
   updateSaleListing,
   updateRentListing,
+  saveDraft,
+  updateDraft,
+  submitDraft,
+  resubmitSaleListing,
+  resubmitRentListing,
+  requestReworkSale,
+  requestReworkRent,
+  approveListingSale,
+  approveListingRent,
 } from "@/lib/actions/listing";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
+  DraftListingWithDetails,
   ProductImage,
   ApprovedPartner,
   ConditionType,
 } from "@/types/listing";
 import type { EquipmentModel } from "@/types/equipment";
 import type { AttachmentModel } from "@/types/attachment";
-import type { Location } from "@/types/location";
+import type { StateRegion, District, Township } from "@/types/location";
 import type {
   CustomFieldTemplateWithFields,
   CustomFieldValue,
 } from "@/types/custom-field";
+import { assetUrl } from "@/lib/r2-url";
 import { CustomFieldsSection } from "./custom-fields-section";
 
 const LazySortableImageGallery = lazy(() =>
@@ -55,6 +94,7 @@ const LazySortableImageGallery = lazy(() =>
     default: mod.SortableImageGallery,
   })),
 );
+type GalleryItem = import("@/components/shared/sortable-image-gallery").GalleryItem;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -63,41 +103,51 @@ type ListingDetails = SaleListingWithDetails | RentListingWithDetails;
 interface ListingEditorProps {
   pageType: "sale" | "rent";
   listing?: ListingDetails;
+  draft?: DraftListingWithDetails;
   existingImages?: ProductImage[];
   partners: ApprovedPartner[];
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
-  locations: Location[];
+  stateRegions: StateRegion[];
+  districts: District[];
+  townships: Township[];
   conditionTypes: ConditionType[];
   exchangeRate: number;
   templates?: CustomFieldTemplateWithFields[];
 }
 
-// ─── Reusable pieces ─────────────────────────────────────────────────────────
+// ─── Wizard config ──────────────────────────────────────────────────────────
 
-function SectionHeader({
-  icon,
-  iconColor,
-  title,
-}: {
-  icon: React.ReactNode;
-  iconColor: string;
-  title: string;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          "flex size-8 items-center justify-center rounded-lg",
-          iconColor,
-        )}
-      >
-        {icon}
-      </div>
-      <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-    </div>
-  );
-}
+const STEP_META = [
+  {
+    label: "Product",
+    stepLabel: "Product",
+    subtitle: "What is it?",
+    icon: Package,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+  },
+  {
+    label: "Seller & Deal",
+    stepLabel: "Deal",
+    subtitle: "Who, where, and how much?",
+    icon: MapPin,
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10",
+  },
+  {
+    label: "Photos",
+    stepLabel: "Photos",
+    subtitle: "Show me the product",
+    icon: Camera,
+    color: "text-violet-500",
+    bg: "bg-violet-500/10",
+  },
+] as const;
+
+const TOTAL_STEPS = STEP_META.length;
+
+// ─── Reusable pieces ─────────────────────────────────────────────────────────
 
 function SegmentedPill({
   options,
@@ -129,55 +179,177 @@ function SegmentedPill({
   );
 }
 
-function CheckCard({
-  checked,
-  onToggle,
+function OptionCard({
+  selected,
+  onSelect,
+  icon: Icon,
+  iconColor,
+  iconBg,
   label,
-  children,
+  description,
+  variant = "radio",
 }: {
-  checked: boolean;
-  onToggle: () => void;
+  selected: boolean;
+  onSelect: () => void;
+  icon: LucideIcon;
+  iconColor: string;
+  iconBg: string;
   label: string;
-  children?: React.ReactNode;
+  description?: string;
+  variant?: "radio" | "checkbox";
 }) {
   return (
-    <div
-      onClick={onToggle}
+    <button
+      type="button"
+      onClick={onSelect}
       className={cn(
-        "flex cursor-pointer select-none items-center justify-between rounded-xl border-2 px-4 py-3 transition-all duration-200",
-        checked
+        "relative flex flex-col items-center gap-2.5 rounded-xl border-2 p-5 transition-all duration-200",
+        selected
           ? "border-primary/40 bg-primary/5"
-          : "border-transparent bg-muted/40 hover:bg-muted/60",
+          : "border-border bg-muted/50 hover:bg-muted",
       )}
     >
-      <div className="flex items-center gap-3">
+      {variant === "checkbox" && (
         <span
           className={cn(
-            "flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border-2 transition-all duration-200",
-            checked
+            "absolute top-3 right-3 flex size-[18px] items-center justify-center rounded-[5px] border-2 transition-all duration-200",
+            selected
               ? "border-primary bg-primary"
               : "border-muted-foreground/30",
           )}
         >
-          {checked && (
-            <svg
-              className="text-primary-foreground size-3"
-              viewBox="0 0 12 12"
-              fill="none"
-            >
-              <path
-                d="M2.5 6L5 8.5L9.5 3.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+          {selected && (
+            <Check className="text-primary-foreground size-3" strokeWidth={3} />
           )}
         </span>
-        <span className="text-sm font-medium">{label}</span>
+      )}
+      <div
+        className={cn(
+          "flex size-10 items-center justify-center rounded-lg",
+          iconBg,
+        )}
+      >
+        <Icon className={cn("size-5", iconColor)} />
       </div>
+      <div className="text-center">
+        <p className="text-sm font-medium">{label}</p>
+        {description && (
+          <p className="text-muted-foreground text-xs">{description}</p>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function StepHeader({ step }: { step: (typeof STEP_META)[number] }) {
+  const Icon = step.icon;
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className={cn(
+          "flex size-10 items-center justify-center rounded-xl",
+          step.bg,
+        )}
+      >
+        <Icon className={cn("size-5", step.color)} />
+      </div>
+      <div>
+        <h2 className="text-sm font-medium">{step.label}</h2>
+        <p className="text-muted-foreground text-xs">{step.subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function SubSectionLabel({
+  icon: Icon,
+  children,
+}: {
+  icon?: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <p className="flex items-center gap-1.5 text-sm font-medium">
+      {Icon && <Icon className="size-4 text-muted-foreground" />}
       {children}
+    </p>
+  );
+}
+
+function PricingCard({
+  icon,
+  label,
+  usdPrice,
+  mmkPrice,
+  onUsdChange,
+  onMmkChange,
+  rateDisplay,
+  rateControls,
+}: {
+  icon?: LucideIcon;
+  label: string;
+  usdPrice: string;
+  mmkPrice: string;
+  onUsdChange: (value: string) => void;
+  onMmkChange: (value: string) => void;
+  rateDisplay: React.ReactNode;
+  rateControls: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SubSectionLabel icon={icon}>{label}</SubSectionLabel>
+      <div className="overflow-hidden rounded-2xl border">
+        {/* USD row */}
+        <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
+            $
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground text-xs font-medium">USD</p>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={usdPrice}
+              onChange={(e) => onUsdChange(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              autoComplete="off"
+              className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Rate divider */}
+        <div className="relative">
+          <div className="border-t" />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            {rateDisplay}
+          </div>
+        </div>
+
+        {/* MMK row */}
+        <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
+            K
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground text-xs font-medium">MMK</p>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              value={mmkPrice}
+              onChange={(e) => onMmkChange(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              autoComplete="off"
+              className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Rate controls */}
+        {rateControls}
+      </div>
     </div>
   );
 }
@@ -187,11 +359,14 @@ function CheckCard({
 export function ListingEditor({
   pageType,
   listing,
+  draft,
   existingImages = [],
   partners,
   equipmentModels,
   attachmentModels,
-  locations,
+  stateRegions,
+  districts,
+  townships,
   conditionTypes,
   exchangeRate,
   templates = [],
@@ -200,92 +375,179 @@ export function ListingEditor({
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
   const isEditing = !!listing;
-  const backUrl =
-    pageType === "sale" ? "/listings/for-sale" : "/listings/for-rent";
+  const isDraftMode = !!draft;
+  const backUrl = isDraftMode
+    ? `/listings/for-${pageType}?tab=drafts`
+    : pageType === "sale"
+      ? "/listings/for-sale"
+      : "/listings/for-rent";
+
+  // Submit action: set by button onClick, read in form onSubmit
+  const submitActionRef = useRef<
+    "save-draft" | "submit" | "save" | "resubmit" | "approve"
+  >("save");
+
+  // Approval / rework state
+  const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
+  const canApprove = useHasPermission(feature, "approve");
+  const isRework = listing?.approve_status_name === "Rework";
+  const isPendingReview = listing?.approve_status_name === "Pending";
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  const [showReworkDialog, setShowReworkDialog] = useState(false);
+
+  // Initialize review mode for approvers viewing pending listings
+  useEffect(() => {
+    if (isPendingReview && canApprove) setIsReviewMode(true);
+  }, [isPendingReview, canApprove]);
+
+  // Source data: use draft or listing for initialization
+  const sourceData = draft ?? listing;
+
+  // ── Wizard state ──────────────────────────────────────────────────────
+  const [currentStep, setCurrentStep] = useState(0);
+  const [step0Attempted, setStep0Attempted] = useState(false);
+  const [step1Attempted, setStep1Attempted] = useState(false);
 
   // ── Classification state ────────────────────────────────────────────────
 
-  const defaultProductType = listing?.equipment_model_id
-    ? "equipment"
-    : "attachment";
+  const defaultProductType = sourceData
+    ? sourceData.equipment_model_id
+      ? "equipment"
+      : "attachment"
+    : "equipment";
   const [productType, setProductType] = useState<"equipment" | "attachment">(
     defaultProductType,
   );
-  const [forSale, setForSale] = useState(
-    isEditing ? pageType === "sale" : pageType === "sale",
-  );
-  const [forRent, setForRent] = useState(
-    isEditing ? pageType === "rent" : pageType === "rent",
-  );
+
+  // In create mode, pre-select listing type from sessionStorage after mount (avoids hydration mismatch)
+  const [forSale, setForSale] = useState(isEditing ? pageType === "sale" : false);
+  const [forRent, setForRent] = useState(isEditing ? pageType === "rent" : false);
+
+  useEffect(() => {
+    if (isEditing || isDraftMode) return;
+    const stored = sessionStorage.getItem("newListingDefault");
+    if (stored === "sale") setForSale(true);
+    else if (stored === "rent") setForRent(true);
+  }, [isEditing, isDraftMode]);
 
   // ── Product info state ──────────────────────────────────────────────────
 
   const initPartnerLabel = useMemo(() => {
-    if (!listing) return "";
-    const partner = partners.find((p) => p.id === listing.partner_id);
+    if (!sourceData?.partner_id) return "";
+    const partner = partners.find((p) => p.id === sourceData.partner_id);
     if (!partner) return "";
     return partner.company_name
-      ? `${partner.customer_name} (${partner.company_name})`
-      : partner.customer_name;
-  }, [listing, partners]);
+      ? `${partner.user_name} (${partner.company_name})`
+      : partner.user_name;
+  }, [sourceData, partners]);
 
   const [selectedPartner, setSelectedPartner] =
     useState<string>(initPartnerLabel);
   const [selectedModel, setSelectedModel] = useState<string>(
-    listing?.model_name ?? "",
+    sourceData?.model_name ?? "",
   );
-  const [selectedLocation, setSelectedLocation] = useState<string>(
-    listing?.location_name ?? "",
-  );
+  // ── Cascading location state ───────────────────────────────────────────
+  // Derive initial hierarchy from existing township_id in edit mode
+  const initLocation = useMemo(() => {
+    if (!sourceData?.township_id) return { stateRegionId: "", districtId: "", townshipId: "" };
+    const township = townships.find((t) => t.township_id === sourceData.township_id);
+    if (!township) return { stateRegionId: "", districtId: "", townshipId: "" };
+    const district = districts.find((d) => d.district_id === township.district_id);
+    if (!district) return { stateRegionId: "", districtId: "", townshipId: String(township.township_id) };
+    return {
+      stateRegionId: String(district.state_region_id),
+      districtId: String(township.district_id),
+      townshipId: String(township.township_id),
+    };
+  }, [sourceData, townships, districts]);
+
+  const [selectedStateRegionId, setSelectedStateRegionId] = useState(initLocation.stateRegionId);
+  const [selectedDistrictId, setSelectedDistrictId] = useState(initLocation.districtId);
+  const [selectedTownshipId, setSelectedTownshipId] = useState(initLocation.townshipId);
+
+  // Sync partner label when partners load after initial render
+  useEffect(() => {
+    if (initPartnerLabel) setSelectedPartner(initPartnerLabel);
+  }, [initPartnerLabel]);
 
   // ── Media state ─────────────────────────────────────────────────────────
 
-  const [imageUrls, setImageUrls] = useState<string[]>(
-    existingImages.length > 0 ? existingImages.map((img) => img.url) : [],
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
+    sourceData?.thumbnail_url ?? null,
   );
-  const [thumbnail, setThumbnail] = useState<string | null>(
-    listing?.thumbnail_url ?? null,
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
+    existingImages.map((img, i) => ({
+      id: `img-${i}`,
+      url: img.url,
+      preview: assetUrl(img.url) ?? "",
+    })),
   );
 
-  // ── Price state ─────────────────────────────────────────────────────────
+  // ── Price state (separate for sale / rent) ──────────────────────────────
 
-  const [usdPrice, setUsdPrice] = useState<string>(
-    listing?.usd_price?.toString() ?? "",
+  const [saleUsdPrice, setSaleUsdPrice] = useState<string>(
+    isEditing && pageType === "sale"
+      ? (listing?.usd_price?.toString() ?? "")
+      : "",
   );
-  const [mmkPrice, setMmkPrice] = useState<string>(
-    listing?.mmk_price?.toString() ?? "",
+  const [saleMmkPrice, setSaleMmkPrice] = useState<string>(
+    isEditing && pageType === "sale"
+      ? (listing?.mmk_price?.toString() ?? "")
+      : "",
   );
-  const [useSystemRate, setUseSystemRate] = useState(true);
-  const [customRate, setCustomRate] = useState<string>(String(exchangeRate));
+  const [rentUsdPrice, setRentUsdPrice] = useState<string>(
+    isEditing && pageType === "rent"
+      ? (listing?.usd_price?.toString() ?? "")
+      : "",
+  );
+  const [rentMmkPrice, setRentMmkPrice] = useState<string>(
+    isEditing && pageType === "rent"
+      ? (listing?.mmk_price?.toString() ?? "")
+      : "",
+  );
+  // Independent rate controls per listing type
+  const [saleUseSystemRate, setSaleUseSystemRate] = useState(true);
+  const [saleCustomRate, setSaleCustomRate] = useState<string>(String(exchangeRate));
+  const [rentUseSystemRate, setRentUseSystemRate] = useState(true);
+  const [rentCustomRate, setRentCustomRate] = useState<string>(String(exchangeRate));
 
-  function handleUsdChange(value: string) {
-    setUsdPrice(value);
-    const usd = parseFloat(value);
+  // ── Visibility toggles ──────────────────────────────────────────────────
+  const [hidePartner, setHidePartner] = useState(sourceData?.hide_partner === 1);
+  const [hidePrice, setHidePrice] = useState(listing?.hide_price === 1);
+
+  const saleActiveRate = saleUseSystemRate
+    ? exchangeRate
+    : parseFloat(saleCustomRate) || 0;
+  const rentActiveRate = rentUseSystemRate
+    ? exchangeRate
+    : parseFloat(rentCustomRate) || 0;
+
+  function convertSaleUsdToMmk(usd: string): string {
+    const n = parseFloat(usd);
+    return !isNaN(n) && n > 0 ? String(Math.round(n * saleActiveRate)) : "";
+  }
+  function convertRentUsdToMmk(usd: string): string {
+    const n = parseFloat(usd);
+    return !isNaN(n) && n > 0 ? String(Math.round(n * rentActiveRate)) : "";
+  }
+
+  // Recalculate sale MMK when sale rate changes
+  useEffect(() => {
+    const usd = parseFloat(saleUsdPrice);
     if (!isNaN(usd) && usd > 0) {
-      const rate = useSystemRate
-        ? exchangeRate
-        : parseFloat(customRate) || 0;
-      setMmkPrice(String(Math.round(usd * rate)));
+      setSaleMmkPrice(String(Math.round(usd * saleActiveRate)));
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saleActiveRate]);
 
-  function handleRateToggle(system: boolean) {
-    setUseSystemRate(system);
-    const usd = parseFloat(usdPrice);
+  // Recalculate rent MMK when rent rate changes
+  useEffect(() => {
+    const usd = parseFloat(rentUsdPrice);
     if (!isNaN(usd) && usd > 0) {
-      const rate = system ? exchangeRate : parseFloat(customRate) || 0;
-      setMmkPrice(String(Math.round(usd * rate)));
+      setRentMmkPrice(String(Math.round(usd * rentActiveRate)));
     }
-  }
-
-  function handleCustomRateChange(value: string) {
-    setCustomRate(value);
-    const usd = parseFloat(usdPrice);
-    const rate = parseFloat(value) || 0;
-    if (!isNaN(usd) && usd > 0 && rate > 0) {
-      setMmkPrice(String(Math.round(usd * rate)));
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rentActiveRate]);
 
   // ── Lookup maps ─────────────────────────────────────────────────────────
 
@@ -294,8 +556,8 @@ export function ListingEditor({
       new Map(
         partners.map((p) => {
           const label = p.company_name
-            ? `${p.customer_name} (${p.company_name})`
-            : p.customer_name;
+            ? `${p.user_name} (${p.company_name})`
+            : p.user_name;
           return [label, p.id];
         }),
       ),
@@ -312,11 +574,6 @@ export function ListingEditor({
     [attachmentModels],
   );
 
-  const locationMap = useMemo(
-    () => new Map(locations.map((l) => [l.city_name, l.location_id])),
-    [locations],
-  );
-
   const partnerNames = useMemo(
     () => Array.from(partnerMap.keys()),
     [partnerMap],
@@ -328,9 +585,55 @@ export function ListingEditor({
         : attachmentModels.map((m) => m.name),
     [productType, equipmentModels, attachmentModels],
   );
-  const locationNames = useMemo(
-    () => locations.map((l) => l.city_name),
-    [locations],
+
+  // ── Cascading location lookups ──────────────────────────────────────
+  const stateRegionNames = useMemo(
+    () => stateRegions.map((sr) => sr.name),
+    [stateRegions],
+  );
+  const stateRegionIdByName = useMemo(
+    () => new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
+    [stateRegions],
+  );
+  const stateRegionNameById = useMemo(
+    () => new Map(stateRegions.map((sr) => [String(sr.state_region_id), sr.name])),
+    [stateRegions],
+  );
+
+  const filteredDistricts = useMemo(
+    () =>
+      selectedStateRegionId
+        ? districts.filter((d) => String(d.state_region_id) === selectedStateRegionId)
+        : [],
+    [districts, selectedStateRegionId],
+  );
+  const districtNames = useMemo(
+    () => filteredDistricts.map((d) => d.name),
+    [filteredDistricts],
+  );
+  const districtIdByName = useMemo(
+    () => new Map(filteredDistricts.map((d) => [d.name, String(d.district_id)])),
+    [filteredDistricts],
+  );
+  const districtNameById = useMemo(
+    () => new Map(districts.map((d) => [String(d.district_id), d.name])),
+    [districts],
+  );
+
+  const filteredTownships = useMemo(
+    () =>
+      selectedDistrictId
+        ? townships.filter((t) => String(t.district_id) === selectedDistrictId)
+        : [],
+    [townships, selectedDistrictId],
+  );
+  const townshipNames = useMemo(
+    () => filteredTownships.map((t) => t.name),
+    [filteredTownships],
+  );
+  const townshipIdByName = useMemo(
+    () => new Map(filteredTownships.map((t) => [t.name, String(t.township_id)])),
+    [filteredTownships],
   );
 
   // ── Custom fields state ────────────────────────────────────────────────
@@ -338,9 +641,9 @@ export function ListingEditor({
   const [customFieldValues, setCustomFieldValues] = useState<
     CustomFieldValue[]
   >(() => {
-    if (!listing?.custom_fields) return [];
+    if (!sourceData?.custom_fields) return [];
     try {
-      return JSON.parse(listing.custom_fields) as CustomFieldValue[];
+      return JSON.parse(sourceData.custom_fields) as CustomFieldValue[];
     } catch {
       return [];
     }
@@ -352,43 +655,130 @@ export function ListingEditor({
     saleDefaults?.condition_type_id?.toString() ?? "",
   );
 
+  // ── Wizard navigation ─────────────────────────────────────────────────
+
+  const modelMap =
+    productType === "equipment" ? equipmentModelMap : attachmentModelMap;
+
+  const step0Valid =
+    !!modelMap.get(selectedModel) && (isEditing || isDraftMode || forSale || forRent);
+  const step1Valid = !!partnerMap.get(selectedPartner);
+
+  // In edit/draft mode, all steps are "done" (data pre-populated)
+  const stepDone = isEditing || isDraftMode
+    ? [true, true, true]
+    : [step0Valid, step1Valid, true];
+
+  function goNext() {
+    if (currentStep === 0) {
+      setStep0Attempted(true);
+      if (!step0Valid) {
+        if (!modelMap.get(selectedModel)) toast.error("Please select a model");
+        else toast.error("Select at least one listing type");
+        return;
+      }
+    }
+    if (currentStep === 1) {
+      setStep1Attempted(true);
+      if (!step1Valid) {
+        toast.error("Please select a partner");
+        return;
+      }
+    }
+    setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+  }
+
+  function goPrev() {
+    setCurrentStep((s) => Math.max(s - 1, 0));
+  }
+
+  function goToStep(idx: number) {
+    if (isEditing || isDraftMode || idx < currentStep) {
+      setCurrentStep(idx);
+      return;
+    }
+    // Only allow forward jumps if all previous steps are valid
+    const allPreviousDone = stepDone.slice(0, idx).every(Boolean);
+    if (allPreviousDone) {
+      setCurrentStep(idx);
+    }
+  }
+
   // ── Form submission ─────────────────────────────────────────────────────
+
+  // ── Rework dialog handler ────────────────────────────────────────────
+  function handleRequestRework(formData: FormData) {
+    const reason = formData.get("rework_reason") as string;
+    const reworkFn = pageType === "sale" ? requestReworkSale : requestReworkRent;
+    startTransition(async () => {
+      const result = await reworkFn(listing!.id, reason);
+      if (result.success) {
+        toast.success("Listing sent for rework");
+        setShowReworkDialog(false);
+        router.push(backUrl);
+      } else {
+        toast.error(result.error ?? "Failed to request rework");
+      }
+    });
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const action = submitActionRef.current;
+    const isSavingDraft = action === "save-draft";
+
     setSubmitted(true);
 
-    const partnerId = partnerMap.get(selectedPartner);
-    if (!partnerId) {
-      toast.error("Please select a partner");
-      return;
-    }
-    const modelMap =
-      productType === "equipment" ? equipmentModelMap : attachmentModelMap;
-    const modelId = modelMap.get(selectedModel);
-    if (!modelId) {
-      toast.error("Please select a model");
-      return;
-    }
-    if (!isEditing && !forSale && !forRent) {
-      toast.error("Select at least one listing type");
-      return;
-    }
-
+    // Build formData from current state
     const formData = new FormData(e.currentTarget);
-    const locationId = locationMap.get(selectedLocation);
 
+    // For drafts, skip strict validation — all fields optional
+    if (!isSavingDraft) {
+      const modelId = modelMap.get(selectedModel);
+      if (!modelId) {
+        setCurrentStep(0);
+        toast.error("Please select a model");
+        return;
+      }
+      if (!isEditing && !forSale && !forRent) {
+        setCurrentStep(0);
+        toast.error("Select at least one listing type");
+        return;
+      }
+      const partnerId = partnerMap.get(selectedPartner);
+      if (!partnerId) {
+        setCurrentStep(1);
+        toast.error("Please select a partner");
+        return;
+      }
+      if (forSale && (!saleUsdPrice || parseFloat(saleUsdPrice) <= 0)) {
+        setCurrentStep(1);
+        toast.error("Please enter a sale price");
+        return;
+      }
+      if (forRent && (!rentUsdPrice || parseFloat(rentUsdPrice) <= 0)) {
+        setCurrentStep(1);
+        toast.error("Please enter a rental price");
+        return;
+      }
+    }
+
+    // Populate common form fields
     formData.set("product_type", productType);
-    formData.set("partner_id", String(partnerId));
-    formData.set("model_id", String(modelId));
-    if (locationId) formData.set("location_id", String(locationId));
-    formData.set("usd_price", usdPrice || "");
-    formData.set("mmk_price", mmkPrice || "0");
+    const modelId = modelMap.get(selectedModel);
+    if (modelId) formData.set("model_id", String(modelId));
+    const partnerId = partnerMap.get(selectedPartner);
+    if (partnerId) formData.set("partner_id", String(partnerId));
+    if (selectedTownshipId) formData.set("township_id", selectedTownshipId);
+    formData.set("sale_usd_price", saleUsdPrice || "");
+    formData.set("sale_mmk_price", saleMmkPrice || "0");
+    formData.set("rent_usd_price", rentUsdPrice || "");
+    formData.set("rent_mmk_price", rentMmkPrice || "0");
     formData.set("for_sale", forSale ? "1" : "0");
     formData.set("for_rent", forRent ? "1" : "0");
     formData.set("is_hidden", "0");
-    formData.set("hide_price", "0");
-    formData.set("hide_partner", "0");
+    formData.set("hide_price", hidePrice ? "1" : "0");
+    formData.set("hide_partner", hidePartner ? "1" : "0");
     formData.set("add_to_featured", "0");
     if (forSale && conditionId) {
       formData.set("condition_type_id", conditionId);
@@ -397,24 +787,76 @@ export function ListingEditor({
       formData.set("custom_fields", JSON.stringify(customFieldValues));
     }
 
-    imageUrls.forEach((url, i) => {
-      formData.set(`image_url_${i}`, url);
+    // Append product photos
+    galleryItems.forEach((item, i) => {
+      if (item.url) formData.set(`photo_url_${i}`, item.url);
+      if (item.file) formData.set(`photo_file_${i}`, item.file);
     });
 
     startTransition(async () => {
-      let result;
-      if (isEditing) {
-        result =
-          pageType === "sale"
+      let result: { success: boolean; error?: string; draftId?: number };
+
+      switch (action) {
+        case "save-draft":
+          result = isDraftMode
+            ? await updateDraft(draft!.id, formData)
+            : await saveDraft(formData);
+          break;
+
+        case "submit":
+          if (isDraftMode) {
+            result = await submitDraft(draft!.id, formData);
+          } else {
+            result = await createListing(formData);
+          }
+          break;
+
+        case "resubmit":
+          result = pageType === "sale"
+            ? await resubmitSaleListing(listing!.id)
+            : await resubmitRentListing(listing!.id);
+          break;
+
+        case "approve": {
+          // Save first, then approve
+          const saveResult = pageType === "sale"
             ? await updateSaleListing(listing!.id, formData)
             : await updateRentListing(listing!.id, formData);
-      } else {
-        result = await createListing(formData);
+          if (!saveResult.success) {
+            result = saveResult;
+            break;
+          }
+          result = pageType === "sale"
+            ? await approveListingSale(listing!.id)
+            : await approveListingRent(listing!.id);
+          break;
+        }
+
+        default: // "save"
+          result = isEditing
+            ? pageType === "sale"
+              ? await updateSaleListing(listing!.id, formData)
+              : await updateRentListing(listing!.id, formData)
+            : await createListing(formData);
+          break;
       }
 
       if (result.success) {
-        toast.success(isEditing ? "Listing updated" : "Listing created");
-        router.push(backUrl);
+        const messages: Record<string, string> = {
+          "save-draft": "Draft saved",
+          submit: "Listing submitted",
+          resubmit: "Listing resubmitted for review",
+          approve: "Listing approved",
+          save: isEditing ? "Listing updated" : "Listing created",
+        };
+        toast.success(messages[action] ?? "Success");
+
+        // Redirect: new drafts go to draft edit page, everything else to list
+        if (action === "save-draft" && !isDraftMode && result.draftId) {
+          router.push(`/listings/drafts/${result.draftId}/edit`);
+        } else {
+          router.push(backUrl);
+        }
       } else {
         toast.error(result.error ?? "Something went wrong");
       }
@@ -437,16 +879,24 @@ export function ListingEditor({
               href={backUrl}
               className="hover:text-foreground transition-colors"
             >
-              {pageType === "sale" ? "For Sale" : "For Rent"}
+              {isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
             </Link>
             <ChevronRight className="size-3 opacity-40" />
             <span className="text-foreground font-medium">
-              {isEditing ? (listing?.custom_id ?? "Edit") : "New"}
+              {isDraftMode ? "Draft" : isEditing ? (listing?.custom_id ?? "Edit") : "New"}
             </span>
           </nav>
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold tracking-tight">
-              {isEditing ? "Edit Listing" : "New Listing"}
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {isDraftMode
+                ? "Edit Draft"
+                : isRework
+                  ? "Rework Listing"
+                  : isPendingReview && isReviewMode
+                    ? "Review Listing"
+                    : isEditing
+                      ? "Edit Listing"
+                      : "New Listing"}
             </h1>
             <div className="flex items-center gap-2">
               <Button
@@ -456,412 +906,893 @@ export function ListingEditor({
                 disabled={isPending}
                 onClick={() => router.push(backUrl)}
               >
-                Discard
+                {isPendingReview && isReviewMode ? "Close" : "Discard"}
               </Button>
-              <Button type="submit" size="sm" disabled={isPending}>
-                {isPending ? (
-                  <>
-                    <Spinner className="mr-1" /> Saving{"\u2026"}
-                  </>
-                ) : isEditing ? (
-                  "Save"
-                ) : (
-                  "Create"
-                )}
-              </Button>
+
+              {/* ── Context-dependent action buttons ── */}
+              {(() => {
+                // Draft mode (new or editing existing draft)
+                if (isDraftMode || (!isEditing && !isDraftMode)) {
+                  const isNew = !isEditing && !isDraftMode;
+                  return (
+                    <>
+                      {(isNew || isDraftMode) && (
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => { submitActionRef.current = "save-draft"; }}
+                        >
+                          {isPending && submitActionRef.current === "save-draft" ? (
+                            <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                          ) : "Save as Draft"}
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = canApprove ? "submit" : "submit"; }}
+                      >
+                        {isPending && submitActionRef.current !== "save-draft" ? (
+                          <><Spinner className="mr-1" /> Submitting{"\u2026"}</>
+                        ) : canApprove ? "Create & Approve" : "Submit for Review"}
+                      </Button>
+                    </>
+                  );
+                }
+
+                // Rework mode: save + resubmit
+                if (isRework) {
+                  return (
+                    <>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = "save"; }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = "resubmit"; }}
+                      >
+                        {isPending && submitActionRef.current === "resubmit" ? (
+                          <><Spinner className="mr-1" /> Resubmitting{"\u2026"}</>
+                        ) : "Resubmit"}
+                      </Button>
+                    </>
+                  );
+                }
+
+                // Pending review mode (approver)
+                if (isPendingReview && canApprove) {
+                  if (isReviewMode) {
+                    return (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => setShowReworkDialog(true)}
+                        >
+                          Request Rework
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsReviewMode(false)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => { submitActionRef.current = "approve"; }}
+                        >
+                          {isPending && submitActionRef.current === "approve" ? (
+                            <><Spinner className="mr-1" /> Approving{"\u2026"}</>
+                          ) : "Approve"}
+                        </Button>
+                      </>
+                    );
+                  }
+                  // Edit mode for approver on pending listing
+                  return (
+                    <>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = "save"; }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = "approve"; }}
+                      >
+                        {isPending && submitActionRef.current === "approve" ? (
+                          <><Spinner className="mr-1" /> Approving{"\u2026"}</>
+                        ) : "Approve"}
+                      </Button>
+                    </>
+                  );
+                }
+
+                // Default: normal edit (Approved listing)
+                return (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => { submitActionRef.current = "save"; }}
+                  >
+                    {isPending ? (
+                      <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                    ) : "Save"}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
+
+          {/* ── Rework banner ── */}
+          {isRework && listing?.rejection_reason && (
+            <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Returned for Rework</p>
+                <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-300/80">
+                  {listing.rejection_reason}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step Indicator ──────────────────────────────────── */}
+          <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm">
+            <ol className="flex items-center">
+              {STEP_META.map((meta, idx) => {
+                const Icon = meta.icon;
+                const isCompleted =
+                  (isEditing || isDraftMode) ? idx !== currentStep : stepDone[idx] && idx < currentStep;
+                const isCurrent = idx === currentStep;
+                const isClickable = isEditing || isDraftMode || idx < currentStep || stepDone[idx];
+
+                return (
+                  <li
+                    key={meta.label}
+                    className={cn(
+                      "flex items-center",
+                      idx < TOTAL_STEPS - 1 && "flex-1",
+                    )}
+                  >
+                    {/* Step circle + label */}
+                    <button
+                      type="button"
+                      disabled={!isClickable}
+                      onClick={() => goToStep(idx)}
+                      className="flex flex-col items-center gap-1.5 disabled:cursor-default"
+                    >
+                      <div
+                        className={cn(
+                          "flex size-9 items-center justify-center rounded-full border-2 transition-all duration-300",
+                          isCompleted &&
+                            "border-primary bg-primary text-primary-foreground",
+                          isCurrent &&
+                            "border-primary bg-primary/10 text-primary ring-4 ring-primary/20",
+                          !isCompleted &&
+                            !isCurrent &&
+                            "border-muted-foreground/20 bg-muted/50 text-muted-foreground",
+                        )}
+                      >
+                        {isCompleted ? (
+                          <Check className="size-3.5" strokeWidth={3} />
+                        ) : (
+                          <Icon className="size-3.5" />
+                        )}
+                      </div>
+                      <span
+                        className={cn(
+                          "text-[11px] font-medium transition-colors",
+                          isCurrent
+                            ? "text-primary"
+                            : isCompleted
+                              ? "text-foreground"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        {meta.stepLabel}
+                      </span>
+                    </button>
+
+                    {/* Connector line */}
+                    {idx < TOTAL_STEPS - 1 && (
+                      <div className="mx-3 mb-5 h-0.5 flex-1 overflow-hidden rounded-full bg-border">
+                        <div
+                          className={cn(
+                            "h-full rounded-full bg-primary transition-all duration-500",
+                            ((isEditing || isDraftMode) ? idx < currentStep : stepDone[idx] && idx < currentStep)
+                              ? "w-full"
+                              : "w-0",
+                          )}
+                        />
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
         </header>
 
         {/* ── Scrollable Body ───────────────────────────────────── */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl space-y-10 px-6 py-8">
-            {/* ────────────────────────────────────────────────────
-                1. CLASSIFICATION
-               ──────────────────────────────────────────────────── */}
-            <section className="space-y-5">
-              <SectionHeader
-                icon={<Layers className="size-4 text-amber-500" />}
-                iconColor="bg-amber-500/10"
-                title="Classification"
-              />
+          {/* ──────────────────────────────────────────────────────
+              STEP 0: PRODUCT
+             ────────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "mx-auto max-w-2xl flex flex-col gap-6 px-6 py-8",
+              currentStep !== 0 && "hidden",
+            )}
+          >
+            <StepHeader step={STEP_META[0]} />
 
-              {/* Product Type */}
-              <div>
-                <p className="text-muted-foreground mb-2.5 text-xs font-medium uppercase tracking-wider">
-                  Product Type
-                </p>
-                <SegmentedPill
-                  options={[
-                    { label: "Equipment", value: "equipment" },
-                    { label: "Attachment", value: "attachment" },
-                  ]}
-                  value={productType}
-                  onChange={(val) => {
-                    setProductType(val as "equipment" | "attachment");
+            {/* Product Type */}
+            <div className="flex flex-col gap-3">
+              <SubSectionLabel icon={Wrench}>Product Type</SubSectionLabel>
+              <div className="grid grid-cols-2 gap-3">
+                <OptionCard
+                  selected={productType === "equipment"}
+                  onSelect={() => {
+                    setProductType("equipment");
                     setSelectedModel("");
                   }}
+                  icon={Wrench}
+                  iconColor="text-blue-500"
+                  iconBg="bg-blue-500/10"
+                  label="Equipment"
+                  description="Heavy machines"
+                />
+                <OptionCard
+                  selected={productType === "attachment"}
+                  onSelect={() => {
+                    setProductType("attachment");
+                    setSelectedModel("");
+                  }}
+                  icon={Puzzle}
+                  iconColor="text-amber-500"
+                  iconBg="bg-amber-500/10"
+                  label="Attachment"
+                  description="Add-on parts"
                 />
               </div>
+            </div>
 
-              {/* Listing Type — create only */}
-              {!isEditing && (
-                <div>
-                  <p className="text-muted-foreground mb-2.5 text-xs font-medium uppercase tracking-wider">
-                    Listing Type
-                  </p>
-                  <div className="space-y-2">
-                    <CheckCard
-                      checked={forSale}
-                      onToggle={() => setForSale(!forSale)}
-                      label="For Sale"
-                    />
-
-                    {/* Condition — connected below For Sale */}
-                    {forSale && conditionTypes.length > 0 && (
-                      <div className="ml-9 space-y-1.5">
-                        <p className="text-muted-foreground text-xs font-medium">
-                          Condition
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {conditionTypes.map((ct) => (
-                            <button
-                              key={ct.id}
-                              type="button"
-                              onClick={() => setConditionId(String(ct.id))}
-                              className={cn(
-                                "rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
-                                conditionId === String(ct.id)
-                                  ? "bg-foreground text-background shadow-sm"
-                                  : "ring-border text-muted-foreground hover:text-foreground bg-background ring-1",
-                              )}
-                            >
-                              {ct.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <CheckCard
-                      checked={forRent}
-                      onToggle={() => setForRent(!forRent)}
-                      label="For Rent"
-                    />
-                  </div>
-                </div>
+            {/* Model */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <Package className="size-4 text-muted-foreground" />
+                Model
+              </label>
+              <Combobox
+                value={selectedModel}
+                defaultInputValue={sourceData?.model_name ?? ""}
+                onValueChange={(val) => setSelectedModel(val ?? "")}
+                items={modelNames}
+              >
+                <ComboboxInput
+                  placeholder={`Search ${productType} model\u2026`}
+                  showClear={!!selectedModel}
+                />
+                <ComboboxContent>
+                  <ComboboxList>
+                    <ComboboxEmpty>No model found</ComboboxEmpty>
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          {name}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              {step0Attempted && !selectedModel && (
+                <p className="text-destructive text-xs">Please select a model.</p>
               )}
+            </div>
 
-              {/* Condition — edit mode, sale only */}
-              {isEditing && pageType === "sale" && (
-                <div>
-                  <p className="text-muted-foreground mb-2.5 text-xs font-medium uppercase tracking-wider">
-                    Condition
-                  </p>
-                  <SegmentedPill
-                    options={conditionTypes.map((ct) => ({
-                      label: ct.name,
-                      value: String(ct.id),
-                    }))}
-                    value={conditionId}
-                    onChange={setConditionId}
+            {/* Listing Type — create/draft mode only */}
+            {(!isEditing || isDraftMode) && (
+              <div className="flex flex-col gap-3">
+                <SubSectionLabel icon={ShoppingCart}>Listing Type</SubSectionLabel>
+                <div className="grid grid-cols-2 gap-3">
+                  <OptionCard
+                    selected={forSale}
+                    onSelect={() => setForSale(!forSale)}
+                    icon={Tag}
+                    iconColor="text-emerald-500"
+                    iconBg="bg-emerald-500/10"
+                    label="For Sale"
+                    variant="checkbox"
+                  />
+                  <OptionCard
+                    selected={forRent}
+                    onSelect={() => setForRent(!forRent)}
+                    icon={RotateCcw}
+                    iconColor="text-sky-500"
+                    iconBg="bg-sky-500/10"
+                    label="For Rent"
+                    variant="checkbox"
                   />
                 </div>
-              )}
-            </section>
 
-            <hr className="border-border/40" />
-
-            {/* ────────────────────────────────────────────────────
-                2. PRODUCT
-               ──────────────────────────────────────────────────── */}
-            <section className="space-y-5">
-              <SectionHeader
-                icon={<Package className="size-4 text-blue-500" />}
-                iconColor="bg-blue-500/10"
-                title="Product"
-              />
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Model</label>
-                  <Combobox
-                    value={selectedModel}
-                    onValueChange={(val) => setSelectedModel(val ?? "")}
-                    items={modelNames}
-                  >
-                    <ComboboxInput
-                      placeholder={`Search ${productType} model\u2026`}
-                      showClear={!!selectedModel}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        <ComboboxEmpty>No model found</ComboboxEmpty>
-                        <ComboboxCollection>
-                          {(name) => (
-                            <ComboboxItem key={name} value={name}>
-                              {name}
-                            </ComboboxItem>
+                {/* Condition — appears below grid when For Sale is checked */}
+                {forSale && conditionTypes.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <Sparkles className="size-4 text-muted-foreground" />
+                      Condition
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {conditionTypes.map((ct) => (
+                        <button
+                          key={ct.id}
+                          type="button"
+                          onClick={() => setConditionId(String(ct.id))}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                            conditionId === String(ct.id)
+                              ? "bg-foreground text-background shadow-sm"
+                              : "ring-border text-muted-foreground hover:text-foreground bg-background ring-1",
                           )}
-                        </ComboboxCollection>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Partner</label>
-                  <Combobox
-                    value={selectedPartner}
-                    onValueChange={(val) => setSelectedPartner(val ?? "")}
-                    items={partnerNames}
-                  >
-                    <ComboboxInput
-                      placeholder="Search partner\u2026"
-                      showClear={!!selectedPartner}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        <ComboboxEmpty>No partner found</ComboboxEmpty>
-                        <ComboboxCollection>
-                          {(name) => (
-                            <ComboboxItem key={name} value={name}>
-                              {name}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxCollection>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">
-                    Location{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (optional)
-                    </span>
-                  </label>
-                  <Combobox
-                    value={selectedLocation}
-                    onValueChange={(val) => setSelectedLocation(val ?? "")}
-                    items={locationNames}
-                  >
-                    <ComboboxInput
-                      placeholder="Search location\u2026"
-                      showClear={!!selectedLocation}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        <ComboboxEmpty>No location found</ComboboxEmpty>
-                        <ComboboxCollection>
-                          {(name) => (
-                            <ComboboxItem key={name} value={name}>
-                              {name}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxCollection>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </div>
-
-                {templates.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Custom Fields</label>
-                    <CustomFieldsSection
-                      templates={templates}
-                      initialValues={customFieldValues}
-                      onChange={setCustomFieldValues}
-                    />
+                        >
+                          {ct.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {step0Attempted && !forSale && !forRent && (
+                  <p className="text-destructive text-xs">
+                    Select at least one listing type.
+                  </p>
+                )}
               </div>
-            </section>
+            )}
 
-            <hr className="border-border/40" />
-
-            {/* ────────────────────────────────────────────────────
-                3. PRICING
-               ──────────────────────────────────────────────────── */}
-            <section className="space-y-5">
-              <SectionHeader
-                icon={
-                  <CircleDollarSign className="size-4 text-emerald-500" />
-                }
-                iconColor="bg-emerald-500/10"
-                title="Pricing"
-              />
-
-              {/* Currency converter card */}
-              <div className="overflow-hidden rounded-2xl border">
-                {/* USD row */}
-                <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
-                    $
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-muted-foreground text-xs font-medium">
-                      USD
-                    </p>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      value={usdPrice}
-                      onChange={(e) => handleUsdChange(e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      autoComplete="off"
-                      className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Rate divider */}
-                <div className="relative">
-                  <div className="border-t" />
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <span className="text-muted-foreground flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium shadow-sm">
-                      <ArrowUpDown className="size-3" />
-                      {"1 USD = "}
-                      {(useSystemRate
-                        ? exchangeRate
-                        : parseFloat(customRate) || 0
-                      ).toLocaleString()}
-                      {" MMK"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* MMK row */}
-                <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
-                    K
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-muted-foreground text-xs font-medium">
-                      MMK
-                    </p>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={mmkPrice}
-                      onChange={(e) => setMmkPrice(e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      autoComplete="off"
-                      className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Rate controls */}
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-muted-foreground text-xs font-medium">
-                  Rate
-                </span>
+            {/* Condition — edit mode, sale only */}
+            {isEditing && pageType === "sale" && (
+              <div className="flex flex-col gap-3">
+                <SubSectionLabel icon={Sparkles}>Condition</SubSectionLabel>
                 <SegmentedPill
-                  options={[
-                    {
-                      label: `System (${exchangeRate.toLocaleString()})`,
-                      value: "system",
-                    },
-                    { label: "Custom", value: "custom" },
-                  ]}
-                  value={useSystemRate ? "system" : "custom"}
-                  onChange={(val) => handleRateToggle(val === "system")}
+                  options={conditionTypes.map((ct) => ({
+                    label: ct.name,
+                    value: String(ct.id),
+                  }))}
+                  value={conditionId}
+                  onChange={setConditionId}
                 />
-                {!useSystemRate && (
-                  <Input
-                    type="number"
-                    placeholder="Custom rate"
-                    value={customRate}
-                    onChange={(e) =>
-                      handleCustomRateChange(e.target.value)
-                    }
-                    onWheel={(e) => e.currentTarget.blur()}
-                    autoComplete="off"
-                    className="w-32"
+              </div>
+            )}
+
+            {/* Custom Fields */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <ClipboardList className="size-4 text-muted-foreground" />
+                Specifications{" "}
+                <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <CustomFieldsSection
+                templates={templates}
+                initialValues={customFieldValues}
+                onChange={setCustomFieldValues}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <FileText className="size-4 text-muted-foreground" />
+                Description{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </label>
+              <MarkdownEditor
+                name="description"
+                placeholder={"Describe the product\u2026"}
+                defaultValue={sourceData?.description ?? ""}
+              />
+            </div>
+
+            {/* Step footer */}
+            <div className="flex items-center justify-end pt-2">
+              <Button type="button" size="sm" onClick={goNext}>
+                Next <ArrowRight className="ml-1 size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* ──────────────────────────────────────────────────────
+              STEP 1: SELLER & DEAL
+             ────────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "mx-auto max-w-2xl flex flex-col gap-8 px-6 py-8",
+              currentStep !== 1 && "hidden",
+            )}
+          >
+            <StepHeader step={STEP_META[1]} />
+
+            {/* ── Seller sub-section ─────────────────────────────── */}
+            <div className="flex flex-col gap-3">
+              <SubSectionLabel icon={Handshake}>Seller</SubSectionLabel>
+              <div className="flex flex-col gap-3">
+                <Combobox
+                  value={selectedPartner}
+                  defaultInputValue={initPartnerLabel}
+                  onValueChange={(val) => setSelectedPartner(val ?? "")}
+                  items={partnerNames}
+                >
+                  <ComboboxInput
+                    placeholder={"Search partner\u2026"}
+                    showClear={!!selectedPartner}
                   />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      <ComboboxEmpty>No partner found</ComboboxEmpty>
+                      <ComboboxCollection>
+                        {(name) => (
+                          <ComboboxItem key={name} value={name}>
+                            {name}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxCollection>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                {step1Attempted && !selectedPartner && (
+                  <p className="text-destructive text-xs">
+                    Please select a partner.
+                  </p>
+                )}
+                <label className="flex items-center justify-between rounded-lg border px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="size-4 text-muted-foreground" />
+                    <span className="text-sm">Hide seller info from buyers</span>
+                  </div>
+                  <Switch
+                    checked={hidePartner}
+                    onCheckedChange={setHidePartner}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <hr className="border-border" />
+
+            {/* ── Location sub-section ───────────────────────────── */}
+            <div className="flex flex-col gap-3">
+              <SubSectionLabel icon={MapPin}>
+                Location{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </SubSectionLabel>
+
+              <div className="flex flex-col gap-3 rounded-xl border p-4">
+                {/* State / Region */}
+                <div className="flex flex-col gap-3">
+                  <p className="flex items-center gap-1.5 text-sm font-medium">
+                    <MapIcon className="size-4 text-muted-foreground" />
+                    State / Region
+                  </p>
+                  <Combobox
+                    value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
+                    defaultInputValue={stateRegionNameById.get(initLocation.stateRegionId) ?? ""}
+                    onValueChange={(val) => {
+                      const id = val ? (stateRegionIdByName.get(val) ?? "") : "";
+                      setSelectedStateRegionId(id);
+                      setSelectedDistrictId("");
+                      setSelectedTownshipId("");
+                    }}
+                    items={stateRegionNames}
+                  >
+                    <ComboboxInput
+                      placeholder={"Select state / region\u2026"}
+                      showClear={!!selectedStateRegionId}
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        <ComboboxEmpty>No state/region found</ComboboxEmpty>
+                        <ComboboxCollection>
+                          {(name) => (
+                            <ComboboxItem key={name} value={name}>
+                              {name}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </div>
+
+                {/* District */}
+                {selectedStateRegionId && (
+                  <div className="flex flex-col gap-3">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <MapPin className="size-4 text-muted-foreground" />
+                      District
+                    </p>
+                    <Combobox
+                      value={districtNameById.get(selectedDistrictId) ?? ""}
+                      defaultInputValue={districtNameById.get(initLocation.districtId) ?? ""}
+                      onValueChange={(val) => {
+                        const id = val ? (districtIdByName.get(val) ?? "") : "";
+                        setSelectedDistrictId(id);
+                        setSelectedTownshipId("");
+                      }}
+                      items={districtNames}
+                    >
+                      <ComboboxInput
+                        placeholder={"Select district\u2026"}
+                        showClear={!!selectedDistrictId}
+                      />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          <ComboboxEmpty>No district found</ComboboxEmpty>
+                          <ComboboxCollection>
+                            {(name) => (
+                              <ComboboxItem key={name} value={name}>
+                                {name}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxCollection>
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                )}
+
+                {/* Township */}
+                {selectedDistrictId && (
+                  <div className="flex flex-col gap-3">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <MapPin className="size-4 text-muted-foreground" />
+                      Township
+                    </p>
+                    <Combobox
+                      value={
+                        filteredTownships.find(
+                          (t) => String(t.township_id) === selectedTownshipId,
+                        )?.name ?? ""
+                      }
+                      defaultInputValue={
+                        selectedTownshipId === initLocation.townshipId
+                          ? (sourceData?.township_name ?? "")
+                          : ""
+                      }
+                      onValueChange={(val) => {
+                        const id = val ? (townshipIdByName.get(val) ?? "") : "";
+                        setSelectedTownshipId(id);
+                      }}
+                      items={townshipNames}
+                    >
+                      <ComboboxInput
+                        placeholder={"Select township\u2026"}
+                        showClear={!!selectedTownshipId}
+                      />
+                      <ComboboxContent>
+                        <ComboboxList>
+                          <ComboboxEmpty>No township found</ComboboxEmpty>
+                          <ComboboxCollection>
+                            {(name) => (
+                              <ComboboxItem key={name} value={name}>
+                                {name}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxCollection>
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
                 )}
               </div>
-            </section>
+            </div>
 
-            <hr className="border-border/40" />
+            <hr className="border-border" />
 
-            {/* ────────────────────────────────────────────────────
-                4. MEDIA
-               ──────────────────────────────────────────────────── */}
-            <section className="space-y-5">
-              <SectionHeader
-                icon={<Camera className="size-4 text-violet-500" />}
-                iconColor="bg-violet-500/10"
-                title="Media"
-              />
+            {/* ── Pricing sub-section ────────────────────────────── */}
+            {(() => {
+              function makeRateDisplay(rate: number) {
+                return (
+                  <span className="text-muted-foreground flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium shadow-sm">
+                    <ArrowUpDown className="size-3" />
+                    {"1 USD = "}
+                    {rate.toLocaleString()}
+                    {" MMK"}
+                  </span>
+                );
+              }
 
-              <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-                {/* Thumbnail — compact left column */}
-                <div className="shrink-0 space-y-1.5">
-                  <label className="text-sm font-medium">
-                    Thumbnail
-                    <span className="text-muted-foreground ml-1.5 text-xs font-normal">
-                      Cover
+              function makeRateControls(
+                useSystem: boolean,
+                setUseSystem: (v: boolean) => void,
+                custom: string,
+                setCustom: (v: string) => void,
+              ) {
+                return (
+                  <div className="flex flex-wrap items-center gap-3 border-t px-4 py-3">
+                    <span className="text-muted-foreground text-xs font-medium">
+                      Rate
                     </span>
-                  </label>
-                  <ImageInput
-                    name="thumbnail_url"
-                    value={thumbnail}
-                    onChange={setThumbnail}
-                    placeholder="Upload cover"
-                    aspectClassName="aspect-square w-36"
-                  />
-                </div>
-
-                {/* Product Photos — fills remaining space */}
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <label className="text-sm font-medium">Product Photos</label>
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center p-8">
-                        <Spinner className="size-5" />
-                      </div>
-                    }
-                  >
-                    <LazySortableImageGallery
-                      images={imageUrls}
-                      onChange={setImageUrls}
+                    <SegmentedPill
+                      options={[
+                        {
+                          label: `System (${exchangeRate.toLocaleString()})`,
+                          value: "system",
+                        },
+                        { label: "Custom", value: "custom" },
+                      ]}
+                      value={useSystem ? "system" : "custom"}
+                      onChange={(val) => setUseSystem(val === "system")}
                     />
-                  </Suspense>
-                </div>
-              </div>
-            </section>
+                    {!useSystem && (
+                      <Input
+                        type="number"
+                        placeholder="Custom rate"
+                        value={custom}
+                        onChange={(e) => setCustom(e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        autoComplete="off"
+                        className="w-32"
+                      />
+                    )}
+                  </div>
+                );
+              }
 
-            <hr className="border-border/40" />
-
-            {/* ────────────────────────────────────────────────────
-                5. DETAILS
-               ──────────────────────────────────────────────────── */}
-            <section className="space-y-5">
-              <SectionHeader
-                icon={<FileText className="size-4 text-slate-500" />}
-                iconColor="bg-slate-500/10"
-                title="Details"
-              />
-
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Description</label>
-                  <MarkdownEditor
-                    name="description"
-                    placeholder="Describe the product\u2026"
-                    defaultValue={listing?.description ?? ""}
+              // Edit mode: show one card based on pageType
+              if (isEditing) {
+                return pageType === "sale" ? (
+                  <PricingCard
+                    icon={Tag}
+                    label="Sale Price"
+                    usdPrice={saleUsdPrice}
+                    mmkPrice={saleMmkPrice}
+                    onUsdChange={(v) => {
+                      setSaleUsdPrice(v);
+                      setSaleMmkPrice(convertSaleUsdToMmk(v));
+                    }}
+                    onMmkChange={setSaleMmkPrice}
+                    rateDisplay={makeRateDisplay(saleActiveRate)}
+                    rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
                   />
+                ) : (
+                  <PricingCard
+                    icon={RotateCcw}
+                    label="Rental Price"
+                    usdPrice={rentUsdPrice}
+                    mmkPrice={rentMmkPrice}
+                    onUsdChange={(v) => {
+                      setRentUsdPrice(v);
+                      setRentMmkPrice(convertRentUsdToMmk(v));
+                    }}
+                    onMmkChange={setRentMmkPrice}
+                    rateDisplay={makeRateDisplay(rentActiveRate)}
+                    rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
+                  />
+                );
+              }
+
+              // Create mode: show card(s) based on checked listing types
+              return (
+                <div className="flex flex-col gap-6">
+                  {forSale && (
+                    <PricingCard
+                      icon={Tag}
+                      label="Sale Price"
+                      usdPrice={saleUsdPrice}
+                      mmkPrice={saleMmkPrice}
+                      onUsdChange={(v) => {
+                        setSaleUsdPrice(v);
+                        setSaleMmkPrice(convertSaleUsdToMmk(v));
+                      }}
+                      onMmkChange={setSaleMmkPrice}
+                      rateDisplay={makeRateDisplay(saleActiveRate)}
+                      rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
+                    />
+                  )}
+                  {forRent && (
+                    <PricingCard
+                      icon={RotateCcw}
+                      label="Rental Price"
+                      usdPrice={rentUsdPrice}
+                      mmkPrice={rentMmkPrice}
+                      onUsdChange={(v) => {
+                        setRentUsdPrice(v);
+                        setRentMmkPrice(convertRentUsdToMmk(v));
+                      }}
+                      onMmkChange={setRentMmkPrice}
+                      rateDisplay={makeRateDisplay(rentActiveRate)}
+                      rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
+                    />
+                  )}
+                  {!forSale && !forRent && (
+                    <p className="text-muted-foreground text-sm">
+                      Select a listing type to set pricing
+                    </p>
+                  )}
                 </div>
+              );
+            })()}
+
+            {(forSale || forRent) && (
+              <label className="flex items-center justify-between rounded-lg border px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <EyeOff className="size-4 text-muted-foreground" />
+                  <span className="text-sm">Hide price from buyers</span>
+                </div>
+                <Switch
+                  checked={hidePrice}
+                  onCheckedChange={setHidePrice}
+                />
+              </label>
+            )}
+
+            {/* Step footer */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goPrev}
+              >
+                <ArrowLeft className="mr-1 size-3.5" /> Back
+              </Button>
+              <Button type="button" size="sm" onClick={goNext}>
+                Next <ArrowRight className="ml-1 size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* ──────────────────────────────────────────────────────
+              STEP 2: PHOTOS
+             ────────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "mx-auto max-w-3xl flex flex-col gap-6 px-6 py-8",
+              currentStep !== 2 && "hidden",
+            )}
+          >
+            <StepHeader step={STEP_META[2]} />
+
+            {/* Thumbnail */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <ImageIcon className="size-4 text-muted-foreground" />
+                Thumbnail
+                <span className="text-muted-foreground text-xs font-normal">
+                  Cover image
+                </span>
+              </label>
+              <ImageInput
+                name="thumbnail_url"
+                value={thumbnailUrl}
+                onChange={setThumbnailUrl}
+                placeholder="Upload cover"
+                aspectClassName="aspect-video w-full max-w-xs"
+              />
+            </div>
+
+            {/* Product Photos */}
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <Camera className="size-4 text-muted-foreground" />
+                Product Photos
+              </label>
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center p-8">
+                    <Spinner className="size-5" />
+                  </div>
+                }
+              >
+                <LazySortableImageGallery
+                  items={galleryItems}
+                  onChange={setGalleryItems}
+                />
+              </Suspense>
+            </div>
+
+            {/* Step footer */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goPrev}
+              >
+                <ArrowLeft className="mr-1 size-3.5" /> Back
+              </Button>
+              <div className="flex items-center gap-2">
+                {(isDraftMode || (!isEditing && !isDraftMode)) && (
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => { submitActionRef.current = "save-draft"; }}
+                  >
+                    Save as Draft
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => {
+                    submitActionRef.current = isRework ? "resubmit" : isEditing ? "save" : "submit";
+                  }}
+                >
+                  {isPending ? (
+                    <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                  ) : isRework ? (
+                    "Resubmit"
+                  ) : isEditing ? (
+                    "Save"
+                  ) : canApprove ? (
+                    "Create & Approve"
+                  ) : (
+                    "Submit for Review"
+                  )}
+                </Button>
               </div>
-            </section>
+            </div>
           </div>
         </div>
+
+        {/* ── Rework Request Dialog ── */}
+        {showReworkDialog && (
+          <FormDialog
+            open={showReworkDialog}
+            onOpenChange={setShowReworkDialog}
+            title="Request Rework"
+            description={`Request rework for listing "${listing?.model_name ?? "Unknown"}".`}
+            icon={<XCircle className="text-primary-foreground size-6" />}
+            onSubmit={handleRequestRework}
+            isPending={isPending}
+            submitLabel="Request Rework"
+          >
+            <div className="space-y-4">
+              <Field orientation="vertical">
+                <FieldLabel>Reason (optional)</FieldLabel>
+                <FieldContent>
+                  <Input
+                    name="rework_reason"
+                    placeholder="e.g. Incomplete listing details"
+                  />
+                </FieldContent>
+              </Field>
+            </div>
+          </FormDialog>
+        )}
       </FormSubmittedContext>
     </form>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,8 +17,8 @@ interface PdfInputProps {
 
 /**
  * PDF input with drag-and-drop, click-to-upload, and filename preview.
- * Stores the PDF as a base64 data URL string (temporary until R2 is set up).
- * The value is submitted via a hidden input with the given `name`.
+ * Submits the File directly via FormData for R2 upload.
+ * The file input uses the given `name` for form submission.
  */
 export function PdfInput({
   name,
@@ -30,24 +29,16 @@ export function PdfInput({
   className,
   disabled = false,
 }: PdfInputProps) {
-  const [internalValue, setInternalValue] = useState<string | null>(null);
+  const [hasNewFile, setHasNewFile] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const value =
-    controlledValue !== undefined ? controlledValue : internalValue;
-
-  const setValue = useCallback(
-    (newValue: string | null) => {
-      if (controlledValue === undefined) {
-        setInternalValue(newValue);
-      }
-      onChange?.(newValue);
-    },
-    [controlledValue, onChange],
-  );
+  // Show preview if we have a new file OR an existing R2 URL (that hasn't been removed)
+  const hasValue = hasNewFile || (!!controlledValue && !removed);
 
   const processFile = useCallback(
     (file: File) => {
@@ -64,15 +55,20 @@ export function PdfInput({
       }
 
       setFileName(file.name);
+      setFileSize(file.size);
+      setHasNewFile(true);
+      setRemoved(false);
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        setValue(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      // Set file on the input so FormData includes it
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dt.files;
+      }
+
+      onChange?.(file.name);
     },
-    [maxSizeMB, setValue],
+    [maxSizeMB, onChange],
   );
 
   const handleDragOver = useCallback(
@@ -108,7 +104,6 @@ export function PdfInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) processFile(file);
-      e.target.value = "";
     },
     [processFile],
   );
@@ -116,64 +111,74 @@ export function PdfInput({
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      setValue(null);
+      setHasNewFile(false);
+      setRemoved(true);
       setFileName(null);
+      setFileSize(null);
       setError(null);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      onChange?.(null);
     },
-    [setValue],
+    [onChange],
   );
 
-  /** Derive a display name from the data URL or stored filename */
+  /** Derive display name from new file, existing URL, or fallback */
   const displayName =
-    fileName ?? (value ? "Uploaded PDF" : null);
+    fileName ??
+    (controlledValue
+      ? controlledValue.split("/").pop() ?? "Uploaded PDF"
+      : "Uploaded PDF");
+
+  const displaySize = fileSize
+    ? fileSize < 1024
+      ? `${fileSize} B`
+      : fileSize < 1024 * 1024
+        ? `${(fileSize / 1024).toFixed(1)} KB`
+        : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`
+    : null;
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Hidden input for form submission */}
-      <input type="hidden" name={name} value={value ?? ""} />
-
-      {/* Hidden file input */}
+      {/* File input for FormData submission */}
       <input
         ref={fileInputRef}
         type="file"
+        name={name}
         accept="application/pdf"
         onChange={handleFileSelect}
         className="hidden"
         disabled={disabled}
       />
+      {/* Signal explicit removal to the server action */}
+      {removed && !hasNewFile && (
+        <input type="hidden" name={`${name}_removed`} value="1" />
+      )}
 
-      {value ? (
+      {hasValue ? (
         /* Preview state */
-        <div className="relative group">
-          <div className="flex items-center gap-3 rounded-xl border bg-muted/50 px-4 py-3">
-            <div className="rounded-lg bg-red-100 p-2 dark:bg-red-900/30">
-              <FileText className="size-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{displayName}</p>
-              <p className="text-xs text-muted-foreground">PDF Document</p>
-            </div>
+        <div className="flex items-center gap-3 rounded-xl border bg-muted/50 px-4 py-3">
+          <div className="rounded-lg bg-red-100 p-2 dark:bg-red-900/30">
+            <FileText className="size-5 text-red-600 dark:text-red-400" />
           </div>
-          <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-            >
-              Replace
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon-sm"
-              onClick={handleRemove}
-              disabled={disabled}
-            >
-              <X />
-            </Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{displayName}</p>
+            <p className="text-xs text-muted-foreground">
+              PDF{displaySize ? ` · ${displaySize}` : ""}
+            </p>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleRemove}
+            disabled={disabled}
+            className="text-muted-foreground hover:text-destructive shrink-0"
+          >
+            <X className="size-4" />
+          </Button>
         </div>
       ) : (
         /* Upload zone */

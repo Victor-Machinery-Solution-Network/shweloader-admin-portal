@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Paperclip, Plus } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Paperclip, Plus } from "lucide-react";
+import Link from "next/link";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/ui/data-table";
+import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { CategoryForm } from "./category-form";
@@ -25,12 +34,23 @@ export function AttachmentCategoriesClient({
   categories,
   linkedInfo,
 }: AttachmentCategoriesClientProps) {
+  const canCreate = useHasPermission("attachment_categories", "create");
+  const canDelete = useHasPermission("attachment_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
-  const { data, handleReorder } = useDragReorder(categories, {
-    getRowId: (r) => r.category_id,
-    tableName: "attachment_category",
-  });
+  const { data, handleReorder, handleMoveToPosition } = useDragReorder(
+    categories,
+    {
+      getRowId: (r) => r.category_id,
+      tableName: "attachment_category",
+      feature: "attachment_categories",
+    },
+  );
   const columns = useMemo(() => getColumns(linkedInfo), [linkedInfo]);
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [{ columnId: "created_at", label: "Created", type: "date-range" }],
+    [],
+  );
 
   const buildDescription = useCallback(
     async (selected: AttachmentCategory[]) => {
@@ -68,18 +88,36 @@ export function AttachmentCategoriesClient({
   const renderToolbar = useCallback(
     (selected: AttachmentCategory[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="category"
-        />
-        <Button onClick={() => setShowCreate(true)} className="ml-auto">
-          <Plus /> Add Category
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="category"
+          />
+        )}
+        {canCreate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus /> Add Category <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/attachment-categories">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
   return (
@@ -88,13 +126,16 @@ export function AttachmentCategoriesClient({
         <DataTable
           columns={columns}
           data={data}
-          searchKey="name"
+          searchKeys={["name"]}
           searchPlaceholder="Search categories"
+          filterConfig={filterConfig}
+          filterStorageKey="attachment-categories-filters"
           enableSelection
           enablePagination
           enableDragSort
           getRowId={(row) => row.category_id}
           onReorder={handleReorder}
+          onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
         />
@@ -104,9 +145,25 @@ export function AttachmentCategoriesClient({
           title="No categories yet"
           description="Get started by creating your first attachment category."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Category
-            </Button>
+            canCreate ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus /> Add Category <ChevronDown className="ml-1 size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                    <FileText /> Fill Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bulk-upload/attachment-categories">
+                      <FileSpreadsheet /> Excel Upload
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
           }
         />
       )}

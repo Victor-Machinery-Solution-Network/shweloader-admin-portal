@@ -307,6 +307,30 @@
     letter-spacing: var(--tracking-normal);
   }
 
+  /* Custom scrollbar — thin, rounded, matches theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+
   /* Prevent 300ms double-tap zoom delay on touch devices */
   button,
   a,
@@ -344,5 +368,58 @@
   [data-sidebar="menu-sub-button"][data-active="true"] {
     background-color: var(--primary) !important;
     color: hsl(0 0% 10%) !important;
+  }
+}
+
+/* Pinned column shadow — gradient pseudo-element (not box-shadow,
+   which gets clipped by overflow:auto). Subtle fade for depth. */
+[data-scrolled-left] [data-pin-edge="left"]::before,
+[data-scrolled-right] [data-pin-edge="right"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  pointer-events: none;
+}
+
+[data-scrolled-left] [data-pin-edge="left"]::before {
+  left: 100%;
+  background: linear-gradient(to right, rgb(0 0 0 / 0.04), transparent);
+}
+
+[data-scrolled-right] [data-pin-edge="right"]::before {
+  right: 100%;
+  background: linear-gradient(to left, rgb(0 0 0 / 0.04), transparent);
+}
+
+.dark [data-scrolled-left] [data-pin-edge="left"]::before {
+  background: linear-gradient(to right, rgb(0 0 0 / 0.12), transparent);
+}
+
+.dark [data-scrolled-right] [data-pin-edge="right"]::before {
+  background: linear-gradient(to left, rgb(0 0 0 / 0.12), transparent);
+}
+
+/* Bell shake animation for notification alerts */
+@keyframes bell-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(12deg);
+  }
+  30% {
+    transform: rotate(-10deg);
+  }
+  45% {
+    transform: rotate(8deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
   }
 }

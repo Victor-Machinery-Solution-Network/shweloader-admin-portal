@@ -8,11 +8,13 @@ declare module 'next-auth' {
       name: string;
       email: string;
       role_id: number | null;
+      permissions: string[];
     } & DefaultSession['user'];
   }
 
   interface User {
     role_id?: number | null;
+    permissions?: string[];
   }
 }
 
@@ -21,5 +23,8 @@ declare module 'next-auth/jwt' {
     user_id?: string;
     username?: string;
     role_id?: number | null;
+    permissions?: string[];
+    /** Epoch ms when permissions were last refreshed from DB */
+    refreshed_at?: number;
   }
 }

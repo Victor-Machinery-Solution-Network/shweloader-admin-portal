@@ -26,7 +26,7 @@ src/
 │   │   ├── attachments/         # Attachment management
 │   │   ├── brands/              # Brand management
 │   │   ├── carousel-images/     # Carousel image management
-│   │   ├── customers/           # Customer management
+│   │   ├── users/               # User management
 │   │   ├── enquiries/           # Enquiry management
 │   │   ├── equipment/           # Equipment management
 │   │   ├── listings/            # Listing management
@@ -98,20 +98,9 @@ src/
 │   │
 │   ├── api/                      # API client utilities
 │   │   ├── index.ts             # Barrel exports for all API utilities
-│   │   ├── client.ts            # Legacy API client (GET, POST, PUT, DELETE)
 │   │   ├── d1-client.ts         # Cloudflare D1 REST API client
 │   │   ├── create-service.ts    # Service factory for type-safe CRUD
-│   │   └── endpoints/           # API endpoint definitions (ready for use)
-│   │       ├── users.ts         # User API endpoints
-│   │       └── products.ts      # Product API endpoints
-│   │
-│   ├── db/                       # Database logic (ready for use)
-│   │   ├── schema.ts            # Database schema definitions
-│   │   └── queries.ts           # Database query functions
-│   │
-│   ├── validations/              # Validation schemas (ready for use)
-│   │   ├── user.ts              # User validation schemas
-│   │   └── product.ts           # Product validation schemas
+│   │   └── r2-client.ts         # Cloudflare R2 storage client (upload/delete/URL helpers)
 │   │
 │   ├── hooks/                    # Custom React hooks (ready for use)
 │   │   ├── use-toast.ts         # Toast notification hook
@@ -571,53 +560,6 @@ export async function createResource(formData: FormData) {
 
   // 5. Return result
   return { success: true, data: result };
-}
-```
-
----
-
-#### `src/lib/api/client.ts`
-
-**Purpose**: API client for HTTP requests
-**Type**: TypeScript module
-**Features**:
-
-- GET, POST, PUT, DELETE helpers
-- Error handling
-- Type-safe responses
-- Base URL configuration
-
-**Exports**:
-
-- `apiGet<T>(endpoint, options?)` - GET request
-- `apiPost<T>(endpoint, data?, options?)` - POST request
-- `apiPut<T>(endpoint, data?, options?)` - PUT request
-- `apiDelete<T>(endpoint, options?)` - DELETE request
-- `ApiError` - Custom error class
-
-**Usage**:
-
-```typescript
-"use client";
-import { apiGet, apiPost } from "@/lib/api/client";
-import type { User } from "@/types";
-
-// Fetch data
-const { data } = await apiGet<User[]>("/users");
-
-// Create resource
-const { data: newUser } = await apiPost<User>("/users", {
-  name: "John",
-  email: "john@example.com",
-});
-
-// Error handling
-try {
-  await apiPost("/users", userData);
-} catch (error) {
-  if (error instanceof ApiError) {
-    console.error(error.status, error.message);
-  }
 }
 ```
 

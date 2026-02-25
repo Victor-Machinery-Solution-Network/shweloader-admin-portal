@@ -10,6 +10,7 @@ import {
   getCategoryBrandLinks,
 } from "@/lib/cache";
 import { AttachmentModelsClient } from "@/components/features/attachments/models/attachment-models-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Models | Attachments",
@@ -24,7 +25,9 @@ export default function AttachmentModelsPage() {
         description="Manage attachment models"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <AttachmentModelsContent />
+        <PermissionGate feature="attachment_models">
+          <AttachmentModelsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

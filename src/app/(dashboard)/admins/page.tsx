@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getAdmins, getRolesForAssignment } from "@/lib/cache";
 import { AdminsClient } from "@/components/features/admins/admins-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Admins",
@@ -19,7 +20,9 @@ export default function AdminsPage() {
         description="Manage admin accounts and role assignments"
       />
       <Suspense fallback={<DataTableSkeleton columns={5} />}>
-        <AdminsContent />
+        <PermissionGate feature="admin_users">
+          <AdminsContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getCarouselsWithImages } from "@/lib/cache";
 import { CarouselClient } from "@/components/features/carousel/carousel-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Carousel Images",
@@ -19,7 +20,9 @@ export default function CarouselImagesPage() {
         description="Manage carousel slideshows for the website"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <CarouselContent />
+        <PermissionGate feature="carousels">
+          <CarouselContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

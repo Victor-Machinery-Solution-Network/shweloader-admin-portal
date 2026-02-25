@@ -1,24 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Plus,
-  Type,
-  Hash,
-  ChevronDown as ChevronDownIcon,
-  ToggleLeft,
-  CalendarDays,
-  Link,
-} from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Combobox,
   ComboboxInput,
@@ -36,29 +21,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { CustomFieldInput } from "./custom-field-input";
-import {
-  CUSTOM_FIELD_TYPES,
-  FIELD_TYPE_LABELS,
-  type CustomFieldType,
-  type CustomFieldValue,
-  type CustomFieldDefinition,
-  type CustomFieldTemplateWithFields,
+import { FieldValueInput } from "./custom-field-input";
+import type {
+  CustomFieldValue,
+  CustomFieldTemplateWithFields,
 } from "@/types/custom-field";
-
-// ─── Field type icons ──────────────────────────────────────────────────────
-
-const FIELD_TYPE_ICONS: Record<
-  CustomFieldType,
-  React.ComponentType<{ className?: string }>
-> = {
-  text: Type,
-  number: Hash,
-  dropdown: ChevronDownIcon,
-  boolean: ToggleLeft,
-  date: CalendarDays,
-  url: Link,
-};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -88,9 +55,20 @@ function fieldsFromTemplate(
       key: def.key,
       label: def.label,
       type: def.type,
-      value: match?.value ?? def.defaultValue ?? (def.type === "boolean" ? "false" : ""),
+      value:
+        match?.value ??
+        def.defaultValue ??
+        (def.type === "boolean" ? "false" : ""),
     };
   });
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface CustomRow {
+  id: string;
+  label: string;
+  value: string;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -106,30 +84,44 @@ export function CustomFieldsSection({
   initialValues = [],
   onChange,
 }: CustomFieldsSectionProps) {
+  // Template/existing fields (with proper types from template definition)
   const [fields, setFields] = useState<CustomFieldValue[]>(initialValues);
   const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [showAddField, setShowAddField] = useState(false);
-  const [newFieldLabel, setNewFieldLabel] = useState("");
-  const [newFieldType, setNewFieldType] = useState<CustomFieldType>("text");
   const [confirmSwitch, setConfirmSwitch] = useState<{
     template: CustomFieldTemplateWithFields;
     lostFields: string[];
   } | null>(null);
 
-  // Track which template definition's options map to each field key
+  // Track dropdown options from template definitions
   const [fieldOptionsMap, setFieldOptionsMap] = useState<
     Record<string, string[]>
-  >(() => {
-    const map: Record<string, string[]> = {};
-    // If initialValues came from a template, we don't know the options.
-    // They'll be set when a template is selected.
-    return map;
-  });
+  >({});
 
-  const updateFields = useCallback(
-    (next: CustomFieldValue[]) => {
-      setFields(next);
-      onChange(next);
+  // Ad-hoc custom rows (always text type, user provides name + value)
+  const [customRows, setCustomRows] = useState<CustomRow[]>([
+    { id: crypto.randomUUID(), label: "", value: "" },
+  ]);
+
+  // ─── Merge & report ─────────────────────────────────────────────────
+
+  const reportChange = useCallback(
+    (templateFields: CustomFieldValue[], rows: CustomRow[]) => {
+      const existingKeys = templateFields.map((f) => f.key);
+      const customValues: CustomFieldValue[] = [];
+
+      for (const r of rows) {
+        if (!r.label.trim()) continue;
+        const allKeys = [...existingKeys, ...customValues.map((v) => v.key)];
+        const key = generateKey(r.label, allKeys);
+        customValues.push({
+          key,
+          label: r.label.trim(),
+          type: "text",
+          value: r.value,
+        });
+      }
+
+      onChange([...templateFields, ...customValues]);
     },
     [onChange],
   );
@@ -145,7 +137,6 @@ export function CustomFieldsSection({
     const template = templates.find((t) => t.name === templateName);
     if (!template) return;
 
-    // Check if switching would lose filled values
     if (fields.length > 0) {
       const newKeys = new Set(template.fields.map((f) => f.key));
       const lostFields = fields
@@ -165,7 +156,6 @@ export function CustomFieldsSection({
     const newFields = fieldsFromTemplate(template, fields);
     setSelectedTemplate(template.name);
 
-    // Build options map from template definitions
     const optMap: Record<string, string[]> = {};
     for (const def of template.fields) {
       if (def.type === "dropdown" && def.options) {
@@ -174,156 +164,163 @@ export function CustomFieldsSection({
     }
     setFieldOptionsMap(optMap);
 
-    updateFields(newFields);
+    setFields(newFields);
+    reportChange(newFields, customRows);
     setConfirmSwitch(null);
   }
 
-  // ─── Field management ──────────────────────────────────────────────
+  // ─── Template field management ──────────────────────────────────────
 
   function handleFieldChange(key: string, value: string) {
-    updateFields(fields.map((f) => (f.key === key ? { ...f, value } : f)));
+    const next = fields.map((f) => (f.key === key ? { ...f, value } : f));
+    setFields(next);
+    reportChange(next, customRows);
   }
 
   function handleFieldRemove(key: string) {
-    updateFields(fields.filter((f) => f.key !== key));
+    const next = fields.filter((f) => f.key !== key);
+    setFields(next);
+    reportChange(next, customRows);
   }
 
-  function handleAddField() {
-    if (!newFieldLabel.trim()) return;
+  // ─── Custom row management ──────────────────────────────────────────
 
-    const existingKeys = fields.map((f) => f.key);
-    const key = generateKey(newFieldLabel, existingKeys);
-    const newField: CustomFieldValue = {
-      key,
-      label: newFieldLabel.trim(),
-      type: newFieldType,
-      value: newFieldType === "boolean" ? "false" : "",
-    };
-
-    updateFields([...fields, newField]);
-    setNewFieldLabel("");
-    setNewFieldType("text");
-    setShowAddField(false);
+  function handleRowChange(
+    id: string,
+    field: "label" | "value",
+    val: string,
+  ) {
+    const next = customRows.map((r) =>
+      r.id === id ? { ...r, [field]: val } : r,
+    );
+    setCustomRows(next);
+    reportChange(fields, next);
   }
 
-  // ─── Template combobox items ──────────────────────────────────────
+  function handleRowRemove(id: string) {
+    let next = customRows.filter((r) => r.id !== id);
+    if (next.length === 0) {
+      next = [{ id: crypto.randomUUID(), label: "", value: "" }];
+    }
+    setCustomRows(next);
+    reportChange(fields, next);
+  }
+
+  function addRow() {
+    setCustomRows((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), label: "", value: "" },
+    ]);
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────
 
   const templateNames = templates.map((t) => t.name);
-
-  // ─── Render ───────────────────────────────────────────────────────
+  const hasRows = fields.length > 0 || customRows.length > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Template selector */}
-      {templates.length > 0 && (
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">
-            Apply a template
-          </Label>
-          <Combobox
-            value={selectedTemplate}
-            onValueChange={handleTemplateSelect}
-            items={templateNames}
-          >
-            <ComboboxInput
-              placeholder="Select a template..."
-              showClear={!!selectedTemplate}
-            />
-            <ComboboxContent>
-              <ComboboxList>
-                <ComboboxEmpty>No templates found</ComboboxEmpty>
-                <ComboboxCollection>
-                  {(name) => (
-                    <ComboboxItem key={name} value={name}>
-                      {name}
-                    </ComboboxItem>
-                  )}
-                </ComboboxCollection>
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
-        </div>
-      )}
-
-      {/* Field list */}
-      {fields.length > 0 && (
-        <div className="space-y-2">
-          {fields.map((field) => (
-            <CustomFieldInput
-              key={field.key}
-              field={field}
-              options={fieldOptionsMap[field.key]}
-              onChange={(value) => handleFieldChange(field.key, value)}
-              onRemove={() => handleFieldRemove(field.key)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Add ad-hoc field */}
-      <Collapsible open={showAddField} onOpenChange={setShowAddField}>
-        <CollapsibleTrigger asChild>
-          <Button type="button" variant="outline" size="sm" className="w-full">
-            <Plus className="size-4" /> Add Custom Field
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-3 space-y-3 rounded-xl border bg-card p-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Field Label</Label>
-              <Input
-                value={newFieldLabel}
-                onChange={(e) => setNewFieldLabel(e.target.value)}
-                placeholder="e.g. Serial Number"
-                autoComplete="off"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddField();
-                  }
-                }}
+    <>
+      <div className="divide-y overflow-hidden rounded-xl border">
+        {/* Template selector */}
+        {templates.length > 0 && (
+          <div className="bg-muted/30 px-4 py-3">
+            <Combobox
+              value={selectedTemplate}
+              onValueChange={handleTemplateSelect}
+              items={templateNames}
+            >
+              <ComboboxInput
+                placeholder="Apply a template..."
+                showClear={!!selectedTemplate}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Field Type</Label>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                spacing={2}
-                value={newFieldType}
-                onValueChange={(value) => {
-                  if (value) setNewFieldType(value as CustomFieldType);
-                }}
-                className="flex-wrap"
-              >
-                {CUSTOM_FIELD_TYPES.filter((t) => t !== "dropdown").map(
-                  (type) => {
-                    const Icon = FIELD_TYPE_ICONS[type];
-                    return (
-                      <ToggleGroupItem
-                        key={type}
-                        value={type}
-                        className="gap-1.5 px-3 text-xs"
-                      >
-                        <Icon className="size-3.5" />
-                        {FIELD_TYPE_LABELS[type]}
-                      </ToggleGroupItem>
-                    );
-                  },
-                )}
-              </ToggleGroup>
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No templates found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(name) => (
+                      <ComboboxItem key={name} value={name}>
+                        {name}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+        )}
+
+        {/* Template/existing field rows */}
+        {fields.map((field) => (
+          <div
+            key={field.key}
+            className="group flex items-center gap-3 px-4 py-3"
+          >
+            <span className="w-2/5 shrink-0 truncate text-sm font-medium">
+              {field.label}
+            </span>
+            <div className="min-w-0 flex-1">
+              <FieldValueInput
+                field={field}
+                options={fieldOptionsMap[field.key]}
+                onChange={(value) => handleFieldChange(field.key, value)}
+              />
             </div>
             <Button
               type="button"
-              size="sm"
-              onClick={handleAddField}
-              disabled={!newFieldLabel.trim()}
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              onClick={() => handleFieldRemove(field.key)}
             >
-              Add
+              <X className="size-4" />
+              <span className="sr-only">Remove {field.label}</span>
             </Button>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        ))}
+
+        {/* Custom field rows */}
+        {customRows.map((row) => (
+          <div key={row.id} className="flex items-center gap-3 px-4 py-3">
+            <Input
+              value={row.label}
+              onChange={(e) => handleRowChange(row.id, "label", e.target.value)}
+              placeholder="Field name"
+              className="w-2/5 shrink-0"
+              autoComplete="off"
+            />
+            <Input
+              value={row.value}
+              onChange={(e) => handleRowChange(row.id, "value", e.target.value)}
+              placeholder="Value"
+              className="min-w-0 flex-1"
+              autoComplete="off"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={() => handleRowRemove(row.id)}
+            >
+              <X className="size-4" />
+              <span className="sr-only">Remove row</span>
+            </Button>
+          </div>
+        ))}
+
+        {/* Add row button */}
+        <div className="px-4 py-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={addRow}
+          >
+            <Plus className="size-4" /> Add field
+          </Button>
+        </div>
+      </div>
 
       {/* Confirmation dialog for template switch */}
       <Dialog
@@ -364,6 +361,6 @@ export function CustomFieldsSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

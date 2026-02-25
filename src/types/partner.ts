@@ -1,6 +1,6 @@
 export interface Partner {
   id: number;
-  customer_id: number | null;
+  app_user_id: number | null;
   partner_type_id: number | null;
   status_id: number | null;
   applied_at: string;
@@ -22,15 +22,15 @@ export interface PartnerStatusType {
   status_name: string;
 }
 
-/** Partner row joined with customer + lookup names for display */
+/** Partner row joined with user + lookup names for display */
 export interface PartnerWithDetails extends Partner {
-  customer_name: string | null;
-  customer_email: string | null;
-  customer_phone: string | null;
-  customer_company: string | null;
-  customer_address: string | null;
-  customer_verified: number | null;
-  customer_joined: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  user_phone: string | null;
+  user_company: string | null;
+  user_address: string | null;
+  user_verified: number | null;
+  user_joined: string | null;
   business_type_name: string | null;
   partner_type_name: string | null;
   status_name: string | null;

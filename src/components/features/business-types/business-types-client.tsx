@@ -1,9 +1,18 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Briefcase, Plus } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { Briefcase, ChevronDown, FileText, FileSpreadsheet, Plus } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { FilterConfig } from "@/types/data-table-filters";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
@@ -11,9 +20,9 @@ import { BusinessTypeForm } from "./business-type-form";
 import { columns } from "./columns";
 import {
   deleteBusinessTypes,
-  getCustomerCount,
+  getUserCount,
 } from "@/lib/actions/business-type";
-import type { BusinessType } from "@/types/customer";
+import type { BusinessType } from "@/types/app-user";
 
 interface BusinessTypesClientProps {
   businessTypes: BusinessType[];
@@ -22,19 +31,26 @@ interface BusinessTypesClientProps {
 export function BusinessTypesClient({
   businessTypes,
 }: BusinessTypesClientProps) {
+  const canCreate = useHasPermission("business_types", "create");
+  const canDelete = useHasPermission("business_types", "delete");
   const [showCreate, setShowCreate] = useState(false);
+
+  const filterConfig = useMemo<FilterConfig[]>(
+    () => [{ columnId: "created_at", label: "Created", type: "date-range" }],
+    [],
+  );
 
   const buildDescription = useCallback(
     async (selected: BusinessType[]) => {
       const ids = selected.map((bt) => bt.business_type_id);
-      const counts = await getCustomerCount(ids);
+      const counts = await getUserCount(ids);
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((bt) => `"${bt.name}"`).join(", ");
       let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} business types (${names})`}.`;
 
       if (totalLinked > 0) {
-        msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "customer" : "customers"} using ${selected.length === 1 ? "this business type" : "these business types"}.`;
+        msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "user" : "users"} using ${selected.length === 1 ? "this business type" : "these business types"}.`;
       }
 
       return msg;
@@ -52,30 +68,52 @@ export function BusinessTypesClient({
 
   const renderToolbar = useCallback(
     (selected: BusinessType[]) => (
-      <BulkDeleteButton
-        selectedRows={selected}
-        onDelete={handleBulkDelete}
-        buildDescription={buildDescription}
-        itemLabel="business type"
-      />
+      <>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="business type"
+          />
+        )}
+      </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canDelete],
   );
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus /> Add Business Type
-        </Button>
-      </div>
+      {canCreate && (
+        <div className="flex justify-end mb-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus /> Add Business Type <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/business-types">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       {businessTypes.length > 0 ? (
         <DataTable
           columns={columns}
           data={businessTypes}
-          searchKey="name"
+          searchKeys={["name"]}
           searchPlaceholder="Search business types"
+          filterConfig={filterConfig}
+          filterStorageKey="business-types-filters"
           enableSelection
           enablePagination
           pageSize={10}
@@ -88,9 +126,25 @@ export function BusinessTypesClient({
           title="No business types yet"
           description="Get started by creating your first business type."
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus /> Add Business Type
-            </Button>
+            canCreate ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus /> Add Business Type <ChevronDown className="ml-1 size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                    <FileText /> Fill Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bulk-upload/business-types">
+                      <FileSpreadsheet /> Excel Upload
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
           }
         />
       )}

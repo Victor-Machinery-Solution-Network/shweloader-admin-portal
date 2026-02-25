@@ -8,7 +8,7 @@
  * Usage:
  *   pnpm tsx --env-file=.env.local scripts/seed-all.ts
  *
- * Requires D1_API_TOKEN and NEXT_PUBLIC_D1_API_URL in .env.local
+ * Requires CLOUDFLARE_WORKER_API_TOKEN and CLOUDFLARE_WORKER_API_URL in .env.local
  */
 
 import bcrypt from "bcryptjs";
@@ -16,9 +16,9 @@ import bcrypt from "bcryptjs";
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const D1_BASE_URL =
-  process.env.NEXT_PUBLIC_D1_API_URL ||
-  "https://cloudflare-d1-rest-api.shweloader.workers.dev";
-const D1_API_TOKEN = process.env.D1_API_TOKEN || "";
+  process.env.CLOUDFLARE_WORKER_API_URL ||
+  "https://api.staging.shweloader.com.mm";
+const D1_API_TOKEN = process.env.CLOUDFLARE_WORKER_API_TOKEN || "";
 const BCRYPT_ROUNDS = 12;
 
 // ─── D1 API Helpers ──────────────────────────────────────────────────────────
@@ -119,9 +119,9 @@ const PARTNER_STATUS_TYPES = ["Pending", "Approved", "Rejected"];
 
 const ENQUIRY_STATUS_TYPES = ["Pending", "Resolved"];
 
-const APPROVAL_STATUS_TYPES = ["Pending", "Approved", "Rejected"];
+const APPROVAL_STATUS_TYPES = ["Pending", "Approved", "Rework"];
 
-const ARTICLE_STATUS_TYPES = ["Draft", "Pending Review", "Published", "Rejected"];
+const ARTICLE_STATUS_TYPES = ["Draft", "Pending Review", "Published", "Hidden", "Rework"];
 
 const CONDITION_TYPES = [
   "Brand New",
@@ -134,39 +134,73 @@ const CONDITION_TYPES = [
 
 // ── RBAC ──
 
-const PERMISSIONS = ["create", "read", "edit", "delete", "approve"] as const;
+interface PermissionDef {
+  name: string;
+  display_order: number;
+}
 
-const FEATURES = [
-  "sale_listings",
-  "rent_listings",
-  "featured_listings",
-  "partners",
-  "articles",
-  "article_categories",
-  "equipment_main_categories",
-  "equipment_sub_categories",
-  "equipment_models",
-  "attachment_categories",
-  "attachment_models",
-  "brands",
-  "locations",
-  "announcements",
-  "carousels",
-  "customers",
-  "enquiries",
-  "admin_users",
-  "roles",
-  "app_settings",
-  "business_types",
-] as const;
+const PERMISSIONS: PermissionDef[] = [
+  { name: "create",  display_order: 1 },
+  { name: "read",    display_order: 2 },
+  { name: "edit",    display_order: 3 },
+  { name: "delete",  display_order: 4 },
+  { name: "approve", display_order: 5 },
+];
+
+interface FeatureDef {
+  name: string;
+  group_name: string;
+  display_order: number;
+}
+
+const FEATURES: FeatureDef[] = [
+  // Dashboard (1–2)
+  { name: "dashboard",                 group_name: "Dashboard",       display_order: 1 },
+  { name: "analytics",                 group_name: "Dashboard",       display_order: 2 },
+  // Catalog (3–9)
+  { name: "equipment_main_categories", group_name: "Catalog",         display_order: 3 },
+  { name: "equipment_sub_categories",  group_name: "Catalog",         display_order: 4 },
+  { name: "equipment_models",          group_name: "Catalog",         display_order: 5 },
+  { name: "attachment_categories",     group_name: "Catalog",         display_order: 6 },
+  { name: "attachment_models",         group_name: "Catalog",         display_order: 7 },
+  { name: "brands",                    group_name: "Catalog",         display_order: 8 },
+  { name: "locations",                 group_name: "Catalog",         display_order: 9 },
+  // Marketplace (10–13)
+  { name: "sale_listings",             group_name: "Marketplace",     display_order: 10 },
+  { name: "rent_listings",             group_name: "Marketplace",     display_order: 11 },
+  { name: "featured_listings",         group_name: "Marketplace",     display_order: 12 },
+  { name: "enquiries",                 group_name: "Marketplace",     display_order: 13 },
+  // Users (14–16)
+  { name: "users",                     group_name: "Users",           display_order: 14 },
+  { name: "partners",                  group_name: "Users",           display_order: 15 },
+  { name: "business_types",            group_name: "Users",           display_order: 16 },
+  // Content (17–20)
+  { name: "articles",                  group_name: "Content",         display_order: 17 },
+  { name: "article_categories",        group_name: "Content",         display_order: 18 },
+  { name: "announcements",             group_name: "Content",         display_order: 19 },
+  { name: "carousels",                 group_name: "Content",         display_order: 20 },
+  // Administration (21–24)
+  { name: "admin_users",               group_name: "Administration",  display_order: 21 },
+  { name: "roles",                     group_name: "Administration",  display_order: 22 },
+  { name: "listing_templates",         group_name: "Administration",  display_order: 23 },
+  { name: "app_settings",              group_name: "Administration",  display_order: 24 },
+];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
+  // Dashboard — read only
+  dashboard: ["read"],
+  analytics: ["read"],
+  // Marketplace — custom sets
   sale_listings: ["create", "read", "edit", "delete", "approve"],
   rent_listings: ["create", "read", "edit", "delete", "approve"],
-  articles: ["create", "read", "edit", "delete", "approve"],
-  partners: ["read", "edit", "delete", "approve"],
-  customers: ["read", "edit", "delete"],
+  featured_listings: ["create", "read", "delete"],
   enquiries: ["read", "edit", "delete"],
+  // Users — custom sets
+  users: ["read"],
+  partners: ["read", "approve"],
+  // Content
+  articles: ["create", "read", "edit", "delete", "approve"],
+  // Administration
   app_settings: ["read", "edit"],
 };
 
@@ -191,13 +225,14 @@ const ROLES: RoleDef[] = [
     name: "Editor",
     description: "Content management for articles, announcements, and carousels",
     perms: {
+      dashboard: ["read"],
       articles: ["create", "read", "edit", "delete"],
       article_categories: ["create", "read", "edit", "delete"],
       announcements: ["create", "read", "edit", "delete"],
       carousels: ["create", "read", "edit", "delete"],
       sale_listings: ["read"],
       rent_listings: ["read"],
-      customers: ["read"],
+      users: ["read"],
       partners: ["read"],
     },
   },
@@ -205,11 +240,13 @@ const ROLES: RoleDef[] = [
     name: "Sales Manager",
     description: "Manage listings, partners, and featured items",
     perms: {
+      dashboard: ["read"],
+      analytics: ["read"],
       sale_listings: ["create", "read", "edit", "delete", "approve"],
       rent_listings: ["create", "read", "edit", "delete", "approve"],
-      featured_listings: ["create", "read", "edit", "delete"],
-      partners: ["read", "edit", "approve"],
-      customers: ["read"],
+      featured_listings: ["create", "read", "delete"],
+      partners: ["read", "approve"],
+      users: ["read"],
       enquiries: ["read", "edit"],
       equipment_main_categories: ["read"],
       equipment_sub_categories: ["read"],
@@ -218,12 +255,14 @@ const ROLES: RoleDef[] = [
       attachment_models: ["read"],
       brands: ["read"],
       locations: ["read"],
+      listing_templates: ["read"],
     },
   },
   {
     name: "Content Manager",
     description: "Manage articles and content with approval rights",
     perms: {
+      dashboard: ["read"],
       articles: ["create", "read", "edit", "delete", "approve"],
       article_categories: ["create", "read", "edit", "delete"],
       announcements: ["create", "read", "edit", "delete"],
@@ -231,18 +270,19 @@ const ROLES: RoleDef[] = [
       sale_listings: ["read"],
       rent_listings: ["read"],
       featured_listings: ["read"],
-      customers: ["read"],
+      users: ["read"],
       partners: ["read"],
       enquiries: ["read"],
     },
   },
   {
     name: "Support",
-    description: "Handle enquiries and customer support",
+    description: "Handle enquiries and user support",
     perms: {
+      dashboard: ["read"],
       enquiries: ["read", "edit", "delete"],
-      customers: ["read", "edit"],
-      partners: ["read", "edit"],
+      users: ["read"],
+      partners: ["read"],
       sale_listings: ["read"],
       rent_listings: ["read"],
     },
@@ -250,7 +290,7 @@ const ROLES: RoleDef[] = [
   {
     name: "Viewer",
     description: "Read-only access to all features",
-    perms: Object.fromEntries(FEATURES.map((f) => [f, ["read"]])),
+    perms: Object.fromEntries(FEATURES.map((f) => [f.name, ["read"]])),
   },
 ];
 
@@ -280,38 +320,162 @@ const BUSINESS_TYPES = [
 
 // ── Myanmar Cities ──
 
-const MYANMAR_CITIES = [
-  // Yangon Region
-  "Yangon", "Thanlyin", "Mingaladon",
-  // Mandalay Region
-  "Mandalay", "Meiktila", "Kyaukse", "Myingyan", "Pyin Oo Lwin", "Mogok",
-  // Naypyidaw
-  "Naypyidaw", "Pyinmana", "Lewe", "Tatkon",
-  // Sagaing Region
-  "Monywa", "Sagaing", "Shwebo", "Kalay", "Tamu", "Katha",
-  // Bago Region
-  "Bago", "Pyay", "Toungoo", "Thayarwady", "Letpadan",
-  // Magway Region
-  "Magway", "Pakokku", "Minbu", "Chauk", "Yenangyaung", "Aunglan",
-  // Tanintharyi Region
-  "Dawei", "Myeik", "Kawthaung",
-  // Ayeyarwady Region
-  "Pathein", "Hinthada", "Myaungmya", "Bogale", "Labutta", "Maubin",
-  // Mon State
-  "Mawlamyine", "Thaton", "Ye", "Mudon",
-  // Kayin State
-  "Hpa-An", "Myawaddy", "Kawkareik",
-  // Kayah State
-  "Loikaw", "Demoso",
-  // Shan State
-  "Taunggyi", "Lashio", "Kengtung", "Tachilek", "Muse", "Hsipaw", "Nyaungshwe",
-  // Kachin State
-  "Myitkyina", "Bhamo", "Putao", "Mogaung",
-  // Chin State
-  "Hakha", "Falam", "Mindat",
-  // Rakhine State
-  "Sittwe", "Kyaukpyu", "Thandwe", "Mrauk U",
-];
+// ── Myanmar Location Hierarchy: State/Region → District → Townships ──
+
+const MYANMAR_LOCATIONS: Record<string, { type: "state" | "region" | "union_territory"; districts: Record<string, string[]> }> = {
+  // 7 States
+  "Chin State": {
+    type: "state",
+    districts: {
+      "Falam District": ["Falam", "Tiddim", "Ton Zang", "Reed"],
+      "Hakha District": ["Hakha", "Thantlang", "Htantlang"],
+      "Mindat District": ["Mindat", "Matupi", "Kanpetlet"],
+      "Paletwa District": ["Paletwa"],
+    },
+  },
+  "Kachin State": {
+    type: "state",
+    districts: {
+      "Bhamo District": ["Bhamo", "Shwegu", "Momauk", "Mansi"],
+      "Mohnyin District": ["Mohnyin", "Mogaung", "Phakant", "Hopin"],
+      "Myitkyina District": ["Myitkyina", "Waingmaw", "Injangyang", "Tanai", "Chipwi", "Tsawlaw"],
+      "Putao District": ["Putao", "Sumprabum", "Machanbaw", "Nawngmun", "Khaunglanhpu"],
+    },
+  },
+  "Kayah State": {
+    type: "state",
+    districts: {
+      "Bawlakhe District": ["Bawlakhe", "Hpasawng", "Mese"],
+      "Loikaw District": ["Loikaw", "Demoso", "Hpruso", "Shadaw"],
+    },
+  },
+  "Kayin State": {
+    type: "state",
+    districts: {
+      "Hpa-an District": ["Hpa-an", "Hlaingbwe", "Paingkyon", "Shan Ywa Thit"],
+      "Kawkareik District": ["Kawkareik", "Kyainseikgyi", "Kyondo"],
+      "Myawaddy District": ["Myawaddy"],
+      "Papun District": ["Papun", "Thandaunggyi"],
+    },
+  },
+  "Mon State": {
+    type: "state",
+    districts: {
+      "Mawlamyine District": ["Mawlamyine", "Kyaikmaraw", "Chaungzon", "Thanbyuzayat", "Mudon", "Ye", "Lamine", "Khawzar"],
+      "Thaton District": ["Thaton", "Paung", "Bilin", "Kyaikhto"],
+    },
+  },
+  "Rakhine State": {
+    type: "state",
+    districts: {
+      "Kyaukpyu District": ["Kyaukpyu", "Manaung", "Ann", "Ramree"],
+      "Maungdaw District": ["Maungdaw", "Buthidaung"],
+      "Sittwe District": ["Sittwe", "Pauktaw", "Ponnagyun", "Rathedaung"],
+      "Thandwe District": ["Thandwe", "Toungup", "Gwa", "Gya"],
+      "Mrauk-U District": ["Mrauk-U", "Kyauktaw", "Minbya", "Myebon"],
+    },
+  },
+  "Shan State": {
+    type: "state",
+    districts: {
+      "Kengtung District": ["Kengtung", "Mong Khet", "Mong Yang", "Mong La"],
+      "Kunlong District": ["Kunlong", "Chin Shwe Haw"],
+      "Kyaukme District": ["Kyaukme", "Hsipaw", "Namtu", "Nawnghkio", "Mantong", "Namhsan"],
+      "Lashio District": ["Lashio", "Theinni", "Tangyan", "Mongyai"],
+      "Laukkaing District": ["Laukkaing", "Konkyan"],
+      "Loilen District": ["Loilen", "Panglong", "Kunhing", "Kali", "Namsang", "Mongnai"],
+      "Muse District": ["Muse", "Namhkam", "Kutkai"],
+      "Tachileik District": ["Tachileik", "Mongsat", "Mongping", "Mongyawng", "Mongton", "Monghsat"],
+      "Taunggyi District": ["Taunggyi", "Nyaungshwe", "Hopong", "Hsihseng", "Kalaw", "Lawksawk", "Pinlaung", "Pekon", "Ywangan", "Pindaya"],
+      "Wa SAZ": ["Hopang", "Mongmao", "Panwai", "Nahphan", "Metman"],
+      "Mong Hsu District": ["Mong Hsu", "Mong Kung"],
+      "Langkho District": ["Langkho", "Mawkmai", "Mongshu"],
+    },
+  },
+  // 7 Regions
+  "Ayeyarwady Region": {
+    type: "region",
+    districts: {
+      "Hinthada District": ["Hinthada", "Lemyethna", "Zalun", "Ingapu", "Myanaung", "Kyangin"],
+      "Labutta District": ["Labutta", "Mawlamyinegyun"],
+      "Myaungmya District": ["Myaungmya", "Einme", "Wakema"],
+      "Pathein District": ["Pathein", "Kangyidaunt", "Ngapudaw", "Thabaung", "Kyonpyaw", "Kyaunggon", "Yekyi", "Hainggyikyun"],
+      "Phyarpon District": ["Phyarpon", "Bogale", "Dedaye"],
+      "Maubin District": ["Maubin", "Pantanaw", "Nyaungdon", "Danubyu"],
+    },
+  },
+  "Bago Region": {
+    type: "region",
+    districts: {
+      "Bago District": ["Bago", "Daik-U", "Kawa", "Thanatpin", "Waw", "Nyaunglebin", "Kyauktaga", "Shwegyin"],
+      "Pyay District": ["Pyay", "Paukkhaung", "Padaung", "Paungde", "Thegon", "Shwedaung"],
+      "Taungoo District": ["Taungoo", "Yedashe", "Kyaukkyi", "Oktwin", "Pyu", "Htantabin", "Phyu"],
+      "Thayarwady District": ["Thayarwady", "Letpadan", "Minhla", "Monyo", "Okpho", "Gyobingauk", "Nattalin", "Zigon"],
+    },
+  },
+  "Magway Region": {
+    type: "region",
+    districts: {
+      "Gangaw District": ["Gangaw", "Tilin", "Saw"],
+      "Magway District": ["Magway", "Natmauk", "Taungdwingyi", "Myothit"],
+      "Minbu District": ["Minbu", "Pwintbyu", "Ngape", "Salin", "Sidoktaya"],
+      "Pakokku District": ["Pakokku", "Yesagyo", "Myaing", "Pauk"],
+      "Thayet District": ["Thayet", "Aunglan", "Kamma", "Minhla", "Sinbaungwe"],
+    },
+  },
+  "Mandalay Region": {
+    type: "region",
+    districts: {
+      "Kyaukse District": ["Kyaukse", "Myittha", "Sintgaing", "Tada-U"],
+      "Mandalay District": ["Aungmyaythazan", "Chanayethazan", "Chanmyathazi", "Mahaaungmyay", "Pyigyidagon", "Amarapura", "Patheingyi"],
+      "Meiktila District": ["Meiktila", "Mahlaing", "Thazi", "Wundwin"],
+      "Myingyan District": ["Myingyan", "Natogyi", "Ngazun", "Taungtha", "Kyaukpadaung"],
+      "NyaungU District": ["NyaungU", "Ngathayouk"],
+      "Pyinoolwin District": ["Pyin Oo Lwin", "Madaya", "Mogoke", "Singu", "Thabeikkyin"],
+      "Yamethin District": ["Yamethin", "Pyawbwe"],
+    },
+  },
+  "Sagaing Region": {
+    type: "region",
+    districts: {
+      "Hkamti District": ["Hkamti", "Homalin", "Leshi", "Lahe", "Nanyun"],
+      "Kanbalu District": ["Kanbalu", "Kyunhla", "Ye-U"],
+      "Katha District": ["Katha", "Indaw", "Tigyaing", "Banmauk", "Kawlin", "Wuntho", "Pinlebu"],
+      "Kalay District": ["Kalay", "Kalewa", "Mingin"],
+      "Mawlaik District": ["Mawlaik", "Paungbyin"],
+      "Monywa District": ["Monywa", "Budalin", "Ayadaw", "Chaung-U"],
+      "Sagaing District": ["Sagaing", "Myinmu", "Myaung"],
+      "Shwebo District": ["Shwebo", "Wetlet", "Khin-U", "Tabayin", "Depayin"],
+      "Tamu District": ["Tamu"],
+      "Yinmabin District": ["Yinmabin", "Salingyi", "Pale", "Kani"],
+    },
+  },
+  "Tanintharyi Region": {
+    type: "region",
+    districts: {
+      "Dawei District": ["Dawei", "Launglon", "Thayetchaung", "Yebyu"],
+      "Kawthaung District": ["Kawthaung", "Bokpyin"],
+      "Myeik District": ["Myeik", "Tanintharyi", "Palaw", "Kyunsu"],
+    },
+  },
+  "Yangon Region": {
+    type: "region",
+    districts: {
+      "Yangon East District": ["Botataung", "Dagon Seikkan", "Dawbon", "East Dagon", "Mingala Taungnyunt", "North Dagon", "North Okkalapa", "Pazundaung", "South Dagon", "South Okkalapa", "Tamwe", "Thaketa", "Thingangyun", "Yankin"],
+      "Yangon West District": ["Ahlon", "Bahan", "Dagon", "Hlaing", "Kamayut", "Kyauktada", "Kyimyindaing", "Lanmadaw", "Latha", "Mayangon", "Pabedan", "Sanchaung", "Seikkan"],
+      "Yangon South District": ["Cocokyun", "Dala", "Kawhmu", "Kungyangon", "Seikkyi Kanaungto", "Twante"],
+      "Yangon North District": ["Hlaingthaya", "Hmawbi", "Htantabin", "Insein", "Mingaladon", "Shwepyitha", "Taikkyi", "Hlegu", "Thanlyin"],
+    },
+  },
+  // Union Territory
+  "Naypyidaw Union Territory": {
+    type: "union_territory",
+    districts: {
+      "Ottara District": ["Ottarathiri", "Pobbathiri", "Tatkon", "Pyinmana"],
+      "Dekkhinathiri District": ["Dekkhinathiri", "Zabuthiri", "Lewe", "Zeyathiri"],
+    },
+  },
+};
 
 // ── Brands ──
 
@@ -520,7 +684,7 @@ const ATTACHMENT_TAXONOMY: AttachmentCategoryDef[] = [
   },
 ];
 
-// ── Customer Names ──
+// ── User Names ──
 
 const FIRST_NAMES_MALE = [
   "Aung", "Kyaw", "Myo", "Zaw", "Win", "Hla", "Tun", "Min", "Nay", "Htun",
@@ -877,9 +1041,12 @@ async function seedRBAC() {
   const existingPerms = await d1Query<{ name: string }>("SELECT name FROM permission");
   const existingPermNames = new Set(existingPerms.map((r) => r.name));
   let addedPerms = 0;
-  for (const name of PERMISSIONS) {
-    if (existingPermNames.has(name)) continue;
-    await d1Execute("INSERT INTO permission (name) VALUES (?)", [name]);
+  for (const perm of PERMISSIONS) {
+    if (existingPermNames.has(perm.name)) continue;
+    await d1Execute(
+      "INSERT INTO permission (name, display_order) VALUES (?, ?)",
+      [perm.name, perm.display_order],
+    );
     addedPerms++;
   }
   log(`  permissions: ${addedPerms} added, ${existingPermNames.size} existed`);
@@ -888,9 +1055,12 @@ async function seedRBAC() {
   const existingFeats = await d1Query<{ name: string }>("SELECT name FROM feature");
   const existingFeatNames = new Set(existingFeats.map((r) => r.name));
   let addedFeats = 0;
-  for (const name of FEATURES) {
-    if (existingFeatNames.has(name)) continue;
-    await d1Execute("INSERT INTO feature (name) VALUES (?)", [name]);
+  for (const feat of FEATURES) {
+    if (existingFeatNames.has(feat.name)) continue;
+    await d1Execute(
+      "INSERT INTO feature (name, group_name, display_order) VALUES (?, ?, ?)",
+      [feat.name, feat.group_name, feat.display_order],
+    );
     addedFeats++;
   }
   log(`  features: ${addedFeats} added, ${existingFeatNames.size} existed`);
@@ -906,10 +1076,10 @@ async function seedRBAC() {
   const existingFPSet = new Set(existingFP.map((e) => `${e.feature_id}:${e.permission_id}`));
 
   let addedFP = 0;
-  for (const featureName of FEATURES) {
-    const fid = featureMap.get(featureName);
+  for (const feat of FEATURES) {
+    const fid = featureMap.get(feat.name);
     if (!fid) continue;
-    const perms = FEATURE_PERMISSION_MAP[featureName] ?? DEFAULT_PERMS;
+    const perms = FEATURE_PERMISSION_MAP[feat.name] ?? DEFAULT_PERMS;
     for (const permName of perms) {
       const pid = permMap.get(permName);
       if (!pid || existingFPSet.has(`${fid}:${pid}`)) continue;
@@ -1057,18 +1227,80 @@ async function seedBusinessTypes(adminIds: number[]) {
   log(`  [add] ${missing.length} business types (${existing.length} existed)`);
 }
 
-// ── 11. Locations ──
+// ── 11. State/Region → District → Township ──
 
 async function seedLocations(adminIds: number[]) {
-  stepHeader("Seeding location (Myanmar cities)...");
-  const existing = await d1Query<{ city_name: string }>("SELECT city_name FROM location");
-  const existingNames = new Set(existing.map((r) => r.city_name));
-  const missing = MYANMAR_CITIES.filter((n) => !existingNames.has(n));
-  if (missing.length === 0) { log(`  [skip] all ${MYANMAR_CITIES.length} cities exist`); return; }
+  // 11a. State/Region
+  stepHeader("Seeding state_region...");
+  const existingSR = await d1Query<{ name: string }>("SELECT name FROM state_region");
+  const existingSRNames = new Set(existingSR.map((r) => r.name));
+  const allSRNames = Object.keys(MYANMAR_LOCATIONS);
+  const missingSR = allSRNames.filter((n) => !existingSRNames.has(n));
 
-  const rows = missing.map((city) => [city, randomItem(adminIds)]);
-  await d1BatchInsert("location", ["city_name", "created_by"], rows);
-  log(`  [add] ${missing.length} cities (${existing.length} existed)`);
+  if (missingSR.length > 0) {
+    const rows = missingSR.map((name) => [name, MYANMAR_LOCATIONS[name].type, randomItem(adminIds)]);
+    await d1BatchInsert("state_region", ["name", "type", "created_by"], rows);
+    log(`  [add] ${missingSR.length} state/regions (${existingSR.length} existed)`);
+  } else {
+    log(`  [skip] all ${allSRNames.length} state/regions exist`);
+  }
+
+  // Build state_region_id lookup
+  const srRows = await d1Query<{ state_region_id: number; name: string }>("SELECT state_region_id, name FROM state_region");
+  const srIdMap = new Map(srRows.map((r) => [r.name, r.state_region_id]));
+
+  // 11b. Districts
+  stepHeader("Seeding district...");
+  const existingDist = await d1Query<{ name: string; state_region_id: number }>("SELECT name, state_region_id FROM district");
+  const existingDistKeys = new Set(existingDist.map((r) => `${r.state_region_id}:${r.name}`));
+
+  const distRows: unknown[][] = [];
+  for (const [srName, srData] of Object.entries(MYANMAR_LOCATIONS)) {
+    const srId = srIdMap.get(srName)!;
+    for (const distName of Object.keys(srData.districts)) {
+      if (!existingDistKeys.has(`${srId}:${distName}`)) {
+        distRows.push([distName, srId, randomItem(adminIds)]);
+      }
+    }
+  }
+
+  if (distRows.length > 0) {
+    await d1BatchInsert("district", ["name", "state_region_id", "created_by"], distRows);
+    log(`  [add] ${distRows.length} districts (${existingDist.length} existed)`);
+  } else {
+    log(`  [skip] all districts exist`);
+  }
+
+  // Build district_id lookup
+  const distDbRows = await d1Query<{ district_id: number; name: string; state_region_id: number }>(
+    "SELECT district_id, name, state_region_id FROM district"
+  );
+  const distIdMap = new Map(distDbRows.map((r) => [`${r.state_region_id}:${r.name}`, r.district_id]));
+
+  // 11c. Townships
+  stepHeader("Seeding township...");
+  const existingTwn = await d1Query<{ name: string; district_id: number }>("SELECT name, district_id FROM township");
+  const existingTwnKeys = new Set(existingTwn.map((r) => `${r.district_id}:${r.name}`));
+
+  const twnRows: unknown[][] = [];
+  for (const [srName, srData] of Object.entries(MYANMAR_LOCATIONS)) {
+    const srId = srIdMap.get(srName)!;
+    for (const [distName, townships] of Object.entries(srData.districts)) {
+      const distId = distIdMap.get(`${srId}:${distName}`)!;
+      for (const twnName of townships) {
+        if (!existingTwnKeys.has(`${distId}:${twnName}`)) {
+          twnRows.push([twnName, distId, randomItem(adminIds)]);
+        }
+      }
+    }
+  }
+
+  if (twnRows.length > 0) {
+    await d1BatchInsert("township", ["name", "district_id", "created_by"], twnRows);
+    log(`  [add] ${twnRows.length} townships (${existingTwn.length} existed)`);
+  } else {
+    log(`  [skip] all townships exist`);
+  }
 }
 
 // ── 12. Brands ──
@@ -1340,14 +1572,14 @@ async function seedAttachmentModels(adminIds: number[]) {
   else log(`  [add] ${total} attachment models (${existingModels.length} existed)`);
 }
 
-// ── 20. Customers ──
+// ── 20. Users ──
 
-async function seedCustomers(adminIds: number[]): Promise<number[]> {
-  stepHeader("Seeding customer (50 customers)...");
-  const existing = await d1Query<{ customer_id: number }>("SELECT customer_id FROM customer");
+async function seedUsers(adminIds: number[]): Promise<number[]> {
+  stepHeader("Seeding app_user (50 users)...");
+  const existing = await d1Query<{ app_user_id: number }>("SELECT app_user_id FROM app_user");
   if (existing.length >= 50) {
-    log(`  [skip] ${existing.length} customers exist`);
-    return existing.map((c) => c.customer_id);
+    log(`  [skip] ${existing.length} users exist`);
+    return existing.map((c) => c.app_user_id);
   }
 
   const businessTypes = await d1Query<{ business_type_id: number }>(
@@ -1355,17 +1587,17 @@ async function seedCustomers(adminIds: number[]): Promise<number[]> {
   );
   const btIds = businessTypes.map((b) => b.business_type_id);
 
-  // Pre-hash password once for all customers
+  // Pre-hash password once for all users
   const passwordHash = await bcrypt.hash("customer123!", BCRYPT_ROUNDS);
-  log(`  Hashed shared customer password`);
+  log(`  Hashed shared user password`);
 
   const existingEmails = new Set(
-    (await d1Query<{ email: string }>("SELECT email FROM customer")).map((r) => r.email)
+    (await d1Query<{ email: string }>("SELECT email FROM app_user")).map((r) => r.email)
   );
 
   const allFirstNames = [...FIRST_NAMES_MALE, ...FIRST_NAMES_FEMALE];
   const usedUsernames = new Set<string>();
-  const customerIds: number[] = [...existing.map((c) => c.customer_id)];
+  const appUserIds: number[] = [...existing.map((c) => c.app_user_id)];
   const toInsert = 50 - existing.length;
 
   let inserted = 0;
@@ -1391,26 +1623,26 @@ async function seedCustomers(adminIds: number[]): Promise<number[]> {
     const businessTypeId = btIds.length > 0 ? randomItem(btIds) : null;
 
     await d1Execute(
-      `INSERT INTO customer (username, email, password_hash, phone, is_verified, company_name, office_address, business_type_id)
+      `INSERT INTO app_user (username, email, password_hash, phone, is_verified, company_name, office_address, business_type_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [username, email, passwordHash, phone, isVerified, companyName, officeAddress, businessTypeId]
     );
 
-    const [cust] = await d1Query<{ customer_id: number }>(
-      "SELECT customer_id FROM customer WHERE email = ?",
+    const [cust] = await d1Query<{ app_user_id: number }>(
+      "SELECT app_user_id FROM app_user WHERE email = ?",
       [email]
     );
-    customerIds.push(cust.customer_id);
+    appUserIds.push(cust.app_user_id);
     inserted++;
   }
 
-  log(`  [add] ${inserted} customers (${customerIds.length} total)`);
-  return customerIds;
+  log(`  [add] ${inserted} users (${appUserIds.length} total)`);
+  return appUserIds;
 }
 
 // ── 21. Partners ──
 
-async function seedPartners(customerIds: number[]): Promise<number[]> {
+async function seedPartners(appUserIds: number[]): Promise<number[]> {
   stepHeader("Seeding partner (20 approved + 30 pending)...");
   const existingPartners = await d1Query<{ id: number }>("SELECT id FROM partner");
   if (existingPartners.length >= 50) {
@@ -1429,14 +1661,14 @@ async function seedPartners(customerIds: number[]): Promise<number[]> {
   const approvedStatusId = statuses.find((s) => s.status_name === "Approved")!.id;
   const pendingStatusId = statuses.find((s) => s.status_name === "Pending")!.id;
 
-  // Get customers that don't already have a partner entry
-  const existingPartnerCustomers = await d1Query<{ customer_id: number }>(
-    "SELECT customer_id FROM partner"
+  // Get users that don't already have a partner entry
+  const existingPartnerUsers = await d1Query<{ app_user_id: number }>(
+    "SELECT app_user_id FROM partner"
   );
-  const existingCustSet = new Set(existingPartnerCustomers.map((p) => p.customer_id));
-  const availableCustomers = customerIds.filter((id) => !existingCustSet.has(id));
+  const existingUserSet = new Set(existingPartnerUsers.map((p) => p.app_user_id));
+  const availableUsers = appUserIds.filter((id) => !existingUserSet.has(id));
 
-  const shuffled = shuffle(availableCustomers);
+  const shuffled = shuffle(availableUsers);
   const toCreate = Math.min(50 - existingPartners.length, shuffled.length);
 
   const approvedPartnerIds: number[] = [];
@@ -1447,13 +1679,13 @@ async function seedPartners(customerIds: number[]): Promise<number[]> {
     const statusId = i < 20 ? approvedStatusId : pendingStatusId;
 
     await d1Execute(
-      `INSERT INTO partner (customer_id, partner_type_id, status_id) VALUES (?, ?, ?)`,
+      `INSERT INTO partner (app_user_id, partner_type_id, status_id) VALUES (?, ?, ?)`,
       [custId, typeId, statusId]
     );
 
     if (statusId === approvedStatusId) {
       const [p] = await d1Query<{ id: number }>(
-        "SELECT id FROM partner WHERE customer_id = ?",
+        "SELECT id FROM partner WHERE app_user_id = ?",
         [custId]
       );
       approvedPartnerIds.push(p.id);
@@ -1506,7 +1738,7 @@ async function seedProductListsAndListings(
   }
 
   // Fetch dependencies
-  const locations = await d1Query<{ location_id: number }>("SELECT location_id FROM location");
+  const townships = await d1Query<{ township_id: number }>("SELECT township_id FROM township");
   const equipModels = await d1Query<{ model_id: number }>("SELECT model_id FROM equipment_model");
   const attachModels = await d1Query<{ model_id: number }>("SELECT model_id FROM attachment_model");
   const conditionTypes = await d1Query<{ id: number }>("SELECT id FROM condition_type");
@@ -1515,8 +1747,8 @@ async function seedProductListsAndListings(
     log(`  [warn] No equipment models found. Skipping listings.`);
     return;
   }
-  if (locations.length === 0) {
-    log(`  [warn] No locations found. Skipping listings.`);
+  if (townships.length === 0) {
+    log(`  [warn] No townships found. Skipping listings.`);
     return;
   }
   const approvalStatuses = await d1Query<{ id: number; status_name: string }>(
@@ -1525,9 +1757,9 @@ async function seedProductListsAndListings(
 
   const approvedId = approvalStatuses.find((s) => s.status_name === "Approved")!.id;
   const pendingApprovalId = approvalStatuses.find((s) => s.status_name === "Pending")!.id;
-  const rejectedId = approvalStatuses.find((s) => s.status_name === "Rejected")!.id;
+  const reworkId = approvalStatuses.find((s) => s.status_name === "Rework")!.id;
 
-  const locationIds = locations.map((l) => l.location_id);
+  const townshipIds = townships.map((t) => t.township_id);
   const equipIds = equipModels.map((m) => m.model_id);
   const attachIds = attachModels.map((m) => m.model_id);
   const conditionIds = conditionTypes.map((c) => c.id);
@@ -1560,16 +1792,16 @@ async function seedProductListsAndListings(
     const useEquipment = !canUseAttachment || i % 4 !== 3; // 75% equipment, 25% attachment
     const equipModelId = useEquipment ? randomItem(equipIds) : null;
     const attachModelId = useEquipment ? null : randomItem(attachIds);
-    const locationId = randomItem(locationIds);
+    const townshipId = randomItem(townshipIds);
     const description = randomItem(LISTING_DESCRIPTIONS);
     const customFields = generateCustomFields();
     const createdBy = randomItem(adminIds);
     const thumbnailUrl = `https://placehold.co/400x300/1a1a2e/ffffff?text=Equipment+${i + 1}`;
 
     await d1Execute(
-      `INSERT INTO product_list (partner_id, equipment_model_id, attachment_model_id, custom_fields, description, thumbnail_url, location_id, created_by)
+      `INSERT INTO product_list (partner_id, equipment_model_id, attachment_model_id, custom_fields, description, thumbnail_url, township_id, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [partnerId, equipModelId, attachModelId, customFields, description, thumbnailUrl, locationId, createdBy]
+      [partnerId, equipModelId, attachModelId, customFields, description, thumbnailUrl, townshipId, createdBy]
     );
 
     // Get the ID
@@ -1601,7 +1833,7 @@ async function seedProductListsAndListings(
   const saleProductIds = productListIds.slice(0, 100);
   const rentProductIds = productListIds.slice(100, 200);
 
-  // ── Sale Listings (60 approved, 30 pending, 10 rejected) ──
+  // ── Sale Listings (60 approved, 30 pending, 10 rework) ──
   if (saleCount < 100) {
     log(`  Creating sale listings...`);
     const toAdd = 100 - saleCount;
@@ -1610,7 +1842,7 @@ async function seedProductListsAndListings(
       let statusId: number;
       if (i < 60) statusId = approvedId;
       else if (i < 90) statusId = pendingApprovalId;
-      else statusId = rejectedId;
+      else statusId = reworkId;
 
       const usdPrice = randomInt(5, 500) * 1000; // $5,000 - $500,000
       const mmkPrice = usdPrice * 3200;
@@ -1619,7 +1851,7 @@ async function seedProductListsAndListings(
       const isHidden = randomInt(0, 9) === 0 ? 1 : 0; // ~10% hidden
       const isSoldOut = statusId === approvedId && randomInt(0, 9) === 0 ? 1 : 0; // ~10% of approved
 
-      const rejectionReason = statusId === rejectedId
+      const rejectionReason = statusId === reworkId
         ? randomItem([
             "Insufficient product photos. Please upload at least 3 clear images.",
             "Price seems unrealistic for this equipment type. Please verify.",
@@ -1653,10 +1885,10 @@ async function seedProductListsAndListings(
         ]
       );
     }
-    log(`  [add] ${toAdd} sale listings (60 approved, 30 pending, 10 rejected)`);
+    log(`  [add] ${toAdd} sale listings (60 approved, 30 pending, 10 rework)`);
   }
 
-  // ── Rent Listings (60 approved, 30 pending, 10 rejected) ──
+  // ── Rent Listings (60 approved, 30 pending, 10 rework) ──
   if (rentCount < 100) {
     log(`  Creating rent listings...`);
     const toAdd = 100 - rentCount;
@@ -1665,14 +1897,14 @@ async function seedProductListsAndListings(
       let statusId: number;
       if (i < 60) statusId = approvedId;
       else if (i < 90) statusId = pendingApprovalId;
-      else statusId = rejectedId;
+      else statusId = reworkId;
 
       const usdPrice = randomInt(5, 500) * 100; // $500 - $50,000 /month
       const mmkPrice = usdPrice * 3200;
       const hidePrice = randomInt(0, 5) === 0 ? 1 : 0;
       const isHidden = randomInt(0, 9) === 0 ? 1 : 0;
 
-      const rejectionReason = statusId === rejectedId
+      const rejectionReason = statusId === reworkId
         ? randomItem([
             "Rental terms are incomplete. Please specify minimum rental period.",
             "Equipment condition does not match the listing description.",
@@ -1704,7 +1936,7 @@ async function seedProductListsAndListings(
         ]
       );
     }
-    log(`  [add] ${toAdd} rent listings (60 approved, 30 pending, 10 rejected)`);
+    log(`  [add] ${toAdd} rent listings (60 approved, 30 pending, 10 rework)`);
   }
 }
 
@@ -1886,7 +2118,7 @@ async function seedAnnouncements(adminIds: number[]) {
 
 // ── 28. Enquiries ──
 
-async function seedEnquiries(customerIds: number[]) {
+async function seedEnquiries(appUserIds: number[]) {
   stepHeader("Seeding enquiry (100 enquiries)...");
   const count = await d1Count("enquiry");
   if (count > 0) { log(`  [skip] ${count} rows exist`); return; }
@@ -1909,7 +2141,7 @@ async function seedEnquiries(customerIds: number[]) {
 
   const rows: unknown[][] = [];
   for (let i = 0; i < 100; i++) {
-    const customerId = customerIds.length > 0 ? randomItem(customerIds) : null;
+    const appUserId = appUserIds.length > 0 ? randomItem(appUserIds) : null;
     const message = ENQUIRY_MESSAGES[i % ENQUIRY_MESSAGES.length];
     const statusId = i < 65 ? pendingId : resolvedId; // 65 pending, 35 resolved
 
@@ -1924,13 +2156,13 @@ async function seedEnquiries(customerIds: number[]) {
       saleId = randomItem(saleIds);
     }
 
-    rows.push([saleId, rentId, customerId, message, statusId]);
+    rows.push([saleId, rentId, appUserId, message, statusId]);
   }
 
   // Insert in batches of 10 (5 columns × 10 = 50 params per batch)
   await d1BatchInsert(
     "enquiry",
-    ["sale_listing_id", "rent_listing_id", "customer_id", "message", "enquiry_status_id"],
+    ["sale_listing_id", "rent_listing_id", "app_user_id", "message", "enquiry_status_id"],
     rows,
     10
   );
@@ -1973,9 +2205,9 @@ async function seedActivityLog(adminIds: number[]) {
     "Rejected listing SL-099 — insufficient photos",
     "Added new brand: Caterpillar",
     "Updated announcement bar content",
-    "Created new customer support ticket response",
+    "Created new user support ticket response",
     "Exported monthly sales report",
-    "Updated location database with new cities",
+    "Updated location database with new townships",
   ];
 
   const rows = activities.map((desc, i) => [
@@ -1998,7 +2230,7 @@ async function main() {
   console.log(`  Time:   ${new Date().toISOString()}\n`);
 
   if (!D1_API_TOKEN) {
-    console.error("  ERROR: D1_API_TOKEN is not set.");
+    console.error("  ERROR: CLOUDFLARE_WORKER_API_TOKEN is not set.");
     console.error("  Run with: pnpm tsx --env-file=.env.local scripts/seed-all.ts");
     process.exit(1);
   }
@@ -2038,11 +2270,11 @@ async function main() {
   await seedAttachmentCategoryBrands(adminIds);
   await seedAttachmentModels(adminIds);
 
-  // 20. Customers
-  const customerIds = await seedCustomers(adminIds);
+  // 20. Users
+  const appUserIds = await seedUsers(adminIds);
 
   // 21. Partners
-  const approvedPartnerIds = await seedPartners(customerIds);
+  const approvedPartnerIds = await seedPartners(appUserIds);
 
   // 22. Custom Field Templates
   await seedCustomFieldTemplates(adminIds);
@@ -2061,7 +2293,7 @@ async function main() {
   await seedAnnouncements(adminIds);
 
   // 28. Enquiries
-  await seedEnquiries(customerIds);
+  await seedEnquiries(appUserIds);
 
   // 29. App Settings
   await seedAppSettings();
@@ -2080,11 +2312,11 @@ async function main() {
     "partner_type", "partner_status_type", "enquiry_status_type",
     "approval_status_type", "article_status_type", "condition_type",
     "permission", "feature", "feature_permission", "role", "role_permission",
-    "admin_user", "business_type", "location", "product_brand",
+    "admin_user", "business_type", "state_region", "district", "township", "product_brand",
     "equipment_main_category", "equipment_sub_category",
     "equipment_sub_category_brand", "equipment_model",
     "attachment_category", "attachment_category_brand", "attachment_model",
-    "customer", "partner", "custom_field_template",
+    "app_user", "partner", "custom_field_template",
     "product_list", "product_image", "sale_listing", "rent_listing",
     "featured_listing", "article_category", "article",
     "carousel", "carousel_image", "image", "announcement_text",

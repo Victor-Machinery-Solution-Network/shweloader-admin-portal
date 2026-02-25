@@ -6,14 +6,6 @@ export interface Carousel {
   created_at: string;
 }
 
-/** Matches the image table in D1 */
-export interface Image {
-  image_id: number;
-  image_url: string;
-  uploaded_by: number | null;
-  created_at: string;
-}
-
 /** Matches the carousel_image junction table in D1 */
 export interface CarouselImage {
   carousel_id: number;

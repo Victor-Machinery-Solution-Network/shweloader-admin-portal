@@ -11,6 +11,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import {
   Dialog,
   DialogContent,
@@ -39,11 +40,12 @@ export function PartnerReviewDialog({
   open,
   onOpenChange,
 }: PartnerReviewDialogProps) {
+  const canApprove = useHasPermission("partners", "approve");
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const isVerified = partner.customer_verified === 1;
+  const isVerified = partner.user_verified === 1;
   const isApproved = partner.status_name?.toLowerCase() === "approved";
   const isRejected = partner.status_name?.toLowerCase() === "rejected";
   const isRevoking = isApproved && isRejecting;
@@ -107,16 +109,16 @@ export function PartnerReviewDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 p-1 -m-1">
-          {/* Customer Profile */}
+          {/* User Profile */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium">
               <User className="size-4 text-muted-foreground" />
-              Customer Profile
+              User Profile
             </div>
             <div className="space-y-2.5">
-              <DetailRow label="Name" value={partner.customer_name} />
-              <DetailRow label="Email" value={partner.customer_email} />
-              <DetailRow label="Phone" value={partner.customer_phone} />
+              <DetailRow label="Name" value={partner.user_name} />
+              <DetailRow label="Email" value={partner.user_email} />
+              <DetailRow label="Phone" value={partner.user_phone} />
               <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground text-sm shrink-0">Status</span>
                 <Badge
@@ -138,7 +140,7 @@ export function PartnerReviewDialog({
               Business
             </div>
             <div className="space-y-2.5">
-              <DetailRow label="Company" value={partner.customer_company} />
+              <DetailRow label="Company" value={partner.user_company} />
               <div className="flex items-center justify-between gap-4">
                 <span className="text-muted-foreground text-sm shrink-0">Type</span>
                 {partner.business_type_name ? (
@@ -149,7 +151,7 @@ export function PartnerReviewDialog({
                   <span className="text-muted-foreground text-sm">—</span>
                 )}
               </div>
-              <DetailRow label="Address" value={partner.customer_address} />
+              <DetailRow label="Address" value={partner.user_address} />
             </div>
           </section>
 
@@ -189,12 +191,12 @@ export function PartnerReviewDialog({
             </div>
             <div className="space-y-2.5">
               <DetailRow
-                label="Customer ID"
-                value={partner.customer_id ? `#${partner.customer_id}` : null}
+                label="User ID"
+                value={partner.app_user_id ? `#${partner.app_user_id}` : null}
               />
               <DetailRow
                 label="Joined"
-                value={partner.customer_joined ? formatDate(partner.customer_joined) : null}
+                value={partner.user_joined ? formatDate(partner.user_joined) : null}
               />
             </div>
           </section>
@@ -235,7 +237,16 @@ export function PartnerReviewDialog({
         </div>
 
         <DialogFooter>
-          {isRevoking ? (
+          {!canApprove ? (
+            /* No approve permission: Close only */
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isPending}
+            >
+              Close
+            </Button>
+          ) : isRevoking ? (
             /* Approved → Revoking: Back + Confirm Revoke */
             <>
               <Button

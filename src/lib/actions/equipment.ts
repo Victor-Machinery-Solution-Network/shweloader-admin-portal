@@ -6,23 +6,26 @@ import {
 } from "@/lib/services/equipment";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, getCurrentUserId } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
 
 // ─── Main Category Actions ───────────────────────────────────────────────────
 
 export async function createMainCategory(formData: FormData) {
   const name = formData.get("name") as string;
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
   }
 
   try {
+    const image_url = await processFileField(
+      formData, "image_url", "categories/equipments/main/", name.trim(),
+    );
     const [created_by, display_order] = await Promise.all([
-      getCurrentUserId(),
+      requirePermission("equipment_main_categories", "create"),
       getNextDisplayOrder("equipment_main_category"),
     ]);
     await mainCategoryService.create({
@@ -43,14 +46,19 @@ export async function createMainCategory(formData: FormData) {
 
 export async function updateMainCategory(id: number, formData: FormData) {
   const name = formData.get("name") as string;
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
   }
 
   try {
+    await requirePermission("equipment_main_categories", "edit");
+    const existing = await mainCategoryService.getById(id);
+    const image_url = await processFileField(
+      formData, "image_url", "categories/equipments/main/", name.trim(), existing?.image_url,
+    );
     await mainCategoryService.update(id, { name: name.trim(), image_url });
+    await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -63,7 +71,10 @@ export async function updateMainCategory(id: number, formData: FormData) {
 
 export async function deleteMainCategory(id: number) {
   try {
+    await requirePermission("equipment_main_categories", "delete");
+    const existing = await mainCategoryService.getById(id);
     await mainCategoryService.delete(id);
+    await deleteFile(existing?.image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -75,9 +86,24 @@ export async function deleteMainCategory(id: number) {
 }
 
 export async function deleteMainCategories(ids: number[]) {
+  await requirePermission("equipment_main_categories", "delete");
+  assertBulkLimit(ids);
+  // Fetch existing records to get image URLs for R2 cleanup
+  const existingRecords = await Promise.all(
+    ids.map((id) => mainCategoryService.getById(id)),
+  );
+
   const results = await Promise.allSettled(
     ids.map((id) => mainCategoryService.delete(id)),
   );
+
+  // Clean up R2 files for successfully deleted records
+  const deletePromises = results.map((r, i) => {
+    if (r.status === "fulfilled") {
+      return deleteFile(existingRecords[i]?.image_url);
+    }
+  });
+  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
@@ -121,7 +147,6 @@ export async function getSubCategoryCount(
 export async function createSubCategory(formData: FormData) {
   const name = formData.get("name") as string;
   const category_id = Number(formData.get("category_id"));
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Sub category name is required" };
@@ -131,8 +156,11 @@ export async function createSubCategory(formData: FormData) {
   }
 
   try {
+    const image_url = await processFileField(
+      formData, "image_url", "categories/equipments/sub/", name.trim(),
+    );
     const [created_by, display_order] = await Promise.all([
-      getCurrentUserId(),
+      requirePermission("equipment_sub_categories", "create"),
       getNextDisplayOrder("equipment_sub_category"),
     ]);
     await subCategoryService.create({
@@ -155,7 +183,6 @@ export async function createSubCategory(formData: FormData) {
 export async function updateSubCategory(id: number, formData: FormData) {
   const name = formData.get("name") as string;
   const category_id = Number(formData.get("category_id"));
-  const image_url = (formData.get("image_url") as string) || null;
 
   if (!name?.trim()) {
     return { success: false, error: "Sub category name is required" };
@@ -165,11 +192,17 @@ export async function updateSubCategory(id: number, formData: FormData) {
   }
 
   try {
+    await requirePermission("equipment_sub_categories", "edit");
+    const existing = await subCategoryService.getById(id);
+    const image_url = await processFileField(
+      formData, "image_url", "categories/equipments/sub/", name.trim(), existing?.image_url,
+    );
     await subCategoryService.update(id, {
       name: name.trim(),
       category_id,
       image_url,
     });
+    await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -182,7 +215,10 @@ export async function updateSubCategory(id: number, formData: FormData) {
 
 export async function deleteSubCategory(id: number) {
   try {
+    await requirePermission("equipment_sub_categories", "delete");
+    const existing = await subCategoryService.getById(id);
     await subCategoryService.delete(id);
+    await deleteFile(existing?.image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -194,9 +230,22 @@ export async function deleteSubCategory(id: number) {
 }
 
 export async function deleteSubCategories(ids: number[]) {
+  await requirePermission("equipment_sub_categories", "delete");
+  assertBulkLimit(ids);
+  const existingRecords = await Promise.all(
+    ids.map((id) => subCategoryService.getById(id)),
+  );
+
   const results = await Promise.allSettled(
     ids.map((id) => subCategoryService.delete(id)),
   );
+
+  const deletePromises = results.map((r, i) => {
+    if (r.status === "fulfilled") {
+      return deleteFile(existingRecords[i]?.image_url);
+    }
+  });
+  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")

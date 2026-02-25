@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getAnnouncements } from "@/lib/cache";
 import { AnnouncementClient } from "@/components/features/announcement/announcement-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Announcement Bar",
@@ -19,7 +20,9 @@ export default function AnnouncementBarPage() {
         description="Manage announcement messages shown on the website"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <AnnouncementContent />
+        <PermissionGate feature="announcements">
+          <AnnouncementContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

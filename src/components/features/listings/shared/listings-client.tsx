@@ -1,21 +1,21 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-import { ShoppingCart, Home, Plus, Pin, Filter, Clock } from "lucide-react";
-import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
+import { ShoppingCart, Home, Plus, Pin, Clock, ChevronDown, FileText, FileSpreadsheet, FileEdit } from "lucide-react";
+import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { FilterConfig } from "@/types/data-table-filters";
 
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -26,11 +26,15 @@ import {
   createPendingRentColumns,
 } from "./pending-listing-columns";
 import { featuredColumns } from "./featured-columns";
+import { createDraftColumns } from "./draft-columns";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
+import { getDraftListings } from "@/lib/actions/listing";
+import { Spinner } from "@/components/ui/spinner";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   FeaturedListingWithDetails,
+  DraftListingWithDetails,
 } from "@/types/listing";
 
 type ListingRow = SaleListingWithDetails | RentListingWithDetails;
@@ -43,7 +47,6 @@ const PAGE_CONFIG = {
     tabLabel: "Listings",
     emptyTitle: "No sale listings yet",
     emptyDescription: "Get started by creating your first sale listing.",
-    hasSoldFilter: true,
   },
   rent: {
     icon: Home,
@@ -52,9 +55,17 @@ const PAGE_CONFIG = {
     tabLabel: "Listings",
     emptyTitle: "No rent listings yet",
     emptyDescription: "Get started by creating your first rental listing.",
-    hasSoldFilter: false,
   },
 } as const;
+
+// Hidden filter-only columns — not rendered in the table
+const HIDDEN_FILTER_COLUMNS: VisibilityState = {
+  visibility: false,
+  sold_status: false,
+  is_featured: false,
+  mmk_price: false,
+  created_at: false,
+};
 
 interface ListingsClientProps {
   pageType: "sale" | "rent";
@@ -69,6 +80,8 @@ export function ListingsClient({
 }: ListingsClientProps) {
   const config = PAGE_CONFIG[pageType];
   const Icon = config.icon;
+  const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
+  const canCreate = useHasPermission(feature, "create");
 
   const columns = useMemo(() => {
     const factory = pageType === "sale" ? createSaleColumns : createRentColumns;
@@ -81,7 +94,9 @@ export function ListingsClient({
     return factory() as ColumnDef<ListingRow>[];
   }, [pageType]);
 
-  // Split listings by approval status
+  const draftColumns = useMemo(() => createDraftColumns(), []);
+
+  // Split listings by approval status (include Rework in pending)
   const approvedListings = useMemo(
     () =>
       listings.filter(
@@ -91,25 +106,41 @@ export function ListingsClient({
   );
 
   const pendingListings = useMemo(
-    () => listings.filter((l) => l.approve_status_name === "Pending"),
+    () =>
+      listings.filter(
+        (l) =>
+          l.approve_status_name === "Pending" ||
+          l.approve_status_name === "Rework",
+      ),
     [listings],
   );
 
   const pendingCount = pendingListings.length;
 
+  // Client-side draft fetching (per-user, can't be PPR-cached)
+  const [drafts, setDrafts] = useState<DraftListingWithDetails[]>([]);
+  const [draftsLoaded, setDraftsLoaded] = useState(false);
+
+  useEffect(() => {
+    getDraftListings().then((data) => {
+      setDrafts(data);
+      setDraftsLoaded(true);
+    });
+  }, []);
+
+  const draftCount = drafts.length;
+
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured";
-  const hiddenFilter = (searchParams.get("visibility") ?? "all") as "all" | "visible" | "hidden";
-  const soldFilter = (searchParams.get("sold") ?? "all") as "all" | "available" | "sold";
+  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured" | "drafts";
 
-  const setParam = useCallback(
-    (key: string, value: string, defaultValue: string) => {
+  const setTab = useCallback(
+    (v: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value === defaultValue) {
-        params.delete(key);
+      if (v === "listings") {
+        params.delete("tab");
       } else {
-        params.set(key, value);
+        params.set("tab", v);
       }
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : "?", { scroll: false });
@@ -117,80 +148,156 @@ export function ListingsClient({
     [searchParams, router],
   );
 
-  const setTab = useCallback((v: string) => setParam("tab", v, "listings"), [setParam]);
-  const setHiddenFilter = useCallback((v: string) => setParam("visibility", v, "all"), [setParam]);
-  const setSoldFilter = useCallback((v: string) => setParam("sold", v, "all"), [setParam]);
+  // --- Filter configs with grouped sections ---
 
-  const filteredListings = useMemo(() => {
-    return approvedListings.filter((listing) => {
-      if (hiddenFilter === "visible" && listing.is_hidden === 1) return false;
-      if (hiddenFilter === "hidden" && listing.is_hidden === 0) return false;
-      if (
-        config.hasSoldFilter &&
-        "is_sold_out" in listing &&
-        soldFilter === "available" &&
-        listing.is_sold_out === 1
-      )
-        return false;
-      if (
-        config.hasSoldFilter &&
-        "is_sold_out" in listing &&
-        soldFilter === "sold" &&
-        listing.is_sold_out === 0
-      )
-        return false;
-      return true;
-    });
-  }, [approvedListings, hiddenFilter, soldFilter, config.hasSoldFilter]);
+  const mainFilterConfig = useMemo<FilterConfig[]>(() => {
+    const filters: FilterConfig[] = [
+      // Status group
+      {
+        columnId: "visibility",
+        label: "Visibility",
+        type: "multi-select",
+        group: "Status",
+        options: [
+          { label: "Visible", value: "Visible" },
+          { label: "Hidden", value: "Hidden" },
+        ],
+      },
+      ...(pageType === "sale"
+        ? [
+            {
+              columnId: "sold_status",
+              label: "Sold Status",
+              type: "multi-select" as const,
+              group: "Status",
+              options: [
+                { label: "Available", value: "Available" },
+                { label: "Sold", value: "Sold" },
+              ],
+            },
+          ]
+        : []),
+      {
+        columnId: "is_featured",
+        label: "Featured",
+        type: "boolean" as const,
+        group: "Status",
+        trueLabel: "Featured",
+        falseLabel: "Not Featured",
+        trueValue: "Yes",
+        falseValue: "No",
+      },
+      // Product group
+      {
+        columnId: "product_type",
+        label: "Product Type",
+        type: "multi-select",
+        group: "Product",
+        options: [
+          { label: "Equipment", value: "equipment" },
+          { label: "Attachment", value: "attachment" },
+        ],
+      },
+      ...(pageType === "sale"
+        ? [
+            {
+              columnId: "condition_name",
+              label: "Condition",
+              type: "multi-select" as const,
+              group: "Product",
+            },
+          ]
+        : []),
+      // Price group
+      {
+        columnId: "mmk_price",
+        label: "MMK Price",
+        type: "number-range",
+        group: "Price",
+        unit: "MMK",
+      },
+      // Other group
+      { columnId: "partner_name", label: "Partner", type: "multi-select", group: "Other" },
+      { columnId: "created_at", label: "Created", type: "date-range", group: "Other" },
+    ];
+    return filters;
+  }, [pageType]);
 
-  const activeFilterCount =
-    (hiddenFilter !== "all" ? 1 : 0) +
-    (config.hasSoldFilter && soldFilter !== "all" ? 1 : 0);
-
-  const filterToolbar = (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Filter className="size-3.5" aria-hidden="true" />
-            Filter
-            {activeFilterCount > 0 && (
-              <span className="ml-1 rounded bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuLabel>Visibility</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={hiddenFilter} onValueChange={(v) => setHiddenFilter(v as typeof hiddenFilter)}>
-            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="visible">Visible only</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="hidden">Hidden only</DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-
-          {config.hasSoldFilter && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Status</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={soldFilter} onValueChange={(v) => setSoldFilter(v as typeof soldFilter)}>
-                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="available">Available only</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="sold">Sold out only</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Button onClick={() => router.push(`/listings/for-${pageType}/new`)} className="ml-auto">
-        <Plus aria-hidden="true" /> Add Listing
-      </Button>
-    </>
+  const pendingFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "status",
+        label: "Status",
+        type: "multi-select",
+        options: [
+          { label: "Pending", value: "Pending" },
+          { label: "Rework", value: "Rework" },
+        ],
+      },
+      {
+        columnId: "product_type",
+        label: "Product Type",
+        type: "multi-select",
+        options: [
+          { label: "Equipment", value: "equipment" },
+          { label: "Attachment", value: "attachment" },
+        ],
+      },
+      { columnId: "created_at", label: "Submitted", type: "date-range" },
+    ],
+    [],
   );
 
-  const { data: featuredData, handleReorder } = useDragReorder(featured, {
+  const featuredFilterConfig = useMemo<FilterConfig[]>(
+    () => [
+      {
+        columnId: "listing_type",
+        label: "Listing Type",
+        type: "multi-select",
+        options: [
+          { label: "For Sale", value: "For Sale" },
+          { label: "For Rent", value: "For Rent" },
+        ],
+      },
+      { columnId: "partner_name", label: "Partner", type: "multi-select" },
+    ],
+    [],
+  );
+
+  const handleAddListing = useCallback(() => {
+    sessionStorage.setItem("newListingDefault", pageType);
+    router.push("/listings/new");
+  }, [pageType, router]);
+
+  const addListingToolbar = canCreate ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button className="ml-auto">
+          <Plus aria-hidden="true" /> Add Listing{" "}
+          <ChevronDown className="ml-1 size-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleAddListing}>
+          <FileText /> Fill Form
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/bulk-upload/listings">
+            <FileSpreadsheet /> Excel Upload
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : undefined;
+
+  const {
+    data: featuredData,
+    handleReorder,
+    handleMoveToPosition,
+  } = useDragReorder(featured, {
     getRowId: (r) => r.id,
     tableName: "featured_listing",
+    feature: "featured_listings",
   });
 
   return (
@@ -212,28 +319,56 @@ export function ListingsClient({
             <Pin className="size-4" aria-hidden="true" />
             Featured Listings
           </TabsTrigger>
+          <TabsTrigger value="drafts">
+            <FileEdit className="size-4" aria-hidden="true" />
+            Drafts
+            {draftCount > 0 && (
+              <TabCount>{draftCount}</TabCount>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="listings">
           {approvedListings.length > 0 ? (
             <DataTable
               columns={columns}
-              data={filteredListings}
-              searchKey="model_name"
-              searchPlaceholder="Search by model"
+              data={approvedListings}
+              searchKeys={["model_name", "partner_name"]}
+              searchPlaceholder="Search by model or partner"
+              filterConfig={mainFilterConfig}
+              filterStorageKey={`listings-${pageType}-filters`}
+              initialColumnVisibility={HIDDEN_FILTER_COLUMNS}
               enablePagination
               pageSize={10}
-              toolbar={filterToolbar}
+              toolbar={addListingToolbar}
             />
           ) : (
             <EmptyState
               icon={Icon}
               title={config.emptyTitle}
               description={config.emptyDescription}
+              fullPage={false}
               action={
-                <Button onClick={() => router.push(`/listings/for-${pageType}/new`)}>
-                  <Plus aria-hidden="true" /> Add Listing
-                </Button>
+                canCreate ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button>
+                        <Plus aria-hidden="true" /> Add Listing{" "}
+                        <ChevronDown className="ml-1 size-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center">
+                      <DropdownMenuItem onClick={handleAddListing}>
+                        <FileText /> Fill Form
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/bulk-upload/listings">
+                          <FileSpreadsheet /> Excel Upload
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : undefined
               }
             />
           )}
@@ -244,8 +379,10 @@ export function ListingsClient({
             <DataTable
               columns={pendingColumns}
               data={pendingListings}
-              searchKey="model_name"
+              searchKeys={["model_name", "partner_name"]}
               searchPlaceholder="Search pending listings"
+              filterConfig={pendingFilterConfig}
+              filterStorageKey={`listings-${pageType}-pending-filters`}
               enablePagination
               pageSize={10}
             />
@@ -254,6 +391,7 @@ export function ListingsClient({
               icon={Clock}
               title="No pending listings"
               description="All listings have been reviewed."
+              fullPage={false}
             />
           )}
         </TabsContent>
@@ -263,15 +401,46 @@ export function ListingsClient({
             <DataTable
               columns={featuredColumns}
               data={featuredData}
+              searchKeys={["model_name", "partner_name"]}
+              searchPlaceholder="Search by model or partner"
+              filterConfig={featuredFilterConfig}
+              filterStorageKey="listings-featured-filters"
               enableDragSort
               getRowId={(row) => row.id}
               onReorder={handleReorder}
+              onMoveToPosition={handleMoveToPosition}
             />
           ) : (
             <EmptyState
               icon={Pin}
               title="No featured listings"
               description="Feature a listing from the Listings tab to show it on the home page."
+              fullPage={false}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="drafts">
+          {!draftsLoaded ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="size-5" />
+            </div>
+          ) : drafts.length > 0 ? (
+            <DataTable
+              columns={draftColumns}
+              data={drafts}
+              searchKeys={["model_name"]}
+              searchPlaceholder="Search drafts"
+              enablePagination
+              pageSize={10}
+              getRowId={(row) => row.id}
+            />
+          ) : (
+            <EmptyState
+              icon={FileEdit}
+              title="No drafts"
+              description="Save a listing as draft to continue later."
+              fullPage={false}
             />
           )}
         </TabsContent>

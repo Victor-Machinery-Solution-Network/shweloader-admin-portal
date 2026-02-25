@@ -6,6 +6,7 @@ import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { getMainCategories } from "@/lib/cache";
 import { getSubCategoryCount } from "@/lib/actions/equipment";
 import { MainCategoriesClient } from "@/components/features/equipment/main/main-categories-client";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 
 export const metadata = {
@@ -21,7 +22,9 @@ export default function EquipmentMainCategoriesPage() {
         description="Manage equipment main categories"
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <MainCategoriesContent />
+        <PermissionGate feature="equipment_main_categories">
+          <MainCategoriesContent />
+        </PermissionGate>
       </Suspense>
     </>
   );

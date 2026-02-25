@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { assetUrl } from '@/lib/r2-url';
 
 interface FileInfo {
   name: string;
@@ -24,37 +25,35 @@ interface ImageInputProps {
 
 /**
  * Image input with drag-and-drop, click-to-upload, and preview.
- * Stores the image as a base64 data URL string (temporary until R2 is set up).
- * The value is submitted via a hidden input with the given `name`.
+ * Submits the File directly via FormData for R2 upload.
+ * The file input uses the given `name` for form submission.
  */
 export function ImageInput({
   name,
   value: controlledValue,
   onChange,
   accept = 'image/*',
-  maxSizeMB = 5,
+  maxSizeMB = 10,
   placeholder = 'Drop an image here or click to browse',
   className,
   disabled = false,
   aspectClassName = 'aspect-video',
 }: ImageInputProps) {
-  const [internalValue, setInternalValue] = useState<string | null>(null);
+  // previewUrl: object URL for newly selected file, or existing R2 URL
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
+  const [removed, setRemoved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const value = controlledValue !== undefined ? controlledValue : internalValue;
+  // Display: new file preview (blob:), or R2 key → full URL from prop
+  const displayUrl = previewUrl || (!removed ? assetUrl(controlledValue) : null) || null;
 
-  const setValue = useCallback(
-    (newValue: string | null) => {
-      if (controlledValue === undefined) {
-        setInternalValue(newValue);
-      }
-      onChange?.(newValue);
-    },
-    [controlledValue, onChange]
-  );
+  // Extract filename from existing URL for consistent display
+  const urlFileName = controlledValue
+    ? decodeURIComponent(controlledValue.split('/').pop() || 'image')
+    : null;
 
   const processFile = useCallback(
     (file: File) => {
@@ -71,15 +70,22 @@ export function ImageInput({
       }
 
       setFileInfo({ name: file.name, size: file.size });
+      setRemoved(false);
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        setValue(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      // Create object URL for preview (no base64 needed)
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+
+      // Set file on the input so FormData includes it
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dt.files;
+      }
+
+      onChange?.(objectUrl);
     },
-    [maxSizeMB, setValue]
+    [maxSizeMB, onChange]
   );
 
   const handleDragOver = useCallback(
@@ -115,8 +121,6 @@ export function ImageInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) processFile(file);
-      // Reset so the same file can be re-selected
-      e.target.value = '';
     },
     [processFile]
   );
@@ -124,11 +128,21 @@ export function ImageInput({
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      setValue(null);
+      // Revoke object URL to free memory
+      if (previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(null);
       setFileInfo(null);
+      setRemoved(true);
       setError(null);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      onChange?.(null);
     },
-    [setValue]
+    [previewUrl, onChange]
   );
 
   function formatSize(bytes: number) {
@@ -139,26 +153,28 @@ export function ImageInput({
 
   return (
     <div className={cn('space-y-2', className)}>
-      {/* Hidden input for form submission */}
-      <input type="hidden" name={name} value={value ?? ''} />
-
-      {/* Hidden file input */}
+      {/* File input for FormData submission */}
       <input
         ref={fileInputRef}
         type="file"
+        name={name}
         accept={accept}
         onChange={handleFileSelect}
         className="hidden"
         disabled={disabled}
       />
+      {/* Signal server that user explicitly removed the existing image */}
+      {removed && !previewUrl && (
+        <input type="hidden" name={`${name}_removed`} value="1" />
+      )}
 
       <div className={aspectClassName}>
-        {value ? (
+        {displayUrl ? (
           /* Preview state */
           <div className="flex h-full flex-col overflow-hidden rounded-lg border">
             <div className="relative min-h-0 flex-1">
               <img
-                src={value}
+                src={displayUrl}
                 alt="Selected image preview"
                 className="size-full object-cover"
               />
@@ -172,14 +188,18 @@ export function ImageInput({
                 <X className="size-4" />
               </button>
             </div>
-            {fileInfo && (
-              <div className="shrink-0 border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-                {fileInfo.name}
-                <span className="ml-1.5 text-muted-foreground/60">
-                  ({formatSize(fileInfo.size)})
-                </span>
-              </div>
-            )}
+            <div className="shrink-0 truncate border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+              {fileInfo ? (
+                <>
+                  {fileInfo.name}
+                  <span className="ml-1.5 text-muted-foreground/60">
+                    ({formatSize(fileInfo.size)})
+                  </span>
+                </>
+              ) : (
+                urlFileName
+              )}
+            </div>
           </div>
         ) : (
           /* Upload zone */

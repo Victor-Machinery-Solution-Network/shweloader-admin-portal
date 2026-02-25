@@ -3,27 +3,32 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
-import { LocationForm } from "./location-form";
-import { deleteLocation } from "@/lib/actions/location";
-import type { Location } from "@/types/location";
+import { TownshipForm } from "./location-form";
+import { deleteTownship } from "@/lib/actions/location";
+import type { TownshipWithParents, StateRegion, District } from "@/types/location";
 
 interface RowActionsProps {
-  location: Location;
+  township: TownshipWithParents;
   linkedCount: number;
+  stateRegions: StateRegion[];
+  districts: District[];
 }
 
-export function RowActions({ location, linkedCount }: RowActionsProps) {
+export function RowActions({ township, linkedCount, stateRegions, districts }: RowActionsProps) {
+  const canEdit = useHasPermission("locations", "edit");
+  const canDelete = useHasPermission("locations", "delete");
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteLocation(location.location_id);
+      const result = await deleteTownship(township.township_id);
       if (result.success) {
-        toast.success("Location deleted");
+        toast.success("Township deleted");
         setShowDelete(false);
       } else {
         toast.error(result.error ?? "Failed to delete");
@@ -33,23 +38,27 @@ export function RowActions({ location, linkedCount }: RowActionsProps) {
 
   const deleteDescription =
     linkedCount > 0
-      ? <>This will permanently delete <strong>&ldquo;{location.city_name}&rdquo;</strong>.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "listing" : "listings"} linked to this location that must be removed first.</>
-      : <>This will permanently delete <strong>&ldquo;{location.city_name}&rdquo;</strong>.<br />This action cannot be undone.</>;
+      ? <>This will permanently delete <strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}).<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "listing" : "listings"} linked to this township that must be removed first.</>
+      : <>This will permanently delete <strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}).<br />This action cannot be undone.</>;
+
+  const actions = [
+    ...(canEdit ? [{ label: "Edit" as const, icon: Pencil, onClick: () => setShowEdit(true) }] : []),
+    ...(canDelete ? [{ label: "Delete" as const, icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive" as const }] : []),
+  ];
+
+  if (actions.length === 0) return null;
 
   return (
     <>
-      <RowActionsUI
-        actions={[
-          { label: "Edit", icon: Pencil, onClick: () => setShowEdit(true) },
-          { label: "Delete", icon: Trash2, onClick: () => setShowDelete(true), variant: "destructive" },
-        ]}
-      />
+      <RowActionsUI actions={actions} />
 
       {showEdit && (
-        <LocationForm
+        <TownshipForm
           open={showEdit}
           onOpenChange={setShowEdit}
-          location={location}
+          township={township}
+          stateRegions={stateRegions}
+          districts={districts}
         />
       )}
 
@@ -57,7 +66,7 @@ export function RowActions({ location, linkedCount }: RowActionsProps) {
         open={showDelete}
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
-        title="Delete location?"
+        title="Delete township?"
         description={deleteDescription}
         isPending={isPending}
       />

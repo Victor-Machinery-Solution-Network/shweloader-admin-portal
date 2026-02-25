@@ -5,7 +5,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { TemplateRowActions } from "./row-actions";
-import { FIELD_TYPE_LABELS } from "@/types/custom-field";
+import { FIELD_TYPE_LABELS, FIELD_TYPE_ICONS } from "@/types/custom-field";
 import type { CustomFieldTemplateWithFields } from "@/types/custom-field";
 
 export function createColumns(): ColumnDef<CustomFieldTemplateWithFields>[] {
@@ -39,11 +39,15 @@ export function createColumns(): ColumnDef<CustomFieldTemplateWithFields>[] {
         const types = [...new Set(row.original.fields.map((f) => f.type))];
         return (
           <div className="flex flex-wrap gap-1">
-            {types.map((type) => (
-              <Badge key={type} variant="secondary" className="text-xs">
-                {FIELD_TYPE_LABELS[type]}
-              </Badge>
-            ))}
+            {types.map((type) => {
+              const Icon = FIELD_TYPE_ICONS[type];
+              return (
+                <Badge key={type} variant={`field-${type}`} className="text-xs">
+                  <Icon className="size-3" />
+                  {FIELD_TYPE_LABELS[type]}
+                </Badge>
+              );
+            })}
           </div>
         );
       },

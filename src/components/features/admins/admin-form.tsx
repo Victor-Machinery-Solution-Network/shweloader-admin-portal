@@ -1,18 +1,20 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { RequiredInput } from "@/components/ui/required-input";
+import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxCollection,
+} from "@/components/ui/combobox";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { createAdmin, updateAdmin } from "@/lib/actions/admin";
 import type { AdminWithRole } from "@/types/admin";
@@ -34,7 +36,25 @@ export function AdminForm({
   const [isPending, startTransition] = useTransition();
   const isEditing = !!admin;
 
+  const roleIdByName = useMemo(
+    () => new Map(roles.map((r) => [r.name, r.role_id])),
+    [roles],
+  );
+  const roleNameById = useMemo(
+    () => new Map(roles.map((r) => [r.role_id, r.name])),
+    [roles],
+  );
+  const roleNames = useMemo(() => roles.map((r) => r.name), [roles]);
+
+  const defaultRoleName = admin?.role_id
+    ? (roleNameById.get(admin.role_id) ?? "")
+    : "";
+  const [selectedRoleName, setSelectedRoleName] = useState(defaultRoleName);
+
   function handleSubmit(formData: FormData) {
+    const roleId = roleIdByName.get(selectedRoleName);
+    if (roleId) formData.set("roleId", String(roleId));
+
     startTransition(async () => {
       const result = isEditing
         ? await updateAdmin(admin.user_id, formData)
@@ -88,22 +108,31 @@ export function AdminForm({
           <Field orientation="vertical">
             <FieldLabel>Role</FieldLabel>
             <FieldContent>
-              <Select
-                name="roleId"
-                defaultValue={admin?.role_id ? String(admin.role_id) : undefined}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.role_id} value={String(role.role_id)}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Combobox
+                  value={selectedRoleName}
+                  onValueChange={(val) => setSelectedRoleName(val ?? "")}
+                  items={roleNames}
+                >
+                  <ComboboxInput
+                    placeholder="Search role..."
+                    showClear={!!selectedRoleName}
+                  />
+                  <ComboboxContent>
+                    <ComboboxList>
+                      <ComboboxEmpty>No role found</ComboboxEmpty>
+                      <ComboboxCollection>
+                        {(name) => (
+                          <ComboboxItem key={name} value={name}>
+                            {name}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxCollection>
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                <FieldError show={!selectedRoleName} message="Please select a role" />
+              </div>
             </FieldContent>
           </Field>
         </div>
