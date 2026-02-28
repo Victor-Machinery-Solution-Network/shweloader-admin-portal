@@ -11,6 +11,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   cacheComponents: true,
   reactCompiler: true,
+  serverExternalPackages: ["sharp"],
   headers: async () => [
     { source: "/(.*)", headers: securityHeaders },
   ],
