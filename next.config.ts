@@ -15,7 +15,23 @@ const nextConfig: NextConfig = {
   headers: async () => [
     { source: "/(.*)", headers: securityHeaders },
   ],
+  turbopack: {},
+  webpack: (config) => {
+    // Suppress warnings for sharp's optional platform-specific dependencies.
+    // On Vercel Linux, sharp uses @img/sharp-linux-x64 — the dev/WASM modules
+    // are not needed and their absence is expected.
+    config.resolve ??= {};
+    config.resolve.alias ??= {};
+    Object.assign(config.resolve.alias, {
+      "@img/sharp-libvips-dev": false,
+      "@img/sharp-wasm32": false,
+    });
+    return config;
+  },
   experimental: {
+    staleTimes: {
+      dynamic: 30,
+    },
     serverActions: {
       bodySizeLimit: "50mb",
     },
