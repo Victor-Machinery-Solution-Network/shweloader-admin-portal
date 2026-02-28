@@ -32,14 +32,21 @@ interface TurnstileWidgetProps {
 }
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
+const DISABLED = process.env.NEXT_PUBLIC_DISABLE_TURNSTILE === 'true';
 
 export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>(
   function TurnstileWidget({ onTokenChange }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
 
+    // In dev/test with Turnstile disabled, provide a dummy token immediately
+    useEffect(() => {
+      if (DISABLED) onTokenChange('disabled');
+    }, [onTokenChange]);
+
     useImperativeHandle(ref, () => ({
       reset() {
+        if (DISABLED) { onTokenChange('disabled'); return; }
         if (widgetIdRef.current && window.turnstile) {
           window.turnstile.reset(widgetIdRef.current);
           onTokenChange('');
@@ -48,6 +55,7 @@ export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>
     }), [onTokenChange]);
 
     const renderWidget = useCallback(() => {
+      if (DISABLED) return;
       if (!window.turnstile || !containerRef.current || widgetIdRef.current) return;
 
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
@@ -61,6 +69,7 @@ export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>
     }, [onTokenChange]);
 
     useEffect(() => {
+      if (DISABLED) return;
       // If script already loaded, render immediately
       if (window.turnstile && containerRef.current && !widgetIdRef.current) {
         renderWidget();
@@ -73,6 +82,8 @@ export const TurnstileWidget = forwardRef<TurnstileHandle, TurnstileWidgetProps>
         }
       };
     }, [renderWidget]);
+
+    if (DISABLED) return null;
 
     return (
       <>

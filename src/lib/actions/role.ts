@@ -6,6 +6,7 @@ import { CACHE_TAGS, SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { RoleWithPermissionCount, FeaturePermission } from "@/types/role";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Data Fetching Helpers ──────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ export async function createRole(formData: FormData) {
       }
     }
 
+    auditLog(created_by, `role_created | name=${name.trim()}`);
     invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
@@ -151,6 +153,9 @@ export async function updateRole(roleId: number, formData: FormData) {
 
   try {
     const grantedBy = await requirePermission("roles", "edit");
+    if (roleId === SUPER_ADMIN_ROLE_ID) {
+      return { success: false, error: "The Super Admin role cannot be modified" };
+    }
     await roleService.update(roleId, {
       name: name.trim(),
       description: description?.trim() || null,
@@ -161,6 +166,7 @@ export async function updateRole(roleId: number, formData: FormData) {
       await syncRolePermissions(roleId, permissionIds, grantedBy);
     }
 
+    auditLog(grantedBy, `role_modified | role=${roleId}`);
     invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
@@ -173,12 +179,13 @@ export async function updateRole(roleId: number, formData: FormData) {
 
 export async function deleteRole(roleId: number) {
   try {
-    await requirePermission("roles", "delete");
+    const actorId = await requirePermission("roles", "delete");
     if (roleId === SUPER_ADMIN_ROLE_ID) {
       return { success: false, error: "The Super Admin role cannot be deleted" };
     }
 
     await roleService.delete(roleId);
+    auditLog(actorId, `role_deleted | role=${roleId}`);
     invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {

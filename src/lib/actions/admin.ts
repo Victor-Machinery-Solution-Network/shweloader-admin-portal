@@ -4,10 +4,12 @@ import bcrypt from "bcryptjs";
 import { adminUserService } from "@/lib/services/admin";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS, PRIMARY_ADMIN_ID, SUPER_ADMIN_ROLE_ID } from "@/lib/constants";
-import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { AdminWithRole } from "@/types/admin";
 import type { Role } from "@/types/role";
+import { triggerNotification } from "@/lib/pusher";
+import { auditLog } from "@/lib/actions/audit";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -103,7 +105,7 @@ export async function updateAdmin(userId: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("admin_users", "edit");
+    const actorId = await requirePermission("admin_users", "edit");
 
     // Prevent assigning the Super Admin role via form manipulation
     if (Number(roleId) === SUPER_ADMIN_ROLE_ID) {
@@ -129,6 +131,10 @@ export async function updateAdmin(userId: number, formData: FormData) {
 
     await adminUserService.update(userId, updateData);
 
+    // Notify user of role change so their session refreshes
+    triggerNotification(userId, "session-revoked", { reason: "role_changed" });
+    auditLog(actorId, `admin_role_changed | target=${userId} | role=${roleId}`);
+
     invalidateTag(CACHE_TAGS.ADMINS, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
@@ -141,12 +147,28 @@ export async function updateAdmin(userId: number, formData: FormData) {
 
 export async function toggleAdminActive(userId: number) {
   try {
-    await requirePermission("admin_users", "edit");
+    const actorId = await requirePermission("admin_users", "edit");
+
+    // Read current state to know the result of the toggle
+    const current = await d1.query<{ active: number }>(
+      "SELECT active FROM admin_user WHERE user_id = ? LIMIT 1",
+      [userId],
+    );
+    const wasActive = current.results[0]?.active === 1;
+
     await d1.query(
       "UPDATE admin_user SET active = 1 - active WHERE user_id = ?",
       [userId],
     );
+
     invalidateTag(CACHE_TAGS.ADMINS);
+
+    // If user was active and is now deactivated, revoke their session
+    if (wasActive) {
+      triggerNotification(userId, "session-revoked", { reason: "account_deactivated" });
+      auditLog(actorId, `admin_deactivated | target=${userId}`);
+    }
+
     return { success: true };
   } catch (error) {
     return {
@@ -175,6 +197,7 @@ export async function deleteAdmin(userId: number) {
 
 export async function deleteAdmins(ids: number[]) {
   await requirePermission("admin_users", "delete");
+  assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map((id) => {
       if (id === PRIMARY_ADMIN_ID) return Promise.reject(new Error("Cannot delete the primary admin"));

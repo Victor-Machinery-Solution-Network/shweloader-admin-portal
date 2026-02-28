@@ -118,14 +118,14 @@ const LANDING_PRIORITY: [route: string, permission: string][] = [
   ["/settings", "app_settings:read"],
 ];
 
-/** Return the first route the user has permission to view, or /dashboard/overview as fallback. */
+/** Return the first route the user has permission to view, or /login as fallback. */
 function getFirstAllowedRoute(permissions: string[]): string {
   for (const [route, perm] of LANDING_PRIORITY) {
     if (permissions.includes(perm)) {
       return route;
     }
   }
-  return "/dashboard/overview";
+  return "/login";
 }
 
 /** Check if the user's permissions include access for a given route. */

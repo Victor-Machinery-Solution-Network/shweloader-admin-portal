@@ -6,7 +6,9 @@ import { getCachedPermissionsForRole } from "@/lib/cache";
 
 /**
  * Get all permission strings for a given role.
- * Returns array like ["articles:create", "articles:approve", "dashboard:read"]
+ * Called via getCachedPermissionsForRole (which runs inside "use cache"),
+ * so this function must NOT use dynamic APIs like headers()/auth().
+ * Auth is enforced by callers (fetchMyPermissions checks session, middleware checks auth).
  */
 export async function getPermissionsForRole(
   roleId: number,

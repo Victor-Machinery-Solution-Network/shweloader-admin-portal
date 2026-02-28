@@ -8,7 +8,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import PusherClient from "pusher-js";
 
 interface PusherContextValue {
@@ -41,6 +41,12 @@ export function PusherProvider({ children }: { children: ReactNode }) {
     const channel = pusher.subscribe(`private-user-${session.user.id}`);
     pusherRef.current = pusher;
     channelRef.current = channel;
+
+    // Listen for session revocation (deactivation or role change)
+    channel.bind("session-revoked", async () => {
+      await signOut({ redirect: false });
+      window.location.href = "/login";
+    });
 
     return () => {
       channel.unbind_all();
