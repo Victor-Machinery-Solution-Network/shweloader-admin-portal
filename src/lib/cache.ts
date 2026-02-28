@@ -18,6 +18,7 @@ import {
 import { businessTypeService } from "@/lib/services/app-user";
 import { d1 } from "@/lib/api/d1-client";
 import type { AppUser } from "@/types/app-user";
+import type { BlacklistEntryWithDetails } from "@/types/blacklist";
 import { announcementTextService } from "@/lib/services/announcement";
 import {
   articleCategoryService,
@@ -132,6 +133,19 @@ export async function getUsers() {
     LEFT JOIN partner p ON c.app_user_id = p.app_user_id
     LEFT JOIN partner_status_type pst ON p.status_id = pst.id
     ORDER BY c.created_at DESC`,
+  );
+  return result.results;
+}
+
+export async function getBlacklistEntries() {
+  const result = await d1.query<BlacklistEntryWithDetails>(
+    `SELECT b.*,
+      u.username,
+      a.username AS admin_username
+    FROM blacklist b
+    LEFT JOIN app_user u ON b.app_user_id = u.app_user_id
+    LEFT JOIN admin_user a ON b.blacklisted_by = a.user_id
+    ORDER BY b.created_at DESC`,
   );
   return result.results;
 }

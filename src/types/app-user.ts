@@ -10,6 +10,7 @@ export interface AppUser {
   business_type_id: number | null;
   is_approved_partner: number;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface BusinessType {

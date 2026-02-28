@@ -80,6 +80,7 @@ export const CACHE_TAGS = {
   EQUIPMENT_MODELS: "equipment-models",
   ATTACHMENT_CATEGORIES: "attachment-categories",
   ATTACHMENT_MODELS: "attachment-models",
+  BLACKLIST: "blacklist",
   PARTNERS: "partners",
   SALE_LISTINGS: "sale-listings",
   RENT_LISTINGS: "rent-listings",

@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Building2, Calendar, Handshake } from "lucide-react";
+import { User, Building2, Calendar, Handshake, Ban } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +13,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils";
+import { useHasPermission } from "@/hooks/use-permissions";
 import type { AppUser } from "@/types/app-user";
 import type { BusinessTypeInfo } from "./columns";
 
 interface UserDetailDialogProps {
   user: AppUser | null;
   onClose: () => void;
+  onBlacklist: (user: AppUser) => void;
   businessTypeMap: Map<number, BusinessTypeInfo>;
 }
 
 export function UserDetailDialog({
   user,
   onClose,
+  onBlacklist,
   businessTypeMap,
 }: UserDetailDialogProps) {
+  const canBlacklist = useHasPermission("blacklist", "create");
+
   if (!user) return null;
 
   const verified = user.is_verified === 1;
@@ -50,6 +55,12 @@ export function UserDetailDialog({
               <Badge variant="success" className="text-xs">
                 <Handshake className="size-3" />
                 Partner
+              </Badge>
+            )}
+            {user.deleted_at && (
+              <Badge variant="destructive" className="text-xs">
+                <Ban className="size-3" />
+                Blacklisted
               </Badge>
             )}
           </div>
@@ -112,6 +123,16 @@ export function UserDetailDialog({
         </div>
 
         <DialogFooter>
+          {canBlacklist && !user.deleted_at && (
+            <Button
+              variant="destructive"
+              onClick={() => onBlacklist(user)}
+              className="mr-auto"
+            >
+              <Ban className="size-4" />
+              Blacklist
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>

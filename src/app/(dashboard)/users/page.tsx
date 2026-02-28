@@ -4,7 +4,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { PermissionGate } from "@/components/shared/permission-gate";
-import { getUsers, getBusinessTypes, getListedBusinessTypes } from "@/lib/cache";
+import { getUsers, getBusinessTypes, getListedBusinessTypes, getBlacklistEntries } from "@/lib/cache";
 import { UsersClient } from "@/components/features/users/users-client";
 
 export const metadata = {
@@ -31,12 +31,13 @@ export default function UsersPage() {
 async function UsersContent() {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
-  cacheTag(CACHE_TAGS.USERS, CACHE_TAGS.BUSINESS_TYPES, CACHE_TAGS.PARTNERS);
+  cacheTag(CACHE_TAGS.USERS, CACHE_TAGS.BUSINESS_TYPES, CACHE_TAGS.PARTNERS, CACHE_TAGS.BLACKLIST);
 
-  const [users, businessTypes, listedBusinessTypes] = await Promise.all([
+  const [users, businessTypes, listedBusinessTypes, blacklistEntries] = await Promise.all([
     getUsers(),
     getBusinessTypes(),
     getListedBusinessTypes(),
+    getBlacklistEntries(),
   ]);
 
   return (
@@ -44,6 +45,7 @@ async function UsersContent() {
       users={users}
       businessTypes={businessTypes}
       listedBusinessTypes={listedBusinessTypes}
+      blacklistEntries={blacklistEntries}
     />
   );
 }

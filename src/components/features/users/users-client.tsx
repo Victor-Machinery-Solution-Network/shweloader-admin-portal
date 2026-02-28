@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { Users, Briefcase, Plus } from "lucide-react";
+import { useState, useMemo, useCallback, useTransition } from "react";
+import { Users, Briefcase, Plus, Ban, ShieldOff } from "lucide-react";
+import { toast } from "sonner";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -11,32 +12,55 @@ import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createColumns } from "./columns";
 import { UserDetailDialog } from "./user-detail-dialog";
+import { blacklistColumns } from "./blacklist-columns";
+import { BlacklistConfirmDialog } from "./blacklist-confirm-dialog";
+import { UnblacklistDialog } from "./unblacklist-dialog";
+import { BlacklistSearchDialog } from "./blacklist-search-dialog";
 import { columns as businessTypeColumns } from "@/components/features/business-types/columns";
 import { BusinessTypeForm } from "@/components/features/business-types/business-type-form";
 import {
   deleteBusinessTypes,
   getUserCount,
 } from "@/lib/actions/business-type";
+import { unblacklistUsers } from "@/lib/actions/blacklist";
 import type { AppUser, BusinessType } from "@/types/app-user";
+import type { BlacklistEntryWithDetails } from "@/types/blacklist";
 
 interface UsersClientProps {
   users: AppUser[];
   businessTypes: BusinessType[];
   listedBusinessTypes: BusinessType[];
+  blacklistEntries: BlacklistEntryWithDetails[];
 }
 
 export function UsersClient({
   users = [],
   businessTypes = [],
   listedBusinessTypes = [],
+  blacklistEntries = [],
 }: UsersClientProps) {
+  // Permissions
   const canCreateBT = useHasPermission("business_types", "create");
   const canDeleteBT = useHasPermission("business_types", "delete");
-  const [showCreateBT, setShowCreateBT] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<AppUser | null>(
-    null,
-  );
+  const canCreateBlacklist = useHasPermission("blacklist", "create");
+  const canDeleteBlacklist = useHasPermission("blacklist", "delete");
 
+  // Business type dialog
+  const [showCreateBT, setShowCreateBT] = useState(false);
+
+  // User detail dialog
+  const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+
+  // Blacklist dialogs
+  const [blacklistTarget, setBlacklistTarget] = useState<AppUser | null>(null);
+  const [showBlacklistSearch, setShowBlacklistSearch] = useState(false);
+  const [showUnblacklist, setShowUnblacklist] = useState(false);
+  const [selectedForUnblacklist, setSelectedForUnblacklist] = useState<
+    BlacklistEntryWithDetails[]
+  >([]);
+  const [isUnblacklisting, startUnblacklistTransition] = useTransition();
+
+  // Memos
   const businessTypeMap = useMemo(
     () =>
       new Map(
@@ -87,6 +111,7 @@ export function UsersClient({
     [businessTypes],
   );
 
+  // Business type handlers
   const buildBTDescription = useCallback(async (selected: BusinessType[]) => {
     const ids = selected.map((bt) => bt.business_type_id);
     const counts = await getUserCount(ids);
@@ -128,6 +153,57 @@ export function UsersClient({
     [handleBulkDeleteBT, buildBTDescription, canCreateBT, canDeleteBT],
   );
 
+  // Blacklist handlers
+  const handleBlacklistFromDetail = useCallback((user: AppUser) => {
+    setSelectedUser(null);
+    setBlacklistTarget(user);
+  }, []);
+
+  const handleUnblacklist = useCallback(() => {
+    if (selectedForUnblacklist.length === 0) return;
+    startUnblacklistTransition(async () => {
+      const ids = selectedForUnblacklist.map((e) => e.blacklist_id);
+      const result = await unblacklistUsers(ids);
+      if (result.success) {
+        toast.success(
+          `${selectedForUnblacklist.length} ${selectedForUnblacklist.length === 1 ? "entry" : "entries"} unblacklisted`,
+        );
+        setShowUnblacklist(false);
+        setSelectedForUnblacklist([]);
+      } else {
+        toast.error(result.error ?? "Failed to unblacklist");
+      }
+    });
+  }, [selectedForUnblacklist]);
+
+  const renderBlacklistToolbar = useCallback(
+    (selected: BlacklistEntryWithDetails[]) => (
+      <>
+        {canDeleteBlacklist && selected.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSelectedForUnblacklist(selected);
+              setShowUnblacklist(true);
+            }}
+          >
+            <ShieldOff className="size-4" />
+            Unblacklist ({selected.length})
+          </Button>
+        )}
+        {canCreateBlacklist && (
+          <Button
+            onClick={() => setShowBlacklistSearch(true)}
+            className="ml-auto"
+          >
+            <Plus /> Add to Blacklist
+          </Button>
+        )}
+      </>
+    ),
+    [canCreateBlacklist, canDeleteBlacklist],
+  );
+
   return (
     <>
       <Tabs defaultValue="users">
@@ -139,6 +215,10 @@ export function UsersClient({
           <TabsTrigger value="business-types">
             <Briefcase className="size-4" />
             Business Types
+          </TabsTrigger>
+          <TabsTrigger value="blacklist">
+            <Ban className="size-4" />
+            Blacklist
           </TabsTrigger>
         </TabsList>
 
@@ -194,15 +274,70 @@ export function UsersClient({
             />
           )}
         </TabsContent>
+
+        <TabsContent value="blacklist">
+          {blacklistEntries.length > 0 ? (
+            <DataTable
+              columns={blacklistColumns}
+              data={blacklistEntries}
+              searchKeys={["username", "phone", "email", "company_name"]}
+              searchPlaceholder="Search blacklist"
+              enableSelection
+              enablePagination
+              pageSize={10}
+              getRowId={(row) => row.blacklist_id}
+              toolbar={renderBlacklistToolbar}
+            />
+          ) : (
+            <EmptyState
+              icon={Ban}
+              title="No blacklisted users"
+              description="Blacklisted users will appear here."
+              fullPage={false}
+              action={
+                canCreateBlacklist ? (
+                  <Button onClick={() => setShowBlacklistSearch(true)}>
+                    <Plus /> Add to Blacklist
+                  </Button>
+                ) : undefined
+              }
+            />
+          )}
+        </TabsContent>
       </Tabs>
 
+      {/* User detail dialog */}
       <UserDetailDialog
         user={selectedUser}
         onClose={() => setSelectedUser(null)}
+        onBlacklist={handleBlacklistFromDetail}
         businessTypeMap={businessTypeMap}
       />
 
+      {/* Business type form */}
       <BusinessTypeForm open={showCreateBT} onOpenChange={setShowCreateBT} />
+
+      {/* Blacklist confirmation (impact preview) */}
+      <BlacklistConfirmDialog
+        user={blacklistTarget}
+        onClose={() => setBlacklistTarget(null)}
+      />
+
+      {/* Blacklist search dialog */}
+      <BlacklistSearchDialog
+        open={showBlacklistSearch}
+        onOpenChange={setShowBlacklistSearch}
+        onSelectUser={(user) => setBlacklistTarget(user)}
+      />
+
+      {/* Unblacklist dialog */}
+      <UnblacklistDialog
+        open={showUnblacklist}
+        onOpenChange={setShowUnblacklist}
+        onConfirm={handleUnblacklist}
+        count={selectedForUnblacklist.length}
+        isPending={isUnblacklisting}
+      />
     </>
   );
 }

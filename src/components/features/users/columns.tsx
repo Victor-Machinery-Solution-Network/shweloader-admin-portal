@@ -1,6 +1,6 @@
 "use client";
 
-import { UserRound, Phone, Building2, Handshake } from "lucide-react";
+import { UserRound, Phone, Building2, Handshake, Ban } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Eye } from "lucide-react";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
@@ -28,7 +28,7 @@ export function createColumns(
         <DataTableColumnHeader column={column} title="User" />
       ),
       cell: ({ row }) => (
-        <div className="flex items-center gap-2.5">
+        <div className={cn("flex items-center gap-2.5", row.original.deleted_at && "opacity-50")}>
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10">
             <UserRound className="size-3.5 text-violet-500" />
           </div>
@@ -41,7 +41,13 @@ export function createColumns(
               >
                 {row.original.username}
               </button>
-              {row.original.is_approved_partner === 1 && (
+              {row.original.deleted_at && (
+                <Badge variant="destructive" className="text-xs shrink-0">
+                  <Ban className="size-3" />
+                  Blacklisted
+                </Badge>
+              )}
+              {!row.original.deleted_at && row.original.is_approved_partner === 1 && (
                 <Badge variant="success" className="text-xs shrink-0">
                   <Handshake className="size-3" />
                   Partner
@@ -63,10 +69,10 @@ export function createColumns(
       cell: ({ row }) => {
         const phone = row.getValue("phone") as string | null;
         if (!phone) {
-          return <span className="text-muted-foreground text-sm">—</span>;
+          return <span className={cn("text-muted-foreground text-sm", row.original.deleted_at && "opacity-50")}>—</span>;
         }
         return (
-          <div className="flex items-center gap-1.5">
+          <div className={cn("flex items-center gap-1.5", row.original.deleted_at && "opacity-50")}>
             <Phone className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="text-sm whitespace-nowrap">{phone}</span>
           </div>
@@ -81,10 +87,10 @@ export function createColumns(
       cell: ({ row }) => {
         const company = row.getValue("company_name") as string | null;
         if (!company) {
-          return <span className="text-muted-foreground text-sm">—</span>;
+          return <span className={cn("text-muted-foreground text-sm", row.original.deleted_at && "opacity-50")}>—</span>;
         }
         return (
-          <div className="flex items-center gap-1.5">
+          <div className={cn("flex items-center gap-1.5", row.original.deleted_at && "opacity-50")}>
             <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="text-sm max-w-48 truncate">{company}</span>
           </div>
@@ -125,7 +131,7 @@ export function createColumns(
       cell: ({ row }) => {
         const verified = row.getValue("is_verified") === 1;
         return (
-          <div className="flex items-center gap-2">
+          <div className={cn("flex items-center gap-2", row.original.deleted_at && "opacity-50")}>
             <div
               className={cn(
                 "size-2 rounded-full",
@@ -148,7 +154,7 @@ export function createColumns(
         <DataTableColumnHeader column={column} title="Joined" />
       ),
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+        <span className={cn("text-muted-foreground text-sm tabular-nums whitespace-nowrap", row.original.deleted_at && "opacity-50")}>
           {formatDate(row.getValue("created_at"))}
         </span>
       ),
