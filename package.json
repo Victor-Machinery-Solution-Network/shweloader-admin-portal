@@ -47,6 +47,9 @@
     "tailwind-merge": "^3.4.0",
     "tiptap-markdown": "^0.9.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "esbuild"]
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
