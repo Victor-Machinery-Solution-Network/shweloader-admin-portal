@@ -392,6 +392,7 @@ async function uploadBulkFile(
       ext = ".pdf";
     } else {
       // Dynamic import sharp for image conversion
+      // @ts-expect-error -- sharp types not hoisted in pnpm strict mode
       const sharp = (await import("sharp")).default;
       const buffer = Buffer.from(await file.arrayBuffer());
       const webpBuffer = await sharp(buffer, {
