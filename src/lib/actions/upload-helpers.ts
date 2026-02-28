@@ -26,7 +26,6 @@ async function convertToWebp(file: File): Promise<{ blob: Blob; ext: string }> {
     return { blob: file, ext: ".pdf" };
   }
 
-  // @ts-expect-error -- sharp types not hoisted in pnpm strict mode
   const sharp = (await import("sharp")).default;
   const buffer = Buffer.from(await file.arrayBuffer());
   const webpBuffer = await sharp(buffer, {
