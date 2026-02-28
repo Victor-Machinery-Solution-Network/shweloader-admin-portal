@@ -1,6 +1,5 @@
 "use server";
 
-import sharp from "sharp";
 import {
   uploadToR2,
   deleteFromR2,
@@ -27,6 +26,7 @@ async function convertToWebp(file: File): Promise<{ blob: Blob; ext: string }> {
     return { blob: file, ext: ".pdf" };
   }
 
+  const sharp = (await import("sharp")).default;
   const buffer = Buffer.from(await file.arrayBuffer());
   const webpBuffer = await sharp(buffer, {
     limitInputPixels: 100_000_000,
