@@ -324,3 +324,117 @@ export async function formatBrandLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+// ─── Consolidated Brands Page Query ─────────────────────────────────────────
+
+interface BrandRow {
+  brand_id: number;
+  name: string;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+  category_ids: string;
+  sub_category_ids: string;
+  equipment_model_count: number;
+  attachment_model_count: number;
+}
+
+interface BrandsPageRaw {
+  brands: string;
+  attachment_categories: string;
+  sub_categories: string;
+  main_categories: string;
+}
+
+/** Fetch all data for the Brands page in a single D1 query */
+export async function getBrandsPageData() {
+  const { results } = await d1.query<BrandsPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'brand_id', b.brand_id,
+        'name', b.name,
+        'created_by', b.created_by,
+        'created_at', b.created_at,
+        'updated_at', b.updated_at,
+        'category_ids', COALESCE(
+          (SELECT json_group_array(acb.category_id)
+           FROM attachment_category_brand acb WHERE acb.brand_id = b.brand_id), '[]'),
+        'sub_category_ids', COALESCE(
+          (SELECT json_group_array(escb.sub_category_id)
+           FROM equipment_sub_category_brand escb WHERE escb.brand_id = b.brand_id), '[]'),
+        'equipment_model_count',
+          (SELECT COUNT(*) FROM equipment_model em WHERE em.brand_id = b.brand_id),
+        'attachment_model_count',
+          (SELECT COUNT(*) FROM attachment_model am WHERE am.brand_id = b.brand_id)
+      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+      ) AS brands,
+
+      (SELECT json_group_array(json_object(
+        'category_id', ac.category_id, 'name', ac.name,
+        'image_url', ac.image_url, 'display_order', ac.display_order,
+        'created_by', ac.created_by, 'created_at', ac.created_at
+      )) FROM (SELECT * FROM attachment_category ORDER BY display_order) ac
+      ) AS attachment_categories,
+
+      (SELECT json_group_array(json_object(
+        'sub_category_id', sc.sub_category_id, 'category_id', sc.category_id,
+        'name', sc.name, 'image_url', sc.image_url,
+        'display_order', sc.display_order, 'created_by', sc.created_by,
+        'created_at', sc.created_at
+      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      ) AS sub_categories,
+
+      (SELECT json_group_array(json_object(
+        'category_id', mc.category_id, 'name', mc.name,
+        'image_url', mc.image_url, 'display_order', mc.display_order,
+        'created_by', mc.created_by, 'created_at', mc.created_at
+      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      ) AS main_categories
+  `);
+
+  const raw = results[0];
+
+  const brandRows: BrandRow[] = raw?.brands ? JSON.parse(raw.brands) : [];
+  const brands = brandRows.map((b) => ({
+    brand_id: b.brand_id,
+    name: b.name,
+    created_by: b.created_by,
+    created_at: b.created_at,
+    updated_at: b.updated_at,
+    categoryIds: typeof b.category_ids === "string"
+      ? (JSON.parse(b.category_ids) as number[])
+      : b.category_ids,
+    subCategoryIds: typeof b.sub_category_ids === "string"
+      ? (JSON.parse(b.sub_category_ids) as number[])
+      : b.sub_category_ids,
+  }));
+
+  const linkedInfo: Record<number, { total: number; summary: string }> = {};
+  for (const b of brandRows) {
+    const eq = b.equipment_model_count;
+    const at = b.attachment_model_count;
+    const total = eq + at;
+    let summary = "";
+    if (total > 0) {
+      const parts: string[] = [];
+      if (eq > 0) parts.push(`${eq} equipment ${eq === 1 ? "model" : "models"}`);
+      if (at > 0) parts.push(`${at} attachment ${at === 1 ? "model" : "models"}`);
+      summary = parts.length === 1 ? parts[0] : parts.join(" and ");
+    }
+    linkedInfo[b.brand_id] = { total, summary };
+  }
+
+  return {
+    brands,
+    categories: raw?.attachment_categories
+      ? JSON.parse(raw.attachment_categories)
+      : [],
+    subCategories: raw?.sub_categories
+      ? JSON.parse(raw.sub_categories)
+      : [],
+    mainCategories: raw?.main_categories
+      ? JSON.parse(raw.main_categories)
+      : [],
+    linkedInfo,
+  };
+}
+
