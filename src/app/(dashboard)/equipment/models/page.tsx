@@ -3,13 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
-import {
-  getEquipmentModels,
-  getMainCategories,
-  getSubCategories,
-  getBrands,
-  getSubCategoryBrandLinks,
-} from "@/lib/cache";
+import { getEquipmentModelsPageData } from "@/lib/actions/equipment";
 import { EquipmentModelsClient } from "@/components/features/equipment/models/equipment-models-client";
 import { PermissionGate } from "@/components/shared/permission-gate";
 
@@ -44,14 +38,8 @@ async function EquipmentModelsContent() {
     CACHE_TAGS.BRANDS,
   );
 
-  const [models, mainCategories, subCategories, brands, subCategoryBrandLinks] =
-    await Promise.all([
-      getEquipmentModels(),
-      getMainCategories(),
-      getSubCategories(),
-      getBrands(),
-      getSubCategoryBrandLinks(),
-    ]);
+  const { models, mainCategories, subCategories, brands, subCategoryBrandLinks } =
+    await getEquipmentModelsPageData();
 
   return (
     <EquipmentModelsClient

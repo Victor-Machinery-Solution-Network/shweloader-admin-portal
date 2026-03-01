@@ -3,12 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
-import {
-  getAttachmentModels,
-  getAttachmentCategories,
-  getBrands,
-  getCategoryBrandLinks,
-} from "@/lib/cache";
+import { getAttachmentModelsPageData } from "@/lib/actions/attachment";
 import { AttachmentModelsClient } from "@/components/features/attachments/models/attachment-models-client";
 import { PermissionGate } from "@/components/shared/permission-gate";
 
@@ -38,12 +33,8 @@ async function AttachmentModelsContent() {
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
   cacheTag(CACHE_TAGS.ATTACHMENT_MODELS, CACHE_TAGS.ATTACHMENT_CATEGORIES, CACHE_TAGS.BRANDS);
 
-  const [models, categories, brands, categoryBrandLinks] = await Promise.all([
-    getAttachmentModels(),
-    getAttachmentCategories(),
-    getBrands(),
-    getCategoryBrandLinks(),
-  ]);
+  const { models, categories, brands, categoryBrandLinks } =
+    await getAttachmentModelsPageData();
 
   return (
     <AttachmentModelsClient

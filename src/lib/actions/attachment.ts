@@ -180,3 +180,53 @@ export async function formatAttachmentCategoryLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+// ─── Consolidated Attachment Models Page Query ───────────────────────────────
+
+interface AttachmentModelsPageRaw {
+  models: string;
+  categories: string;
+  brands: string;
+  category_brand_links: string;
+}
+
+/** Fetch all data for the Attachment Models page in a single D1 query */
+export async function getAttachmentModelsPageData() {
+  const { results } = await d1.query<AttachmentModelsPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'model_id', am.model_id, 'name', am.name,
+        'brand_id', am.brand_id, 'category_id', am.category_id,
+        'pdf_url', am.pdf_url, 'created_by', am.created_by,
+        'created_at', am.created_at, 'updated_at', am.updated_at
+      )) FROM (SELECT * FROM attachment_model ORDER BY name) am
+      ) AS models,
+
+      (SELECT json_group_array(json_object(
+        'category_id', ac.category_id, 'name', ac.name,
+        'image_url', ac.image_url, 'display_order', ac.display_order,
+        'created_by', ac.created_by, 'created_at', ac.created_at
+      )) FROM (SELECT * FROM attachment_category ORDER BY display_order) ac
+      ) AS categories,
+
+      (SELECT json_group_array(json_object(
+        'brand_id', b.brand_id, 'name', b.name,
+        'created_by', b.created_by, 'created_at', b.created_at,
+        'updated_at', b.updated_at
+      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+      ) AS brands,
+
+      (SELECT json_group_array(json_object(
+        'category_id', acb.category_id, 'brand_id', acb.brand_id
+      )) FROM attachment_category_brand acb
+      ) AS category_brand_links
+  `);
+
+  const raw = results[0];
+  return {
+    models: raw?.models ? JSON.parse(raw.models) : [],
+    categories: raw?.categories ? JSON.parse(raw.categories) : [],
+    brands: raw?.brands ? JSON.parse(raw.brands) : [],
+    categoryBrandLinks: raw?.category_brand_links ? JSON.parse(raw.category_brand_links) : [],
+  };
+}
+

@@ -158,6 +158,78 @@ export function getListedBusinessTypes() {
   return businessTypeService.list({ sort_by: "name", order: "asc", is_listed: 1 });
 }
 
+// ─── Consolidated Users Page Query ──────────────────────────────────────────
+
+interface UsersPageRaw {
+  users: string;
+  business_types: string;
+  listed_business_types: string;
+  blacklist_entries: string;
+}
+
+/** Fetch all data for the Users page in a single D1 query */
+export async function getUsersPageData() {
+  const { results } = await d1.query<UsersPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'app_user_id', t.app_user_id, 'username', t.username,
+        'email', t.email, 'password_hash', t.password_hash,
+        'phone', t.phone, 'is_verified', t.is_verified,
+        'company_name', t.company_name, 'office_address', t.office_address,
+        'business_type_id', t.business_type_id,
+        'created_at', t.created_at, 'deleted_at', t.deleted_at,
+        'is_approved_partner', t.is_approved_partner
+      )) FROM (
+        SELECT c.*,
+          CASE WHEN p.id IS NOT NULL AND pst.status_name = 'Approved' THEN 1 ELSE 0 END AS is_approved_partner
+        FROM app_user c
+        LEFT JOIN partner p ON c.app_user_id = p.app_user_id
+        LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+        ORDER BY c.created_at DESC
+      ) t
+      ) AS users,
+
+      (SELECT json_group_array(json_object(
+        'business_type_id', bt.business_type_id, 'name', bt.name,
+        'is_listed', bt.is_listed, 'created_by', bt.created_by,
+        'created_at', bt.created_at
+      )) FROM (SELECT * FROM business_type ORDER BY name) bt
+      ) AS business_types,
+
+      (SELECT json_group_array(json_object(
+        'business_type_id', bt.business_type_id, 'name', bt.name,
+        'is_listed', bt.is_listed, 'created_by', bt.created_by,
+        'created_at', bt.created_at
+      )) FROM (SELECT * FROM business_type WHERE is_listed = 1 ORDER BY name) bt
+      ) AS listed_business_types,
+
+      (SELECT json_group_array(json_object(
+        'blacklist_id', t.blacklist_id, 'app_user_id', t.app_user_id,
+        'phone', t.phone, 'email', t.email,
+        'company_name', t.company_name, 'reason', t.reason,
+        'blacklisted_by', t.blacklisted_by, 'created_at', t.created_at,
+        'username', t.username, 'admin_username', t.admin_username
+      )) FROM (
+        SELECT b.*,
+          u.username,
+          a.username AS admin_username
+        FROM blacklist b
+        LEFT JOIN app_user u ON b.app_user_id = u.app_user_id
+        LEFT JOIN admin_user a ON b.blacklisted_by = a.user_id
+        ORDER BY b.created_at DESC
+      ) t
+      ) AS blacklist_entries
+  `);
+
+  const raw = results[0];
+  return {
+    users: raw?.users ? JSON.parse(raw.users) : [],
+    businessTypes: raw?.business_types ? JSON.parse(raw.business_types) : [],
+    listedBusinessTypes: raw?.listed_business_types ? JSON.parse(raw.listed_business_types) : [],
+    blacklistEntries: raw?.blacklist_entries ? JSON.parse(raw.blacklist_entries) : [],
+  };
+}
+
 export function getAnnouncements() {
   return announcementTextService.list({
     sort_by: "display_order",

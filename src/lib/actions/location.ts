@@ -209,6 +209,90 @@ export async function getListingCount(): Promise<Record<number, number>> {
   return Object.fromEntries(result.results.map((r) => [r.township_id, r.count]));
 }
 
+// ─── Consolidated Locations Page Query ───────────────────────────────────────
+
+interface LocationsPageRaw {
+  state_regions: string;
+  districts: string;
+  districts_with_parents: string;
+  townships_with_parents: string;
+  district_counts: string;
+  township_counts: string;
+  listing_counts: string;
+}
+
+/** Fetch all data for the Locations page in a single D1 query */
+export async function getLocationsPageData() {
+  const { results } = await d1.query<LocationsPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'state_region_id', sr.state_region_id, 'name', sr.name,
+        'type', sr.type, 'created_by', sr.created_by, 'created_at', sr.created_at
+      )) FROM (SELECT * FROM state_region ORDER BY name) sr
+      ) AS state_regions,
+
+      (SELECT json_group_array(json_object(
+        'district_id', d.district_id, 'name', d.name,
+        'state_region_id', d.state_region_id,
+        'created_by', d.created_by, 'created_at', d.created_at
+      )) FROM (SELECT * FROM district ORDER BY name) d
+      ) AS districts,
+
+      (SELECT json_group_array(json_object(
+        'district_id', d.district_id, 'name', d.name,
+        'state_region_id', d.state_region_id,
+        'state_region_name', sr.name, 'created_at', d.created_at
+      )) FROM district d
+      JOIN state_region sr ON d.state_region_id = sr.state_region_id
+      ORDER BY sr.name, d.name
+      ) AS districts_with_parents,
+
+      (SELECT json_group_array(json_object(
+        'township_id', t.township_id, 'name', t.name,
+        'district_id', t.district_id, 'district_name', d.name,
+        'state_region_id', sr.state_region_id,
+        'state_region_name', sr.name, 'state_region_type', sr.type,
+        'created_at', t.created_at
+      )) FROM township t
+      JOIN district d ON t.district_id = d.district_id
+      JOIN state_region sr ON d.state_region_id = sr.state_region_id
+      ORDER BY sr.name, d.name, t.name
+      ) AS townships_with_parents,
+
+      (SELECT json_group_array(json_object(
+        'id', state_region_id, 'count', cnt
+      )) FROM (SELECT state_region_id, COUNT(*) as cnt FROM district GROUP BY state_region_id)
+      ) AS district_counts,
+
+      (SELECT json_group_array(json_object(
+        'id', district_id, 'count', cnt
+      )) FROM (SELECT district_id, COUNT(*) as cnt FROM township GROUP BY district_id)
+      ) AS township_counts,
+
+      (SELECT json_group_array(json_object(
+        'id', township_id, 'count', cnt
+      )) FROM (SELECT township_id, COUNT(*) as cnt FROM product_list WHERE township_id IS NOT NULL GROUP BY township_id)
+      ) AS listing_counts
+  `);
+
+  const raw = results[0];
+  const parseCountMap = (json: string | null): Record<number, number> => {
+    if (!json) return {};
+    const arr: { id: number; count: number }[] = JSON.parse(json);
+    return Object.fromEntries(arr.map((r) => [r.id, r.count]));
+  };
+
+  return {
+    townships: raw?.townships_with_parents ? JSON.parse(raw.townships_with_parents) : [],
+    stateRegions: raw?.state_regions ? JSON.parse(raw.state_regions) : [],
+    districts: raw?.districts ? JSON.parse(raw.districts) : [],
+    districtsWithParents: raw?.districts_with_parents ? JSON.parse(raw.districts_with_parents) : [],
+    listingCounts: parseCountMap(raw?.listing_counts),
+    districtCounts: parseCountMap(raw?.district_counts),
+    townshipCounts: parseCountMap(raw?.township_counts),
+  };
+}
+
 // ─── Bulk Delete ────────────────────────────────────────────────────────────
 
 export async function deleteStateRegions(ids: number[]) {

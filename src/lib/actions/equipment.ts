@@ -324,3 +324,141 @@ export async function formatSubCategoryLinkedSummary(
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+// ─── Consolidated Equipment Models Page Query ────────────────────────────────
+
+interface EquipmentModelsPageRaw {
+  models: string;
+  main_categories: string;
+  sub_categories: string;
+  brands: string;
+  sub_category_brand_links: string;
+}
+
+/** Fetch all data for the Equipment Models page in a single D1 query */
+export async function getEquipmentModelsPageData() {
+  const { results } = await d1.query<EquipmentModelsPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'model_id', em.model_id, 'name', em.name,
+        'brand_id', em.brand_id, 'sub_category_id', em.sub_category_id,
+        'pdf_url', em.pdf_url, 'created_by', em.created_by,
+        'created_at', em.created_at, 'updated_at', em.updated_at
+      )) FROM (SELECT * FROM equipment_model ORDER BY name) em
+      ) AS models,
+
+      (SELECT json_group_array(json_object(
+        'category_id', mc.category_id, 'name', mc.name,
+        'image_url', mc.image_url, 'display_order', mc.display_order,
+        'created_by', mc.created_by, 'created_at', mc.created_at
+      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      ) AS main_categories,
+
+      (SELECT json_group_array(json_object(
+        'sub_category_id', sc.sub_category_id, 'category_id', sc.category_id,
+        'name', sc.name, 'image_url', sc.image_url,
+        'display_order', sc.display_order, 'created_by', sc.created_by,
+        'created_at', sc.created_at
+      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      ) AS sub_categories,
+
+      (SELECT json_group_array(json_object(
+        'brand_id', b.brand_id, 'name', b.name,
+        'created_by', b.created_by, 'created_at', b.created_at,
+        'updated_at', b.updated_at
+      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+      ) AS brands,
+
+      (SELECT json_group_array(json_object(
+        'sub_category_id', scb.sub_category_id, 'brand_id', scb.brand_id
+      )) FROM equipment_sub_category_brand scb
+      ) AS sub_category_brand_links
+  `);
+
+  const raw = results[0];
+  return {
+    models: raw?.models ? JSON.parse(raw.models) : [],
+    mainCategories: raw?.main_categories ? JSON.parse(raw.main_categories) : [],
+    subCategories: raw?.sub_categories ? JSON.parse(raw.sub_categories) : [],
+    brands: raw?.brands ? JSON.parse(raw.brands) : [],
+    subCategoryBrandLinks: raw?.sub_category_brand_links ? JSON.parse(raw.sub_category_brand_links) : [],
+  };
+}
+
+// ─── Consolidated Equipment Sub Categories Page Query ────────────────────────
+
+interface SubCategoryRow {
+  sub_category_id: number;
+  category_id: number;
+  name: string;
+  image_url: string | null;
+  display_order: number;
+  created_by: number | null;
+  created_at: string;
+  equipment_model_count: number;
+  brand_count: number;
+}
+
+interface SubCategoriesPageRaw {
+  sub_categories: string;
+  main_categories: string;
+}
+
+/** Fetch all data for the Equipment Sub Categories page in a single D1 query */
+export async function getSubCategoriesPageData() {
+  const { results } = await d1.query<SubCategoriesPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'sub_category_id', sc.sub_category_id, 'category_id', sc.category_id,
+        'name', sc.name, 'image_url', sc.image_url,
+        'display_order', sc.display_order, 'created_by', sc.created_by,
+        'created_at', sc.created_at,
+        'equipment_model_count',
+          (SELECT COUNT(*) FROM equipment_model em WHERE em.sub_category_id = sc.sub_category_id),
+        'brand_count',
+          (SELECT COUNT(*) FROM equipment_sub_category_brand escb WHERE escb.sub_category_id = sc.sub_category_id)
+      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      ) AS sub_categories,
+
+      (SELECT json_group_array(json_object(
+        'category_id', mc.category_id, 'name', mc.name,
+        'image_url', mc.image_url, 'display_order', mc.display_order,
+        'created_by', mc.created_by, 'created_at', mc.created_at
+      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      ) AS main_categories
+  `);
+
+  const raw = results[0];
+  const scRows: SubCategoryRow[] = raw?.sub_categories ? JSON.parse(raw.sub_categories) : [];
+
+  const subCategories = scRows.map((sc) => ({
+    sub_category_id: sc.sub_category_id,
+    category_id: sc.category_id,
+    name: sc.name,
+    image_url: sc.image_url,
+    display_order: sc.display_order,
+    created_by: sc.created_by,
+    created_at: sc.created_at,
+  }));
+
+  const linkedInfo: Record<number, { total: number; summary: string }> = {};
+  for (const sc of scRows) {
+    const eq = sc.equipment_model_count;
+    const br = sc.brand_count;
+    const total = eq + br;
+    let summary = "";
+    if (total > 0) {
+      const parts: string[] = [];
+      if (eq > 0) parts.push(`${eq} equipment ${eq === 1 ? "model" : "models"}`);
+      if (br > 0) parts.push(`${br} ${br === 1 ? "brand" : "brands"}`);
+      summary = parts.length === 1 ? parts[0] : parts.join(" and ");
+    }
+    linkedInfo[sc.sub_category_id] = { total, summary };
+  }
+
+  return {
+    subCategories,
+    categories: raw?.main_categories ? JSON.parse(raw.main_categories) : [],
+    linkedInfo,
+  };
+}
+

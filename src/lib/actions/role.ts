@@ -247,3 +247,81 @@ export async function getAdminCountByRole(
   }
   return countMap;
 }
+
+// ─── Consolidated Roles & Permissions Page Query ─────────────────────────────
+
+interface RolesPageRaw {
+  roles: string;
+  feature_permissions: string;
+  role_permissions: string;
+  admin_counts: string;
+}
+
+/** Fetch all data for the Roles & Permissions page in a single D1 query */
+export async function getRolesPageData() {
+  const { results } = await d1.query<RolesPageRaw>(`
+    SELECT
+      (SELECT json_group_array(json_object(
+        'role_id', t.role_id, 'name', t.name,
+        'description', t.description, 'created_by', t.created_by,
+        'created_at', t.created_at, 'permission_count', t.permission_count
+      )) FROM (
+        SELECT r.role_id, r.name, r.description, r.created_by, r.created_at,
+               COUNT(rp.feature_permission_id) as permission_count
+        FROM role r
+        LEFT JOIN role_permission rp ON r.role_id = rp.role_id
+        GROUP BY r.role_id
+        ORDER BY r.created_at ASC
+      ) t
+      ) AS roles,
+
+      (SELECT json_group_array(json_object(
+        'feature_permission_id', fp.feature_permission_id,
+        'feature_id', fp.feature_id, 'permission_id', fp.permission_id,
+        'feature_name', f.name, 'permission_name', p.name,
+        'group_name', f.group_name,
+        'feature_display_order', f.display_order,
+        'permission_display_order', p.display_order
+      )) FROM feature_permission fp
+      JOIN feature f ON fp.feature_id = f.feature_id
+      JOIN permission p ON fp.permission_id = p.permission_id
+      ORDER BY f.display_order, p.display_order
+      ) AS feature_permissions,
+
+      (SELECT json_group_array(json_object(
+        'role_id', rp.role_id, 'feature_permission_id', rp.feature_permission_id
+      )) FROM role_permission rp
+      ) AS role_permissions,
+
+      (SELECT json_group_array(json_object(
+        'id', t.role_id, 'count', t.cnt
+      )) FROM (
+        SELECT role_id, COUNT(*) as cnt FROM admin_user GROUP BY role_id
+      ) t
+      ) AS admin_counts
+  `);
+
+  const raw = results[0];
+
+  // Parse role permission map
+  const rolePermissionRows: { role_id: number; feature_permission_id: number }[] =
+    raw?.role_permissions ? JSON.parse(raw.role_permissions) : [];
+  const rolePermissionMap: Record<number, number[]> = {};
+  for (const row of rolePermissionRows) {
+    (rolePermissionMap[row.role_id] ??= []).push(row.feature_permission_id);
+  }
+
+  // Parse admin counts
+  const parseCountMap = (json: string | null): Record<number, number> => {
+    if (!json) return {};
+    const arr: { id: number; count: number }[] = JSON.parse(json);
+    return Object.fromEntries(arr.map((r) => [r.id, r.count]));
+  };
+
+  return {
+    roles: raw?.roles ? JSON.parse(raw.roles) : [],
+    featurePermissions: raw?.feature_permissions ? JSON.parse(raw.feature_permissions) : [],
+    rolePermissionMap,
+    adminCounts: parseCountMap(raw?.admin_counts),
+  };
+}
