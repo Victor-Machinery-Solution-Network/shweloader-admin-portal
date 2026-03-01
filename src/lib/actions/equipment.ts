@@ -391,7 +391,7 @@ interface SubCategoryRow {
   category_id: number;
   name: string;
   image_url: string | null;
-  display_order: number;
+  display_order: string;
   created_by: number | null;
   created_at: string;
   equipment_model_count: number;
