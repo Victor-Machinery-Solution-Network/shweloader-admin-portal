@@ -246,9 +246,15 @@ export function LocationsClient({
         type: "multi-select",
         options: stateRegions.map((sr) => ({ label: sr.name, value: sr.name })),
       },
+      {
+        columnId: "district_name",
+        label: "District",
+        type: "multi-select",
+        options: districts.map((d) => ({ label: d.name, value: d.name })),
+      },
       { columnId: "created_at", label: "Created", type: "date-range" },
     ],
-    [stateRegions],
+    [stateRegions, districts],
   );
 
   const buildTownshipDescription = useCallback(

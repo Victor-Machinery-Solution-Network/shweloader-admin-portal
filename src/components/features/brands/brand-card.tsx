@@ -125,12 +125,12 @@ export function BrandCard({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="ring-foreground/10 bg-card rounded-2xl ring-1">
           {/* Collapsed header — always visible */}
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="grid w-full cursor-pointer grid-cols-[minmax(0,500px)_1fr_auto] items-start gap-6 px-5 py-4 text-left"
-            >
-              <div className="flex items-center gap-2.5 pt-0.5">
+          <div className="grid w-full grid-cols-[minmax(0,500px)_1fr_auto] items-start gap-6 px-5 py-4">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-2.5 pt-0.5 text-left"
+              >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-500/10">
                   <Tag className="size-4 text-amber-500" />
                 </div>
@@ -140,23 +140,43 @@ export function BrandCard({
                     <div className="text-muted-foreground text-sm">{summary}</div>
                   )}
                 </div>
-              </div>
+                <ChevronDown
+                  className={`text-muted-foreground ml-1 size-4 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </CollapsibleTrigger>
 
-              {/* Main category pills with counts */}
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {grouped.map(({ mainCategoryName, subCategoryNames }) => (
-                  <Badge key={mainCategoryName} variant="outline" className="text-xs gap-1.5">
-                    {mainCategoryName}
-                    <span className="text-muted-foreground">{subCategoryNames.length}</span>
-                  </Badge>
-                ))}
-              </div>
+            {/* Main category pills with counts */}
+            <div className="flex flex-wrap justify-end gap-1.5 pt-1">
+              {grouped.map(({ mainCategoryName, subCategoryNames }) => (
+                <Badge key={mainCategoryName} variant="outline" className="text-xs gap-1.5">
+                  {mainCategoryName}
+                  <span className="text-muted-foreground">{subCategoryNames.length}</span>
+                </Badge>
+              ))}
+            </div>
 
-              <ChevronDown
-                className={`text-muted-foreground mt-1 size-5 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-          </CollapsibleTrigger>
+            {/* Actions — always visible */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setShowEdit(true)}
+                aria-label="Edit brand"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setShowDelete(true)}
+                aria-label="Delete brand"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
 
           {/* Expanded content */}
           <CollapsibleContent>
@@ -200,30 +220,11 @@ export function BrandCard({
                 </div>
               )}
 
-              {/* Footer: date + actions */}
-              <div className="border-border flex items-center justify-between border-t pt-3">
+              {/* Footer: date */}
+              <div className="border-border border-t pt-3">
                 <span className="text-muted-foreground text-sm">
                   Created {formatDate(brand.created_at)}
                 </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowEdit(true)}
-                  >
-                    <Pencil className="size-3.5" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setShowDelete(true)}
-                  >
-                    <Trash2 className="size-3.5" />
-                    Delete
-                  </Button>
-                </div>
               </div>
             </div>
           </CollapsibleContent>

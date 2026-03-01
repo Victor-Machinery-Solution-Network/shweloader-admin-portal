@@ -5,7 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { assetUrl } from "@/lib/r2-url";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { PendingListingRowActions } from "./pending-listing-row-actions";
 import type {
   SaleListingWithDetails,
@@ -123,26 +123,35 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
   };
 }
 
-function statusColumn<T extends { approve_status_name: string | null }>(): ColumnDef<T> {
+function submittedColumn<T extends { created_at: string }>(): ColumnDef<T> {
   return {
-    id: "status",
-    accessorFn: (row) => row.approve_status_name ?? "",
+    accessorKey: "created_at",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title="Submitted" />
+    ),
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {formatDate(row.original.created_at)}
+      </span>
+    ),
+  };
+}
+
+// --- Rework reason column ---
+
+function reworkReasonColumn<T extends { rejection_reason: string | null }>(): ColumnDef<T> {
+  return {
+    accessorKey: "rejection_reason",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Reason" />
     ),
     cell: ({ row }) => {
-      const status = row.original.approve_status_name;
-      const isRework = status === "Rework";
+      const reason = row.original.rejection_reason;
+      if (!reason) {
+        return <span className="text-muted-foreground text-sm">{"\u2014"}</span>;
+      }
       return (
-        <div className="flex items-center gap-1.5">
-          <div
-            className={cn(
-              "size-2 rounded-full",
-              isRework ? "bg-amber-500" : "bg-blue-500",
-            )}
-          />
-          <span className="text-sm">{status ?? "—"}</span>
-        </div>
+        <span className="text-sm text-muted-foreground line-clamp-2 max-w-60">{reason}</span>
       );
     },
   };
@@ -156,18 +165,7 @@ export function createPendingSaleColumns(): ColumnDef<SaleListingWithDetails>[] 
     partnerColumn<SaleListingWithDetails>(),
     productTypeColumn<SaleListingWithDetails>(),
     priceColumn<SaleListingWithDetails>(),
-    statusColumn<SaleListingWithDetails>(),
-    {
-      accessorKey: "created_at",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Submitted" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm tabular-nums">
-          {formatDate(row.original.created_at)}
-        </span>
-      ),
-    },
+    submittedColumn<SaleListingWithDetails>(),
     {
       id: "actions",
       cell: ({ row }) => (
@@ -188,18 +186,49 @@ export function createPendingRentColumns(): ColumnDef<RentListingWithDetails>[] 
     partnerColumn<RentListingWithDetails>(),
     productTypeColumn<RentListingWithDetails>(),
     priceColumn<RentListingWithDetails>(),
-    statusColumn<RentListingWithDetails>(),
+    submittedColumn<RentListingWithDetails>(),
     {
-      accessorKey: "created_at",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Submitted" />
-      ),
+      id: "actions",
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm tabular-nums">
-          {formatDate(row.original.created_at)}
-        </span>
+        <PendingListingRowActions
+          listing={row.original}
+          pageType="rent"
+        />
       ),
     },
+  ];
+}
+
+// --- Rework Sale Columns ---
+
+export function createReworkSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
+  return [
+    productInfoColumn<SaleListingWithDetails>(),
+    partnerColumn<SaleListingWithDetails>(),
+    productTypeColumn<SaleListingWithDetails>(),
+    reworkReasonColumn<SaleListingWithDetails>(),
+    submittedColumn<SaleListingWithDetails>(),
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <PendingListingRowActions
+          listing={row.original}
+          pageType="sale"
+        />
+      ),
+    },
+  ];
+}
+
+// --- Rework Rent Columns ---
+
+export function createReworkRentColumns(): ColumnDef<RentListingWithDetails>[] {
+  return [
+    productInfoColumn<RentListingWithDetails>(),
+    partnerColumn<RentListingWithDetails>(),
+    productTypeColumn<RentListingWithDetails>(),
+    reworkReasonColumn<RentListingWithDetails>(),
+    submittedColumn<RentListingWithDetails>(),
     {
       id: "actions",
       cell: ({ row }) => (

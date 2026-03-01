@@ -4,7 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { getLastDisplayOrder } from "@/lib/actions/reorder";
 import { processFileWithOriginalName, deleteFile } from "@/lib/actions/upload-helpers";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
@@ -44,7 +44,7 @@ export async function addCarouselImage(
           image_url: imageKey,
           uploaded_by: null,
         }),
-        getNextDisplayOrder("carousel_image", "carousel_id", carouselId),
+        getLastDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
 
     const imageId = (imageResults[0] as { image_id: number }).image_id;

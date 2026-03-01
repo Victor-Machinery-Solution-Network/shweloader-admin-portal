@@ -94,7 +94,9 @@ export async function processFileField(
   assertFileSize(file);
 
   const { blob, ext } = await convertToWebp(file);
-  const filename = `${slugify(entityName)}${ext}`;
+  // Append timestamp when replacing an existing file to bust CDN/browser cache
+  const suffix = existingKey ? `-${Date.now()}` : "";
+  const filename = `${slugify(entityName)}${suffix}${ext}`;
   const result = await uploadToR2(blob, r2Path, filename);
 
   return result.key;
@@ -128,7 +130,9 @@ export async function processFileWithOriginalName(
 
   const { blob, ext } = await convertToWebp(file);
   const nameWithoutExt = file.name.replace(/\.[^.]+$/, "");
-  const filename = `${slugify(nameWithoutExt)}${ext}`;
+  // Append timestamp when replacing an existing file to bust CDN/browser cache
+  const suffix = existingKey ? `-${Date.now()}` : "";
+  const filename = `${slugify(nameWithoutExt)}${suffix}${ext}`;
   const result = await uploadToR2(blob, r2Path, filename);
 
   return result.key;

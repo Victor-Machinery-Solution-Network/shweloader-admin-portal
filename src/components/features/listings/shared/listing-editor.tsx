@@ -35,10 +35,13 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   XCircle,
+  CheckCircle,
+  Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
@@ -887,17 +890,46 @@ export function ListingEditor({
             </span>
           </nav>
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {isDraftMode
-                ? "Edit Draft"
-                : isRework
-                  ? "Rework Listing"
-                  : isPendingReview && isReviewMode
-                    ? "Review Listing"
-                    : isEditing
-                      ? "Edit Listing"
-                      : "New Listing"}
-            </h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {isDraftMode
+                    ? "Edit Draft"
+                    : isRework
+                      ? "Rework Listing"
+                      : isPendingReview && isReviewMode
+                        ? "Review Listing"
+                        : isEditing
+                          ? "Edit Listing"
+                          : "New Listing"}
+                </h1>
+                {isEditing && listing?.approve_status_name && (
+                  <Badge
+                    variant={
+                      listing.approve_status_name === "Approved"
+                        ? "default"
+                        : listing.approve_status_name === "Rework"
+                          ? "destructive"
+                          : listing.approve_status_name === "Pending"
+                            ? "outline"
+                            : "secondary"
+                    }
+                  >
+                    {listing.approve_status_name}
+                  </Badge>
+                )}
+              </div>
+              {isPendingReview && isReviewMode && (
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  Review and approve or request rework on this listing.
+                </p>
+              )}
+              {isRework && (
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  This listing was returned for rework. Edit and resubmit.
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -981,15 +1013,19 @@ export function ListingEditor({
                           size="sm"
                           disabled={isPending}
                           onClick={() => setShowReworkDialog(true)}
+                          className="gap-1.5"
                         >
+                          <XCircle className="size-4" />
                           Request Rework
                         </Button>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => setIsReviewMode(false)}
+                          className="gap-1.5"
                         >
+                          <Pencil className="size-4" />
                           Edit
                         </Button>
                         <Button
@@ -997,10 +1033,16 @@ export function ListingEditor({
                           size="sm"
                           disabled={isPending}
                           onClick={() => { submitActionRef.current = "approve"; }}
+                          className="gap-1.5"
                         >
                           {isPending && submitActionRef.current === "approve" ? (
                             <><Spinner className="mr-1" /> Approving{"\u2026"}</>
-                          ) : "Approve"}
+                          ) : (
+                            <>
+                              <CheckCircle className="size-4" />
+                              Approve
+                            </>
+                          )}
                         </Button>
                       </>
                     );
@@ -1022,10 +1064,16 @@ export function ListingEditor({
                         size="sm"
                         disabled={isPending}
                         onClick={() => { submitActionRef.current = "approve"; }}
+                        className="gap-1.5"
                       >
                         {isPending && submitActionRef.current === "approve" ? (
                           <><Spinner className="mr-1" /> Approving{"\u2026"}</>
-                        ) : "Approve"}
+                        ) : (
+                          <>
+                            <CheckCircle className="size-4" />
+                            Approve
+                          </>
+                        )}
                       </Button>
                     </>
                   );
@@ -1050,11 +1098,11 @@ export function ListingEditor({
 
           {/* ── Rework banner ── */}
           {isRework && listing?.rejection_reason && (
-            <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+            <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Returned for Rework</p>
-                <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-300/80">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-800">Returned for Rework</p>
+                <p className="text-sm text-muted-foreground">
                   {listing.rejection_reason}
                 </p>
               </div>

@@ -836,7 +836,9 @@ function DataTable<TData, TValue>({
                     </div>
                     </PopoverAnchor>
                     <PopoverContent
-                      align="start"
+                      align="end"
+                      side="bottom"
+                      collisionPadding={8}
                       className="w-auto min-w-0 gap-0 rounded-lg p-1"
                     >
                       {[5, 10, 20, 50, 100].map((size) => (

@@ -11,7 +11,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
-import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { getLastDisplayOrder } from "@/lib/actions/reorder";
 import { nKeysBetween } from "@/lib/utils/display-order";
 import { processFileField, processFileWithOriginalName, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
 import { isR2Key, slugify } from "@/lib/api/r2-client";
@@ -382,7 +382,7 @@ export async function createListing(formData: FormData) {
 
     // 6. Add to featured if requested (only for auto-approved listings)
     if (addToFeatured) {
-      const display_order = await getNextDisplayOrder("featured_listing");
+      const display_order = await getLastDisplayOrder("featured_listing");
       if (forSale && saleListingId && canApproveSale) {
         await featuredListingService.create({
           sale_listing_id: saleListingId,
@@ -726,7 +726,7 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
   try {
     const [created_by, display_order] = await Promise.all([
       requirePermission("featured_listings", "create"),
-      getNextDisplayOrder("featured_listing"),
+      getLastDisplayOrder("featured_listing"),
     ]);
 
     await featuredListingService.create({
@@ -1416,7 +1416,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
 
     // Add to featured if requested (only for auto-approved)
     if (addToFeatured) {
-      const display_order = await getNextDisplayOrder("featured_listing");
+      const display_order = await getLastDisplayOrder("featured_listing");
       if (forSale && saleListingId && canApproveSale) {
         await featuredListingService.create({
           sale_listing_id: saleListingId,

@@ -4,7 +4,7 @@ import { useMemo, useCallback, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import Link from "next/link";
-import { ShoppingCart, Home, Plus, Pin, Clock, ChevronDown, FileText, FileSpreadsheet, FileEdit } from "lucide-react";
+import { ShoppingCart, Home, Plus, Pin, Clock, ChevronDown, FileText, FileSpreadsheet, FileEdit, XCircle } from "lucide-react";
 import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import { createSaleColumns, createRentColumns } from "./listing-columns";
 import {
   createPendingSaleColumns,
   createPendingRentColumns,
+  createReworkSaleColumns,
+  createReworkRentColumns,
 } from "./pending-listing-columns";
 import { featuredColumns } from "./featured-columns";
 import { createDraftColumns } from "./draft-columns";
@@ -96,7 +98,13 @@ export function ListingsClient({
 
   const draftColumns = useMemo(() => createDraftColumns(), []);
 
-  // Split listings by approval status (include Rework in pending)
+  const reworkColumns = useMemo(() => {
+    const factory =
+      pageType === "sale" ? createReworkSaleColumns : createReworkRentColumns;
+    return factory() as ColumnDef<ListingRow>[];
+  }, [pageType]);
+
+  // Split listings by approval status
   const approvedListings = useMemo(
     () =>
       listings.filter(
@@ -107,15 +115,18 @@ export function ListingsClient({
 
   const pendingListings = useMemo(
     () =>
-      listings.filter(
-        (l) =>
-          l.approve_status_name === "Pending" ||
-          l.approve_status_name === "Rework",
-      ),
+      listings.filter((l) => l.approve_status_name === "Pending"),
+    [listings],
+  );
+
+  const reworkListings = useMemo(
+    () =>
+      listings.filter((l) => l.approve_status_name === "Rework"),
     [listings],
   );
 
   const pendingCount = pendingListings.length;
+  const reworkCount = reworkListings.length;
 
   // Client-side draft fetching (per-user, can't be PPR-cached)
   const [drafts, setDrafts] = useState<DraftListingWithDetails[]>([]);
@@ -132,7 +143,7 @@ export function ListingsClient({
 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "featured" | "drafts";
+  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "rework" | "featured" | "drafts";
 
   const setTab = useCallback(
     (v: string) => {
@@ -226,14 +237,21 @@ export function ListingsClient({
   const pendingFilterConfig = useMemo<FilterConfig[]>(
     () => [
       {
-        columnId: "status",
-        label: "Status",
+        columnId: "product_type",
+        label: "Product Type",
         type: "multi-select",
         options: [
-          { label: "Pending", value: "Pending" },
-          { label: "Rework", value: "Rework" },
+          { label: "Equipment", value: "equipment" },
+          { label: "Attachment", value: "attachment" },
         ],
       },
+      { columnId: "created_at", label: "Submitted", type: "date-range" },
+    ],
+    [],
+  );
+
+  const reworkFilterConfig = useMemo<FilterConfig[]>(
+    () => [
       {
         columnId: "product_type",
         label: "Product Type",
@@ -315,6 +333,13 @@ export function ListingsClient({
               <TabCount>{pendingCount}</TabCount>
             )}
           </TabsTrigger>
+          <TabsTrigger value="rework">
+            <XCircle className="size-4" aria-hidden="true" />
+            Rework
+            {reworkCount > 0 && (
+              <TabCount>{reworkCount}</TabCount>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="featured">
             <Pin className="size-4" aria-hidden="true" />
             Featured Listings
@@ -391,6 +416,28 @@ export function ListingsClient({
               icon={Clock}
               title="No pending listings"
               description="All listings have been reviewed."
+              fullPage={false}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="rework">
+          {reworkListings.length > 0 ? (
+            <DataTable
+              columns={reworkColumns}
+              data={reworkListings}
+              searchKeys={["model_name", "partner_name"]}
+              searchPlaceholder="Search listings needing rework"
+              filterConfig={reworkFilterConfig}
+              filterStorageKey={`listings-${pageType}-rework-filters`}
+              enablePagination
+              pageSize={10}
+            />
+          ) : (
+            <EmptyState
+              icon={XCircle}
+              title="No listings need rework"
+              description="Listings sent back for rework will appear here."
               fullPage={false}
             />
           )}

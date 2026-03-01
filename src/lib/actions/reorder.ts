@@ -94,11 +94,12 @@ export async function updateDisplayOrder(
 }
 
 /**
- * Get the last (highest) display_order from a table.
- * Used when creating new items to place them at the end.
+ * Get a boundary display_order from a table.
+ * @param direction "ASC" for first (lowest), "DESC" for last (highest)
  */
-async function getLastDisplayOrder(
+async function getBoundaryDisplayOrder(
   table: OrderableTable,
+  direction: "ASC" | "DESC",
   scopeColumn?: string,
   scopeId?: number,
 ): Promise<string | null> {
@@ -113,27 +114,44 @@ async function getLastDisplayOrder(
     params.push(scopeId);
   }
 
-  sql += ` ORDER BY display_order DESC LIMIT 1`;
+  sql += ` ORDER BY display_order ${direction} LIMIT 1`;
 
   const result = await d1.query<{ display_order: string }>(sql, params);
   return result.results[0]?.display_order ?? null;
 }
 
 /**
- * Generate the next display_order key for a new item in a table.
- * Places the item at the end of the list.
+ * Generate a display_order key that places the item at the TOP of the list.
+ * Use for categories, announcements, etc. where newest items should appear first.
  */
 export async function getNextDisplayOrder(
   table: OrderableTable,
   scopeColumn?: string,
   scopeId?: number,
 ): Promise<string> {
-  const lastKey = await getLastDisplayOrder(table, scopeColumn, scopeId);
+  const firstKey = await getBoundaryDisplayOrder(table, "ASC", scopeColumn, scopeId);
   try {
-    return keyBetween(lastKey, null);
+    return keyBetween(null, firstKey);
   } catch {
     // Legacy rows may have plain integer display_order values (e.g. "5")
     // which aren't valid fractional-indexing keys. Start fresh.
+    return keyBetween(null, null);
+  }
+}
+
+/**
+ * Generate a display_order key that places the item at the END of the list.
+ * Use for carousel images, product images, etc. where order is append-based.
+ */
+export async function getLastDisplayOrder(
+  table: OrderableTable,
+  scopeColumn?: string,
+  scopeId?: number,
+): Promise<string> {
+  const lastKey = await getBoundaryDisplayOrder(table, "DESC", scopeColumn, scopeId);
+  try {
+    return keyBetween(lastKey, null);
+  } catch {
     return keyBetween(null, null);
   }
 }

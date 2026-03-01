@@ -39,9 +39,12 @@ export function getColumns(
     },
     {
       id: "sub_categories",
-      header: "Sub Categories",
+      accessorFn: (row) => linkedCounts[row.category_id] ?? 0,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sub Categories" />
+      ),
       cell: ({ row }) => {
-        const count = linkedCounts[row.original.category_id] ?? 0;
+        const count = row.getValue("sub_categories") as number;
         return (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
             <FolderOpen className="size-3.5" />

@@ -39,9 +39,12 @@ export function getColumns(
     },
     {
       id: "models",
-      header: "Models",
+      accessorFn: (row) => linkedInfo[row.category_id]?.total ?? 0,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Models" />
+      ),
       cell: ({ row }) => {
-        const count = linkedInfo[row.original.category_id]?.total ?? 0;
+        const count = row.getValue("models") as number;
         return (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
             <Box className="size-3.5" />

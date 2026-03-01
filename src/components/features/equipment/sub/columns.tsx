@@ -66,9 +66,12 @@ export function getColumns(
     },
     {
       id: "models",
-      header: "Models",
+      accessorFn: (row) => linkedInfo[row.sub_category_id]?.total ?? 0,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Models" />
+      ),
       cell: ({ row }) => {
-        const count = linkedInfo[row.original.sub_category_id]?.total ?? 0;
+        const count = row.getValue("models") as number;
         return (
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
             <Wrench className="size-3.5" />
