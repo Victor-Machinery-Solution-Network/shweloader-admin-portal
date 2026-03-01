@@ -102,6 +102,7 @@ export interface SaleListingWithDetails {
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
+  display_order: string;
   // Product info
   thumbnail_url: string | null;
   description: string | null;
@@ -135,6 +136,7 @@ export interface RentListingWithDetails {
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
+  display_order: string;
   // Product info
   thumbnail_url: string | null;
   description: string | null;

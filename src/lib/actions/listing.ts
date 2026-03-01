@@ -774,7 +774,7 @@ export async function getSaleListingsWithDetails(): Promise<
       ct.name AS condition_name,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
-      sl.created_at,
+      sl.created_at, sl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
@@ -794,7 +794,7 @@ export async function getSaleListingsWithDetails(): Promise<
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
     WHERE sl.deleted_at IS NULL AND pl.deleted_at IS NULL
-    ORDER BY sl.created_at DESC`,
+    ORDER BY sl.display_order ASC, sl.created_at DESC`,
   );
   return result.results;
 }
@@ -807,7 +807,7 @@ export async function getRentListingsWithDetails(): Promise<
       rl.id, rl.custom_id, rl.product_list_id,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
-      rl.created_at,
+      rl.created_at, rl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
@@ -826,7 +826,7 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
     WHERE rl.deleted_at IS NULL AND pl.deleted_at IS NULL
-    ORDER BY rl.created_at DESC`,
+    ORDER BY rl.display_order ASC, rl.created_at DESC`,
   );
   return result.results;
 }

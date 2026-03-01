@@ -497,6 +497,18 @@ function rentFilterColumns(): ColumnDef<RentListingWithDetails>[] {
 
 export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {row.index + 1}
+        </span>
+      ),
+      size: 40,
+      enableSorting: false,
+      enableHiding: false,
+    },
     productInfoColumn<SaleListingWithDetails>(),
     partnerColumn<SaleListingWithDetails>(),
     productTypeColumn<SaleListingWithDetails>(),
@@ -531,6 +543,18 @@ export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
 
 export function createRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
+    {
+      id: "index",
+      header: "#",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {row.index + 1}
+        </span>
+      ),
+      size: 40,
+      enableSorting: false,
+      enableHiding: false,
+    },
     productInfoColumn<RentListingWithDetails>(),
     partnerColumn<RentListingWithDetails>(),
     productTypeColumn<RentListingWithDetails>(),

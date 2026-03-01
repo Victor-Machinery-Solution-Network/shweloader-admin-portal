@@ -308,6 +308,18 @@ export function ListingsClient({
     </DropdownMenu>
   ) : undefined;
 
+  const tableName = pageType === "sale" ? "sale_listing" : "rent_listing";
+
+  const {
+    data: approvedData,
+    handleReorder: handleApprovedReorder,
+    handleMoveToPosition: handleApprovedMoveToPosition,
+  } = useDragReorder(approvedListings, {
+    getRowId: (r) => r.id,
+    tableName,
+    feature,
+  });
+
   const {
     data: featuredData,
     handleReorder,
@@ -357,7 +369,7 @@ export function ListingsClient({
           {approvedListings.length > 0 ? (
             <DataTable
               columns={columns}
-              data={approvedListings}
+              data={approvedData}
               searchKeys={["model_name", "partner_name"]}
               searchPlaceholder="Search by model or partner"
               filterConfig={mainFilterConfig}
@@ -366,6 +378,10 @@ export function ListingsClient({
               enablePagination
               pageSize={10}
               toolbar={addListingToolbar}
+              enableDragSort
+              getRowId={(row) => row.id}
+              onReorder={handleApprovedReorder}
+              onMoveToPosition={handleApprovedMoveToPosition}
             />
           ) : (
             <EmptyState

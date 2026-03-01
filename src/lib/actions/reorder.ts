@@ -43,6 +43,14 @@ const ORDERABLE_TABLES = {
     tag: CACHE_TAGS.SALE_LISTINGS as CacheTag,
     scopeColumn: "product_list_id",
   },
+  sale_listing: {
+    pk: "id",
+    tag: CACHE_TAGS.SALE_LISTINGS as CacheTag,
+  },
+  rent_listing: {
+    pk: "id",
+    tag: CACHE_TAGS.RENT_LISTINGS as CacheTag,
+  },
 } as const;
 
 export type OrderableTable = keyof typeof ORDERABLE_TABLES;
