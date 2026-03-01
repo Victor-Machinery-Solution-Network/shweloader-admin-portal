@@ -4,7 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
-import { keyBetween } from "@/lib/utils/display-order";
+import { keyBetween, nKeysBetween } from "@/lib/utils/display-order";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
 
@@ -93,6 +93,57 @@ export async function updateDisplayOrder(
   }
 }
 
+/** Check if a display_order value is a valid fractional-indexing key */
+function isValidFractionalKey(key: string | null): boolean {
+  if (!key) return true;
+  return /^[a-zA-Z][0-9A-Za-z]*$/.test(key);
+}
+
+/**
+ * Migrate all rows in a table from legacy integer display_order values
+ * to proper fractional-indexing keys. Preserves existing sort order.
+ * Only migrates non-deleted rows.
+ */
+async function migrateLegacyKeys(
+  table: OrderableTable,
+  scopeColumn?: string,
+  scopeId?: number,
+): Promise<void> {
+  const config = ORDERABLE_TABLES[table];
+  if (!config) return;
+
+  const conditions = ["deleted_at IS NULL"];
+  const params: (string | number)[] = [];
+
+  if (scopeColumn && scopeId !== undefined) {
+    conditions.push(`${scopeColumn} = ?`);
+    params.push(scopeId);
+  }
+
+  const sql =
+    `SELECT ${config.pk} AS id, display_order FROM ${table}` +
+    ` WHERE ${conditions.join(" AND ")}` +
+    ` ORDER BY CAST(display_order AS INTEGER) ASC, display_order ASC`;
+
+  const result = await d1.query<{ id: number; display_order: string }>(
+    sql,
+    params,
+  );
+  const rows = result.results;
+  if (rows.length === 0) return;
+
+  const freshKeys = nKeysBetween(null, null, rows.length);
+
+  await Promise.all(
+    rows.map((row, i) =>
+      d1.query(`UPDATE ${table} SET display_order = ? WHERE ${config.pk} = ?`, [
+        freshKeys[i],
+        row.id,
+      ]),
+    ),
+  );
+}
+
 /**
  * Get a boundary display_order from a table.
  * @param direction "ASC" for first (lowest), "DESC" for last (highest)
@@ -106,15 +157,18 @@ async function getBoundaryDisplayOrder(
   const config = ORDERABLE_TABLES[table];
   if (!config) return null;
 
-  let sql = `SELECT display_order FROM ${table}`;
+  const conditions = ["deleted_at IS NULL"];
   const params: (string | number)[] = [];
 
   if (scopeColumn && scopeId !== undefined) {
-    sql += ` WHERE ${scopeColumn} = ?`;
+    conditions.push(`${scopeColumn} = ?`);
     params.push(scopeId);
   }
 
-  sql += ` ORDER BY display_order ${direction} LIMIT 1`;
+  const sql =
+    `SELECT display_order FROM ${table}` +
+    ` WHERE ${conditions.join(" AND ")}` +
+    ` ORDER BY display_order ${direction} LIMIT 1`;
 
   const result = await d1.query<{ display_order: string }>(sql, params);
   return result.results[0]?.display_order ?? null;
@@ -123,35 +177,69 @@ async function getBoundaryDisplayOrder(
 /**
  * Generate a display_order key that places the item at the TOP of the list.
  * Use for categories, announcements, etc. where newest items should appear first.
+ *
+ * If the table contains legacy integer display_order values, migrates all rows
+ * to fractional-indexing keys first, then generates the new key.
  */
 export async function getNextDisplayOrder(
   table: OrderableTable,
   scopeColumn?: string,
   scopeId?: number,
 ): Promise<string> {
-  const firstKey = await getBoundaryDisplayOrder(table, "ASC", scopeColumn, scopeId);
-  try {
+  const firstKey = await getBoundaryDisplayOrder(
+    table,
+    "ASC",
+    scopeColumn,
+    scopeId,
+  );
+
+  // Valid fractional key → compute directly
+  if (isValidFractionalKey(firstKey)) {
     return keyBetween(null, firstKey);
-  } catch {
-    // Legacy rows may have plain integer display_order values (e.g. "5")
-    // which aren't valid fractional-indexing keys. Start fresh.
-    return keyBetween(null, null);
   }
+
+  // Legacy integer keys detected → migrate all rows, then retry
+  await migrateLegacyKeys(table, scopeColumn, scopeId);
+  const newFirstKey = await getBoundaryDisplayOrder(
+    table,
+    "ASC",
+    scopeColumn,
+    scopeId,
+  );
+  return keyBetween(null, newFirstKey);
 }
 
 /**
  * Generate a display_order key that places the item at the END of the list.
  * Use for carousel images, product images, etc. where order is append-based.
+ *
+ * If the table contains legacy integer display_order values, migrates all rows
+ * to fractional-indexing keys first, then generates the new key.
  */
 export async function getLastDisplayOrder(
   table: OrderableTable,
   scopeColumn?: string,
   scopeId?: number,
 ): Promise<string> {
-  const lastKey = await getBoundaryDisplayOrder(table, "DESC", scopeColumn, scopeId);
-  try {
+  const lastKey = await getBoundaryDisplayOrder(
+    table,
+    "DESC",
+    scopeColumn,
+    scopeId,
+  );
+
+  // Valid fractional key → compute directly
+  if (isValidFractionalKey(lastKey)) {
     return keyBetween(lastKey, null);
-  } catch {
-    return keyBetween(null, null);
   }
+
+  // Legacy integer keys detected → migrate all rows, then retry
+  await migrateLegacyKeys(table, scopeColumn, scopeId);
+  const newLastKey = await getBoundaryDisplayOrder(
+    table,
+    "DESC",
+    scopeColumn,
+    scopeId,
+  );
+  return keyBetween(newLastKey, null);
 }
