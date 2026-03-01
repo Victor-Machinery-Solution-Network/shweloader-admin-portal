@@ -99,7 +99,7 @@ export function LocationsClient({
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((sr) => `"${sr.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} state/regions (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} state/regions (${names})`} will be moved to the trash.`;
 
       if (totalLinked > 0) {
         msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "district" : "districts"} under ${selected.length === 1 ? "this state/region" : "these state/regions"} that will also be deleted.`;
@@ -178,7 +178,7 @@ export function LocationsClient({
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((d) => `"${d.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} districts (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} districts (${names})`} will be moved to the trash.`;
 
       if (totalLinked > 0) {
         msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "township" : "townships"} under ${selected.length === 1 ? "this district" : "these districts"} that will also be deleted.`;
@@ -257,7 +257,7 @@ export function LocationsClient({
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((t) => `"${t.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} townships (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} townships (${names})`} will be moved to the trash.`;
 
       if (totalLinked > 0) {
         msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "listing" : "listings"} linked to ${selected.length === 1 ? "this township" : "these townships"} that must be removed first.`;

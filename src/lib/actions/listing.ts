@@ -30,6 +30,7 @@ import {
   notifyListingApproved,
   notifyListingRework,
 } from "@/lib/actions/notification";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Helper: process product photos from form data ──────────────────────────
 
@@ -484,40 +485,31 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
 
 export async function deleteSaleListing(saleId: number) {
   try {
-    await requirePermission("sale_listings", "delete");
-    // Get product_list_id, thumbnail, and all product photos for R2 cleanup
-    const existing = await d1.query<{ product_list_id: number; thumbnail_url: string | null }>(
-      "SELECT sl.product_list_id, pl.thumbnail_url FROM sale_listing sl JOIN product_list pl ON sl.product_list_id = pl.id WHERE sl.id = ?",
+    const deletedBy = await requirePermission("sale_listings", "delete");
+    // Get product_list_id for cascading soft delete
+    const existing = await d1.query<{ product_list_id: number }>(
+      "SELECT product_list_id FROM sale_listing WHERE id = ?",
       [saleId],
     );
     const productListId = existing.results[0]?.product_list_id;
 
-    // Delete the sale listing
-    await saleListingService.delete(saleId);
+    // Soft delete the sale listing
+    await saleListingService.softDelete(saleId, deletedBy);
 
-    // Only delete product_list + R2 files if no other listing references it
+    const batchId = crypto.randomUUID();
+    saveTrashMetadata("sale_listing", saleId, deletedBy, { batchId }).catch(() => {});
+
+    // Soft delete product_list if no other listing references it
     if (productListId) {
       const siblings = await d1.query<{ cnt: number }>(
-        "SELECT (SELECT COUNT(*) FROM sale_listing WHERE product_list_id = ?) + (SELECT COUNT(*) FROM rent_listing WHERE product_list_id = ?) AS cnt",
+        "SELECT (SELECT COUNT(*) FROM sale_listing WHERE product_list_id = ? AND deleted_at IS NULL) + (SELECT COUNT(*) FROM rent_listing WHERE product_list_id = ? AND deleted_at IS NULL) AS cnt",
         [productListId, productListId],
       );
       const remaining = siblings.results[0]?.cnt ?? 0;
 
       if (remaining === 0) {
-        const thumbnailKey = existing.results[0]?.thumbnail_url;
-        const photos = await d1.query<{ url: string }>(
-          "SELECT url FROM product_image WHERE product_list_id = ?",
-          [productListId],
-        );
-        const photoKeys = photos.results.map((p) => p.url);
-
-        await productListService.delete(productListId);
-
-        // Clean up R2 files after DB is consistent
-        await Promise.allSettled([
-          deleteFile(thumbnailKey),
-          ...photoKeys.map((key) => deleteFile(key)),
-        ]);
+        await productListService.softDelete(productListId, deletedBy);
+        saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
       }
     }
 
@@ -589,40 +581,31 @@ export async function updateRentListing(rentId: number, formData: FormData) {
 
 export async function deleteRentListing(rentId: number) {
   try {
-    await requirePermission("rent_listings", "delete");
-    // Get product_list_id, thumbnail for R2 cleanup
-    const existing = await d1.query<{ product_list_id: number; thumbnail_url: string | null }>(
-      "SELECT rl.product_list_id, pl.thumbnail_url FROM rent_listing rl JOIN product_list pl ON rl.product_list_id = pl.id WHERE rl.id = ?",
+    const deletedBy = await requirePermission("rent_listings", "delete");
+    // Get product_list_id for cascading soft delete
+    const existing = await d1.query<{ product_list_id: number }>(
+      "SELECT product_list_id FROM rent_listing WHERE id = ?",
       [rentId],
     );
     const productListId = existing.results[0]?.product_list_id;
 
-    // Delete the rent listing
-    await rentListingService.delete(rentId);
+    // Soft delete the rent listing
+    await rentListingService.softDelete(rentId, deletedBy);
 
-    // Only delete product_list + R2 files if no other listing references it
+    const batchId = crypto.randomUUID();
+    saveTrashMetadata("rent_listing", rentId, deletedBy, { batchId }).catch(() => {});
+
+    // Soft delete product_list if no other listing references it
     if (productListId) {
       const siblings = await d1.query<{ cnt: number }>(
-        "SELECT (SELECT COUNT(*) FROM sale_listing WHERE product_list_id = ?) + (SELECT COUNT(*) FROM rent_listing WHERE product_list_id = ?) AS cnt",
+        "SELECT (SELECT COUNT(*) FROM sale_listing WHERE product_list_id = ? AND deleted_at IS NULL) + (SELECT COUNT(*) FROM rent_listing WHERE product_list_id = ? AND deleted_at IS NULL) AS cnt",
         [productListId, productListId],
       );
       const remaining = siblings.results[0]?.cnt ?? 0;
 
       if (remaining === 0) {
-        const thumbnailKey = existing.results[0]?.thumbnail_url;
-        const photos = await d1.query<{ url: string }>(
-          "SELECT url FROM product_image WHERE product_list_id = ?",
-          [productListId],
-        );
-        const photoKeys = photos.results.map((p) => p.url);
-
-        await productListService.delete(productListId);
-
-        // Clean up R2 files after DB is consistent
-        await Promise.allSettled([
-          deleteFile(thumbnailKey),
-          ...photoKeys.map((key) => deleteFile(key)),
-        ]);
+        await productListService.softDelete(productListId, deletedBy);
+        saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
       }
     }
 
@@ -810,6 +793,7 @@ export async function getSaleListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
+    WHERE sl.deleted_at IS NULL AND pl.deleted_at IS NULL
     ORDER BY sl.created_at DESC`,
   );
   return result.results;
@@ -841,6 +825,7 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    WHERE rl.deleted_at IS NULL AND pl.deleted_at IS NULL
     ORDER BY rl.created_at DESC`,
   );
   return result.results;
@@ -860,18 +845,18 @@ export async function getFeaturedListingsWithDetails(): Promise<
       COALESCE(pl_s.thumbnail_url, pl_r.thumbnail_url) AS thumbnail_url,
       COALESCE(sl.approved_at, rl.approved_at) AS approved_at
     FROM featured_listing fl
-    LEFT JOIN sale_listing sl ON fl.sale_listing_id = sl.id
-    LEFT JOIN product_list pl_s ON sl.product_list_id = pl_s.id
-    LEFT JOIN equipment_model em_s ON pl_s.equipment_model_id = em_s.model_id
-    LEFT JOIN attachment_model am_s ON pl_s.attachment_model_id = am_s.model_id
-    LEFT JOIN partner p_s ON pl_s.partner_id = p_s.id
-    LEFT JOIN app_user c_s ON p_s.app_user_id = c_s.app_user_id
-    LEFT JOIN rent_listing rl ON fl.rent_listing_id = rl.id
-    LEFT JOIN product_list pl_r ON rl.product_list_id = pl_r.id
-    LEFT JOIN equipment_model em_r ON pl_r.equipment_model_id = em_r.model_id
-    LEFT JOIN attachment_model am_r ON pl_r.attachment_model_id = am_r.model_id
-    LEFT JOIN partner p_r ON pl_r.partner_id = p_r.id
-    LEFT JOIN app_user c_r ON p_r.app_user_id = c_r.app_user_id
+    LEFT JOIN sale_listing sl ON fl.sale_listing_id = sl.id AND sl.deleted_at IS NULL
+    LEFT JOIN product_list pl_s ON sl.product_list_id = pl_s.id AND pl_s.deleted_at IS NULL
+    LEFT JOIN equipment_model em_s ON pl_s.equipment_model_id = em_s.model_id AND em_s.deleted_at IS NULL
+    LEFT JOIN attachment_model am_s ON pl_s.attachment_model_id = am_s.model_id AND am_s.deleted_at IS NULL
+    LEFT JOIN partner p_s ON pl_s.partner_id = p_s.id AND p_s.deleted_at IS NULL
+    LEFT JOIN app_user c_s ON p_s.app_user_id = c_s.app_user_id AND c_s.deleted_at IS NULL
+    LEFT JOIN rent_listing rl ON fl.rent_listing_id = rl.id AND rl.deleted_at IS NULL
+    LEFT JOIN product_list pl_r ON rl.product_list_id = pl_r.id AND pl_r.deleted_at IS NULL
+    LEFT JOIN equipment_model em_r ON pl_r.equipment_model_id = em_r.model_id AND em_r.deleted_at IS NULL
+    LEFT JOIN attachment_model am_r ON pl_r.attachment_model_id = am_r.model_id AND am_r.deleted_at IS NULL
+    LEFT JOIN partner p_r ON pl_r.partner_id = p_r.id AND p_r.deleted_at IS NULL
+    LEFT JOIN app_user c_r ON p_r.app_user_id = c_r.app_user_id AND c_r.deleted_at IS NULL
     ORDER BY fl.display_order ASC`,
   );
   return result.results;
@@ -904,6 +889,8 @@ export async function getApprovedPartners(): Promise<
     JOIN app_user c ON p.app_user_id = c.app_user_id
     JOIN partner_status_type pst ON p.status_id = pst.id
     WHERE pst.status_name = 'Approved'
+      AND p.deleted_at IS NULL
+      AND c.deleted_at IS NULL
     ORDER BY c.username ASC`,
   );
   return result.results;
@@ -1475,8 +1462,8 @@ export async function deleteDraft(productListId: number) {
   try {
     const userId = await requireAuth();
 
-    const existing = await d1.query<{ created_by: number | null; is_draft: number; thumbnail_url: string | null }>(
-      "SELECT created_by, is_draft, thumbnail_url FROM product_list WHERE id = ?",
+    const existing = await d1.query<{ created_by: number | null; is_draft: number }>(
+      "SELECT created_by, is_draft FROM product_list WHERE id = ?",
       [productListId],
     );
     const row = existing.results[0];
@@ -1487,21 +1474,9 @@ export async function deleteDraft(productListId: number) {
       return { success: false, error: "Not authorized to delete this draft" };
     }
 
-    // Get photo keys for R2 cleanup
-    const photos = await d1.query<{ url: string }>(
-      "SELECT url FROM product_image WHERE product_list_id = ?",
-      [productListId],
-    );
-    const photoKeys = photos.results.map((p) => p.url);
-
-    // Delete from DB (cascade deletes product_image rows)
-    await productListService.delete(productListId);
-
-    // Clean up R2 files
-    await Promise.allSettled([
-      deleteFile(row.thumbnail_url),
-      ...photoKeys.map((key) => deleteFile(key)),
-    ]);
+    // Soft delete the product_list (R2 files cleaned up when permanently deleting from trash)
+    await productListService.softDelete(productListId, userId);
+    saveTrashMetadata("product_list", productListId, userId).catch(() => {});
 
     return { success: true };
   } catch (error) {
@@ -1537,7 +1512,7 @@ export async function getDraftListings(): Promise<DraftListingWithDetails[]> {
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
     LEFT JOIN township t ON pl.township_id = t.township_id
-    WHERE pl.is_draft = 1 AND pl.created_by = ?
+    WHERE pl.is_draft = 1 AND pl.created_by = ? AND pl.deleted_at IS NULL
     ORDER BY pl.updated_at DESC`,
     [session.user.id],
   );

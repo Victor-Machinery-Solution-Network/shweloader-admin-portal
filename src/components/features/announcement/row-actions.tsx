@@ -57,7 +57,7 @@ export function RowActions({ announcement }: RowActionsProps) {
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete announcement?"
-        description="This will permanently delete the announcement. This action cannot be undone."
+        description="The announcement will be moved to the trash. You can restore it within 30 days."
         isPending={isPending}
       />
     </>

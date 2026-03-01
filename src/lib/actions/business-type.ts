@@ -4,6 +4,7 @@ import { businessTypeService } from "@/lib/services/app-user";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import { CACHE_TAGS } from "@/lib/constants";
 
 // ─── Business Type Actions ───────────────────────────────────────────────────
@@ -54,8 +55,9 @@ export async function updateBusinessType(id: number, formData: FormData) {
 
 export async function deleteBusinessType(id: number) {
   try {
-    await requirePermission("business_types", "delete");
-    await businessTypeService.delete(id);
+    const deletedBy = await requirePermission("business_types", "delete");
+    await businessTypeService.softDelete(id, deletedBy);
+    saveTrashMetadata("business_type", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
     return { success: true };
   } catch (error) {
@@ -90,10 +92,13 @@ export async function getUserCount(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteBusinessTypes(ids: number[]) {
-  await requirePermission("business_types", "delete");
+  const deletedBy = await requirePermission("business_types", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => businessTypeService.delete(id)),
+    ids.map(async (id) => {
+      await businessTypeService.softDelete(id, deletedBy);
+      saveTrashMetadata("business_type", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results

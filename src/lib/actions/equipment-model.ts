@@ -4,7 +4,8 @@ import { equipmentModelService } from "@/lib/services/equipment";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
-import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Equipment Model Actions ────────────────────────────────────────────────
 
@@ -83,10 +84,9 @@ export async function updateEquipmentModel(id: number, formData: FormData) {
 
 export async function deleteEquipmentModel(id: number) {
   try {
-    await requirePermission("equipment_models", "delete");
-    const existing = await equipmentModelService.getById(id);
-    await equipmentModelService.delete(id);
-    await deleteFile(existing?.pdf_url);
+    const deletedBy = await requirePermission("equipment_models", "delete");
+    await equipmentModelService.softDelete(id, deletedBy);
+    saveTrashMetadata("equipment_model", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
     return { success: true };
   } catch (error) {
@@ -98,22 +98,15 @@ export async function deleteEquipmentModel(id: number) {
 }
 
 export async function deleteEquipmentModels(ids: number[]) {
-  await requirePermission("equipment_models", "delete");
+  const deletedBy = await requirePermission("equipment_models", "delete");
   assertBulkLimit(ids);
-  const existingRecords = await Promise.all(
-    ids.map((id) => equipmentModelService.getById(id)),
-  );
 
   const results = await Promise.allSettled(
-    ids.map((id) => equipmentModelService.delete(id)),
+    ids.map(async (id) => {
+      await equipmentModelService.softDelete(id, deletedBy);
+      saveTrashMetadata("equipment_model", id, deletedBy).catch(() => {});
+    }),
   );
-
-  const deletePromises = results.map((r, i) => {
-    if (r.status === "fulfilled") {
-      return deleteFile(existingRecords[i]?.pdf_url);
-    }
-  });
-  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")

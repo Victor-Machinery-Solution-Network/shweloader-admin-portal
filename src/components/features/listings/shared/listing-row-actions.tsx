@@ -81,7 +81,7 @@ export function ListingRowActions({
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title={`Delete ${pageType} listing?`}
-        description={`This will permanently delete the listing for "${listing.model_name ?? "Unknown"}". This action cannot be undone.`}
+        description={`The listing for "${listing.model_name ?? "Unknown"}" will be moved to the trash. You can restore it within 30 days.`}
         isPending={isPending}
       />
     </>

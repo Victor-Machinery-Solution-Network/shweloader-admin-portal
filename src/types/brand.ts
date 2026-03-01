@@ -5,6 +5,8 @@ export interface ProductBrand {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** ProductBrand extended with its linked category & sub-category IDs */

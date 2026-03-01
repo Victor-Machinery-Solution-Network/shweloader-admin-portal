@@ -4,6 +4,7 @@ import type { PartnerType, PartnerStatusType } from "@/types/partner";
 
 export const partnerService = createService<Partner>("partner", {
   primaryKey: "id",
+  softDelete: true,
 });
 
 export const partnerTypeService = createService<PartnerType>("partner_type", {

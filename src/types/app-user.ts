@@ -11,6 +11,7 @@ export interface AppUser {
   is_approved_partner: number;
   created_at: string;
   deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 export interface BusinessType {
@@ -19,4 +20,6 @@ export interface BusinessType {
   is_listed: number;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }

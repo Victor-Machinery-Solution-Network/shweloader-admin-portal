@@ -6,7 +6,8 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { calculateReadTime } from "@/lib/utils";
-import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import {
   notifyArticleSubmitted,
   notifyArticleApproved,
@@ -133,10 +134,9 @@ export async function updateArticle(id: number, formData: FormData) {
 
 export async function deleteArticle(id: number) {
   try {
-    await requirePermission("articles", "delete");
-    const existing = await articleService.getById(id);
-    await articleService.delete(id);
-    await deleteFile(existing?.cover_image_url);
+    const deletedBy = await requirePermission("articles", "delete");
+    await articleService.softDelete(id, deletedBy);
+    saveTrashMetadata("article", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ARTICLES);
     return { success: true };
   } catch (error) {
@@ -391,6 +391,7 @@ export async function getArticlesWithDetails(): Promise<ArticleWithDetails[]> {
     FROM article a
     LEFT JOIN article_category ac ON a.category_id = ac.category_id
     LEFT JOIN article_status_type ast ON a.article_status_type_id = ast.id
+    WHERE a.deleted_at IS NULL
     ORDER BY a.created_at DESC`,
   );
   return result.results;
@@ -417,22 +418,15 @@ export async function getArticleById(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteArticles(ids: number[]) {
-  await requirePermission("articles", "delete");
+  const deletedBy = await requirePermission("articles", "delete");
   assertBulkLimit(ids);
-  const existingRecords = await Promise.all(
-    ids.map((id) => articleService.getById(id)),
-  );
 
   const results = await Promise.allSettled(
-    ids.map((id) => articleService.delete(id)),
+    ids.map(async (id) => {
+      await articleService.softDelete(id, deletedBy);
+      saveTrashMetadata("article", id, deletedBy).catch(() => {});
+    }),
   );
-
-  const deletePromises = results.map((r, i) => {
-    if (r.status === "fulfilled") {
-      return deleteFile(existingRecords[i]?.cover_image_url);
-    }
-  });
-  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")

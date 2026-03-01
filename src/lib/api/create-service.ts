@@ -2,25 +2,21 @@
  * Service Factory for D1 REST API
  *
  * Creates type-safe CRUD services for database tables.
+ * Supports soft-delete: when `softDelete: true`, list/count exclude
+ * soft-deleted rows and additional methods (softDelete, restore,
+ * permanentDelete, listDeleted) become available.
  *
  * @example
- * // Define your entity type
- * interface User {
- *   id: number;
- *   name: string;
- *   email: string;
- *   created_at: string;
- * }
- *
- * // Create a service
+ * // Standard service
  * const userService = createService<User>('users');
  *
- * // Use the service
- * const users = await userService.list({ limit: 10 });
- * const user = await userService.getById(123);
- * const newUser = await userService.create({ name: 'John', email: 'john@example.com' });
- * const updated = await userService.update(123, { name: 'Jane' });
- * await userService.delete(123);
+ * // Soft-delete enabled service
+ * const brandService = createService<ProductBrand, 'brand_id'>('product_brand', {
+ *   primaryKey: 'brand_id',
+ *   softDelete: true,
+ * });
+ * await brandService.softDelete(1, adminUserId);
+ * await brandService.restore(1);
  */
 
 import { d1, D1Error } from "./d1-client";
@@ -45,6 +41,8 @@ export interface ServiceOptions {
   defaultParams?: D1QueryParams;
   /** Primary key column name (defaults to 'id'). Used for getById, update, delete. */
   primaryKey?: string;
+  /** Enable soft-delete. When true, list/count exclude soft-deleted rows. */
+  softDelete?: boolean;
 }
 
 export interface Service<T, K extends keyof T = "id" & keyof T> {
@@ -69,7 +67,7 @@ export interface Service<T, K extends keyof T = "id" & keyof T> {
   /** Update an existing record */
   update(id: string | number, data: UpdateData<T, K>): Promise<T>;
 
-  /** Delete a record */
+  /** Delete a record (hard delete) */
   delete(id: string | number): Promise<void>;
 
   /** Check if a record exists */
@@ -79,35 +77,131 @@ export interface Service<T, K extends keyof T = "id" & keyof T> {
   count(filters?: Record<string, string | number>): Promise<number>;
 }
 
+/** Extended service with soft-delete methods */
+export interface SoftDeleteService<T, K extends keyof T = "id" & keyof T>
+  extends Service<T, K> {
+  /** Soft-delete: sets deleted_at + deleted_by */
+  softDelete(id: string | number, deletedBy: number): Promise<T>;
+
+  /** Restore a soft-deleted record */
+  restore(id: string | number): Promise<T>;
+
+  /** Permanently delete (actual DELETE FROM) — use from trash purge only */
+  permanentDelete(id: string | number): Promise<void>;
+
+  /** List only soft-deleted records (for trash page) */
+  listDeleted(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<T[]>;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const RESERVED_PARAM_KEYS = new Set(["sort_by", "order", "limit", "offset"]);
+
+/**
+ * Convert D1QueryParams into a raw SQL SELECT with optional extra WHERE conditions.
+ * Used when the REST GET endpoint can't express the needed filters (e.g. IS NULL).
+ */
+function buildSelectSql(
+  table: string,
+  params: D1QueryParams,
+  extraConditions: string[] = [],
+): { sql: string; values: (string | number)[] } {
+  const conditions = [...extraConditions];
+  const values: (string | number)[] = [];
+
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      RESERVED_PARAM_KEYS.has(key) ||
+      value === undefined ||
+      value === null ||
+      value === ""
+    )
+      continue;
+    conditions.push(`${key} = ?`);
+    values.push(value as string | number);
+  }
+
+  let sql = `SELECT * FROM ${table}`;
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(" AND ")}`;
+  }
+
+  if (params.sort_by) {
+    sql += ` ORDER BY ${params.sort_by} ${params.order === "desc" ? "DESC" : "ASC"}`;
+  }
+
+  if (params.limit !== undefined) {
+    sql += ` LIMIT ?`;
+    values.push(params.limit);
+  }
+  if (params.offset !== undefined) {
+    sql += ` OFFSET ?`;
+    values.push(params.offset);
+  }
+
+  return { sql, values };
+}
+
+// ── Overloads ────────────────────────────────────────────────────────────────
+
+/** When softDelete is true, returns SoftDeleteService with extra methods */
+export function createService<T, K extends keyof T = "id" & keyof T>(
+  table: string,
+  options: ServiceOptions & { softDelete: true },
+): SoftDeleteService<T, K>;
+
+/** Standard service (no soft-delete) */
+export function createService<T, K extends keyof T = "id" & keyof T>(
+  table: string,
+  options?: ServiceOptions,
+): Service<T, K>;
+
 /**
  * Create a type-safe CRUD service for a database table
- *
- * @param table - The database table name
- * @param options - Optional service configuration
  */
 export function createService<T, K extends keyof T = "id" & keyof T>(
   table: string,
   options: ServiceOptions = {},
-): Service<T, K> {
-  const { defaultParams = {}, primaryKey = "id" } = options;
+): Service<T, K> | SoftDeleteService<T, K> {
+  const { defaultParams = {}, primaryKey = "id", softDelete = false } = options;
   const usesCustomPK = primaryKey !== "id";
 
-  return {
+  // ── Base list (shared logic) ───────────────────────────────────────────
+
+  async function listImpl(params?: D1QueryParams): Promise<D1Response<T>> {
+    const mergedParams = { ...defaultParams, ...params };
+
+    if (softDelete) {
+      // Must use raw SQL because REST GET can't express `deleted_at IS NULL`
+      const { sql, values } = buildSelectSql(table, mergedParams, [
+        "deleted_at IS NULL",
+      ]);
+      return d1.query<T>(sql, values);
+    }
+
+    return d1.list<T>(table, mergedParams);
+  }
+
+  // ── Base service ───────────────────────────────────────────────────────
+
+  const base: Service<T, K> = {
     table,
 
     async list(params?: D1QueryParams): Promise<T[]> {
-      const mergedParams = { ...defaultParams, ...params };
-      const response = await d1.list<T>(table, mergedParams);
+      const response = await listImpl(params);
       return response.results;
     },
 
     async listWithMeta(params?: D1QueryParams): Promise<D1Response<T>> {
-      const mergedParams = { ...defaultParams, ...params };
-      return d1.list<T>(table, mergedParams);
+      return listImpl(params);
     },
 
     async getById(id: string | number): Promise<T | null> {
       try {
+        // getById does NOT filter by deleted_at — needed for trash detail views
         if (usesCustomPK) {
           const response = await d1.query<T>(
             `SELECT * FROM ${table} WHERE ${primaryKey} = ? LIMIT 1`,
@@ -178,15 +272,23 @@ export function createService<T, K extends keyof T = "id" & keyof T>(
     },
 
     async count(filters?: Record<string, string | number>): Promise<number> {
-      // Use raw query for count
-      let sql = `SELECT COUNT(*) as count FROM ${table}`;
+      const conditions: string[] = [];
       const params: (string | number)[] = [];
 
+      // Exclude soft-deleted rows from counts
+      if (softDelete) {
+        conditions.push("deleted_at IS NULL");
+      }
+
       if (filters && Object.keys(filters).length > 0) {
-        const conditions = Object.entries(filters).map(([key, value]) => {
+        for (const [key, value] of Object.entries(filters)) {
+          conditions.push(`${key} = ?`);
           params.push(value);
-          return `${key} = ?`;
-        });
+        }
+      }
+
+      let sql = `SELECT COUNT(*) as count FROM ${table}`;
+      if (conditions.length > 0) {
         sql += ` WHERE ${conditions.join(" AND ")}`;
       }
 
@@ -194,4 +296,65 @@ export function createService<T, K extends keyof T = "id" & keyof T>(
       return response.results[0]?.count ?? 0;
     },
   };
+
+  // ── Soft-delete extensions ─────────────────────────────────────────────
+
+  if (!softDelete) {
+    return base;
+  }
+
+  const softDeleteMethods: Pick<
+    SoftDeleteService<T, K>,
+    "softDelete" | "restore" | "permanentDelete" | "listDeleted"
+  > = {
+    async softDelete(id: string | number, deletedBy: number): Promise<T> {
+      const now = new Date().toISOString();
+      const response = await d1.query<T>(
+        `UPDATE ${table} SET deleted_at = ?, deleted_by = ? WHERE ${primaryKey} = ? RETURNING *`,
+        [now, deletedBy, id],
+      );
+      if (!response.results[0]) {
+        throw new D1Error(`${table} with id ${id} not found`, 404);
+      }
+      return response.results[0];
+    },
+
+    async restore(id: string | number): Promise<T> {
+      const response = await d1.query<T>(
+        `UPDATE ${table} SET deleted_at = NULL, deleted_by = NULL WHERE ${primaryKey} = ? RETURNING *`,
+        [id],
+      );
+      if (!response.results[0]) {
+        throw new D1Error(`${table} with id ${id} not found`, 404);
+      }
+      return response.results[0];
+    },
+
+    async permanentDelete(id: string | number): Promise<void> {
+      // Actual hard DELETE — only called from trash purge
+      return base.delete(id);
+    },
+
+    async listDeleted(params?: {
+      limit?: number;
+      offset?: number;
+    }): Promise<T[]> {
+      let sql = `SELECT * FROM ${table} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`;
+      const values: number[] = [];
+
+      if (params?.limit !== undefined) {
+        sql += ` LIMIT ?`;
+        values.push(params.limit);
+      }
+      if (params?.offset !== undefined) {
+        sql += ` OFFSET ?`;
+        values.push(params.offset);
+      }
+
+      const response = await d1.query<T>(sql, values);
+      return response.results;
+    },
+  };
+
+  return { ...base, ...softDeleteMethods };
 }

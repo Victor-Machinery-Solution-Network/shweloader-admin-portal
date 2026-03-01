@@ -62,7 +62,7 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
       }
       const count = selected.length;
       const plural = count === 1 ? "admin" : "admins";
-      return `This will permanently delete ${count} ${plural}. This action cannot be undone.`;
+      return `${count} ${plural} will be moved to the trash. You can restore them within 30 days.`;
     },
     [],
   );

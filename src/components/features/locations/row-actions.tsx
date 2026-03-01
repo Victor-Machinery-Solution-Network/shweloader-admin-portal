@@ -38,8 +38,8 @@ export function RowActions({ township, linkedCount, stateRegions, districts }: R
 
   const deleteDescription =
     linkedCount > 0
-      ? <>This will permanently delete <strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}).<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "listing" : "listings"} linked to this township that must be removed first.</>
-      : <>This will permanently delete <strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}).<br />This action cannot be undone.</>;
+      ? <><strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}) will be moved to the trash.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "listing" : "listings"} linked to this township that must be removed first.</>
+      : <><strong>&ldquo;{township.name}&rdquo;</strong> ({township.district_name}, {township.state_region_name}) will be moved to the trash.<br />You can restore it within 30 days.</>;
 
   const actions = [
     ...(canEdit ? [{ label: "Edit" as const, icon: Pencil, onClick: () => setShowEdit(true) }] : []),

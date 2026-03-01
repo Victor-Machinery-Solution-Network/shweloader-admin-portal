@@ -66,7 +66,7 @@ export function RowActions({ model, mainCategories, subCategories, brands, subCa
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete equipment model?"
-        description={`This will permanently delete "${model.name}". This action cannot be undone.`}
+        description={`"${model.name}" will be moved to the trash. You can restore it within 30 days.`}
         isPending={isPending}
       />
     </>

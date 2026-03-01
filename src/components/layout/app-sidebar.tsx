@@ -27,6 +27,7 @@ import {
   Shield,
   UserCog,
   ClipboardList,
+  Trash2,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -100,7 +101,7 @@ export function AppSidebar() {
   const showContent =
     showArticles || canRead("carousels") || canRead("announcements");
   const showSettings =
-    canRead("admin_users") || canRead("roles") || canRead("listing_templates") || canRead("app_settings");
+    canRead("admin_users") || canRead("roles") || canRead("listing_templates") || canRead("app_settings") || canRead("trash");
 
   // Auto-open collapsible sections based on current route
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
@@ -464,6 +465,14 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === ROUTES.SETTINGS}>
                   <Link href={ROUTES.SETTINGS}><Settings aria-hidden="true" /><span>General Settings</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              )}
+
+              {canRead("trash") && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.TRASH}>
+                  <Link href={ROUTES.TRASH}><Trash2 aria-hidden="true" /><span>Trash</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               )}

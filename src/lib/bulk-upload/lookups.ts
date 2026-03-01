@@ -122,6 +122,7 @@ const ASSOCIATION_FETCHERS: Record<string, () => Promise<AssociationMap>> = {
        FROM equipment_sub_category_brand scb
        JOIN equipment_sub_category sc ON scb.sub_category_id = sc.sub_category_id
        JOIN product_brand b ON scb.brand_id = b.brand_id
+       WHERE sc.deleted_at IS NULL AND b.deleted_at IS NULL
        ORDER BY sc.name, b.name`,
     );
     return groupByParent(result.results);
@@ -133,6 +134,7 @@ const ASSOCIATION_FETCHERS: Record<string, () => Promise<AssociationMap>> = {
        FROM attachment_category_brand acb
        JOIN attachment_category ac ON acb.category_id = ac.category_id
        JOIN product_brand b ON acb.brand_id = b.brand_id
+       WHERE ac.deleted_at IS NULL AND b.deleted_at IS NULL
        ORDER BY ac.name, b.name`,
     );
     return groupByParent(result.results);

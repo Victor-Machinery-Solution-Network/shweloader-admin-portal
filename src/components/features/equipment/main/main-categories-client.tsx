@@ -58,7 +58,7 @@ export function MainCategoriesClient({
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((c) => `"${c.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} categories (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} categories (${names})`} will be moved to the trash.`;
 
       if (totalLinked > 0) {
         msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} sub ${totalLinked === 1 ? "category" : "categories"} linked to ${selected.length === 1 ? "this category" : "these categories"} that must be removed first.`;

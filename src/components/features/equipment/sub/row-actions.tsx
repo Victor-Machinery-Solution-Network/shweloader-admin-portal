@@ -29,8 +29,8 @@ export function RowActions({ subCategory, categories, linkedCount, linkedSummary
 
   const deleteDescription =
     linkedCount > 0
-      ? <>This will permanently delete <strong>&ldquo;{subCategory.name}&rdquo;</strong>.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedSummary}</strong> linked to this sub category.</>
-      : <>This will permanently delete <strong>&ldquo;{subCategory.name}&rdquo;</strong>.<br />This action cannot be undone.</>;
+      ? <><strong>&ldquo;{subCategory.name}&rdquo;</strong> will be moved to the trash.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedSummary}</strong> linked to this sub category.</>
+      : <><strong>&ldquo;{subCategory.name}&rdquo;</strong> will be moved to the trash.<br />You can restore it within 30 days.</>;
 
   function handleDelete() {
     startTransition(async () => {

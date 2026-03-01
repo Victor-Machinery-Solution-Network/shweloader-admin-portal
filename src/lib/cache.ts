@@ -132,6 +132,7 @@ export async function getUsers() {
     FROM app_user c
     LEFT JOIN partner p ON c.app_user_id = p.app_user_id
     LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    WHERE c.deleted_at IS NULL
     ORDER BY c.created_at DESC`,
   );
   return result.results;
@@ -178,6 +179,7 @@ export async function getUsersPageData() {
         'company_name', t.company_name, 'office_address', t.office_address,
         'business_type_id', t.business_type_id,
         'created_at', t.created_at, 'deleted_at', t.deleted_at,
+        'deleted_by', t.deleted_by,
         'is_approved_partner', t.is_approved_partner
       )) FROM (
         SELECT c.*,
@@ -185,6 +187,7 @@ export async function getUsersPageData() {
         FROM app_user c
         LEFT JOIN partner p ON c.app_user_id = p.app_user_id
         LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+        WHERE c.deleted_at IS NULL
         ORDER BY c.created_at DESC
       ) t
       ) AS users,
@@ -193,14 +196,14 @@ export async function getUsersPageData() {
         'business_type_id', bt.business_type_id, 'name', bt.name,
         'is_listed', bt.is_listed, 'created_by', bt.created_by,
         'created_at', bt.created_at
-      )) FROM (SELECT * FROM business_type ORDER BY name) bt
+      )) FROM (SELECT * FROM business_type WHERE deleted_at IS NULL ORDER BY name) bt
       ) AS business_types,
 
       (SELECT json_group_array(json_object(
         'business_type_id', bt.business_type_id, 'name', bt.name,
         'is_listed', bt.is_listed, 'created_by', bt.created_by,
         'created_at', bt.created_at
-      )) FROM (SELECT * FROM business_type WHERE is_listed = 1 ORDER BY name) bt
+      )) FROM (SELECT * FROM business_type WHERE is_listed = 1 AND deleted_at IS NULL ORDER BY name) bt
       ) AS listed_business_types,
 
       (SELECT json_group_array(json_object(

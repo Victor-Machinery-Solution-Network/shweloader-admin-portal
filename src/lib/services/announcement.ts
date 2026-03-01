@@ -3,5 +3,5 @@ import type { AnnouncementText } from "@/types/announcement";
 
 export const announcementTextService = createService<AnnouncementText, "announcement_id">(
   "announcement_text",
-  { primaryKey: "announcement_id" },
+  { primaryKey: "announcement_id", softDelete: true },
 );

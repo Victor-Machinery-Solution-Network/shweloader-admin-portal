@@ -28,6 +28,7 @@ export async function getPartnersWithDetails(): Promise<PartnerWithDetails[]> {
     LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
     LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
     LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    WHERE p.deleted_at IS NULL
     ORDER BY p.applied_at DESC`,
   );
   return result.results;

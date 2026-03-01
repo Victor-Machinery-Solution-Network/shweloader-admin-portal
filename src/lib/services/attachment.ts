@@ -3,10 +3,10 @@ import type { AttachmentCategory, AttachmentModel } from "@/types/attachment";
 
 export const attachmentCategoryService = createService<AttachmentCategory, "category_id">(
   "attachment_category",
-  { primaryKey: "category_id" },
+  { primaryKey: "category_id", softDelete: true },
 );
 
 export const attachmentModelService = createService<AttachmentModel, "model_id">(
   "attachment_model",
-  { primaryKey: "model_id" },
+  { primaryKey: "model_id", softDelete: true },
 );

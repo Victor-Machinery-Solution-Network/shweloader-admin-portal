@@ -10,6 +10,7 @@ import type { AdminWithRole } from "@/types/admin";
 import type { Role } from "@/types/role";
 import { triggerNotification } from "@/lib/pusher";
 import { auditLog } from "@/lib/actions/audit";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -22,6 +23,7 @@ export async function getAdminsWithRoles(): Promise<AdminWithRole[]> {
             r.name as role_name
      FROM admin_user a
      LEFT JOIN role r ON a.role_id = r.role_id
+     WHERE a.deleted_at IS NULL
      ORDER BY a.created_at ASC`,
   );
   return result.results;
@@ -32,7 +34,7 @@ export async function getAssignableRoles(): Promise<Role[]> {
   const result = await d1.query<Role>(
     `SELECT role_id, name, description, created_by, created_at
      FROM role
-     WHERE role_id != ?
+     WHERE role_id != ? AND deleted_at IS NULL
      ORDER BY name ASC`,
     [SUPER_ADMIN_ROLE_ID],
   );
@@ -180,11 +182,12 @@ export async function toggleAdminActive(userId: number) {
 
 export async function deleteAdmin(userId: number) {
   try {
-    await requirePermission("admin_users", "delete");
+    const deletedBy = await requirePermission("admin_users", "delete");
     if (userId === PRIMARY_ADMIN_ID) {
       return { success: false, error: "Cannot delete the primary admin" };
     }
-    await adminUserService.delete(userId);
+    await adminUserService.softDelete(userId, deletedBy);
+    saveTrashMetadata("admin_user", userId, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ADMINS);
     return { success: true };
   } catch (error) {
@@ -196,12 +199,13 @@ export async function deleteAdmin(userId: number) {
 }
 
 export async function deleteAdmins(ids: number[]) {
-  await requirePermission("admin_users", "delete");
+  const deletedBy = await requirePermission("admin_users", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => {
-      if (id === PRIMARY_ADMIN_ID) return Promise.reject(new Error("Cannot delete the primary admin"));
-      return adminUserService.delete(id);
+    ids.map(async (id) => {
+      if (id === PRIMARY_ADMIN_ID) throw new Error("Cannot delete the primary admin");
+      await adminUserService.softDelete(id, deletedBy);
+      saveTrashMetadata("admin_user", id, deletedBy).catch(() => {});
     }),
   );
 

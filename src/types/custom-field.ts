@@ -76,6 +76,8 @@ export interface CustomFieldTemplate {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Template with parsed fields for client use */

@@ -37,8 +37,8 @@ export function DistrictRowActions({ district, linkedCount, stateRegions }: Dist
 
   const deleteDescription =
     linkedCount > 0
-      ? <>This will permanently delete <strong>&ldquo;{district.name}&rdquo;</strong> ({district.state_region_name}).<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "township" : "townships"} under this district that will also be deleted (cascade).</>
-      : <>This will permanently delete <strong>&ldquo;{district.name}&rdquo;</strong> ({district.state_region_name}).<br />This action cannot be undone.</>;
+      ? <><strong>&ldquo;{district.name}&rdquo;</strong> ({district.state_region_name}) will be moved to the trash.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "township" : "townships"} under this district that will also be deleted (cascade).</>
+      : <><strong>&ldquo;{district.name}&rdquo;</strong> ({district.state_region_name}) will be moved to the trash.<br />You can restore it within 30 days.</>;
 
   const actions = [
     ...(canEdit ? [{ label: "Edit" as const, icon: Pencil, onClick: () => setShowEdit(true) }] : []),

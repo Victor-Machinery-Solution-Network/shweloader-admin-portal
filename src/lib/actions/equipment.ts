@@ -9,7 +9,8 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
-import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Main Category Actions ───────────────────────────────────────────────────
 
@@ -71,10 +72,9 @@ export async function updateMainCategory(id: number, formData: FormData) {
 
 export async function deleteMainCategory(id: number) {
   try {
-    await requirePermission("equipment_main_categories", "delete");
-    const existing = await mainCategoryService.getById(id);
-    await mainCategoryService.delete(id);
-    await deleteFile(existing?.image_url);
+    const deletedBy = await requirePermission("equipment_main_categories", "delete");
+    await mainCategoryService.softDelete(id, deletedBy);
+    saveTrashMetadata("equipment_main_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -86,24 +86,15 @@ export async function deleteMainCategory(id: number) {
 }
 
 export async function deleteMainCategories(ids: number[]) {
-  await requirePermission("equipment_main_categories", "delete");
+  const deletedBy = await requirePermission("equipment_main_categories", "delete");
   assertBulkLimit(ids);
-  // Fetch existing records to get image URLs for R2 cleanup
-  const existingRecords = await Promise.all(
-    ids.map((id) => mainCategoryService.getById(id)),
-  );
 
   const results = await Promise.allSettled(
-    ids.map((id) => mainCategoryService.delete(id)),
+    ids.map(async (id) => {
+      await mainCategoryService.softDelete(id, deletedBy);
+      saveTrashMetadata("equipment_main_category", id, deletedBy).catch(() => {});
+    }),
   );
-
-  // Clean up R2 files for successfully deleted records
-  const deletePromises = results.map((r, i) => {
-    if (r.status === "fulfilled") {
-      return deleteFile(existingRecords[i]?.image_url);
-    }
-  });
-  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
@@ -130,7 +121,7 @@ export async function getSubCategoryCount(
 
   const placeholders = categoryIds.map(() => "?").join(",");
   const result = await d1.query<{ category_id: number; count: number }>(
-    `SELECT category_id, COUNT(*) as count FROM equipment_sub_category WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+    `SELECT category_id, COUNT(*) as count FROM equipment_sub_category WHERE category_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY category_id`,
     categoryIds,
   );
 
@@ -215,10 +206,9 @@ export async function updateSubCategory(id: number, formData: FormData) {
 
 export async function deleteSubCategory(id: number) {
   try {
-    await requirePermission("equipment_sub_categories", "delete");
-    const existing = await subCategoryService.getById(id);
-    await subCategoryService.delete(id);
-    await deleteFile(existing?.image_url);
+    const deletedBy = await requirePermission("equipment_sub_categories", "delete");
+    await subCategoryService.softDelete(id, deletedBy);
+    saveTrashMetadata("equipment_sub_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -230,22 +220,15 @@ export async function deleteSubCategory(id: number) {
 }
 
 export async function deleteSubCategories(ids: number[]) {
-  await requirePermission("equipment_sub_categories", "delete");
+  const deletedBy = await requirePermission("equipment_sub_categories", "delete");
   assertBulkLimit(ids);
-  const existingRecords = await Promise.all(
-    ids.map((id) => subCategoryService.getById(id)),
-  );
 
   const results = await Promise.allSettled(
-    ids.map((id) => subCategoryService.delete(id)),
+    ids.map(async (id) => {
+      await subCategoryService.softDelete(id, deletedBy);
+      saveTrashMetadata("equipment_sub_category", id, deletedBy).catch(() => {});
+    }),
   );
-
-  const deletePromises = results.map((r, i) => {
-    if (r.status === "fulfilled") {
-      return deleteFile(existingRecords[i]?.image_url);
-    }
-  });
-  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
@@ -282,7 +265,7 @@ export async function getSubCategoryLinkedCounts(
 
   const [eqResults, brandResults] = await Promise.all([
     d1.query<{ sub_category_id: number; count: number }>(
-      `SELECT sub_category_id, COUNT(*) as count FROM equipment_model WHERE sub_category_id IN (${placeholders}) GROUP BY sub_category_id`,
+      `SELECT sub_category_id, COUNT(*) as count FROM equipment_model WHERE sub_category_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY sub_category_id`,
       subCategoryIds,
     ),
     d1.query<{ sub_category_id: number; count: number }>(
@@ -343,14 +326,14 @@ export async function getEquipmentModelsPageData() {
         'brand_id', em.brand_id, 'sub_category_id', em.sub_category_id,
         'pdf_url', em.pdf_url, 'created_by', em.created_by,
         'created_at', em.created_at, 'updated_at', em.updated_at
-      )) FROM (SELECT * FROM equipment_model ORDER BY name) em
+      )) FROM (SELECT * FROM equipment_model WHERE deleted_at IS NULL ORDER BY name) em
       ) AS models,
 
       (SELECT json_group_array(json_object(
         'category_id', mc.category_id, 'name', mc.name,
         'image_url', mc.image_url, 'display_order', mc.display_order,
         'created_by', mc.created_by, 'created_at', mc.created_at
-      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      )) FROM (SELECT * FROM equipment_main_category WHERE deleted_at IS NULL ORDER BY display_order) mc
       ) AS main_categories,
 
       (SELECT json_group_array(json_object(
@@ -358,14 +341,14 @@ export async function getEquipmentModelsPageData() {
         'name', sc.name, 'image_url', sc.image_url,
         'display_order', sc.display_order, 'created_by', sc.created_by,
         'created_at', sc.created_at
-      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      )) FROM (SELECT * FROM equipment_sub_category WHERE deleted_at IS NULL ORDER BY display_order) sc
       ) AS sub_categories,
 
       (SELECT json_group_array(json_object(
         'brand_id', b.brand_id, 'name', b.name,
         'created_by', b.created_by, 'created_at', b.created_at,
         'updated_at', b.updated_at
-      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
       ) AS brands,
 
       (SELECT json_group_array(json_object(
@@ -413,17 +396,17 @@ export async function getSubCategoriesPageData() {
         'display_order', sc.display_order, 'created_by', sc.created_by,
         'created_at', sc.created_at,
         'equipment_model_count',
-          (SELECT COUNT(*) FROM equipment_model em WHERE em.sub_category_id = sc.sub_category_id),
+          (SELECT COUNT(*) FROM equipment_model em WHERE em.sub_category_id = sc.sub_category_id AND em.deleted_at IS NULL),
         'brand_count',
           (SELECT COUNT(*) FROM equipment_sub_category_brand escb WHERE escb.sub_category_id = sc.sub_category_id)
-      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      )) FROM (SELECT * FROM equipment_sub_category WHERE deleted_at IS NULL ORDER BY display_order) sc
       ) AS sub_categories,
 
       (SELECT json_group_array(json_object(
         'category_id', mc.category_id, 'name', mc.name,
         'image_url', mc.image_url, 'display_order', mc.display_order,
         'created_by', mc.created_by, 'created_at', mc.created_at
-      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      )) FROM (SELECT * FROM equipment_main_category WHERE deleted_at IS NULL ORDER BY display_order) mc
       ) AS main_categories
   `);
 
@@ -438,6 +421,8 @@ export async function getSubCategoriesPageData() {
     display_order: sc.display_order,
     created_by: sc.created_by,
     created_at: sc.created_at,
+    deleted_at: null as string | null,
+    deleted_by: null as number | null,
   }));
 
   const linkedInfo: Record<number, { total: number; summary: string }> = {};

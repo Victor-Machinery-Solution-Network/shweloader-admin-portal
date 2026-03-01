@@ -7,6 +7,8 @@ export interface AdminUser {
   role_id: number | null;
   active: number;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Admin with role name joined from role table */

@@ -47,8 +47,7 @@ export function RoleRowActions({
   const deleteDescription =
     adminCount > 0 ? (
       <>
-        This will permanently delete{" "}
-        <strong>&ldquo;{role.name}&rdquo;</strong>.
+        <strong>&ldquo;{role.name}&rdquo;</strong> will be moved to the trash.
         <br />
         There {adminCount === 1 ? "is" : "are"}{" "}
         <strong>{adminCount}</strong>{" "}
@@ -56,10 +55,9 @@ export function RoleRowActions({
       </>
     ) : (
       <>
-        This will permanently delete{" "}
-        <strong>&ldquo;{role.name}&rdquo;</strong>.
+        <strong>&ldquo;{role.name}&rdquo;</strong> will be moved to the trash.
         <br />
-        This action cannot be undone.
+        You can restore it within 30 days.
       </>
     );
 

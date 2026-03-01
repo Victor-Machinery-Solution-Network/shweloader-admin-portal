@@ -58,7 +58,7 @@ export function AttachmentCategoriesClient({
       const counts = await getAttachmentCategoryLinkedCounts(ids);
 
       const names = selected.map((c) => `"${c.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} categories (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} categories (${names})`} will be moved to the trash.`;
 
       const totals = { attachmentModels: 0, brands: 0, total: 0 };
       for (const c of Object.values(counts)) {

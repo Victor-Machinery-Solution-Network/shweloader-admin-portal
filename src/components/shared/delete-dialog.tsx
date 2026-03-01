@@ -27,8 +27,8 @@ export function DeleteDialog({
   open,
   onOpenChange,
   onConfirm,
-  title = 'Are you sure?',
-  description = 'This action cannot be undone. This will permanently delete this item.',
+  title = 'Move to trash?',
+  description = 'This item will be moved to the trash. You can restore it within 30 days.',
   isPending = false,
 }: DeleteDialogProps) {
   return (

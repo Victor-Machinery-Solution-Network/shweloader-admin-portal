@@ -111,7 +111,7 @@ export function EnquiryRowActions({
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete enquiry?"
-        description={`This will permanently delete the enquiry from "${enquiry.user_name ?? "Unknown"}". This action cannot be undone.`}
+        description={`The enquiry from "${enquiry.user_name ?? "Unknown"}" will be moved to the trash. You can restore it within 30 days.`}
         isPending={isPending}
       />
     </>

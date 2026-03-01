@@ -60,6 +60,9 @@ export const ROUTES = {
 
   // Notifications
   NOTIFICATIONS: "/notifications",
+
+  // Trash
+  TRASH: "/trash",
 } as const;
 
 export const ITEMS_PER_PAGE = 20;
@@ -100,4 +103,5 @@ export const CACHE_TAGS = {
   CUSTOM_FIELD_TEMPLATES: "custom-field-templates",
   PERMISSIONS: "permissions",
   NOTIFICATIONS: "notifications",
+  TRASH: "trash",
 } as const;

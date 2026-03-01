@@ -6,7 +6,8 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
-import { processFileField, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
@@ -71,10 +72,9 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
 
 export async function deleteAttachmentCategory(id: number) {
   try {
-    await requirePermission("attachment_categories", "delete");
-    const existing = await attachmentCategoryService.getById(id);
-    await attachmentCategoryService.delete(id);
-    await deleteFile(existing?.image_url);
+    const deletedBy = await requirePermission("attachment_categories", "delete");
+    await attachmentCategoryService.softDelete(id, deletedBy);
+    saveTrashMetadata("attachment_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -86,22 +86,15 @@ export async function deleteAttachmentCategory(id: number) {
 }
 
 export async function deleteAttachmentCategories(ids: number[]) {
-  await requirePermission("attachment_categories", "delete");
+  const deletedBy = await requirePermission("attachment_categories", "delete");
   assertBulkLimit(ids);
-  const existingRecords = await Promise.all(
-    ids.map((id) => attachmentCategoryService.getById(id)),
-  );
 
   const results = await Promise.allSettled(
-    ids.map((id) => attachmentCategoryService.delete(id)),
+    ids.map(async (id) => {
+      await attachmentCategoryService.softDelete(id, deletedBy);
+      saveTrashMetadata("attachment_category", id, deletedBy).catch(() => {});
+    }),
   );
-
-  const deletePromises = results.map((r, i) => {
-    if (r.status === "fulfilled") {
-      return deleteFile(existingRecords[i]?.image_url);
-    }
-  });
-  await Promise.allSettled(deletePromises.filter(Boolean));
 
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
@@ -138,7 +131,7 @@ export async function getAttachmentCategoryLinkedCounts(
 
   const [modelResults, brandResults] = await Promise.all([
     d1.query<{ category_id: number; count: number }>(
-      `SELECT category_id, COUNT(*) as count FROM attachment_model WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+      `SELECT category_id, COUNT(*) as count FROM attachment_model WHERE category_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY category_id`,
       categoryIds,
     ),
     d1.query<{ category_id: number; count: number }>(
@@ -198,21 +191,21 @@ export async function getAttachmentModelsPageData() {
         'brand_id', am.brand_id, 'category_id', am.category_id,
         'pdf_url', am.pdf_url, 'created_by', am.created_by,
         'created_at', am.created_at, 'updated_at', am.updated_at
-      )) FROM (SELECT * FROM attachment_model ORDER BY name) am
+      )) FROM (SELECT * FROM attachment_model WHERE deleted_at IS NULL ORDER BY name) am
       ) AS models,
 
       (SELECT json_group_array(json_object(
         'category_id', ac.category_id, 'name', ac.name,
         'image_url', ac.image_url, 'display_order', ac.display_order,
         'created_by', ac.created_by, 'created_at', ac.created_at
-      )) FROM (SELECT * FROM attachment_category ORDER BY display_order) ac
+      )) FROM (SELECT * FROM attachment_category WHERE deleted_at IS NULL ORDER BY display_order) ac
       ) AS categories,
 
       (SELECT json_group_array(json_object(
         'brand_id', b.brand_id, 'name', b.name,
         'created_by', b.created_by, 'created_at', b.created_at,
         'updated_at', b.updated_at
-      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
       ) AS brands,
 
       (SELECT json_group_array(json_object(
@@ -222,10 +215,35 @@ export async function getAttachmentModelsPageData() {
   `);
 
   const raw = results[0];
+
+  const models = raw?.models
+    ? JSON.parse(raw.models).map((m: Record<string, unknown>) => ({
+        ...m,
+        deleted_at: null as string | null,
+        deleted_by: null as number | null,
+      }))
+    : [];
+
+  const categories = raw?.categories
+    ? JSON.parse(raw.categories).map((c: Record<string, unknown>) => ({
+        ...c,
+        deleted_at: null as string | null,
+        deleted_by: null as number | null,
+      }))
+    : [];
+
+  const brands = raw?.brands
+    ? JSON.parse(raw.brands).map((b: Record<string, unknown>) => ({
+        ...b,
+        deleted_at: null as string | null,
+        deleted_by: null as number | null,
+      }))
+    : [];
+
   return {
-    models: raw?.models ? JSON.parse(raw.models) : [],
-    categories: raw?.categories ? JSON.parse(raw.categories) : [],
-    brands: raw?.brands ? JSON.parse(raw.brands) : [],
+    models,
+    categories,
+    brands,
     categoryBrandLinks: raw?.category_brand_links ? JSON.parse(raw.category_brand_links) : [],
   };
 }

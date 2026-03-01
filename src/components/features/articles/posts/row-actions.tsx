@@ -68,7 +68,7 @@ export function RowActions({ article }: RowActionsProps) {
         onOpenChange={setShowDelete}
         onConfirm={handleDelete}
         title="Delete article?"
-        description={`This will permanently delete "${article.title}". This action cannot be undone.`}
+        description={`"${article.title}" will be moved to the trash. You can restore it within 30 days.`}
         isPending={isPending}
       />
     </>

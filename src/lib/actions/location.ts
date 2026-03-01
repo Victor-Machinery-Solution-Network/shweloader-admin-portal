@@ -9,6 +9,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import type { StateRegion, DistrictWithParent, TownshipWithParents } from "@/types/location";
 
 // ─── State/Region Actions ───────────────────────────────────────────────────
@@ -54,8 +55,9 @@ export async function updateStateRegion(id: number, formData: FormData) {
 
 export async function deleteStateRegion(id: number) {
   try {
-    await requirePermission("locations", "delete");
-    await stateRegionService.delete(id);
+    const deletedBy = await requirePermission("locations", "delete");
+    await stateRegionService.softDelete(id, deletedBy);
+    saveTrashMetadata("state_region", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
@@ -100,8 +102,9 @@ export async function updateDistrict(id: number, formData: FormData) {
 
 export async function deleteDistrict(id: number) {
   try {
-    await requirePermission("locations", "delete");
-    await districtService.delete(id);
+    const deletedBy = await requirePermission("locations", "delete");
+    await districtService.softDelete(id, deletedBy);
+    saveTrashMetadata("district", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
@@ -146,8 +149,9 @@ export async function updateTownship(id: number, formData: FormData) {
 
 export async function deleteTownship(id: number) {
   try {
-    await requirePermission("locations", "delete");
-    await townshipService.delete(id);
+    const deletedBy = await requirePermission("locations", "delete");
+    await townshipService.softDelete(id, deletedBy);
+    saveTrashMetadata("township", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
     return { success: true };
   } catch (error) {
@@ -166,6 +170,7 @@ export async function getTownshipsWithParents(): Promise<TownshipWithParents[]> 
     FROM township t
     JOIN district d ON t.district_id = d.district_id
     JOIN state_region sr ON d.state_region_id = sr.state_region_id
+    WHERE t.deleted_at IS NULL AND d.deleted_at IS NULL AND sr.deleted_at IS NULL
     ORDER BY sr.name, d.name, t.name`,
   );
   return result.results;
@@ -180,6 +185,7 @@ export async function getDistrictsWithParents(): Promise<DistrictWithParent[]> {
       sr.name AS state_region_name
     FROM district d
     JOIN state_region sr ON d.state_region_id = sr.state_region_id
+    WHERE d.deleted_at IS NULL AND sr.deleted_at IS NULL
     ORDER BY sr.name, d.name`,
   );
   return result.results;
@@ -190,21 +196,21 @@ export async function getDistrictsWithParents(): Promise<DistrictWithParent[]> {
 
 export async function getDistrictCount(): Promise<Record<number, number>> {
   const result = await d1.query<{ state_region_id: number; count: number }>(
-    `SELECT state_region_id, COUNT(*) as count FROM district GROUP BY state_region_id`,
+    `SELECT state_region_id, COUNT(*) as count FROM district WHERE deleted_at IS NULL GROUP BY state_region_id`,
   );
   return Object.fromEntries(result.results.map((r) => [r.state_region_id, r.count]));
 }
 
 export async function getTownshipCount(): Promise<Record<number, number>> {
   const result = await d1.query<{ district_id: number; count: number }>(
-    `SELECT district_id, COUNT(*) as count FROM township GROUP BY district_id`,
+    `SELECT district_id, COUNT(*) as count FROM township WHERE deleted_at IS NULL GROUP BY district_id`,
   );
   return Object.fromEntries(result.results.map((r) => [r.district_id, r.count]));
 }
 
 export async function getListingCount(): Promise<Record<number, number>> {
   const result = await d1.query<{ township_id: number; count: number }>(
-    `SELECT township_id, COUNT(*) as count FROM product_list WHERE township_id IS NOT NULL GROUP BY township_id`,
+    `SELECT township_id, COUNT(*) as count FROM product_list WHERE township_id IS NOT NULL AND deleted_at IS NULL GROUP BY township_id`,
   );
   return Object.fromEntries(result.results.map((r) => [r.township_id, r.count]));
 }
@@ -227,15 +233,17 @@ export async function getLocationsPageData() {
     SELECT
       (SELECT json_group_array(json_object(
         'state_region_id', sr.state_region_id, 'name', sr.name,
-        'type', sr.type, 'created_by', sr.created_by, 'created_at', sr.created_at
-      )) FROM (SELECT * FROM state_region ORDER BY name) sr
+        'type', sr.type, 'created_by', sr.created_by, 'created_at', sr.created_at,
+        'deleted_at', null, 'deleted_by', null
+      )) FROM (SELECT * FROM state_region WHERE deleted_at IS NULL ORDER BY name) sr
       ) AS state_regions,
 
       (SELECT json_group_array(json_object(
         'district_id', d.district_id, 'name', d.name,
         'state_region_id', d.state_region_id,
-        'created_by', d.created_by, 'created_at', d.created_at
-      )) FROM (SELECT * FROM district ORDER BY name) d
+        'created_by', d.created_by, 'created_at', d.created_at,
+        'deleted_at', null, 'deleted_by', null
+      )) FROM (SELECT * FROM district WHERE deleted_at IS NULL ORDER BY name) d
       ) AS districts,
 
       (SELECT json_group_array(json_object(
@@ -244,6 +252,7 @@ export async function getLocationsPageData() {
         'state_region_name', sr.name, 'created_at', d.created_at
       )) FROM district d
       JOIN state_region sr ON d.state_region_id = sr.state_region_id
+      WHERE d.deleted_at IS NULL AND sr.deleted_at IS NULL
       ORDER BY sr.name, d.name
       ) AS districts_with_parents,
 
@@ -256,22 +265,23 @@ export async function getLocationsPageData() {
       )) FROM township t
       JOIN district d ON t.district_id = d.district_id
       JOIN state_region sr ON d.state_region_id = sr.state_region_id
+      WHERE t.deleted_at IS NULL AND d.deleted_at IS NULL AND sr.deleted_at IS NULL
       ORDER BY sr.name, d.name, t.name
       ) AS townships_with_parents,
 
       (SELECT json_group_array(json_object(
         'id', state_region_id, 'count', cnt
-      )) FROM (SELECT state_region_id, COUNT(*) as cnt FROM district GROUP BY state_region_id)
+      )) FROM (SELECT state_region_id, COUNT(*) as cnt FROM district WHERE deleted_at IS NULL GROUP BY state_region_id)
       ) AS district_counts,
 
       (SELECT json_group_array(json_object(
         'id', district_id, 'count', cnt
-      )) FROM (SELECT district_id, COUNT(*) as cnt FROM township GROUP BY district_id)
+      )) FROM (SELECT district_id, COUNT(*) as cnt FROM township WHERE deleted_at IS NULL GROUP BY district_id)
       ) AS township_counts,
 
       (SELECT json_group_array(json_object(
         'id', township_id, 'count', cnt
-      )) FROM (SELECT township_id, COUNT(*) as cnt FROM product_list WHERE township_id IS NOT NULL GROUP BY township_id)
+      )) FROM (SELECT township_id, COUNT(*) as cnt FROM product_list WHERE township_id IS NOT NULL AND deleted_at IS NULL GROUP BY township_id)
       ) AS listing_counts
   `);
 
@@ -296,10 +306,13 @@ export async function getLocationsPageData() {
 // ─── Bulk Delete ────────────────────────────────────────────────────────────
 
 export async function deleteStateRegions(ids: number[]) {
-  await requirePermission("locations", "delete");
+  const deletedBy = await requirePermission("locations", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => stateRegionService.delete(id)),
+    ids.map(async (id) => {
+      await stateRegionService.softDelete(id, deletedBy);
+      saveTrashMetadata("state_region", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results
@@ -321,10 +334,13 @@ export async function deleteStateRegions(ids: number[]) {
 }
 
 export async function deleteDistricts(ids: number[]) {
-  await requirePermission("locations", "delete");
+  const deletedBy = await requirePermission("locations", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => districtService.delete(id)),
+    ids.map(async (id) => {
+      await districtService.softDelete(id, deletedBy);
+      saveTrashMetadata("district", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results
@@ -346,10 +362,13 @@ export async function deleteDistricts(ids: number[]) {
 }
 
 export async function deleteTownships(ids: number[]) {
-  await requirePermission("locations", "delete");
+  const deletedBy = await requirePermission("locations", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => townshipService.delete(id)),
+    ids.map(async (id) => {
+      await townshipService.softDelete(id, deletedBy);
+      saveTrashMetadata("township", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results

@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
 
@@ -179,7 +180,7 @@ export async function createBrand(formData: FormData) {
 
     if (parsedCategoryIds.length > 0 || parsedSubCategoryIds.length > 0) {
       const brandResult = await d1.query<{ brand_id: number }>(
-        "SELECT brand_id FROM product_brand WHERE name = ?",
+        "SELECT brand_id FROM product_brand WHERE name = ? AND deleted_at IS NULL",
         [name.trim()],
       );
       const brandId = brandResult.results[0]?.brand_id;
@@ -248,8 +249,9 @@ export async function updateBrand(id: number, formData: FormData) {
 
 export async function deleteBrand(id: number) {
   try {
-    await requirePermission("brands", "delete");
-    await brandService.delete(id);
+    const deletedBy = await requirePermission("brands", "delete");
+    await brandService.softDelete(id, deletedBy);
+    saveTrashMetadata("brand", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.BRANDS);
     return { success: true };
   } catch (error) {
@@ -277,11 +279,11 @@ export async function getBrandLinkedCounts(
 
   const [eqResults, atResults] = await Promise.all([
     d1.query<{ brand_id: number; count: number }>(
-      `SELECT brand_id, COUNT(*) as count FROM equipment_model WHERE brand_id IN (${placeholders}) GROUP BY brand_id`,
+      `SELECT brand_id, COUNT(*) as count FROM equipment_model WHERE brand_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY brand_id`,
       brandIds,
     ),
     d1.query<{ brand_id: number; count: number }>(
-      `SELECT brand_id, COUNT(*) as count FROM attachment_model WHERE brand_id IN (${placeholders}) GROUP BY brand_id`,
+      `SELECT brand_id, COUNT(*) as count FROM attachment_model WHERE brand_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY brand_id`,
       brandIds,
     ),
   ]);
@@ -362,17 +364,17 @@ export async function getBrandsPageData() {
           (SELECT json_group_array(escb.sub_category_id)
            FROM equipment_sub_category_brand escb WHERE escb.brand_id = b.brand_id), '[]'),
         'equipment_model_count',
-          (SELECT COUNT(*) FROM equipment_model em WHERE em.brand_id = b.brand_id),
+          (SELECT COUNT(*) FROM equipment_model em WHERE em.brand_id = b.brand_id AND em.deleted_at IS NULL),
         'attachment_model_count',
-          (SELECT COUNT(*) FROM attachment_model am WHERE am.brand_id = b.brand_id)
-      )) FROM (SELECT * FROM product_brand ORDER BY name) b
+          (SELECT COUNT(*) FROM attachment_model am WHERE am.brand_id = b.brand_id AND am.deleted_at IS NULL)
+      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
       ) AS brands,
 
       (SELECT json_group_array(json_object(
         'category_id', ac.category_id, 'name', ac.name,
         'image_url', ac.image_url, 'display_order', ac.display_order,
         'created_by', ac.created_by, 'created_at', ac.created_at
-      )) FROM (SELECT * FROM attachment_category ORDER BY display_order) ac
+      )) FROM (SELECT * FROM attachment_category WHERE deleted_at IS NULL ORDER BY display_order) ac
       ) AS attachment_categories,
 
       (SELECT json_group_array(json_object(
@@ -380,14 +382,14 @@ export async function getBrandsPageData() {
         'name', sc.name, 'image_url', sc.image_url,
         'display_order', sc.display_order, 'created_by', sc.created_by,
         'created_at', sc.created_at
-      )) FROM (SELECT * FROM equipment_sub_category ORDER BY display_order) sc
+      )) FROM (SELECT * FROM equipment_sub_category WHERE deleted_at IS NULL ORDER BY display_order) sc
       ) AS sub_categories,
 
       (SELECT json_group_array(json_object(
         'category_id', mc.category_id, 'name', mc.name,
         'image_url', mc.image_url, 'display_order', mc.display_order,
         'created_by', mc.created_by, 'created_at', mc.created_at
-      )) FROM (SELECT * FROM equipment_main_category ORDER BY display_order) mc
+      )) FROM (SELECT * FROM equipment_main_category WHERE deleted_at IS NULL ORDER BY display_order) mc
       ) AS main_categories
   `);
 
@@ -400,6 +402,8 @@ export async function getBrandsPageData() {
     created_by: b.created_by,
     created_at: b.created_at,
     updated_at: b.updated_at,
+    deleted_at: null as string | null,
+    deleted_by: null as number | null,
     categoryIds: typeof b.category_ids === "string"
       ? (JSON.parse(b.category_ids) as number[])
       : b.category_ids,

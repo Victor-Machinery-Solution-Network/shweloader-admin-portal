@@ -66,6 +66,7 @@ const PERMISSIONS = [
   { name: "edit", display_order: 3 },
   { name: "delete", display_order: 4 },
   { name: "approve", display_order: 5 },
+  { name: "restore", display_order: 6 },
 ];
 
 const FEATURES = [
@@ -94,11 +95,12 @@ const FEATURES = [
   { name: "article_categories", group_name: "Content", display_order: 18 },
   { name: "announcements", group_name: "Content", display_order: 19 },
   { name: "carousels", group_name: "Content", display_order: 20 },
-  // Administration (21–24)
+  // Administration (21–25)
   { name: "admin_users", group_name: "Administration", display_order: 21 },
   { name: "roles", group_name: "Administration", display_order: 22 },
   { name: "listing_templates", group_name: "Administration", display_order: 23 },
   { name: "app_settings", group_name: "Administration", display_order: 24 },
+  { name: "trash", group_name: "Administration", display_order: 25 },
 ];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
@@ -112,6 +114,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   partners: ["read", "approve"],
   articles: ["create", "read", "edit", "delete", "approve"],
   app_settings: ["read", "edit"],
+  trash: ["read", "restore", "delete"],
 };
 
 const DEFAULT_PERMS = ["create", "read", "edit", "delete"];

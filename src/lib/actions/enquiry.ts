@@ -4,6 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import type { EnquiryWithDetails, EnquiryStatusType } from "@/types/enquiry";
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ export async function getEnquiriesWithDetails(): Promise<
      FROM enquiry e
      LEFT JOIN enquiry_status_type est ON e.enquiry_status_id = est.id
      LEFT JOIN app_user c ON e.app_user_id = c.app_user_id
+     WHERE e.deleted_at IS NULL
      ORDER BY e.created_at DESC`,
   );
   return result.results;
@@ -96,8 +98,12 @@ export async function updateEnquiryStatus(
 /** Delete a single enquiry */
 export async function deleteEnquiry(enquiryId: number) {
   try {
-    await requirePermission("enquiries", "delete");
-    await d1.query("DELETE FROM enquiry WHERE id = ?", [enquiryId]);
+    const deletedBy = await requirePermission("enquiries", "delete");
+    await d1.query(
+      "UPDATE enquiry SET deleted_at = ?, deleted_by = ? WHERE id = ?",
+      [new Date().toISOString(), deletedBy, enquiryId],
+    );
+    saveTrashMetadata("enquiry", enquiryId, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ENQUIRIES);
     return { success: true };
   } catch (error) {
@@ -111,15 +117,19 @@ export async function deleteEnquiry(enquiryId: number) {
 /** Bulk delete enquiries */
 export async function deleteEnquiries(ids: number[]) {
   if (ids.length === 0) return { success: true };
-  await requirePermission("enquiries", "delete");
+  const deletedBy = await requirePermission("enquiries", "delete");
   assertBulkLimit(ids);
 
   try {
     const placeholders = ids.map(() => "?").join(",");
+    const now = new Date().toISOString();
     await d1.query(
-      `DELETE FROM enquiry WHERE id IN (${placeholders})`,
-      ids,
+      `UPDATE enquiry SET deleted_at = ?, deleted_by = ? WHERE id IN (${placeholders})`,
+      [now, deletedBy, ...ids],
     );
+    for (const id of ids) {
+      saveTrashMetadata("enquiry", id, deletedBy).catch(() => {});
+    }
     invalidateTag(CACHE_TAGS.ENQUIRIES);
     return { success: true };
   } catch (error) {

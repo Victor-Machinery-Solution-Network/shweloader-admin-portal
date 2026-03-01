@@ -36,8 +36,8 @@ export function RowActions({ category, linkedCount }: RowActionsProps) {
 
   const deleteDescription =
     linkedCount > 0
-      ? <>This will permanently delete <strong>&ldquo;{category.name}&rdquo;</strong>.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "article" : "articles"} linked to this category. Those articles will have their category unset.</>
-      : <>This will permanently delete <strong>&ldquo;{category.name}&rdquo;</strong>.<br />This action cannot be undone.</>;
+      ? <><strong>&ldquo;{category.name}&rdquo;</strong> will be moved to the trash.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "article" : "articles"} linked to this category. Those articles will have their category unset.</>
+      : <><strong>&ldquo;{category.name}&rdquo;</strong> will be moved to the trash.<br />You can restore it within 30 days.</>;
 
   const actions = [
     ...(canEdit ? [{ label: "Edit" as const, icon: Pencil, onClick: () => setShowEdit(true) }] : []),

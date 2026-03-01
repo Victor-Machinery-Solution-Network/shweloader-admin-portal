@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Article Category Actions ────────────────────────────────────────────────
 
@@ -53,8 +54,9 @@ export async function updateArticleCategory(id: number, formData: FormData) {
 
 export async function deleteArticleCategory(id: number) {
   try {
-    await requirePermission("article_categories", "delete");
-    await articleCategoryService.delete(id);
+    const deletedBy = await requirePermission("article_categories", "delete");
+    await articleCategoryService.softDelete(id, deletedBy);
+    saveTrashMetadata("article_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     return { success: true };
   } catch (error) {
@@ -74,7 +76,7 @@ export async function getArticleCount(
 
   const placeholders = categoryIds.map(() => "?").join(",");
   const result = await d1.query<{ category_id: number; count: number }>(
-    `SELECT category_id, COUNT(*) as count FROM article WHERE category_id IN (${placeholders}) GROUP BY category_id`,
+    `SELECT category_id, COUNT(*) as count FROM article WHERE category_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY category_id`,
     categoryIds,
   );
 
@@ -89,10 +91,13 @@ export async function getArticleCount(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteArticleCategories(ids: number[]) {
-  await requirePermission("article_categories", "delete");
+  const deletedBy = await requirePermission("article_categories", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => articleCategoryService.delete(id)),
+    ids.map(async (id) => {
+      await articleCategoryService.softDelete(id, deletedBy);
+      saveTrashMetadata("article_category", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results

@@ -7,11 +7,12 @@ import type {
 
 export const articleCategoryService = createService<ArticleCategory, "category_id">(
   "article_category",
-  { primaryKey: "category_id" },
+  { primaryKey: "category_id", softDelete: true },
 );
 
 export const articleService = createService<Article, "article_id">("article", {
   primaryKey: "article_id",
+  softDelete: true,
 });
 
 export const articleStatusTypeService = createService<ArticleStatusType>(

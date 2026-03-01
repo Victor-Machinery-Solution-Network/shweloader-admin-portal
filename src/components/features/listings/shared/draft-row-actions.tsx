@@ -63,9 +63,8 @@ export function DraftRowActions({ draft }: DraftRowActionsProps) {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete draft?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the draft
-                {draft.model_name ? ` "${draft.model_name}"` : ""}.
-                This action cannot be undone.
+                The draft{draft.model_name ? ` "${draft.model_name}"` : ""} will
+                be moved to the trash. You can restore it within 30 days.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

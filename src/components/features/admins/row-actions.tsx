@@ -85,10 +85,10 @@ export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
         title="Delete admin?"
         description={
           <>
-            This will permanently delete{" "}
-            <strong>&ldquo;{admin.username}&rdquo;</strong>.
+            <strong>&ldquo;{admin.username}&rdquo;</strong> will be moved to the
+            trash.
             <br />
-            This action cannot be undone.
+            You can restore it within 30 days.
           </>
         }
         isPending={isPending}

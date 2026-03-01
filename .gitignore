@@ -40,8 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# IDE/Local settings
-.claude/settings.local.json
+# Claude Code
+.claude/
 
 # database schema
 *.sql

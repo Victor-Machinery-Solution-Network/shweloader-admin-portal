@@ -77,8 +77,8 @@ export function TemplateRowActions({ template }: TemplateRowActionsProps) {
         title="Delete template?"
         description={
           <>
-            This will permanently delete{" "}
-            <strong>&ldquo;{template.name}&rdquo;</strong>.
+            <strong>&ldquo;{template.name}&rdquo;</strong> will be moved to the
+            trash.
             <br />
             Existing listings using these fields will not be affected.
           </>

@@ -13,6 +13,8 @@ export interface ProductList {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the product_image table in D1 */
@@ -50,6 +52,8 @@ export interface SaleListing {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the rent_listing table in D1 */
@@ -68,6 +72,8 @@ export interface RentListing {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the featured_listing table in D1 */

@@ -47,7 +47,7 @@ export function BusinessTypesClient({
       const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
       const names = selected.map((bt) => `"${bt.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} business types (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} business types (${names})`} will be moved to the trash.`;
 
       if (totalLinked > 0) {
         msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "user" : "users"} using ${selected.length === 1 ? "this business type" : "these business types"}.`;

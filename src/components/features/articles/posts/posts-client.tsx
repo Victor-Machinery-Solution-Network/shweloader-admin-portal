@@ -121,7 +121,7 @@ export function PostsClient({
     async (selected: ArticleWithDetails[]) => {
       const count = selected.length;
       const plural = count === 1 ? "article" : "articles";
-      return `This will permanently delete ${count} ${plural}. This action cannot be undone.`;
+      return `${count} ${plural} will be moved to the trash. You can restore them within 30 days.`;
     },
     [],
   );

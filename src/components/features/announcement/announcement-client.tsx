@@ -59,7 +59,7 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
   const buildDescription = useCallback(async (selected: AnnouncementText[]) => {
     const count = selected.length;
     const plural = count === 1 ? "announcement" : "announcements";
-    return `This will permanently delete ${count} ${plural}. This action cannot be undone.`;
+    return `${count} ${plural} will be moved to the trash. You can restore them within 30 days.`;
   }, []);
 
   const renderToolbar = useCallback(

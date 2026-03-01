@@ -52,7 +52,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
     async (selected: CustomFieldTemplateWithFields[]) => {
       const count = selected.length;
       const plural = count === 1 ? "template" : "templates";
-      return `This will permanently delete ${count} ${plural}. Existing listings using these fields will not be affected.`;
+      return `${count} ${plural} will be moved to the trash. Existing listings using these fields will not be affected.`;
     },
     [],
   );

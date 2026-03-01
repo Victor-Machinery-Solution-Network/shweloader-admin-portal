@@ -6,4 +6,6 @@ export interface AnnouncementText {
   created_by: number | null;
   created_at: string;
   display_order: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }

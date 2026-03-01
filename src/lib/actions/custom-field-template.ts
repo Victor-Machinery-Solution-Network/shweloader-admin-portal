@@ -3,6 +3,7 @@
 import { customFieldTemplateService } from "@/lib/services/custom-field-template";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import { CACHE_TAGS } from "@/lib/constants";
 import type {
   CustomFieldDefinition,
@@ -96,8 +97,9 @@ export async function updateCustomFieldTemplate(
 
 export async function deleteCustomFieldTemplate(id: number) {
   try {
-    await requirePermission("listing_templates", "delete");
-    await customFieldTemplateService.delete(id);
+    const deletedBy = await requirePermission("listing_templates", "delete");
+    await customFieldTemplateService.softDelete(id, deletedBy);
+    saveTrashMetadata("custom_field_template", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
     return { success: true };
   } catch (error) {
@@ -111,10 +113,13 @@ export async function deleteCustomFieldTemplate(id: number) {
 // ─── Bulk Delete ────────────────────────────────────────────────────────────
 
 export async function deleteCustomFieldTemplates(ids: number[]) {
-  await requirePermission("listing_templates", "delete");
+  const deletedBy = await requirePermission("listing_templates", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => customFieldTemplateService.delete(id)),
+    ids.map(async (id) => {
+      await customFieldTemplateService.softDelete(id, deletedBy);
+      saveTrashMetadata("custom_field_template", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results

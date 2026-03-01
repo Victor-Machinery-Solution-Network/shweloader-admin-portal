@@ -95,16 +95,16 @@ export function BrandCard({
   const deleteDescription =
     linkedCount > 0 ? (
       <>
-        This will permanently delete <strong>&ldquo;{brand.name}&rdquo;</strong>.
+        <strong>&ldquo;{brand.name}&rdquo;</strong> will be moved to the trash.
         <br />
         This brand is linked to <strong>{linkedSummary}</strong>. Deleting it
         will remove the brand reference from those models.
       </>
     ) : (
       <>
-        This will permanently delete <strong>&ldquo;{brand.name}&rdquo;</strong>.
+        <strong>&ldquo;{brand.name}&rdquo;</strong> will be moved to the trash.
         <br />
-        This action cannot be undone.
+        You can restore it within 30 days.
       </>
     );
 

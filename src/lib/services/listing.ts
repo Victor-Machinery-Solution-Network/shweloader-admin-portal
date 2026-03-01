@@ -10,6 +10,7 @@ import type {
 
 export const productListService = createService<ProductList>("product_list", {
   primaryKey: "id",
+  softDelete: true,
 });
 
 export const productImageService = createService<ProductImage, "image_id">(
@@ -19,10 +20,12 @@ export const productImageService = createService<ProductImage, "image_id">(
 
 export const saleListingService = createService<SaleListing>("sale_listing", {
   primaryKey: "id",
+  softDelete: true,
 });
 
 export const rentListingService = createService<RentListing>("rent_listing", {
   primaryKey: "id",
+  softDelete: true,
 });
 
 export const featuredListingService = createService<FeaturedListing>(

@@ -9,6 +9,8 @@ export interface Enquiry {
   created_at: string;
   updated_at: string;
   updated_by: number | null;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Enquiry with JOINed details for display */

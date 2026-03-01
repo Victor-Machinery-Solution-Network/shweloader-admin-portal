@@ -10,6 +10,8 @@ export interface ArticleCategory {
   name: string;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the article table in D1 */
@@ -29,6 +31,8 @@ export interface Article {
   author_name: string | null;
   cover_image_url: string | null;
   estimated_read_time: number | null;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Article with resolved display names for table rendering */

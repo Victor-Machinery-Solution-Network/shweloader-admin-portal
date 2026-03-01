@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Announcement Text Actions ──────────────────────────────────────────────
 
@@ -60,8 +61,9 @@ export async function updateAnnouncement(id: number, formData: FormData) {
 
 export async function deleteAnnouncement(id: number) {
   try {
-    await requirePermission("announcements", "delete");
-    await announcementTextService.delete(id);
+    const deletedBy = await requirePermission("announcements", "delete");
+    await announcementTextService.softDelete(id, deletedBy);
+    saveTrashMetadata("announcement", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
     return { success: true };
   } catch (error) {
@@ -73,10 +75,13 @@ export async function deleteAnnouncement(id: number) {
 }
 
 export async function deleteAnnouncements(ids: number[]) {
-  await requirePermission("announcements", "delete");
+  const deletedBy = await requirePermission("announcements", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => announcementTextService.delete(id)),
+    ids.map(async (id) => {
+      await announcementTextService.softDelete(id, deletedBy);
+      saveTrashMetadata("announcement", id, deletedBy).catch(() => {});
+    }),
   );
 
   const errors = results

@@ -6,6 +6,8 @@ export interface EquipmentMainCategory {
   display_order: string;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the equipment_sub_category table in D1 */
@@ -17,6 +19,8 @@ export interface EquipmentSubCategory {
   display_order: string;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Matches the equipment_model table in D1 */
@@ -29,4 +33,6 @@ export interface EquipmentModel {
   created_by: number | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }

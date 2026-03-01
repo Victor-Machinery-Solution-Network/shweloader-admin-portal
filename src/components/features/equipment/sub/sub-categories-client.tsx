@@ -85,7 +85,7 @@ export function SubCategoriesClient({
       const counts = await getSubCategoryLinkedCounts(ids);
 
       const names = selected.map((s) => `"${s.name}"`).join(", ");
-      let msg = `This will permanently delete ${selected.length === 1 ? names : `${selected.length} sub categories (${names})`}.`;
+      let msg = `${selected.length === 1 ? names : `${selected.length} sub categories (${names})`} will be moved to the trash.`;
 
       const totals = { equipmentModels: 0, brands: 0, total: 0 };
       for (const c of Object.values(counts)) {

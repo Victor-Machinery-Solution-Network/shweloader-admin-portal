@@ -5,6 +5,8 @@ export interface Role {
   description: string | null;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** JOIN result: feature_permission + feature + permission */

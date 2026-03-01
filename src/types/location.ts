@@ -4,6 +4,8 @@ export interface StateRegion {
   type: "state" | "region" | "union_territory";
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 export interface District {
@@ -12,6 +14,8 @@ export interface District {
   state_region_id: number;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 export interface Township {
@@ -20,6 +24,8 @@ export interface Township {
   district_id: number;
   created_by: number | null;
   created_at: string;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Flattened view for display: district with parent state/region name */

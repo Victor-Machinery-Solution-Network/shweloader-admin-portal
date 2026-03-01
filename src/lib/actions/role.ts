@@ -7,6 +7,7 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { RoleWithPermissionCount, FeaturePermission } from "@/types/role";
 import { auditLog } from "@/lib/actions/audit";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 // ─── Data Fetching Helpers ──────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ export async function getRolesWithPermissionCount(): Promise<
             COUNT(rp.feature_permission_id) as permission_count
      FROM role r
      LEFT JOIN role_permission rp ON r.role_id = rp.role_id
+     WHERE r.deleted_at IS NULL
      GROUP BY r.role_id
      ORDER BY r.created_at ASC`,
   );
@@ -122,7 +124,7 @@ export async function createRole(formData: FormData) {
 
     if (permissionIds.length > 0) {
       const roleResult = await d1.query<{ role_id: number }>(
-        "SELECT role_id FROM role WHERE name = ? ORDER BY created_at DESC LIMIT 1",
+        "SELECT role_id FROM role WHERE name = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1",
         [name.trim()],
       );
       const roleId = roleResult.results[0]?.role_id;
@@ -179,13 +181,14 @@ export async function updateRole(roleId: number, formData: FormData) {
 
 export async function deleteRole(roleId: number) {
   try {
-    const actorId = await requirePermission("roles", "delete");
+    const deletedBy = await requirePermission("roles", "delete");
     if (roleId === SUPER_ADMIN_ROLE_ID) {
       return { success: false, error: "The Super Admin role cannot be deleted" };
     }
 
-    await roleService.delete(roleId);
-    auditLog(actorId, `role_deleted | role=${roleId}`);
+    await roleService.softDelete(roleId, deletedBy);
+    saveTrashMetadata("role", roleId, deletedBy).catch(() => {});
+    auditLog(deletedBy, `role_deleted | role=${roleId}`);
     invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
   } catch (error) {
@@ -197,14 +200,15 @@ export async function deleteRole(roleId: number) {
 }
 
 export async function deleteRoles(ids: number[]) {
-  await requirePermission("roles", "delete");
+  const deletedBy = await requirePermission("roles", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       if (id === SUPER_ADMIN_ROLE_ID) {
         throw new Error("The Super Admin role cannot be deleted");
       }
-      return roleService.delete(id);
+      await roleService.softDelete(id, deletedBy);
+      saveTrashMetadata("role", id, deletedBy).catch(() => {});
     }),
   );
 
@@ -234,7 +238,7 @@ export async function getAdminCountByRole(
 
   const placeholders = roleIds.map(() => "?").join(",");
   const result = await d1.query<{ role_id: number; count: number }>(
-    `SELECT role_id, COUNT(*) as count FROM admin_user WHERE role_id IN (${placeholders}) GROUP BY role_id`,
+    `SELECT role_id, COUNT(*) as count FROM admin_user WHERE role_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY role_id`,
     roleIds,
   );
 
@@ -270,6 +274,7 @@ export async function getRolesPageData() {
                COUNT(rp.feature_permission_id) as permission_count
         FROM role r
         LEFT JOIN role_permission rp ON r.role_id = rp.role_id
+        WHERE r.deleted_at IS NULL
         GROUP BY r.role_id
         ORDER BY r.created_at ASC
       ) t
@@ -296,7 +301,7 @@ export async function getRolesPageData() {
       (SELECT json_group_array(json_object(
         'id', t.role_id, 'count', t.cnt
       )) FROM (
-        SELECT role_id, COUNT(*) as cnt FROM admin_user GROUP BY role_id
+        SELECT role_id, COUNT(*) as cnt FROM admin_user WHERE deleted_at IS NULL GROUP BY role_id
       ) t
       ) AS admin_counts
   `);
