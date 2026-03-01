@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import {
   ChevronRight,
@@ -15,7 +15,10 @@ import {
   Plus,
   FileText,
   FileSpreadsheet,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +32,10 @@ import {
   ActiveFilterChips,
 } from "@/components/ui/data-table-filter";
 import { useDataTableFilters } from "@/hooks/use-data-table-filters";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { BrandForm } from "./brand-form";
+import { DeleteDialog } from "@/components/shared/delete-dialog";
+import { deleteBrand } from "@/lib/actions/brand";
 import { cn } from "@/lib/utils";
 import type { FilterConfig } from "@/types/data-table-filters";
 import type { ProductBrandWithCategories } from "@/types/brand";
@@ -69,6 +76,11 @@ export function BrandTree({
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [editingBrand, setEditingBrand] = useState<ProductBrandWithCategories | null>(null);
+  const [deletingBrand, setDeletingBrand] = useState<TreeBrand | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const canEdit = useHasPermission("brands", "edit");
+  const canDelete = useHasPermission("brands", "delete");
 
   // Filter config + hook (reuses the same nested-click filter UI as listings)
   const filterConfig = useMemo<FilterConfig[]>(
@@ -268,6 +280,43 @@ export function BrandTree({
     filterHook.clearAllFilters();
   }
 
+  function handleDeleteBrand() {
+    if (!deletingBrand) return;
+    startTransition(async () => {
+      const result = await deleteBrand(deletingBrand.brand.brand_id);
+      if (result.success) {
+        toast.success("Brand deleted");
+        setDeletingBrand(null);
+      } else {
+        toast.error(result.error ?? "Failed to delete");
+      }
+    });
+  }
+
+  const deletingLinked = deletingBrand
+    ? linkedInfo[deletingBrand.brand.brand_id]
+    : null;
+  const deleteDescription = deletingBrand ? (
+    deletingLinked && deletingLinked.total > 0 ? (
+      <>
+        <strong>&ldquo;{deletingBrand.brand.name}&rdquo;</strong> will be moved
+        to the trash.
+        <br />
+        This brand is linked to <strong>{deletingLinked.summary}</strong>.
+        Deleting it will remove the brand reference from those models.
+      </>
+    ) : (
+      <>
+        <strong>&ldquo;{deletingBrand.brand.name}&rdquo;</strong> will be moved
+        to the trash.
+        <br />
+        You can restore it within 30 days.
+      </>
+    )
+  ) : (
+    ""
+  );
+
   return (
     <div className="space-y-3">
       {/* Header: search + filter + expand/collapse */}
@@ -367,33 +416,62 @@ export function BrandTree({
             return (
               <div key={brandId} className="bg-card rounded-lg border">
                 {/* ── Brand row (level 1) ── */}
-                <button
-                  type="button"
-                  onClick={() => toggleBrand(brandId)}
+                <div
                   className={cn(
-                    "flex w-full items-center gap-2.5 p-3 text-left transition-colors",
+                    "flex items-center transition-colors",
                     isBrandExpanded
                       ? "bg-muted/40 hover:bg-muted/60 rounded-t-lg"
                       : "hover:bg-muted/50 rounded-lg",
                   )}
                 >
-                  <ChevronRight
-                    className={cn(
-                      "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
-                      isBrandExpanded && "rotate-90",
-                      !hasContent && "invisible",
+                  <button
+                    type="button"
+                    onClick={() => toggleBrand(brandId)}
+                    className="flex flex-1 items-center gap-2.5 p-3 text-left"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
+                        isBrandExpanded && "rotate-90",
+                        !hasContent && "invisible",
+                      )}
+                    />
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10">
+                      <Tag className="size-3.5 text-amber-500" />
+                    </div>
+                    <span className="font-semibold">{node.brand.name}</span>
+                    {summaryParts.length > 0 && (
+                      <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                        {summaryParts.join(" · ")}
+                      </span>
                     )}
-                  />
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10">
-                    <Tag className="size-3.5 text-amber-500" />
-                  </div>
-                  <span className="font-semibold">{node.brand.name}</span>
-                  {summaryParts.length > 0 && (
-                    <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                      {summaryParts.join(" · ")}
-                    </span>
+                  </button>
+                  {(canEdit || canDelete) && (
+                    <div className="flex items-center gap-1 pr-3">
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setEditingBrand(node.brand)}
+                          aria-label="Edit brand"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeletingBrand(node)}
+                          aria-label="Delete brand"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
 
                 {/* ── Expanded: Equipment wrapper + Attachments (level 2) ── */}
                 {isBrandExpanded && hasContent && (
@@ -566,6 +644,35 @@ export function BrandTree({
             </Button>
           )}
         </div>
+      )}
+
+      {/* Edit form dialog */}
+      {editingBrand && (
+        <BrandForm
+          open={!!editingBrand}
+          onOpenChange={(open) => {
+            if (!open) setEditingBrand(null);
+          }}
+          brand={editingBrand}
+          categories={categories}
+          subCategories={subCategories}
+          brandCategoryIds={editingBrand.categoryIds}
+          brandSubCategoryIds={editingBrand.subCategoryIds}
+        />
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deletingBrand && (
+        <DeleteDialog
+          open={!!deletingBrand}
+          onOpenChange={(open) => {
+            if (!open) setDeletingBrand(null);
+          }}
+          onConfirm={handleDeleteBrand}
+          title="Delete brand?"
+          description={deleteDescription}
+          isPending={isPending}
+        />
       )}
     </div>
   );
