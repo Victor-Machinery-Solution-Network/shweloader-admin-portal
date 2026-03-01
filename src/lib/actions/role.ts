@@ -22,7 +22,7 @@ export async function getRolesWithPermissionCount(): Promise<
      LEFT JOIN role_permission rp ON r.role_id = rp.role_id
      WHERE r.deleted_at IS NULL
      GROUP BY r.role_id
-     ORDER BY r.created_at ASC`,
+     ORDER BY r.created_at DESC`,
   );
   return result.results;
 }
@@ -276,7 +276,7 @@ export async function getRolesPageData() {
         LEFT JOIN role_permission rp ON r.role_id = rp.role_id
         WHERE r.deleted_at IS NULL
         GROUP BY r.role_id
-        ORDER BY r.created_at ASC
+        ORDER BY r.created_at DESC
       ) t
       ) AS roles,
 

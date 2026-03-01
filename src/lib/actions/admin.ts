@@ -24,7 +24,7 @@ export async function getAdminsWithRoles(): Promise<AdminWithRole[]> {
      FROM admin_user a
      LEFT JOIN role r ON a.role_id = r.role_id
      WHERE a.deleted_at IS NULL
-     ORDER BY a.created_at ASC`,
+     ORDER BY a.created_at DESC`,
   );
   return result.results;
 }

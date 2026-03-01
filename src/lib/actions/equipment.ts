@@ -326,7 +326,7 @@ export async function getEquipmentModelsPageData() {
         'brand_id', em.brand_id, 'sub_category_id', em.sub_category_id,
         'pdf_url', em.pdf_url, 'created_by', em.created_by,
         'created_at', em.created_at, 'updated_at', em.updated_at
-      )) FROM (SELECT * FROM equipment_model WHERE deleted_at IS NULL ORDER BY name) em
+      )) FROM (SELECT * FROM equipment_model WHERE deleted_at IS NULL ORDER BY created_at DESC) em
       ) AS models,
 
       (SELECT json_group_array(json_object(

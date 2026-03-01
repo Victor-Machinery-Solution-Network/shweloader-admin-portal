@@ -367,7 +367,7 @@ export async function getBrandsPageData() {
           (SELECT COUNT(*) FROM equipment_model em WHERE em.brand_id = b.brand_id AND em.deleted_at IS NULL),
         'attachment_model_count',
           (SELECT COUNT(*) FROM attachment_model am WHERE am.brand_id = b.brand_id AND am.deleted_at IS NULL)
-      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
+      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY created_at DESC) b
       ) AS brands,
 
       (SELECT json_group_array(json_object(

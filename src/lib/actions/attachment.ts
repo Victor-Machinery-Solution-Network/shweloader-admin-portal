@@ -191,7 +191,7 @@ export async function getAttachmentModelsPageData() {
         'brand_id', am.brand_id, 'category_id', am.category_id,
         'pdf_url', am.pdf_url, 'created_by', am.created_by,
         'created_at', am.created_at, 'updated_at', am.updated_at
-      )) FROM (SELECT * FROM attachment_model WHERE deleted_at IS NULL ORDER BY name) am
+      )) FROM (SELECT * FROM attachment_model WHERE deleted_at IS NULL ORDER BY created_at DESC) am
       ) AS models,
 
       (SELECT json_group_array(json_object(
