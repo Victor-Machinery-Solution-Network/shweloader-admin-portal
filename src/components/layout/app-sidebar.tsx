@@ -585,6 +585,7 @@ function AddListingDropdown({ pageType }: { pageType: "sale" | "rent" }) {
   const router = useRouter();
 
   function handleFillForm() {
+    sessionStorage.removeItem("listing-editor-autosave");
     sessionStorage.setItem("newListingDefault", pageType);
     router.push(ROUTES.LISTINGS_NEW);
   }

@@ -283,6 +283,7 @@ export function ListingsClient({
   );
 
   const handleAddListing = useCallback(() => {
+    sessionStorage.removeItem("listing-editor-autosave");
     sessionStorage.setItem("newListingDefault", pageType);
     router.push("/listings/new");
   }, [pageType, router]);
