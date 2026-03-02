@@ -229,7 +229,7 @@ export function ListingsClient({
       },
       // Other group
       { columnId: "partner_name", label: "Partner", type: "multi-select", group: "Other" },
-      { columnId: "created_at", label: "Created", type: "date-range", group: "Other" },
+      { columnId: "created_at", label: "Created At", type: "date-range", group: "Other" },
     ];
     return filters;
   }, [pageType]);

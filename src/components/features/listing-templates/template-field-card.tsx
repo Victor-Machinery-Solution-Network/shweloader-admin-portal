@@ -67,6 +67,14 @@ export function TemplateFieldCard({
   onRemove,
 }: TemplateFieldCardProps) {
   const [isOpen, setIsOpen] = useState(defaultExpanded);
+  const [optionsText, setOptionsText] = useState(field.options?.join(", ") ?? "");
+
+  // Sync optionsText when field type switches to dropdown
+  useEffect(() => {
+    if (field.type === "dropdown") {
+      setOptionsText(field.options?.join(", ") ?? "");
+    }
+  }, [field.type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-expand when validation fails and this field has an empty label
   useEffect(() => {
@@ -154,7 +162,7 @@ export function TemplateFieldCard({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="shrink-0 text-muted-foreground hover:text-destructive"
+            className="shrink-0 text-destructive hover:text-destructive/80"
             onClick={onRemove}
           >
             <Trash2 className="size-4" />
@@ -253,10 +261,11 @@ export function TemplateFieldCard({
                   </span>
                 </Label>
                 <Input
-                  value={field.options?.join(", ") ?? ""}
-                  onChange={(e) =>
+                  value={optionsText}
+                  onChange={(e) => setOptionsText(e.target.value)}
+                  onBlur={() =>
                     updateField({
-                      options: e.target.value
+                      options: optionsText
                         .split(",")
                         .map((o) => o.trim())
                         .filter(Boolean),

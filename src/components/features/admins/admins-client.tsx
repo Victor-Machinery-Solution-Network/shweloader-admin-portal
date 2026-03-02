@@ -41,7 +41,7 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
         trueLabel: "Active",
         falseLabel: "Inactive",
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [roles],
   );

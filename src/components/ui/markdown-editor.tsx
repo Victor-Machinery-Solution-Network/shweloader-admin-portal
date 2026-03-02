@@ -46,6 +46,7 @@ interface MarkdownEditorProps {
   className?: string;
   minHeight?: string;
   disabled?: boolean;
+  onChange?: (markdown: string) => void;
 }
 
 export function MarkdownEditor({
@@ -55,6 +56,7 @@ export function MarkdownEditor({
   className,
   minHeight,
   disabled = false,
+  onChange,
 }: MarkdownEditorProps) {
   const [markdown, setMarkdown] = useState(defaultValue);
 
@@ -81,7 +83,9 @@ export function MarkdownEditor({
     editable: !disabled,
     onUpdate: ({ editor }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setMarkdown((editor.storage as any).markdown.getMarkdown());
+      const md = (editor.storage as any).markdown.getMarkdown() as string;
+      setMarkdown(md);
+      onChange?.(md);
     },
     editorProps: {
       attributes: {

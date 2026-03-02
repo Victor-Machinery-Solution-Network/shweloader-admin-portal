@@ -86,7 +86,7 @@ export function EquipmentModelsClient({
         cascadeFrom: "main_category",
         cascadeMap,
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [brands, mainCategories, subCategories, cascadeMap],
   );

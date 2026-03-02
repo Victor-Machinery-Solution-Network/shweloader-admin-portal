@@ -99,7 +99,7 @@ export const columns: ColumnDef<AnnouncementText>[] = [
   {
     accessorKey: "created_at",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
+      <DataTableColumnHeader column={column} title="Created At" />
     ),
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm tabular-nums">

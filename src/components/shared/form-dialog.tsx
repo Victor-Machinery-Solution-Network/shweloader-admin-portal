@@ -67,7 +67,7 @@ export function FormDialog({
       <DialogContent
         showCloseButton={!isPending}
         className={cn(
-          "max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col",
+          "max-h-[calc(100vh-2rem)] flex flex-col",
           className,
         )}
       >

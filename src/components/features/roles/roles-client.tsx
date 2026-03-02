@@ -40,7 +40,7 @@ export function RolesClient({
   );
 
   const filterConfig = useMemo<FilterConfig[]>(
-    () => [{ columnId: "created_at", label: "Created", type: "date-range" }],
+    () => [{ columnId: "created_at", label: "Created At", type: "date-range" }],
     [],
   );
 

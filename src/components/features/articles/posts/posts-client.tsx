@@ -77,7 +77,7 @@ export function PostsClient({
       { columnId: "category", label: "Category", type: "multi-select" },
       { columnId: "author", label: "Author", type: "multi-select" },
       { columnId: "updated_at", label: "Last Saved", type: "date-range" },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [],
   );
@@ -95,7 +95,7 @@ export function PostsClient({
     () => [
       { columnId: "category", label: "Category", type: "multi-select" },
       { columnId: "author", label: "Author", type: "multi-select" },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [],
   );

@@ -150,6 +150,36 @@ const STEP_META = [
 
 const TOTAL_STEPS = STEP_META.length;
 
+// ─── Auto-save ──────────────────────────────────────────────────────────────
+
+const AUTOSAVE_KEY = "listing-editor-autosave";
+
+interface AutoSaveState {
+  currentStep: number;
+  productType: "equipment" | "attachment";
+  forSale: boolean;
+  forRent: boolean;
+  selectedModel: string;
+  selectedPartner: string;
+  selectedStateRegionId: string;
+  selectedDistrictId: string;
+  selectedTownshipId: string;
+  saleUsdPrice: string;
+  saleMmkPrice: string;
+  rentUsdPrice: string;
+  rentMmkPrice: string;
+  saleUseSystemRate: boolean;
+  saleCustomRate: string;
+  rentUseSystemRate: boolean;
+  rentCustomRate: string;
+  hidePartner: boolean;
+  hidePrice: boolean;
+  conditionId: string;
+  customFieldValues: CustomFieldValue[];
+  thumbnailUrl: string | null;
+  description: string;
+}
+
 // ─── Reusable pieces ─────────────────────────────────────────────────────────
 
 function SegmentedPill({
@@ -208,7 +238,7 @@ function OptionCard({
       className={cn(
         "relative flex flex-col items-center gap-2.5 rounded-xl border-2 p-5 transition-all duration-200",
         selected
-          ? "border-primary/40 bg-primary/5"
+          ? "border-primary bg-primary/10 shadow-sm"
           : "border-border bg-muted/50 hover:bg-muted",
       )}
     >
@@ -405,9 +435,22 @@ export function ListingEditor({
 
   // Source data: use draft or listing for initialization
   const sourceData = draft ?? listing;
+  const isCreateMode = !isEditing && !isDraftMode;
+
+  // ── Auto-save: read saved state once on initial mount (create mode only) ──
+  const [savedState] = useState<AutoSaveState | null>(() => {
+    if (!isCreateMode || typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as AutoSaveState;
+    } catch {
+      return null;
+    }
+  });
 
   // ── Wizard state ──────────────────────────────────────────────────────
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(savedState?.currentStep ?? 0);
   const [step0Attempted, setStep0Attempted] = useState(false);
   const [step1Attempted, setStep1Attempted] = useState(false);
 
@@ -419,19 +462,23 @@ export function ListingEditor({
       : "attachment"
     : "equipment";
   const [productType, setProductType] = useState<"equipment" | "attachment">(
-    defaultProductType,
+    savedState?.productType ?? defaultProductType,
   );
 
   // In create mode, pre-select listing type from sessionStorage after mount (avoids hydration mismatch)
-  const [forSale, setForSale] = useState(isEditing ? pageType === "sale" : false);
-  const [forRent, setForRent] = useState(isEditing ? pageType === "rent" : false);
+  const [forSale, setForSale] = useState(
+    savedState?.forSale ?? (isEditing ? pageType === "sale" : false),
+  );
+  const [forRent, setForRent] = useState(
+    savedState?.forRent ?? (isEditing ? pageType === "rent" : false),
+  );
 
   useEffect(() => {
-    if (isEditing || isDraftMode) return;
+    if (isEditing || isDraftMode || savedState) return;
     const stored = sessionStorage.getItem("newListingDefault");
     if (stored === "sale") setForSale(true);
     else if (stored === "rent") setForRent(true);
-  }, [isEditing, isDraftMode]);
+  }, [isEditing, isDraftMode, savedState]);
 
   // ── Product info state ──────────────────────────────────────────────────
 
@@ -444,10 +491,11 @@ export function ListingEditor({
       : partner.user_name;
   }, [sourceData, partners]);
 
-  const [selectedPartner, setSelectedPartner] =
-    useState<string>(initPartnerLabel);
+  const [selectedPartner, setSelectedPartner] = useState<string>(
+    savedState?.selectedPartner ?? initPartnerLabel,
+  );
   const [selectedModel, setSelectedModel] = useState<string>(
-    sourceData?.model_name ?? "",
+    savedState?.selectedModel ?? (sourceData?.model_name ?? ""),
   );
   // ── Cascading location state ───────────────────────────────────────────
   // Derive initial hierarchy from existing township_id in edit mode
@@ -464,9 +512,15 @@ export function ListingEditor({
     };
   }, [sourceData, townships, districts]);
 
-  const [selectedStateRegionId, setSelectedStateRegionId] = useState(initLocation.stateRegionId);
-  const [selectedDistrictId, setSelectedDistrictId] = useState(initLocation.districtId);
-  const [selectedTownshipId, setSelectedTownshipId] = useState(initLocation.townshipId);
+  const [selectedStateRegionId, setSelectedStateRegionId] = useState(
+    savedState?.selectedStateRegionId ?? initLocation.stateRegionId,
+  );
+  const [selectedDistrictId, setSelectedDistrictId] = useState(
+    savedState?.selectedDistrictId ?? initLocation.districtId,
+  );
+  const [selectedTownshipId, setSelectedTownshipId] = useState(
+    savedState?.selectedTownshipId ?? initLocation.townshipId,
+  );
 
   // Sync partner label when partners load after initial render
   useEffect(() => {
@@ -476,7 +530,7 @@ export function ListingEditor({
   // ── Media state ─────────────────────────────────────────────────────────
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
-    sourceData?.thumbnail_url ?? null,
+    savedState?.thumbnailUrl ?? (sourceData?.thumbnail_url ?? null),
   );
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
     existingImages.map((img, i) => ({
@@ -489,34 +543,30 @@ export function ListingEditor({
   // ── Price state (separate for sale / rent) ──────────────────────────────
 
   const [saleUsdPrice, setSaleUsdPrice] = useState<string>(
-    isEditing && pageType === "sale"
-      ? (listing?.usd_price?.toString() ?? "")
-      : "",
+    savedState?.saleUsdPrice ??
+      (isEditing && pageType === "sale" ? (listing?.usd_price?.toString() ?? "") : ""),
   );
   const [saleMmkPrice, setSaleMmkPrice] = useState<string>(
-    isEditing && pageType === "sale"
-      ? (listing?.mmk_price?.toString() ?? "")
-      : "",
+    savedState?.saleMmkPrice ??
+      (isEditing && pageType === "sale" ? (listing?.mmk_price?.toString() ?? "") : ""),
   );
   const [rentUsdPrice, setRentUsdPrice] = useState<string>(
-    isEditing && pageType === "rent"
-      ? (listing?.usd_price?.toString() ?? "")
-      : "",
+    savedState?.rentUsdPrice ??
+      (isEditing && pageType === "rent" ? (listing?.usd_price?.toString() ?? "") : ""),
   );
   const [rentMmkPrice, setRentMmkPrice] = useState<string>(
-    isEditing && pageType === "rent"
-      ? (listing?.mmk_price?.toString() ?? "")
-      : "",
+    savedState?.rentMmkPrice ??
+      (isEditing && pageType === "rent" ? (listing?.mmk_price?.toString() ?? "") : ""),
   );
   // Independent rate controls per listing type
-  const [saleUseSystemRate, setSaleUseSystemRate] = useState(true);
-  const [saleCustomRate, setSaleCustomRate] = useState<string>(String(exchangeRate));
-  const [rentUseSystemRate, setRentUseSystemRate] = useState(true);
-  const [rentCustomRate, setRentCustomRate] = useState<string>(String(exchangeRate));
+  const [saleUseSystemRate, setSaleUseSystemRate] = useState(savedState?.saleUseSystemRate ?? true);
+  const [saleCustomRate, setSaleCustomRate] = useState<string>(savedState?.saleCustomRate ?? String(exchangeRate));
+  const [rentUseSystemRate, setRentUseSystemRate] = useState(savedState?.rentUseSystemRate ?? true);
+  const [rentCustomRate, setRentCustomRate] = useState<string>(savedState?.rentCustomRate ?? String(exchangeRate));
 
   // ── Visibility toggles ──────────────────────────────────────────────────
-  const [hidePartner, setHidePartner] = useState(sourceData?.hide_partner === 1);
-  const [hidePrice, setHidePrice] = useState(listing?.hide_price === 1);
+  const [hidePartner, setHidePartner] = useState(savedState?.hidePartner ?? (sourceData?.hide_partner === 1));
+  const [hidePrice, setHidePrice] = useState(savedState?.hidePrice ?? (listing?.hide_price === 1));
 
   const saleActiveRate = saleUseSystemRate
     ? exchangeRate
@@ -644,6 +694,7 @@ export function ListingEditor({
   const [customFieldValues, setCustomFieldValues] = useState<
     CustomFieldValue[]
   >(() => {
+    if (savedState?.customFieldValues) return savedState.customFieldValues;
     if (!sourceData?.custom_fields) return [];
     try {
       return JSON.parse(sourceData.custom_fields) as CustomFieldValue[];
@@ -655,8 +706,57 @@ export function ListingEditor({
   const saleDefaults =
     listing && "condition_type_id" in listing ? listing : null;
   const [conditionId, setConditionId] = useState<string>(
-    saleDefaults?.condition_type_id?.toString() ?? "",
+    savedState?.conditionId ?? (saleDefaults?.condition_type_id?.toString() ?? ""),
   );
+
+  // ── Description state (tracked for auto-save) ─────────────────────────
+  const [description, setDescription] = useState<string>(
+    savedState?.description ?? (sourceData?.description ?? ""),
+  );
+
+  // ── Auto-save: persist form state to sessionStorage on every change ───
+  useEffect(() => {
+    if (!isCreateMode) return;
+    const snapshot: AutoSaveState = {
+      currentStep,
+      productType,
+      forSale,
+      forRent,
+      selectedModel,
+      selectedPartner,
+      selectedStateRegionId,
+      selectedDistrictId,
+      selectedTownshipId,
+      saleUsdPrice,
+      saleMmkPrice,
+      rentUsdPrice,
+      rentMmkPrice,
+      saleUseSystemRate,
+      saleCustomRate,
+      rentUseSystemRate,
+      rentCustomRate,
+      hidePartner,
+      hidePrice,
+      conditionId,
+      customFieldValues,
+      thumbnailUrl,
+      description,
+    };
+    sessionStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshot));
+  }, [
+    isCreateMode, currentStep, productType, forSale, forRent,
+    selectedModel, selectedPartner,
+    selectedStateRegionId, selectedDistrictId, selectedTownshipId,
+    saleUsdPrice, saleMmkPrice, rentUsdPrice, rentMmkPrice,
+    saleUseSystemRate, saleCustomRate, rentUseSystemRate, rentCustomRate,
+    hidePartner, hidePrice, conditionId, customFieldValues, thumbnailUrl,
+    description,
+  ]);
+
+  function clearAutoSave() {
+    sessionStorage.removeItem(AUTOSAVE_KEY);
+    sessionStorage.removeItem("newListingDefault");
+  }
 
   // ── Wizard navigation ─────────────────────────────────────────────────
 
@@ -853,6 +953,7 @@ export function ListingEditor({
           save: isEditing ? "Listing updated" : "Listing created",
         };
         toast.success(messages[action] ?? "Success");
+        if (isCreateMode) clearAutoSave();
 
         // Redirect: new drafts go to draft edit page, everything else to list
         if (action === "save-draft" && !isDraftMode && result.draftId) {
@@ -936,36 +1037,41 @@ export function ListingEditor({
                 variant="ghost"
                 size="sm"
                 disabled={isPending}
-                onClick={() => router.push(backUrl)}
+                onClick={() => {
+                  if (isCreateMode) {
+                    clearAutoSave();
+                    // Hard navigation to fully unmount and reset component state
+                    window.location.href = backUrl;
+                    return;
+                  }
+                  router.push(backUrl);
+                }}
               >
                 {isPendingReview && isReviewMode ? "Close" : "Discard"}
               </Button>
 
               {/* ── Context-dependent action buttons ── */}
               {(() => {
-                // Draft mode (new or editing existing draft)
-                if (isDraftMode || (!isEditing && !isDraftMode)) {
-                  const isNew = !isEditing && !isDraftMode;
+                // Create or draft mode
+                if (isCreateMode || isDraftMode) {
                   return (
                     <>
-                      {(isNew || isDraftMode) && (
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => { submitActionRef.current = "save-draft"; }}
-                        >
-                          {isPending && submitActionRef.current === "save-draft" ? (
-                            <><Spinner className="mr-1" /> Saving{"\u2026"}</>
-                          ) : "Save as Draft"}
-                        </Button>
-                      )}
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => { submitActionRef.current = "save-draft"; }}
+                      >
+                        {isPending && submitActionRef.current === "save-draft" ? (
+                          <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                        ) : "Save as Draft"}
+                      </Button>
                       <Button
                         type="submit"
                         size="sm"
                         disabled={isPending}
-                        onClick={() => { submitActionRef.current = canApprove ? "submit" : "submit"; }}
+                        onClick={() => { submitActionRef.current = "submit"; }}
                       >
                         {isPending && submitActionRef.current !== "save-draft" ? (
                           <><Spinner className="mr-1" /> Submitting{"\u2026"}</>
@@ -1238,7 +1344,7 @@ export function ListingEditor({
               </label>
               <Combobox
                 value={selectedModel}
-                defaultInputValue={sourceData?.model_name ?? ""}
+                defaultInputValue={savedState?.selectedModel ?? (sourceData?.model_name ?? "")}
                 onValueChange={(val) => setSelectedModel(val ?? "")}
                 items={modelNames}
               >
@@ -1365,7 +1471,8 @@ export function ListingEditor({
               <MarkdownEditor
                 name="description"
                 placeholder={"Describe the product\u2026"}
-                defaultValue={sourceData?.description ?? ""}
+                defaultValue={description}
+                onChange={setDescription}
               />
             </div>
 
@@ -1394,7 +1501,7 @@ export function ListingEditor({
               <div className="flex flex-col gap-3">
                 <Combobox
                   value={selectedPartner}
-                  defaultInputValue={initPartnerLabel}
+                  defaultInputValue={savedState?.selectedPartner ?? initPartnerLabel}
                   onValueChange={(val) => setSelectedPartner(val ?? "")}
                   items={partnerNames}
                 >
@@ -1453,7 +1560,9 @@ export function ListingEditor({
                   </p>
                   <Combobox
                     value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
-                    defaultInputValue={stateRegionNameById.get(initLocation.stateRegionId) ?? ""}
+                    defaultInputValue={
+                      stateRegionNameById.get(savedState?.selectedStateRegionId ?? initLocation.stateRegionId) ?? ""
+                    }
                     onValueChange={(val) => {
                       const id = val ? (stateRegionIdByName.get(val) ?? "") : "";
                       setSelectedStateRegionId(id);
@@ -1490,7 +1599,9 @@ export function ListingEditor({
                     </p>
                     <Combobox
                       value={districtNameById.get(selectedDistrictId) ?? ""}
-                      defaultInputValue={districtNameById.get(initLocation.districtId) ?? ""}
+                      defaultInputValue={
+                        districtNameById.get(savedState?.selectedDistrictId ?? initLocation.districtId) ?? ""
+                      }
                       onValueChange={(val) => {
                         const id = val ? (districtIdByName.get(val) ?? "") : "";
                         setSelectedDistrictId(id);
@@ -1532,9 +1643,11 @@ export function ListingEditor({
                         )?.name ?? ""
                       }
                       defaultInputValue={
-                        selectedTownshipId === initLocation.townshipId
-                          ? (sourceData?.township_name ?? "")
-                          : ""
+                        savedState
+                          ? (filteredTownships.find((t) => String(t.township_id) === savedState.selectedTownshipId)?.name ?? "")
+                          : selectedTownshipId === initLocation.townshipId
+                            ? (sourceData?.township_name ?? "")
+                            : ""
                       }
                       onValueChange={(val) => {
                         const id = val ? (townshipIdByName.get(val) ?? "") : "";

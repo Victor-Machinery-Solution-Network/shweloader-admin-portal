@@ -22,12 +22,13 @@ import {
   MessageSquare,
   Handshake,
   FileText,
+  FileSpreadsheet,
   Image as ImageIcon,
   Megaphone,
   Shield,
   UserCog,
-  ClipboardList,
   Trash2,
+  Plus,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -71,6 +72,12 @@ export function AppSidebar() {
     return permissions.includes(`${feature}:read`);
   }
 
+  /** Check create permission for a feature. */
+  function canCreate(feature: string): boolean {
+    if (!permsLoaded) return true;
+    return permissions.includes(`${feature}:create`);
+  }
+
   const userName = session?.user?.name ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
   const initials = userName
@@ -88,7 +95,7 @@ export function AppSidebar() {
   const showAttachments =
     canRead("attachment_categories") || canRead("attachment_models");
   const showListings =
-    canRead("sale_listings") || canRead("rent_listings");
+    canRead("sale_listings") || canRead("rent_listings") || canRead("listing_templates");
   const showArticles =
     canRead("articles") || canRead("article_categories");
 
@@ -101,12 +108,12 @@ export function AppSidebar() {
   const showContent =
     showArticles || canRead("carousels") || canRead("announcements");
   const showSettings =
-    canRead("admin_users") || canRead("roles") || canRead("listing_templates") || canRead("app_settings") || canRead("trash");
+    canRead("admin_users") || canRead("roles") || canRead("app_settings") || canRead("trash");
 
   // Auto-open collapsible sections based on current route
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
   const isAttachmentsActive = pathname.startsWith(ROUTES.ATTACHMENTS);
-  const isListingsActive = pathname.startsWith(ROUTES.LISTINGS);
+  const isListingsActive = pathname.startsWith(ROUTES.LISTINGS) || pathname.startsWith(ROUTES.LISTING_TEMPLATES);
   const isArticlesActive = pathname.startsWith("/articles");
 
   const [isEquipmentOpen, setIsEquipmentOpen] = useState(isEquipmentActive);
@@ -143,6 +150,8 @@ export function AppSidebar() {
     if (isListingsOpen) {
       router.prefetch(ROUTES.LISTINGS_FOR_SALE);
       router.prefetch(ROUTES.LISTINGS_FOR_RENT);
+      router.prefetch(ROUTES.LISTINGS_NEW);
+      router.prefetch(ROUTES.LISTING_TEMPLATES);
     }
   }, [isListingsOpen, router]);
 
@@ -320,15 +329,32 @@ export function AppSidebar() {
                   <SidebarMenuSub>
                     {canRead("sale_listings") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE}>
-                        <Link href={ROUTES.LISTINGS_FOR_SALE}><span>For Sale</span></Link>
-                      </SidebarMenuSubButton>
+                      <div className="flex items-center w-full">
+                        <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE} className="flex-1">
+                          <Link href={ROUTES.LISTINGS_FOR_SALE}><span>For Sale</span></Link>
+                        </SidebarMenuSubButton>
+                        {canCreate("sale_listings") && (
+                          <AddListingDropdown pageType="sale" />
+                        )}
+                      </div>
                     </SidebarMenuSubItem>
                     )}
                     {canRead("rent_listings") && (
                     <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT}>
-                        <Link href={ROUTES.LISTINGS_FOR_RENT}><span>For Rent</span></Link>
+                      <div className="flex items-center w-full">
+                        <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT} className="flex-1">
+                          <Link href={ROUTES.LISTINGS_FOR_RENT}><span>For Rent</span></Link>
+                        </SidebarMenuSubButton>
+                        {canCreate("rent_listings") && (
+                          <AddListingDropdown pageType="rent" />
+                        )}
+                      </div>
+                    </SidebarMenuSubItem>
+                    )}
+                    {canRead("listing_templates") && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTING_TEMPLATES}>
+                        <Link href={ROUTES.LISTING_TEMPLATES}><span>Templates</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     )}
@@ -453,14 +479,6 @@ export function AppSidebar() {
               </SidebarMenuItem>
               )}
 
-              {canRead("listing_templates") && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.LISTING_TEMPLATES}>
-                  <Link href={ROUTES.LISTING_TEMPLATES}><ClipboardList aria-hidden="true" /><span>Listing Templates</span></Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              )}
-
               {canRead("app_settings") && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === ROUTES.SETTINGS}>
@@ -556,5 +574,44 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  + button dropdown for adding a listing                             */
+/* ------------------------------------------------------------------ */
+
+function AddListingDropdown({ pageType }: { pageType: "sale" | "rent" }) {
+  const router = useRouter();
+
+  function handleFillForm() {
+    sessionStorage.setItem("newListingDefault", pageType);
+    router.push(ROUTES.LISTINGS_NEW);
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 mr-1"
+          aria-label={`Add ${pageType} listing`}
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="start">
+        <DropdownMenuItem onClick={handleFillForm}>
+          <FileText className="mr-2 size-4" aria-hidden="true" />
+          Fill Form
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/bulk-upload/listings">
+            <FileSpreadsheet className="mr-2 size-4" aria-hidden="true" />
+            Excel Upload
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -198,7 +198,7 @@ export const BULK_UPLOAD_CONFIGS: Record<string, BulkUploadConfig> = {
         helpText: "Yes or No.",
       },
       {
-        header: "Hidden",
+        header: "Hide Display",
         field: "is_hidden",
         type: "boolean",
         required: false,

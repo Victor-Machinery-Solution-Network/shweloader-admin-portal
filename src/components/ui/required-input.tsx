@@ -8,6 +8,8 @@ export const FormSubmittedContext = createContext(false);
 
 interface RequiredInputProps extends React.ComponentProps<typeof Input> {
   errorMessage?: string;
+  /** Custom validator — return an error string to show, or "" / undefined to pass. */
+  validate?: (value: string) => string | undefined;
 }
 
 /**
@@ -21,26 +23,43 @@ export function FieldError({ show, message }: { show: boolean; message: string }
 }
 
 /**
- * Input that shows an inline error message when the form is submitted and the field is empty.
- * Uses `aria-invalid` to trigger the red border styling from the Input component.
+ * Input that shows an inline error when the form is submitted and validation fails.
+ * Checks: empty → custom `validate` → `minLength`. Uses `aria-invalid` for red border.
  */
 export function RequiredInput({
   errorMessage = "This field is required",
+  validate,
   onChange,
   ...props
 }: RequiredInputProps) {
   const submitted = useContext(FormSubmittedContext);
-  const [empty, setEmpty] = useState(!props.defaultValue && !props.value);
+  const initialValue = String(props.defaultValue ?? props.value ?? "");
+  const [error, setError] = useState<string>(() => {
+    if (!initialValue.trim()) return errorMessage;
+    if (validate) return validate(initialValue) ?? "";
+    if (props.minLength && initialValue.length < props.minLength)
+      return errorMessage;
+    return "";
+  });
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setEmpty(!e.target.value.trim());
+      const v = e.target.value;
+      if (!v.trim()) {
+        setError(errorMessage);
+      } else if (validate) {
+        setError(validate(v) ?? "");
+      } else if (props.minLength && v.length < props.minLength) {
+        setError(errorMessage);
+      } else {
+        setError("");
+      }
       onChange?.(e);
     },
-    [onChange],
+    [onChange, errorMessage, validate, props.minLength],
   );
 
-  const showError = submitted && empty;
+  const showError = submitted && !!error;
 
   return (
     <div className="space-y-1">
@@ -50,7 +69,7 @@ export function RequiredInput({
         aria-invalid={showError || undefined}
         onChange={handleChange}
       />
-      {showError && <p className="text-xs text-destructive">{errorMessage}</p>}
+      {showError && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

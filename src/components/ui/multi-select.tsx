@@ -198,10 +198,13 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
         <PopoverContent
           className="w-[var(--radix-popover-trigger-width)] p-0"
           align="start"
+          side="bottom"
+          collisionPadding={8}
+          avoidCollisions
         >
           <Command disablePointerSelection>
             {searchable && <CommandInput placeholder="Search..." />}
-            <ScrollArea className="max-h-72">
+            <ScrollArea className="max-h-60">
               <CommandList className="max-h-none overflow-y-visible">
                 <CommandEmpty>No results found.</CommandEmpty>
                 <CommandGroup>

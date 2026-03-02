@@ -62,7 +62,7 @@ export function AttachmentModelsClient({
         type: "multi-select",
         options: categories.map((c) => ({ label: c.name, value: c.name })),
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [brands, categories],
   );

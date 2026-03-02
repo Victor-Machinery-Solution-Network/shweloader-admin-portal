@@ -37,6 +37,7 @@ export const ROUTES = {
   LISTINGS: "/listings",
   LISTINGS_FOR_SALE: "/listings/for-sale",
   LISTINGS_FOR_RENT: "/listings/for-rent",
+  LISTINGS_NEW: "/listings/new",
   LISTING_TEMPLATES: "/listing-templates",
   ENQUIRIES: "/enquiries",
 

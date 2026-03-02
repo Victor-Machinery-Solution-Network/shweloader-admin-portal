@@ -88,7 +88,7 @@ export function LocationsClient({
           { label: "Union Territory", value: "union_territory" },
         ],
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [],
   );
@@ -167,7 +167,7 @@ export function LocationsClient({
         type: "multi-select",
         options: stateRegions.map((sr) => ({ label: sr.name, value: sr.name })),
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [stateRegions],
   );
@@ -252,7 +252,7 @@ export function LocationsClient({
         type: "multi-select",
         options: districts.map((d) => ({ label: d.name, value: d.name })),
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [stateRegions, districts],
   );

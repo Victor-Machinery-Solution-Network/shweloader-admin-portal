@@ -66,7 +66,7 @@ export function SubCategoriesClient({
           value: String(c.category_id),
         })),
       },
-      { columnId: "created_at", label: "Created", type: "date-range" },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
     [categories],
   );

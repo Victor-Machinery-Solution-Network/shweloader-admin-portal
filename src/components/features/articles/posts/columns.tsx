@@ -161,7 +161,7 @@ const publishDateColumn: ColumnDef<ArticleWithDetails> = {
 const createdAtColumn: ColumnDef<ArticleWithDetails> = {
   accessorKey: "created_at",
   header: ({ column }) => (
-    <DataTableColumnHeader column={column} title="Created" />
+    <DataTableColumnHeader column={column} title="Created At" />
   ),
   cell: ({ row }) => {
     const date = row.getValue("created_at") as string;

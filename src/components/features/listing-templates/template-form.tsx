@@ -200,7 +200,7 @@ export function TemplateForm({
       onSubmit={handleSubmit}
       isPending={isPending}
       submitLabel={isEditing ? "Update" : "Create"}
-      className="sm:max-w-3xl"
+      className="sm:max-w-4xl"
     >
       <div className="space-y-6">
         {/* Template Name */}
