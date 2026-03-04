@@ -284,9 +284,16 @@ export function ListingsClient({
   );
 
   const handleAddListing = useCallback(() => {
+<<<<<<< HEAD
     sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
     window.location.href = "/listings/new";
   }, [pageType]);
+=======
+    sessionStorage.removeItem("listing-editor-autosave");
+    sessionStorage.setItem("newListingDefault", pageType);
+    router.push("/listings/new");
+  }, [pageType, router]);
+>>>>>>> e2ef62b943fa76fc005efabb5fccc73b9c283140
 
   const addListingToolbar = canCreate ? (
     <DropdownMenu>

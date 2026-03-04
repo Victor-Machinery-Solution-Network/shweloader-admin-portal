@@ -583,9 +583,15 @@ export function AppSidebar() {
 
 function AddListingDropdown({ pageType }: { pageType: "sale" | "rent" }) {
   function handleFillForm() {
+<<<<<<< HEAD
     sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
     // Hard navigation ensures the form always re-mounts with the correct preset
     window.location.href = ROUTES.LISTINGS_NEW;
+=======
+    sessionStorage.removeItem("listing-editor-autosave");
+    sessionStorage.setItem("newListingDefault", pageType);
+    router.push(ROUTES.LISTINGS_NEW);
+>>>>>>> e2ef62b943fa76fc005efabb5fccc73b9c283140
   }
 
   return (
