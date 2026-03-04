@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { Cog, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { buildLinkMap } from "@/lib/utils";
 import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { PdfInput } from "@/components/ui/pdf-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -48,41 +49,32 @@ export function EquipmentModelForm({
   const isEditing = !!model;
 
   // ID ↔ name lookup maps
-  const subCategoryMap = new Map(
-    subCategories.map((sc) => [sc.name, sc.sub_category_id]),
+  const subCategoryMap = useMemo(
+    () => new Map(subCategories.map((sc) => [sc.name, sc.sub_category_id])),
+    [subCategories],
   );
-  const subCategoryIdToName = new Map(
-    subCategories.map((sc) => [sc.sub_category_id, sc.name]),
+  const subCategoryIdToName = useMemo(
+    () => new Map(subCategories.map((sc) => [sc.sub_category_id, sc.name])),
+    [subCategories],
   );
-  const brandMap = new Map(brands.map((b) => [b.name, b.brand_id]));
-  const brandIdToName = new Map(brands.map((b) => [b.brand_id, b.name]));
+  const brandMap = useMemo(
+    () => new Map(brands.map((b) => [b.name, b.brand_id])),
+    [brands],
+  );
+  const brandIdToName = useMemo(
+    () => new Map(brands.map((b) => [b.brand_id, b.name])),
+    [brands],
+  );
 
   // Build bi-directional link sets: subCategoryId → Set<brandId>, brandId → Set<subCategoryId>
-  const brandsBySubCategory = useMemo(() => {
-    const map = new Map<number, Set<number>>();
-    for (const link of subCategoryBrandLinks) {
-      let set = map.get(link.sub_category_id);
-      if (!set) {
-        set = new Set();
-        map.set(link.sub_category_id, set);
-      }
-      set.add(link.brand_id);
-    }
-    return map;
-  }, [subCategoryBrandLinks]);
-
-  const subCategoriesByBrand = useMemo(() => {
-    const map = new Map<number, Set<number>>();
-    for (const link of subCategoryBrandLinks) {
-      let set = map.get(link.brand_id);
-      if (!set) {
-        set = new Set();
-        map.set(link.brand_id, set);
-      }
-      set.add(link.sub_category_id);
-    }
-    return map;
-  }, [subCategoryBrandLinks]);
+  const brandsBySubCategory = useMemo(
+    () => buildLinkMap(subCategoryBrandLinks, (l) => l.sub_category_id, (l) => l.brand_id),
+    [subCategoryBrandLinks],
+  );
+  const subCategoriesByBrand = useMemo(
+    () => buildLinkMap(subCategoryBrandLinks, (l) => l.brand_id, (l) => l.sub_category_id),
+    [subCategoryBrandLinks],
+  );
 
   // All names (unfiltered – shown when nothing is selected)
   const allSubCategoryNames = useMemo(

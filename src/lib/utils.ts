@@ -61,3 +61,39 @@ export function calculateReadTime(content: string | null): number {
   const wordCount = stripped.split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(wordCount / 200));
 }
+
+/**
+ * Build a Map<K, Set<V>> from an array of link objects.
+ * Used for bi-directional many-to-many lookups (brand ↔ category, etc.).
+ */
+export function buildLinkMap<T>(
+  links: T[],
+  getKey: (link: T) => number,
+  getValue: (link: T) => number,
+): Map<number, Set<number>> {
+  const map = new Map<number, Set<number>>();
+  for (const link of links) {
+    const key = getKey(link);
+    let set = map.get(key);
+    if (!set) {
+      set = new Set();
+      map.set(key, set);
+    }
+    set.add(getValue(link));
+  }
+  return map;
+}
+
+/** Convert USD to MMK using the given rate. Returns "" for invalid input. */
+export function convertUsdToMmk(usd: string, rate: number): string {
+  const n = parseFloat(usd);
+  return !isNaN(n) && n > 0 ? String(Math.round(n * rate)) : "";
+}
+
+/** Convert MMK to USD using the given rate. Returns "" for invalid input. */
+export function convertMmkToUsd(mmk: string, rate: number): string {
+  const n = parseFloat(mmk);
+  return !isNaN(n) && n > 0 && rate > 0
+    ? (n / rate).toFixed(2).replace(/\.?0+$/, "")
+    : "";
+}

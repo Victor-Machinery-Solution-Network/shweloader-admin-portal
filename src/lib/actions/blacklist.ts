@@ -34,7 +34,7 @@ function invalidateBlacklistCaches() {
 
 /**
  * Fetch the impact preview before confirming a blacklist action.
- * Shows affected users (company-level ban), listing counts, etc.
+ * Shows the target user and counts of related data that will be soft-deleted.
  */
 export async function getBlacklistImpactPreview(
   appUserId: number,
@@ -49,50 +49,33 @@ export async function getBlacklistImpactPreview(
   const targetUser = userResult.results[0];
   if (!targetUser) throw new Error("User not found");
 
-  // 2. Determine affected users (company-level ban or individual)
-  let affectedUsers: AppUser[];
-  const isCompanyBan = !!targetUser.company_name;
-
-  if (isCompanyBan) {
-    const companyResult = await d1.query<AppUser>(
-      "SELECT * FROM app_user WHERE company_name = ? AND deleted_at IS NULL",
-      [targetUser.company_name],
-    );
-    affectedUsers = companyResult.results;
-  } else {
-    affectedUsers = [targetUser];
-  }
-
-  const userIds = affectedUsers.map((u) => u.app_user_id);
-  const placeholders = userIds.map(() => "?").join(",");
-
-  // 3. Count related entities across all affected users
+  // 2. Count related entities for this user only
   const [sales, rents, enquiries, partners] = await Promise.all([
     d1.query<{ count: number }>(
       `SELECT COUNT(*) as count FROM sale_listing sl
        JOIN product_list pl ON sl.product_list_id = pl.id
        JOIN partner p ON pl.partner_id = p.id
-       WHERE p.app_user_id IN (${placeholders})
+       WHERE p.app_user_id = ?
        AND sl.deleted_at IS NULL`,
-      userIds,
+      [appUserId],
     ),
     d1.query<{ count: number }>(
       `SELECT COUNT(*) as count FROM rent_listing rl
        JOIN product_list pl ON rl.product_list_id = pl.id
        JOIN partner p ON pl.partner_id = p.id
-       WHERE p.app_user_id IN (${placeholders})
+       WHERE p.app_user_id = ?
        AND rl.deleted_at IS NULL`,
-      userIds,
+      [appUserId],
     ),
     d1.query<{ count: number }>(
       `SELECT COUNT(*) as count FROM enquiry
-       WHERE app_user_id IN (${placeholders}) AND deleted_at IS NULL`,
-      userIds,
+       WHERE app_user_id = ? AND deleted_at IS NULL`,
+      [appUserId],
     ),
     d1.query<{ count: number }>(
       `SELECT COUNT(*) as count FROM partner
-       WHERE app_user_id IN (${placeholders}) AND deleted_at IS NULL`,
-      userIds,
+       WHERE app_user_id = ? AND deleted_at IS NULL`,
+      [appUserId],
     ),
   ]);
 
@@ -100,19 +83,18 @@ export async function getBlacklistImpactPreview(
   const rentCount = rents.results[0]?.count ?? 0;
 
   return {
-    affected_users: affectedUsers.map((u) => ({
-      app_user_id: u.app_user_id,
-      username: u.username,
-      email: u.email,
-      phone: u.phone,
-      company_name: u.company_name,
-    })),
+    user: {
+      app_user_id: targetUser.app_user_id,
+      username: targetUser.username,
+      email: targetUser.email,
+      phone: targetUser.phone,
+      company_name: targetUser.company_name,
+    },
     listing_count: saleCount + rentCount,
     sale_listing_count: saleCount,
     rent_listing_count: rentCount,
     enquiry_count: enquiries.results[0]?.count ?? 0,
     partner_count: partners.results[0]?.count ?? 0,
-    is_company_ban: isCompanyBan,
   };
 }
 
@@ -121,8 +103,8 @@ export async function getBlacklistImpactPreview(
 // ---------------------------------------------------------------------------
 
 /**
- * Blacklist a user (and all company users if applicable).
- * Creates blacklist entries, soft-deletes user + related data.
+ * Blacklist an individual user.
+ * Creates a blacklist entry, soft-deletes user + related data.
  */
 export async function blacklistUser(appUserId: number, reason: string) {
   try {
@@ -142,56 +124,40 @@ export async function blacklistUser(appUserId: number, reason: string) {
       return { success: false, error: "User not found or already blacklisted" };
     }
 
-    // 2. Determine affected users
-    let affectedUsers: AppUser[];
-    if (targetUser.company_name) {
-      const companyResult = await d1.query<AppUser>(
-        "SELECT * FROM app_user WHERE company_name = ? AND deleted_at IS NULL",
-        [targetUser.company_name],
-      );
-      affectedUsers = companyResult.results;
-    } else {
-      affectedUsers = [targetUser];
-    }
-
     const now = new Date().toISOString();
-    const userIds = affectedUsers.map((u) => u.app_user_id);
-    const placeholders = userIds.map(() => "?").join(",");
 
-    // 3. Create blacklist entries (one per user)
-    for (const user of affectedUsers) {
-      await d1.query(
-        `INSERT INTO blacklist (app_user_id, phone, email, company_name, reason, blacklisted_by)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          user.app_user_id,
-          user.phone,
-          user.email,
-          user.company_name,
-          reason.trim(),
-          adminId,
-        ],
-      );
-    }
-
-    // 4. Soft-delete: set deleted_at on app_user rows
+    // 2. Create blacklist entry
     await d1.query(
-      `UPDATE app_user SET deleted_at = ? WHERE app_user_id IN (${placeholders})`,
-      [now, ...userIds],
+      `INSERT INTO blacklist (app_user_id, phone, email, company_name, reason, blacklisted_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        targetUser.app_user_id,
+        targetUser.phone,
+        targetUser.email,
+        targetUser.company_name,
+        reason.trim(),
+        adminId,
+      ],
     );
 
-    // 5. Soft-delete related entities
+    // 3. Soft-delete the user
+    await d1.query(
+      "UPDATE app_user SET deleted_at = ? WHERE app_user_id = ?",
+      [now, appUserId],
+    );
+
+    // 4. Soft-delete related entities
     await d1.query(
       `UPDATE partner SET deleted_at = ?
-       WHERE app_user_id IN (${placeholders}) AND deleted_at IS NULL`,
-      [now, ...userIds],
+       WHERE app_user_id = ? AND deleted_at IS NULL`,
+      [now, appUserId],
     );
 
     await d1.query(
       `UPDATE product_list SET deleted_at = ?
-       WHERE partner_id IN (SELECT id FROM partner WHERE app_user_id IN (${placeholders}))
+       WHERE partner_id IN (SELECT id FROM partner WHERE app_user_id = ?)
        AND deleted_at IS NULL`,
-      [now, ...userIds],
+      [now, appUserId],
     );
 
     await d1.query(
@@ -199,9 +165,9 @@ export async function blacklistUser(appUserId: number, reason: string) {
        WHERE product_list_id IN (
          SELECT pl.id FROM product_list pl
          JOIN partner p ON pl.partner_id = p.id
-         WHERE p.app_user_id IN (${placeholders})
+         WHERE p.app_user_id = ?
        ) AND deleted_at IS NULL`,
-      [now, ...userIds],
+      [now, appUserId],
     );
 
     await d1.query(
@@ -209,25 +175,24 @@ export async function blacklistUser(appUserId: number, reason: string) {
        WHERE product_list_id IN (
          SELECT pl.id FROM product_list pl
          JOIN partner p ON pl.partner_id = p.id
-         WHERE p.app_user_id IN (${placeholders})
+         WHERE p.app_user_id = ?
        ) AND deleted_at IS NULL`,
-      [now, ...userIds],
+      [now, appUserId],
     );
 
     await d1.query(
       `UPDATE enquiry SET deleted_at = ?
-       WHERE app_user_id IN (${placeholders}) AND deleted_at IS NULL`,
-      [now, ...userIds],
+       WHERE app_user_id = ? AND deleted_at IS NULL`,
+      [now, appUserId],
     );
 
-    // 6. Audit log
-    const usernames = affectedUsers.map((u) => u.username).join(", ");
+    // 5. Audit log
     await auditLog(
       adminId,
-      `Blacklisted ${affectedUsers.length} user(s): ${usernames}. Reason: ${reason.trim()}`,
+      `Blacklisted user: ${targetUser.username}. Reason: ${reason.trim()}`,
     );
 
-    // 7. Invalidate caches
+    // 6. Invalidate caches
     invalidateBlacklistCaches();
 
     return { success: true };

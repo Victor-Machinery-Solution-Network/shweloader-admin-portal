@@ -21,7 +21,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 const multiSelectVariants = cva('m-1 transition-colors', {
   variants: {
@@ -201,11 +200,11 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
           side="bottom"
           collisionPadding={8}
           avoidCollisions
+          onWheel={(e) => e.stopPropagation()}
         >
           <Command disablePointerSelection>
             {searchable && <CommandInput placeholder="Search..." />}
-            <ScrollArea className="max-h-60">
-              <CommandList className="max-h-none overflow-y-visible">
+              <CommandList className="max-h-60 overflow-y-auto overscroll-contain">
                 <CommandEmpty>No results found.</CommandEmpty>
                 <CommandGroup>
                   <CommandItem onSelect={toggleAll} className="cursor-pointer">
@@ -253,7 +252,6 @@ const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>(
                   })}
                 </CommandGroup>
               </CommandList>
-            </ScrollArea>
           </Command>
         </PopoverContent>
       </Popover>

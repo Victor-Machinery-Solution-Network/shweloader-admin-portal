@@ -39,7 +39,8 @@ import {
   Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, convertUsdToMmk, convertMmkToUsd } from "@/lib/utils";
+import { SESSION_KEYS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -82,8 +83,9 @@ import type {
   ApprovedPartner,
   ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel } from "@/types/equipment";
-import type { AttachmentModel } from "@/types/attachment";
+import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
+import type { AttachmentModel, AttachmentCategory } from "@/types/attachment";
+import type { ProductBrand } from "@/types/brand";
 import type { StateRegion, District, Township } from "@/types/location";
 import type {
   CustomFieldTemplateWithFields,
@@ -91,6 +93,7 @@ import type {
 } from "@/types/custom-field";
 import { assetUrl } from "@/lib/r2-url";
 import { CustomFieldsSection } from "./custom-fields-section";
+import { ModelPickerDialog } from "./model-picker-dialog";
 
 const LazySortableImageGallery = lazy(() =>
   import("@/components/shared/sortable-image-gallery").then((mod) => ({
@@ -111,6 +114,12 @@ interface ListingEditorProps {
   partners: ApprovedPartner[];
   equipmentModels: EquipmentModel[];
   attachmentModels: AttachmentModel[];
+  brands: ProductBrand[];
+  mainCategories: EquipmentMainCategory[];
+  subCategories: EquipmentSubCategory[];
+  subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[];
+  attachmentCategories: AttachmentCategory[];
+  categoryBrandLinks: { category_id: number; brand_id: number }[];
   stateRegions: StateRegion[];
   districts: District[];
   townships: Township[];
@@ -152,7 +161,7 @@ const TOTAL_STEPS = STEP_META.length;
 
 // ─── Auto-save ──────────────────────────────────────────────────────────────
 
-const AUTOSAVE_KEY = "listing-editor-autosave";
+const AUTOSAVE_KEY = SESSION_KEYS.LISTING_AUTOSAVE;
 
 interface AutoSaveState {
   currentStep: number;
@@ -397,6 +406,12 @@ export function ListingEditor({
   partners,
   equipmentModels,
   attachmentModels,
+  brands,
+  mainCategories,
+  subCategories,
+  subCategoryBrandLinks,
+  attachmentCategories,
+  categoryBrandLinks,
   stateRegions,
   districts,
   townships,
@@ -453,6 +468,7 @@ export function ListingEditor({
   const [currentStep, setCurrentStep] = useState(savedState?.currentStep ?? 0);
   const [step0Attempted, setStep0Attempted] = useState(false);
   const [step1Attempted, setStep1Attempted] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
 
   // ── Classification state ────────────────────────────────────────────────
 
@@ -465,20 +481,30 @@ export function ListingEditor({
     savedState?.productType ?? defaultProductType,
   );
 
-  // In create mode, pre-select listing type from sessionStorage after mount (avoids hydration mismatch)
-  const [forSale, setForSale] = useState(
-    savedState?.forSale ?? (isEditing ? pageType === "sale" : false),
-  );
-  const [forRent, setForRent] = useState(
-    savedState?.forRent ?? (isEditing ? pageType === "rent" : false),
-  );
+  // In create mode, read the sidebar "+" click intent — it always takes priority
+  // over auto-saved state since it reflects the user's latest action.
+  const newListingDefault = useMemo(() => {
+    if (isEditing || isDraftMode || typeof window === "undefined") return null;
+    return sessionStorage.getItem(SESSION_KEYS.NEW_LISTING_DEFAULT);
+  }, [isEditing, isDraftMode]);
 
+  const [forSale, setForSale] = useState(() => {
+    if (newListingDefault === "sale") return true;
+    if (newListingDefault === "rent") return false;
+    return savedState?.forSale ?? (isEditing ? pageType === "sale" : false);
+  });
+  const [forRent, setForRent] = useState(() => {
+    if (newListingDefault === "rent") return true;
+    if (newListingDefault === "sale") return false;
+    return savedState?.forRent ?? (isEditing ? pageType === "rent" : false);
+  });
+
+  // Clear the one-shot signal after it's been consumed
   useEffect(() => {
-    if (isEditing || isDraftMode || savedState) return;
-    const stored = sessionStorage.getItem("newListingDefault");
-    if (stored === "sale") setForSale(true);
-    else if (stored === "rent") setForRent(true);
-  }, [isEditing, isDraftMode, savedState]);
+    if (newListingDefault) {
+      sessionStorage.removeItem(SESSION_KEYS.NEW_LISTING_DEFAULT);
+    }
+  }, [newListingDefault]);
 
   // ── Product info state ──────────────────────────────────────────────────
 
@@ -575,30 +601,22 @@ export function ListingEditor({
     ? exchangeRate
     : parseFloat(rentCustomRate) || 0;
 
-  function convertSaleUsdToMmk(usd: string): string {
-    const n = parseFloat(usd);
-    return !isNaN(n) && n > 0 ? String(Math.round(n * saleActiveRate)) : "";
-  }
-  function convertRentUsdToMmk(usd: string): string {
-    const n = parseFloat(usd);
-    return !isNaN(n) && n > 0 ? String(Math.round(n * rentActiveRate)) : "";
-  }
+  const convertSaleUsdToMmk = (usd: string) => convertUsdToMmk(usd, saleActiveRate);
+  const convertSaleMmkToUsd = (mmk: string) => convertMmkToUsd(mmk, saleActiveRate);
+  const convertRentUsdToMmk = (usd: string) => convertUsdToMmk(usd, rentActiveRate);
+  const convertRentMmkToUsd = (mmk: string) => convertMmkToUsd(mmk, rentActiveRate);
 
   // Recalculate sale MMK when sale rate changes
   useEffect(() => {
-    const usd = parseFloat(saleUsdPrice);
-    if (!isNaN(usd) && usd > 0) {
-      setSaleMmkPrice(String(Math.round(usd * saleActiveRate)));
-    }
+    const mmk = convertUsdToMmk(saleUsdPrice, saleActiveRate);
+    if (mmk) setSaleMmkPrice(mmk);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleActiveRate]);
 
   // Recalculate rent MMK when rent rate changes
   useEffect(() => {
-    const usd = parseFloat(rentUsdPrice);
-    if (!isNaN(usd) && usd > 0) {
-      setRentMmkPrice(String(Math.round(usd * rentActiveRate)));
-    }
+    const mmk = convertUsdToMmk(rentUsdPrice, rentActiveRate);
+    if (mmk) setRentMmkPrice(mmk);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rentActiveRate]);
 
@@ -630,13 +648,6 @@ export function ListingEditor({
   const partnerNames = useMemo(
     () => Array.from(partnerMap.keys()),
     [partnerMap],
-  );
-  const modelNames = useMemo(
-    () =>
-      productType === "equipment"
-        ? equipmentModels.map((m) => m.name)
-        : attachmentModels.map((m) => m.name),
-    [productType, equipmentModels, attachmentModels],
   );
 
   // ── Cascading location lookups ──────────────────────────────────────
@@ -755,7 +766,7 @@ export function ListingEditor({
 
   function clearAutoSave() {
     sessionStorage.removeItem(AUTOSAVE_KEY);
-    sessionStorage.removeItem("newListingDefault");
+    sessionStorage.removeItem(SESSION_KEYS.NEW_LISTING_DEFAULT);
   }
 
   // ── Wizard navigation ─────────────────────────────────────────────────
@@ -763,8 +774,11 @@ export function ListingEditor({
   const modelMap =
     productType === "equipment" ? equipmentModelMap : attachmentModelMap;
 
+  const conditionRequired = forSale && conditionTypes.length > 0;
   const step0Valid =
-    !!modelMap.get(selectedModel) && (isEditing || isDraftMode || forSale || forRent);
+    !!modelMap.get(selectedModel) &&
+    (isEditing || isDraftMode || forSale || forRent) &&
+    (!conditionRequired || !!conditionId);
   const step1Valid = !!partnerMap.get(selectedPartner);
 
   // In edit/draft mode, all steps are "done" (data pre-populated)
@@ -777,7 +791,8 @@ export function ListingEditor({
       setStep0Attempted(true);
       if (!step0Valid) {
         if (!modelMap.get(selectedModel)) toast.error("Please select a model");
-        else toast.error("Select at least one listing type");
+        else if (!forSale && !forRent) toast.error("Select at least one listing type");
+        else if (conditionRequired && !conditionId) toast.error("Please select a condition");
         return;
       }
     }
@@ -848,6 +863,11 @@ export function ListingEditor({
         toast.error("Select at least one listing type");
         return;
       }
+      if (conditionRequired && !conditionId) {
+        setCurrentStep(0);
+        toast.error("Please select a condition");
+        return;
+      }
       const partnerId = partnerMap.get(selectedPartner);
       if (!partnerId) {
         setCurrentStep(1);
@@ -862,6 +882,16 @@ export function ListingEditor({
       if (forRent && (!rentUsdPrice || parseFloat(rentUsdPrice) <= 0)) {
         setCurrentStep(1);
         toast.error("Please enter a rental price");
+        return;
+      }
+      if (isCreateMode && !thumbnailUrl) {
+        setCurrentStep(2);
+        toast.error("Please upload a thumbnail image");
+        return;
+      }
+      if (isCreateMode && galleryItems.length === 0) {
+        setCurrentStep(2);
+        toast.error("Please add at least one product photo");
         return;
       }
     }
@@ -958,6 +988,9 @@ export function ListingEditor({
         // Redirect: new drafts go to draft edit page, everything else to list
         if (action === "save-draft" && !isDraftMode && result.draftId) {
           router.push(`/listings/drafts/${result.draftId}/edit`);
+        } else if (isCreateMode) {
+          // Hard navigation to fully reset component state
+          window.location.href = backUrl;
         } else {
           router.push(backUrl);
         }
@@ -980,10 +1013,10 @@ export function ListingEditor({
         <header className="bg-background/80 sticky top-0 z-10 border-b px-6 py-3 backdrop-blur-sm">
           <nav className="text-muted-foreground mb-1 flex items-center gap-1 text-xs">
             <Link
-              href={backUrl}
+              href={isCreateMode ? "/listings/for-sale" : backUrl}
               className="hover:text-foreground transition-colors"
             >
-              {isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
+              {isCreateMode ? "Listings" : isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
             </Link>
             <ChevronRight className="size-3 opacity-40" />
             <span className="text-foreground font-medium">
@@ -1075,7 +1108,7 @@ export function ListingEditor({
                       >
                         {isPending && submitActionRef.current !== "save-draft" ? (
                           <><Spinner className="mr-1" /> Submitting{"\u2026"}</>
-                        ) : canApprove ? "Create & Approve" : "Submit for Review"}
+                        ) : "Submit for Review"}
                       </Button>
                     </>
                   );
@@ -1342,29 +1375,34 @@ export function ListingEditor({
                 <Package className="size-4 text-muted-foreground" />
                 Model
               </label>
-              <Combobox
-                value={selectedModel}
-                defaultInputValue={savedState?.selectedModel ?? (sourceData?.model_name ?? "")}
-                onValueChange={(val) => setSelectedModel(val ?? "")}
-                items={modelNames}
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedModel && "text-muted-foreground",
+                  step0Attempted && !selectedModel && "border-destructive",
+                )}
+                onClick={() => setModelPickerOpen(true)}
               >
-                <ComboboxInput
-                  placeholder={`Search ${productType} model\u2026`}
-                  showClear={!!selectedModel}
-                />
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No model found</ComboboxEmpty>
-                    <ComboboxCollection>
-                      {(name) => (
-                        <ComboboxItem key={name} value={name}>
-                          {name}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxCollection>
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                <Package className="mr-2 size-4" />
+                {selectedModel || `Select ${productType} model\u2026`}
+              </Button>
+              <ModelPickerDialog
+                open={modelPickerOpen}
+                onOpenChange={setModelPickerOpen}
+                productType={productType}
+                brands={brands}
+                equipmentModels={equipmentModels}
+                mainCategories={mainCategories}
+                subCategories={subCategories}
+                subCategoryBrandLinks={subCategoryBrandLinks}
+                attachmentModels={attachmentModels}
+                attachmentCategories={attachmentCategories}
+                categoryBrandLinks={categoryBrandLinks}
+                currentModel={selectedModel}
+                onSelect={(name) => setSelectedModel(name)}
+              />
               {step0Attempted && !selectedModel && (
                 <p className="text-destructive text-xs">Please select a model.</p>
               )}
@@ -1419,6 +1457,11 @@ export function ListingEditor({
                         </button>
                       ))}
                     </div>
+                    {step0Attempted && conditionRequired && !conditionId && (
+                      <p className="text-destructive text-xs">
+                        Please select a condition.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -1741,7 +1784,10 @@ export function ListingEditor({
                       setSaleUsdPrice(v);
                       setSaleMmkPrice(convertSaleUsdToMmk(v));
                     }}
-                    onMmkChange={setSaleMmkPrice}
+                    onMmkChange={(v) => {
+                      setSaleMmkPrice(v);
+                      setSaleUsdPrice(convertSaleMmkToUsd(v));
+                    }}
                     rateDisplay={makeRateDisplay(saleActiveRate)}
                     rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
                   />
@@ -1755,7 +1801,10 @@ export function ListingEditor({
                       setRentUsdPrice(v);
                       setRentMmkPrice(convertRentUsdToMmk(v));
                     }}
-                    onMmkChange={setRentMmkPrice}
+                    onMmkChange={(v) => {
+                      setRentMmkPrice(v);
+                      setRentUsdPrice(convertRentMmkToUsd(v));
+                    }}
                     rateDisplay={makeRateDisplay(rentActiveRate)}
                     rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
                   />
@@ -1775,7 +1824,10 @@ export function ListingEditor({
                         setSaleUsdPrice(v);
                         setSaleMmkPrice(convertSaleUsdToMmk(v));
                       }}
-                      onMmkChange={setSaleMmkPrice}
+                      onMmkChange={(v) => {
+                        setSaleMmkPrice(v);
+                        setSaleUsdPrice(convertSaleMmkToUsd(v));
+                      }}
                       rateDisplay={makeRateDisplay(saleActiveRate)}
                       rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
                     />
@@ -1790,7 +1842,10 @@ export function ListingEditor({
                         setRentUsdPrice(v);
                         setRentMmkPrice(convertRentUsdToMmk(v));
                       }}
-                      onMmkChange={setRentMmkPrice}
+                      onMmkChange={(v) => {
+                        setRentMmkPrice(v);
+                        setRentUsdPrice(convertRentMmkToUsd(v));
+                      }}
                       rateDisplay={makeRateDisplay(rentActiveRate)}
                       rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
                     />
@@ -1849,9 +1904,9 @@ export function ListingEditor({
               <label className="flex items-center gap-1.5 text-sm font-medium">
                 <ImageIcon className="size-4 text-muted-foreground" />
                 Thumbnail
-                <span className="text-muted-foreground text-xs font-normal">
-                  Cover image
-                </span>
+                {isCreateMode && (
+                  <span className="text-destructive text-xs font-normal">*</span>
+                )}
               </label>
               <ImageInput
                 name="thumbnail_url"
@@ -1860,6 +1915,9 @@ export function ListingEditor({
                 placeholder="Upload cover"
                 aspectClassName="aspect-video w-full max-w-xs"
               />
+              {submitted && isCreateMode && !thumbnailUrl && (
+                <p className="text-destructive text-xs">Thumbnail is required.</p>
+              )}
             </div>
 
             {/* Product Photos */}
@@ -1867,6 +1925,9 @@ export function ListingEditor({
               <label className="flex items-center gap-1.5 text-sm font-medium">
                 <Camera className="size-4 text-muted-foreground" />
                 Product Photos
+                {isCreateMode && (
+                  <span className="text-destructive text-xs font-normal">* (at least 1)</span>
+                )}
               </label>
               <Suspense
                 fallback={
@@ -1880,6 +1941,9 @@ export function ListingEditor({
                   onChange={setGalleryItems}
                 />
               </Suspense>
+              {submitted && isCreateMode && galleryItems.length === 0 && (
+                <p className="text-destructive text-xs">At least one photo is required.</p>
+              )}
             </div>
 
             {/* Step footer */}
@@ -1892,39 +1956,24 @@ export function ListingEditor({
               >
                 <ArrowLeft className="mr-1 size-3.5" /> Back
               </Button>
-              <div className="flex items-center gap-2">
-                {(isDraftMode || (!isEditing && !isDraftMode)) && (
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => { submitActionRef.current = "save-draft"; }}
-                  >
-                    Save as Draft
-                  </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isPending}
+                onClick={() => {
+                  submitActionRef.current = isRework ? "resubmit" : isEditing ? "save" : "submit";
+                }}
+              >
+                {isPending ? (
+                  <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                ) : isRework ? (
+                  "Resubmit"
+                ) : isEditing ? (
+                  "Save"
+                ) : (
+                  "Submit for Review"
                 )}
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => {
-                    submitActionRef.current = isRework ? "resubmit" : isEditing ? "save" : "submit";
-                  }}
-                >
-                  {isPending ? (
-                    <><Spinner className="mr-1" /> Saving{"\u2026"}</>
-                  ) : isRework ? (
-                    "Resubmit"
-                  ) : isEditing ? (
-                    "Save"
-                  ) : canApprove ? (
-                    "Create & Approve"
-                  ) : (
-                    "Submit for Review"
-                  )}
-                </Button>
-              </div>
+              </Button>
             </div>
           </div>
         </div>

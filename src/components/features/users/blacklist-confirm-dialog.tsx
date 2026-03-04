@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Ban, AlertTriangle } from "lucide-react";
+import { Ban } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Separator } from "@/components/ui/separator";
@@ -77,9 +77,6 @@ export function BlacklistConfirmDialog({
     });
   }
 
-  const isCompanyBan =
-    preview?.is_company_ban && preview.affected_users.length > 1;
-
   const impacts = [
     { label: "Sale listings", count: preview?.sale_listing_count ?? 0 },
     { label: "Rent listings", count: preview?.rent_listing_count ?? 0 },
@@ -110,34 +107,18 @@ export function BlacklistConfirmDialog({
         ) : (
           preview && (
             <div className="space-y-4">
-              {isCompanyBan && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  <span>
-                    Company ban: all {preview.affected_users.length} users under{" "}
-                    <strong>{preview.affected_users[0]?.company_name}</strong>{" "}
-                    will be affected.
+              <div className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium">{preview.user.username}</span>
+                  <span className="text-muted-foreground text-xs truncate">
+                    {preview.user.email}
                   </span>
                 </div>
-              )}
-
-              <div className="space-y-1.5">
-                <span className="text-sm font-medium">
-                  Affected users ({preview.affected_users.length})
-                </span>
-                <div className="max-h-32 overflow-y-auto overscroll-contain rounded-lg border p-2">
-                  {preview.affected_users.map((u) => (
-                    <div
-                      key={u.app_user_id}
-                      className="flex items-center justify-between gap-2 rounded px-1.5 py-1 text-sm"
-                    >
-                      <span className="font-medium">{u.username}</span>
-                      <span className="text-muted-foreground truncate text-xs">
-                        {u.email}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {preview.user.phone && (
+                  <span className="text-muted-foreground text-xs shrink-0">
+                    {preview.user.phone}
+                  </span>
+                )}
               </div>
 
               {impacts.length > 0 && (

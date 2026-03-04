@@ -46,10 +46,12 @@ const ORDERABLE_TABLES = {
   sale_listing: {
     pk: "id",
     tag: CACHE_TAGS.SALE_LISTINGS as CacheTag,
+    softDelete: true,
   },
   rent_listing: {
     pk: "id",
     tag: CACHE_TAGS.RENT_LISTINGS as CacheTag,
+    softDelete: true,
   },
 } as const;
 
@@ -101,6 +103,27 @@ export async function updateDisplayOrder(
   }
 }
 
+/** Build WHERE clause + params for optional soft-delete and scope filtering. */
+function buildWhereClause(
+  config: (typeof ORDERABLE_TABLES)[OrderableTable],
+  scopeColumn?: string,
+  scopeId?: number,
+): { where: string; params: (string | number)[] } {
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+
+  if ("softDelete" in config && config.softDelete) {
+    conditions.push("deleted_at IS NULL");
+  }
+  if (scopeColumn && scopeId !== undefined) {
+    conditions.push(`${scopeColumn} = ?`);
+    params.push(scopeId);
+  }
+
+  const where = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+  return { where, params };
+}
+
 /** Check if a display_order value is a valid fractional-indexing key */
 function isValidFractionalKey(key: string | null): boolean {
   if (!key) return true;
@@ -120,17 +143,10 @@ async function migrateLegacyKeys(
   const config = ORDERABLE_TABLES[table];
   if (!config) return;
 
-  const conditions = ["deleted_at IS NULL"];
-  const params: (string | number)[] = [];
-
-  if (scopeColumn && scopeId !== undefined) {
-    conditions.push(`${scopeColumn} = ?`);
-    params.push(scopeId);
-  }
-
+  const { where, params } = buildWhereClause(config, scopeColumn, scopeId);
   const sql =
     `SELECT ${config.pk} AS id, display_order FROM ${table}` +
-    ` WHERE ${conditions.join(" AND ")}` +
+    where +
     ` ORDER BY CAST(display_order AS INTEGER) ASC, display_order ASC`;
 
   const result = await d1.query<{ id: number; display_order: string }>(
@@ -165,17 +181,10 @@ async function getBoundaryDisplayOrder(
   const config = ORDERABLE_TABLES[table];
   if (!config) return null;
 
-  const conditions = ["deleted_at IS NULL"];
-  const params: (string | number)[] = [];
-
-  if (scopeColumn && scopeId !== undefined) {
-    conditions.push(`${scopeColumn} = ?`);
-    params.push(scopeId);
-  }
-
+  const { where, params } = buildWhereClause(config, scopeColumn, scopeId);
   const sql =
     `SELECT display_order FROM ${table}` +
-    ` WHERE ${conditions.join(" AND ")}` +
+    where +
     ` ORDER BY display_order ${direction} LIMIT 1`;
 
   const result = await d1.query<{ display_order: string }>(sql, params);

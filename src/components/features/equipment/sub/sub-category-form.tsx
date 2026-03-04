@@ -118,10 +118,10 @@ export function SubCategoryForm({
                   <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] min-w-60 p-0" align="start">
+              <PopoverContent className="w-[--radix-popover-trigger-width] min-w-60 p-0" align="start" onWheel={(e) => e.stopPropagation()}>
                 <Command>
                   <CommandInput placeholder="Search main category..." />
-                  <CommandList className="max-h-60 overflow-y-auto">
+                  <CommandList className="max-h-60 overflow-y-auto overscroll-contain">
                     <CommandEmpty>No category found.</CommandEmpty>
                     <CommandGroup>
                       {categoryNames.map((name) => (

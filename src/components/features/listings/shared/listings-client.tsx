@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SESSION_KEYS } from "@/lib/constants";
 import type { FilterConfig } from "@/types/data-table-filters";
 
 import { EmptyState } from "@/components/shared/empty-state";
@@ -283,9 +284,9 @@ export function ListingsClient({
   );
 
   const handleAddListing = useCallback(() => {
-    sessionStorage.setItem("newListingDefault", pageType);
-    router.push("/listings/new");
-  }, [pageType, router]);
+    sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
+    window.location.href = "/listings/new";
+  }, [pageType]);
 
   const addListingToolbar = canCreate ? (
     <DropdownMenu>

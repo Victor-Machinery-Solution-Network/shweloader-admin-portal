@@ -10,7 +10,6 @@ import {
   Upload,
   ImageIcon,
   Import,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -90,11 +89,10 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
           </h1>
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={() => router.push(config.returnRoute)}
           >
-            <X className="size-5" />
-            <span className="sr-only">Close</span>
+            Discard
           </Button>
         </div>
 

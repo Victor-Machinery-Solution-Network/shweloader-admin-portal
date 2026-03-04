@@ -6,6 +6,12 @@ import {
   getApprovedPartners,
   getEquipmentModels,
   getAttachmentModels,
+  getBrands,
+  getMainCategories,
+  getSubCategories,
+  getSubCategoryBrandLinks,
+  getAttachmentCategories,
+  getCategoryBrandLinks,
   getStateRegions,
   getDistricts,
   getTownships,
@@ -39,6 +45,10 @@ async function NewListingContent() {
     CACHE_TAGS.PARTNERS,
     CACHE_TAGS.EQUIPMENT_MODELS,
     CACHE_TAGS.ATTACHMENT_MODELS,
+    CACHE_TAGS.BRANDS,
+    CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES,
+    CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES,
+    CACHE_TAGS.ATTACHMENT_CATEGORIES,
     CACHE_TAGS.LOCATIONS,
     CACHE_TAGS.CONDITION_TYPES,
     CACHE_TAGS.SETTINGS,
@@ -49,6 +59,12 @@ async function NewListingContent() {
     partners,
     equipmentModels,
     attachmentModels,
+    brands,
+    mainCategories,
+    subCategories,
+    subCategoryBrandLinks,
+    attachmentCategories,
+    categoryBrandLinks,
     stateRegions,
     districts,
     townships,
@@ -59,6 +75,12 @@ async function NewListingContent() {
     getApprovedPartners(),
     getEquipmentModels(),
     getAttachmentModels(),
+    getBrands(),
+    getMainCategories(),
+    getSubCategories(),
+    getSubCategoryBrandLinks(),
+    getAttachmentCategories(),
+    getCategoryBrandLinks(),
     getStateRegions(),
     getDistricts(),
     getTownships(),
@@ -76,6 +98,12 @@ async function NewListingContent() {
       partners={partners}
       equipmentModels={equipmentModels}
       attachmentModels={attachmentModels}
+      brands={brands}
+      mainCategories={mainCategories}
+      subCategories={subCategories}
+      subCategoryBrandLinks={subCategoryBrandLinks}
+      attachmentCategories={attachmentCategories}
+      categoryBrandLinks={categoryBrandLinks}
       stateRegions={stateRegions}
       districts={districts}
       townships={townships}

@@ -30,7 +30,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
-import { ROUTES } from "@/lib/constants";
+import { ROUTES, SESSION_KEYS } from "@/lib/constants";
 import {
   Sidebar,
   SidebarContent,
@@ -582,11 +582,10 @@ export function AppSidebar() {
 /* ------------------------------------------------------------------ */
 
 function AddListingDropdown({ pageType }: { pageType: "sale" | "rent" }) {
-  const router = useRouter();
-
   function handleFillForm() {
-    sessionStorage.setItem("newListingDefault", pageType);
-    router.push(ROUTES.LISTINGS_NEW);
+    sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
+    // Hard navigation ensures the form always re-mounts with the correct preset
+    window.location.href = ROUTES.LISTINGS_NEW;
   }
 
   return (

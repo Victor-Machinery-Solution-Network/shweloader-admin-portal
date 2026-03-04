@@ -22,7 +22,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ImageInput } from "@/components/ui/image-input";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
-import { FormSubmittedContext } from "@/components/ui/required-input";
+import { FormSubmittedContext, RequiredInput } from "@/components/ui/required-input";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 const LazyCalendar = lazy(() =>
@@ -91,6 +91,8 @@ export function ArticleEditor({
 
   // Submission action ref: set by button onClick before form onSubmit fires
   const submitActionRef = useRef<"draft" | "publish" | "save" | "submit-review" | "resubmit">("save");
+  // Tracks whether a non-draft submission was attempted (for mandatory field indicators)
+  const [strictValidation, setStrictValidation] = useState(false);
 
   // Article state detection
   const isNewArticle = !article;
@@ -117,6 +119,7 @@ export function ArticleEditor({
   const [coverImage, setCoverImage] = useState<string | null>(
     article?.cover_image_url ?? null,
   );
+  const [contentValue, setContentValue] = useState(article?.content ?? "");
 
   const categoryNames = categories.map((c) => c.name);
 
@@ -135,6 +138,20 @@ export function ArticleEditor({
 
     const action = submitActionRef.current;
     const formData = new FormData(e.currentTarget);
+
+    // Mandatory fields for non-draft actions
+    if (action !== "draft") {
+      setStrictValidation(true);
+      const missing: string[] = [];
+      if (!selectedCategory) missing.push("Category");
+      if (!coverImage) missing.push("Cover Image");
+      if (!contentValue.trim()) missing.push("Content");
+      if (missing.length > 0) {
+        toast.error(`Required: ${missing.join(", ")}`);
+        return;
+      }
+    }
+
     const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
     const categoryId = categoryMap.get(selectedCategory);
     if (categoryId) {
@@ -292,7 +309,14 @@ export function ArticleEditor({
                   variant="outline"
                   size="sm"
                   disabled={isPending}
-                  onClick={() => router.push("/articles/posts")}
+                  onClick={() => {
+                    if (isNewArticle) {
+                      // Hard navigation to fully reset form state
+                      window.location.href = "/articles/posts";
+                      return;
+                    }
+                    router.push("/articles/posts");
+                  }}
                 >
                   {fieldsDisabled ? "Back" : "Discard"}
                 </Button>
@@ -531,28 +555,29 @@ export function ArticleEditor({
                 </div>
               )}
               <Field>
-                <FieldLabel>Title</FieldLabel>
-                <Input
+                <FieldLabel>Title <span className="text-destructive">*</span></FieldLabel>
+                <RequiredInput
                   name="title"
-                  required
                   disabled={fieldsDisabled}
                   placeholder="e.g. How to Maintain Heavy Equipment"
                   defaultValue={article?.title ?? ""}
+                  errorMessage="Title is required"
                   autoComplete="off"
-                  aria-invalid={
-                    submitted && !article?.title ? true : undefined
-                  }
                   className="text-lg"
                 />
               </Field>
               <Field className="min-h-0 flex-1">
-                <FieldLabel>Content</FieldLabel>
+                <FieldLabel>Content <span className="text-destructive">*</span></FieldLabel>
                 <MarkdownEditor
                   name="content"
                   disabled={fieldsDisabled}
                   placeholder="Write your article content here…"
                   defaultValue={article?.content ?? ""}
-                  className="min-h-0 flex-1"
+                  onChange={setContentValue}
+                  className={cn(
+                    "min-h-0 flex-1",
+                    strictValidation && !contentValue.trim() && "border-destructive",
+                  )}
                 />
               </Field>
             </div>
@@ -565,7 +590,7 @@ export function ArticleEditor({
 
               <div className="space-y-5">
                 <Field>
-                  <FieldLabel>Category</FieldLabel>
+                  <FieldLabel>Category <span className="text-destructive">*</span></FieldLabel>
                   <Combobox
                     value={selectedCategory}
                     onValueChange={(val) => setSelectedCategory(val ?? "")}
@@ -575,6 +600,7 @@ export function ArticleEditor({
                       disabled={fieldsDisabled}
                       placeholder="Search category…"
                       showClear={!fieldsDisabled && !!selectedCategory}
+                      aria-invalid={strictValidation && !selectedCategory ? true : undefined}
                     />
                     <ComboboxContent>
                       <ComboboxList>
@@ -652,7 +678,7 @@ export function ArticleEditor({
                 <Separator />
 
                 <Field>
-                  <FieldLabel>Cover Image</FieldLabel>
+                  <FieldLabel>Cover Image <span className="text-destructive">*</span></FieldLabel>
                   <ImageInput
                     name="cover_image_url"
                     disabled={fieldsDisabled}
@@ -661,6 +687,9 @@ export function ArticleEditor({
                     placeholder="Upload cover image"
                     maxSizeMB={5}
                   />
+                  {strictValidation && !coverImage && (
+                    <p className="text-destructive text-xs">Cover image is required</p>
+                  )}
                 </Field>
               </div>
             </div>

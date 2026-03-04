@@ -8,6 +8,12 @@ import {
   getApprovedPartners,
   getEquipmentModels,
   getAttachmentModels,
+  getBrands,
+  getMainCategories,
+  getSubCategories,
+  getSubCategoryBrandLinks,
+  getAttachmentCategories,
+  getCategoryBrandLinks,
   getStateRegions,
   getDistricts,
   getTownships,
@@ -54,6 +60,12 @@ async function EditRentListingContent({
     partners,
     equipmentModels,
     attachmentModels,
+    brands,
+    mainCategories,
+    subCategories,
+    subCategoryBrandLinks,
+    attachmentCategories,
+    categoryBrandLinks,
     stateRegions,
     districts,
     townships,
@@ -65,6 +77,12 @@ async function EditRentListingContent({
     getApprovedPartners(),
     getEquipmentModels(),
     getAttachmentModels(),
+    getBrands(),
+    getMainCategories(),
+    getSubCategories(),
+    getSubCategoryBrandLinks(),
+    getAttachmentCategories(),
+    getCategoryBrandLinks(),
     getStateRegions(),
     getDistricts(),
     getTownships(),
@@ -88,6 +106,12 @@ async function EditRentListingContent({
       partners={partners}
       equipmentModels={equipmentModels}
       attachmentModels={attachmentModels}
+      brands={brands}
+      mainCategories={mainCategories}
+      subCategories={subCategories}
+      subCategoryBrandLinks={subCategoryBrandLinks}
+      attachmentCategories={attachmentCategories}
+      categoryBrandLinks={categoryBrandLinks}
       stateRegions={stateRegions}
       districts={districts}
       townships={townships}

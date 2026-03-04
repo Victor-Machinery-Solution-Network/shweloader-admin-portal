@@ -71,6 +71,12 @@ export const ITEMS_PER_PAGE = 20;
 // System exchange rate (USD to MMK)
 export const SYSTEM_EXCHANGE_RATE = 3200;
 
+/** SessionStorage keys shared across components */
+export const SESSION_KEYS = {
+  NEW_LISTING_DEFAULT: "newListingDefault",
+  LISTING_AUTOSAVE: "listing-editor-autosave",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Cache configuration
 // ---------------------------------------------------------------------------
