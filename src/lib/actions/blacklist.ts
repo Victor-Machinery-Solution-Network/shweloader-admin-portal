@@ -223,13 +223,17 @@ export async function unblacklistUsers(blacklistIds: number[]) {
 
     const placeholders = blacklistIds.map(() => "?").join(",");
 
-    // 1. Get the blacklist entries to find affected user IDs
+    // 1. Get the blacklist entries to find affected user IDs + timestamps
+    //    The created_at timestamp matches the deleted_at set during blacklisting,
+    //    so we only restore rows that were deleted BY the blacklist — not rows
+    //    that were independently deleted before the ban.
     const entries = await d1.query<{
       blacklist_id: number;
       app_user_id: number;
+      created_at: string;
       username?: string;
     }>(
-      `SELECT b.blacklist_id, b.app_user_id, u.username
+      `SELECT b.blacklist_id, b.app_user_id, b.created_at, u.username
        FROM blacklist b
        LEFT JOIN app_user u ON b.app_user_id = u.app_user_id
        WHERE b.blacklist_id IN (${placeholders})`,
@@ -242,6 +246,18 @@ export async function unblacklistUsers(blacklistIds: number[]) {
 
     const userIds = [...new Set(entries.results.map((e) => e.app_user_id))];
     const userPlaceholders = userIds.map(() => "?").join(",");
+
+    // Collect the blacklist timestamps per user — these are the deleted_at
+    // values that the blacklist cascade wrote, so we can precisely target them.
+    const timestampsByUser = new Map<number, Set<string>>();
+    for (const entry of entries.results) {
+      let set = timestampsByUser.get(entry.app_user_id);
+      if (!set) {
+        set = new Set();
+        timestampsByUser.set(entry.app_user_id, set);
+      }
+      set.add(entry.created_at);
+    }
 
     // 2. Delete blacklist entries
     await d1.query(
@@ -261,50 +277,64 @@ export async function unblacklistUsers(blacklistIds: number[]) {
       (id) => !stillBlacklisted.has(id),
     );
 
-    if (fullyUnblacklisted.length > 0) {
-      const fullyPlaceholders = fullyUnblacklisted.map(() => "?").join(",");
+    // 4. Restore only rows whose deleted_at matches a blacklist timestamp.
+    //    This prevents resurrecting rows that were independently deleted
+    //    (via trash or manual action) before the ban.
+    for (const userId of fullyUnblacklisted) {
+      const timestamps = [...(timestampsByUser.get(userId) ?? [])];
+      if (timestamps.length === 0) continue;
 
-      // 4. Restore: clear deleted_at on app_user
+      const tsPlaceholders = timestamps.map(() => "?").join(",");
+
+      // 4a. Restore app_user
       await d1.query(
-        `UPDATE app_user SET deleted_at = NULL WHERE app_user_id IN (${fullyPlaceholders})`,
-        fullyUnblacklisted,
+        `UPDATE app_user SET deleted_at = NULL
+         WHERE app_user_id = ? AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
 
-      // 5. Restore related entities (restores to original state)
+      // 4b. Restore partner
       await d1.query(
-        `UPDATE partner SET deleted_at = NULL WHERE app_user_id IN (${fullyPlaceholders})`,
-        fullyUnblacklisted,
+        `UPDATE partner SET deleted_at = NULL
+         WHERE app_user_id = ? AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
 
+      // 4c. Restore product_list
       await d1.query(
         `UPDATE product_list SET deleted_at = NULL
-         WHERE partner_id IN (SELECT id FROM partner WHERE app_user_id IN (${fullyPlaceholders}))`,
-        fullyUnblacklisted,
+         WHERE partner_id IN (SELECT id FROM partner WHERE app_user_id = ?)
+         AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
 
+      // 4d. Restore sale_listing
       await d1.query(
         `UPDATE sale_listing SET deleted_at = NULL
          WHERE product_list_id IN (
            SELECT pl.id FROM product_list pl
            JOIN partner p ON pl.partner_id = p.id
-           WHERE p.app_user_id IN (${fullyPlaceholders})
-         )`,
-        fullyUnblacklisted,
+           WHERE p.app_user_id = ?
+         ) AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
 
+      // 4e. Restore rent_listing
       await d1.query(
         `UPDATE rent_listing SET deleted_at = NULL
          WHERE product_list_id IN (
            SELECT pl.id FROM product_list pl
            JOIN partner p ON pl.partner_id = p.id
-           WHERE p.app_user_id IN (${fullyPlaceholders})
-         )`,
-        fullyUnblacklisted,
+           WHERE p.app_user_id = ?
+         ) AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
 
+      // 4f. Restore enquiry
       await d1.query(
-        `UPDATE enquiry SET deleted_at = NULL WHERE app_user_id IN (${fullyPlaceholders})`,
-        fullyUnblacklisted,
+        `UPDATE enquiry SET deleted_at = NULL
+         WHERE app_user_id = ? AND deleted_at IN (${tsPlaceholders})`,
+        [userId, ...timestamps],
       );
     }
 

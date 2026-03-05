@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
-import { TemplateForm } from "./template-form";
 import { deleteCustomFieldTemplate } from "@/lib/actions/custom-field-template";
 import type { CustomFieldTemplateWithFields } from "@/types/custom-field";
 
@@ -15,9 +15,9 @@ interface TemplateRowActionsProps {
 }
 
 export function TemplateRowActions({ template }: TemplateRowActionsProps) {
+  const router = useRouter();
   const canEdit = useHasPermission("listing_templates", "edit");
   const canDelete = useHasPermission("listing_templates", "delete");
-  const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -39,7 +39,10 @@ export function TemplateRowActions({ template }: TemplateRowActionsProps) {
           {
             label: "Edit" as const,
             icon: Pencil,
-            onClick: () => setShowEdit(true),
+            onClick: () =>
+              router.push(
+                `/listing-templates/${template.template_id}/edit`,
+              ),
           },
         ]
       : []),
@@ -61,14 +64,6 @@ export function TemplateRowActions({ template }: TemplateRowActionsProps) {
   return (
     <>
       <RowActions actions={actions} />
-
-      {showEdit && (
-        <TemplateForm
-          open={showEdit}
-          onOpenChange={setShowEdit}
-          template={template}
-        />
-      )}
 
       <DeleteDialog
         open={showDelete}

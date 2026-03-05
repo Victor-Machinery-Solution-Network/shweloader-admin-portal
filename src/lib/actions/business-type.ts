@@ -77,7 +77,7 @@ export async function getUserCount(
 
   const placeholders = businessTypeIds.map(() => "?").join(",");
   const result = await d1.query<{ business_type_id: number; count: number }>(
-    `SELECT business_type_id, COUNT(*) as count FROM app_user WHERE business_type_id IN (${placeholders}) GROUP BY business_type_id`,
+    `SELECT business_type_id, COUNT(*) as count FROM app_user WHERE business_type_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY business_type_id`,
     businessTypeIds,
   );
 

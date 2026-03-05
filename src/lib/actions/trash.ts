@@ -214,25 +214,40 @@ async function doRestore(entityType: TrashEntityType, entityId: number) {
     [entityId],
   );
 
-  // For sale/rent listings, also restore the parent product_list if soft-deleted
+  // For sale/rent listings, also restore the parent product_list — but ONLY
+  // if it was deleted in the same batch (i.e. cascade-deleted alongside the
+  // listing). If the product_list was independently deleted, leave it alone.
   if (entityType === "sale_listing" || entityType === "rent_listing") {
-    const fk = "product_list_id";
     const listing = await d1.query<{ product_list_id: number }>(
-      `SELECT ${fk} FROM ${config.table} WHERE ${config.primaryKey} = ? LIMIT 1`,
+      `SELECT product_list_id FROM ${config.table} WHERE ${config.primaryKey} = ? LIMIT 1`,
       [entityId],
     );
     const plId = listing.results[0]?.product_list_id;
     if (plId) {
-      // Restore product_list if it's currently soft-deleted
-      await d1.query(
-        `UPDATE product_list SET deleted_at = NULL, deleted_by = NULL WHERE id = ? AND deleted_at IS NOT NULL`,
-        [plId],
+      // Check if both the listing and product_list share the same batch_id
+      const batchCheck = await d1.query<{ batch_id: string }>(
+        `SELECT batch_id FROM trash_metadata WHERE entity_type = ? AND entity_id = ? LIMIT 1`,
+        [entityType, entityId],
       );
-      // Also remove product_list trash metadata
-      await d1.query(
-        `DELETE FROM trash_metadata WHERE entity_type = 'product_list' AND entity_id = ?`,
-        [plId],
-      );
+      const listingBatchId = batchCheck.results[0]?.batch_id;
+
+      if (listingBatchId) {
+        // Only restore product_list if it was deleted in the same batch
+        const plTrash = await d1.query<{ id: number }>(
+          `SELECT id FROM trash_metadata WHERE entity_type = 'product_list' AND entity_id = ? AND batch_id = ? LIMIT 1`,
+          [plId, listingBatchId],
+        );
+        if (plTrash.results.length > 0) {
+          await d1.query(
+            `UPDATE product_list SET deleted_at = NULL, deleted_by = NULL WHERE id = ? AND deleted_at IS NOT NULL`,
+            [plId],
+          );
+          await d1.query(
+            `DELETE FROM trash_metadata WHERE entity_type = 'product_list' AND entity_id = ?`,
+            [plId],
+          );
+        }
+      }
     }
   }
 

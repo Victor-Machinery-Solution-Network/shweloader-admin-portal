@@ -732,12 +732,36 @@ async function createListingRow(
   const modelId = data.model_name as number;
   const partnerId = data.partner_id as number;
   const conditionTypeId = data.condition_type as number | null;
-  const mmkPrice = data.mmk_price as number | null;
-  const usdPrice = data.usd_price as number | null;
   const townshipId = data.township as number | null;
   const description = data.description as string | null;
   const hidePrice = data.hide_price as number | null;
+  const hidePartner = data.hide_partner as number | null;
   const isHidden = data.is_hidden as number | null;
+  const thumbnailUrl = data.thumbnail_url as string | null;
+
+  // Build custom_fields JSON from name-value column pairs
+  const customFieldEntries: { key: string; label: string; value: string }[] = [];
+  for (let i = 1; i <= 5; i++) {
+    const name = data[`cf_${i}_name`] as string | null;
+    const value = data[`cf_${i}_value`] as string | null;
+    if (name?.trim() && value?.trim()) {
+      const label = name.trim();
+      const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      customFieldEntries.push({ key, label, value: value.trim() });
+    }
+  }
+  const customFields = customFieldEntries.length > 0
+    ? JSON.stringify(customFieldEntries)
+    : null;
+  const productImages = data.product_images as string | string[] | null;
+
+  // Separate sale/rent prices and display currency
+  const saleMmkPrice = data.sale_mmk_price as number | null;
+  const saleUsdPrice = data.sale_usd_price as number | null;
+  const rentMmkPrice = data.rent_mmk_price as number | null;
+  const rentUsdPrice = data.rent_usd_price as number | null;
+  const saleDisplayCurrency = (data.sale_display_currency as string) || "MMK";
+  const rentDisplayCurrency = (data.rent_display_currency as string) || "MMK";
 
   // 1. Create product_list
   const { productListService } = await import("@/lib/services/listing");
@@ -746,7 +770,10 @@ async function createListingRow(
     equipment_model_id: productType === "equipment" ? modelId : null,
     attachment_model_id: productType === "attachment" ? modelId : null,
     description: description?.trim() || null,
+    thumbnail_url: thumbnailUrl,
     township_id: townshipId,
+    hide_partner: hidePartner ?? 0,
+    custom_fields: customFields?.trim() || null,
     created_by: userId,
   });
 
@@ -756,7 +783,28 @@ async function createListingRow(
   const productId = plResult.results[0]?.id;
   if (!productId) throw new Error("Failed to create product list");
 
-  // 2. Generate unique listing IDs and create listings
+  // 2. Insert product images if provided
+  if (productImages) {
+    const imageKeys = Array.isArray(productImages)
+      ? productImages
+      : [productImages];
+    for (let i = 0; i < imageKeys.length; i++) {
+      const { results: imgRows } = await d1.query<{ image_id: number }>(
+        "INSERT INTO image (image_url, uploaded_by) VALUES (?, ?) RETURNING image_id",
+        [imageKeys[i], userId],
+      );
+      const imageId = imgRows[0]?.image_id;
+      if (imageId) {
+        await d1.query(
+          `INSERT INTO product_image (image_id, product_list_id, display_order, uploaded_by, active)
+           VALUES (?, ?, ?, ?, 1)`,
+          [imageId, productId, String(i), userId],
+        );
+      }
+    }
+  }
+
+  // 3. Generate unique listing IDs and create listings
   const forSale = listingType === "sale" || listingType === "both";
   const forRent = listingType === "rent" || listingType === "both";
   const pType = productType as "equipment" | "attachment";
@@ -768,11 +816,12 @@ async function createListingRow(
       product_list_id: productId,
       custom_id: customId,
       condition_type_id: conditionTypeId,
-      mmk_price: mmkPrice,
-      usd_price: usdPrice,
+      mmk_price: saleMmkPrice,
+      usd_price: saleUsdPrice,
       hide_price: hidePrice ?? 0,
       is_hidden: isHidden ?? 0,
       is_sold_out: 0,
+      display_currency: saleDisplayCurrency,
       created_by: userId,
     });
   }
@@ -783,10 +832,12 @@ async function createListingRow(
     await rentListingService.create({
       product_list_id: productId,
       custom_id: customId,
-      mmk_price: mmkPrice,
-      usd_price: usdPrice,
+      mmk_price: rentMmkPrice,
+      usd_price: rentUsdPrice,
       hide_price: hidePrice ?? 0,
       is_hidden: isHidden ?? 0,
+      is_rented: 0,
+      display_currency: rentDisplayCurrency,
       created_by: userId,
     });
   }

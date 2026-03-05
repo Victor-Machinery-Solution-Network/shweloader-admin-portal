@@ -182,7 +182,10 @@ interface AutoSaveState {
   rentUseSystemRate: boolean;
   rentCustomRate: string;
   hidePartner: boolean;
-  hidePrice: boolean;
+  saleHidePrice: boolean;
+  rentHidePrice: boolean;
+  saleDisplayCurrency: string;
+  rentDisplayCurrency: string;
   conditionId: string;
   customFieldValues: CustomFieldValue[];
   thumbnailUrl: string | null;
@@ -191,35 +194,6 @@ interface AutoSaveState {
 
 // ─── Reusable pieces ─────────────────────────────────────────────────────────
 
-function SegmentedPill({
-  options,
-  value,
-  onChange,
-}: {
-  options: { label: string; value: string }[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="bg-muted/80 inline-flex rounded-full p-1">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            "rounded-full px-5 py-1.5 text-sm font-medium transition-all duration-200",
-            value === opt.value
-              ? "bg-foreground text-background shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function OptionCard({
   selected,
@@ -325,8 +299,16 @@ function PricingCard({
   mmkPrice,
   onUsdChange,
   onMmkChange,
-  rateDisplay,
-  rateControls,
+  activeRate,
+  useSystemRate,
+  onToggleSystemRate,
+  customRate,
+  onCustomRateChange,
+  systemRate,
+  displayCurrency,
+  onDisplayCurrencyChange,
+  hidePrice,
+  onHidePriceChange,
 }: {
   icon?: LucideIcon;
   label: string;
@@ -334,64 +316,159 @@ function PricingCard({
   mmkPrice: string;
   onUsdChange: (value: string) => void;
   onMmkChange: (value: string) => void;
-  rateDisplay: React.ReactNode;
-  rateControls: React.ReactNode;
+  activeRate: number;
+  useSystemRate: boolean;
+  onToggleSystemRate: (v: boolean) => void;
+  customRate: string;
+  onCustomRateChange: (v: string) => void;
+  systemRate: number;
+  displayCurrency: string;
+  onDisplayCurrencyChange: (v: string) => void;
+  hidePrice: boolean;
+  onHidePriceChange: (v: boolean) => void;
 }) {
+  const [showRateSettings, setShowRateSettings] = useState(false);
+
   return (
     <div className="flex flex-col gap-3">
       <SubSectionLabel icon={icon}>{label}</SubSectionLabel>
-      <div className="overflow-hidden rounded-2xl border">
-        {/* USD row */}
-        <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
-            $
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground text-xs font-medium">USD</p>
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={usdPrice}
-              onChange={(e) => onUsdChange(e.target.value)}
-              onWheel={(e) => e.currentTarget.blur()}
-              autoComplete="off"
-              className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
-            />
+
+      {/* Currency inputs — side by side */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* USD */}
+        <div className="group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10">
+          <div className="flex items-center gap-3 px-3 py-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
+              $
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">USD</p>
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={usdPrice}
+                onChange={(e) => onUsdChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                autoComplete="off"
+                className="placeholder:text-muted-foreground/25 w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Rate divider */}
-        <div className="relative">
-          <div className="border-t" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {rateDisplay}
+        {/* MMK */}
+        <div className="group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10">
+          <div className="flex items-center gap-3 px-3 py-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
+              K
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">MMK</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="0"
+                value={mmkPrice}
+                onChange={(e) => onMmkChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                autoComplete="off"
+                className="placeholder:text-muted-foreground/25 w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"
+              />
+            </div>
           </div>
         </div>
-
-        {/* MMK row */}
-        <div className="flex items-center gap-3 px-4 py-4 transition-colors focus-within:bg-muted/30">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
-            K
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground text-xs font-medium">MMK</p>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
-              value={mmkPrice}
-              onChange={(e) => onMmkChange(e.target.value)}
-              onWheel={(e) => e.currentTarget.blur()}
-              autoComplete="off"
-              className="placeholder:text-muted-foreground/30 w-full bg-transparent text-lg font-semibold outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Rate controls */}
-        {rateControls}
       </div>
+
+      {/* Rate + Display currency — compact row */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        {/* Exchange rate pill (click to configure) */}
+        <button
+          type="button"
+          onClick={() => setShowRateSettings(!showRateSettings)}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors",
+            showRateSettings
+              ? "border-foreground/20 bg-foreground/5 text-foreground"
+              : "text-muted-foreground hover:border-foreground/20 hover:text-foreground",
+          )}
+        >
+          <ArrowUpDown className="size-3" />
+          <span>1 USD = {activeRate.toLocaleString()} MMK</span>
+          <Pencil className="size-2.5 opacity-50" />
+        </button>
+
+        {/* Display currency */}
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-muted-foreground">Show as</span>
+          <div className="inline-flex rounded-full border p-0.5">
+            {["MMK", "USD"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onDisplayCurrencyChange(c)}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium transition-all",
+                  displayCurrency === c
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Rate settings (expandable) */}
+      {showRateSettings && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="inline-flex rounded-full border bg-background p-0.5">
+            {[
+              { label: `System (${systemRate.toLocaleString()})`, value: "system" },
+              { label: "Custom", value: "custom" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onToggleSystemRate(opt.value === "system")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-all",
+                  (useSystemRate ? "system" : "custom") === opt.value
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {!useSystemRate && (
+            <Input
+              type="number"
+              placeholder="Enter rate"
+              value={customRate}
+              onChange={(e) => onCustomRateChange(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              autoComplete="off"
+              className="h-7 w-28 text-xs"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Hide price toggle */}
+      <label className="flex items-center justify-between rounded-lg border px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <EyeOff className="size-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Hide price from buyers</span>
+        </div>
+        <Switch
+          checked={hidePrice}
+          onCheckedChange={onHidePriceChange}
+        />
+      </label>
     </div>
   );
 }
@@ -592,7 +669,20 @@ export function ListingEditor({
 
   // ── Visibility toggles ──────────────────────────────────────────────────
   const [hidePartner, setHidePartner] = useState(savedState?.hidePartner ?? (sourceData?.hide_partner === 1));
-  const [hidePrice, setHidePrice] = useState(savedState?.hidePrice ?? (listing?.hide_price === 1));
+  const [saleHidePrice, setSaleHidePrice] = useState(
+    savedState?.saleHidePrice ?? (isEditing && pageType === "sale" ? listing?.hide_price === 1 : false),
+  );
+  const [rentHidePrice, setRentHidePrice] = useState(
+    savedState?.rentHidePrice ?? (isEditing && pageType === "rent" ? listing?.hide_price === 1 : false),
+  );
+
+  // ── Display currency (controls which currency the mobile app shows) ────
+  const [saleDisplayCurrency, setSaleDisplayCurrency] = useState<string>(
+    savedState?.saleDisplayCurrency ?? (listing?.display_currency as string) ?? "MMK",
+  );
+  const [rentDisplayCurrency, setRentDisplayCurrency] = useState<string>(
+    savedState?.rentDisplayCurrency ?? (listing?.display_currency as string) ?? "MMK",
+  );
 
   const saleActiveRate = saleUseSystemRate
     ? exchangeRate
@@ -747,7 +837,10 @@ export function ListingEditor({
       rentUseSystemRate,
       rentCustomRate,
       hidePartner,
-      hidePrice,
+      saleHidePrice,
+      rentHidePrice,
+      saleDisplayCurrency,
+      rentDisplayCurrency,
       conditionId,
       customFieldValues,
       thumbnailUrl,
@@ -760,7 +853,8 @@ export function ListingEditor({
     selectedStateRegionId, selectedDistrictId, selectedTownshipId,
     saleUsdPrice, saleMmkPrice, rentUsdPrice, rentMmkPrice,
     saleUseSystemRate, saleCustomRate, rentUseSystemRate, rentCustomRate,
-    hidePartner, hidePrice, conditionId, customFieldValues, thumbnailUrl,
+    hidePartner, saleHidePrice, rentHidePrice, saleDisplayCurrency, rentDisplayCurrency,
+    conditionId, customFieldValues, thumbnailUrl,
     description,
   ]);
 
@@ -910,8 +1004,11 @@ export function ListingEditor({
     formData.set("for_sale", forSale ? "1" : "0");
     formData.set("for_rent", forRent ? "1" : "0");
     formData.set("is_hidden", "0");
-    formData.set("hide_price", hidePrice ? "1" : "0");
+    formData.set("sale_hide_price", saleHidePrice ? "1" : "0");
+    formData.set("rent_hide_price", rentHidePrice ? "1" : "0");
     formData.set("hide_partner", hidePartner ? "1" : "0");
+    formData.set("sale_display_currency", saleDisplayCurrency);
+    formData.set("rent_display_currency", rentDisplayCurrency);
     formData.set("add_to_featured", "0");
     if (forSale && conditionId) {
       formData.set("condition_type_id", conditionId);
@@ -1012,12 +1109,16 @@ export function ListingEditor({
         {/* ── Sticky Header ─────────────────────────────────────── */}
         <header className="bg-background/80 sticky top-0 z-10 border-b px-6 py-3 backdrop-blur-sm">
           <nav className="text-muted-foreground mb-1 flex items-center gap-1 text-xs">
-            <Link
-              href={isCreateMode ? "/listings/for-sale" : backUrl}
-              className="hover:text-foreground transition-colors"
-            >
-              {isCreateMode ? "Listings" : isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
-            </Link>
+            {isCreateMode ? (
+              <span>Listings</span>
+            ) : (
+              <Link
+                href={backUrl}
+                className="hover:text-foreground transition-colors"
+              >
+                {isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
+              </Link>
+            )}
             <ChevronRight className="size-3 opacity-40" />
             <span className="text-foreground font-medium">
               {isDraftMode ? "Draft" : isEditing ? (listing?.custom_id ?? "Edit") : "New"}
@@ -1085,32 +1186,20 @@ export function ListingEditor({
 
               {/* ── Context-dependent action buttons ── */}
               {(() => {
-                // Create or draft mode
+                // Create or draft mode — only Save as Draft in top bar (Submit is in step footer)
                 if (isCreateMode || isDraftMode) {
                   return (
-                    <>
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => { submitActionRef.current = "save-draft"; }}
-                      >
-                        {isPending && submitActionRef.current === "save-draft" ? (
-                          <><Spinner className="mr-1" /> Saving{"\u2026"}</>
-                        ) : "Save as Draft"}
-                      </Button>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => { submitActionRef.current = "submit"; }}
-                      >
-                        {isPending && submitActionRef.current !== "save-draft" ? (
-                          <><Spinner className="mr-1" /> Submitting{"\u2026"}</>
-                        ) : "Submit for Review"}
-                      </Button>
-                    </>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => { submitActionRef.current = "save-draft"; }}
+                    >
+                      {isPending && submitActionRef.current === "save-draft" ? (
+                        <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                      ) : "Save as Draft"}
+                    </Button>
                   );
                 }
 
@@ -1474,17 +1563,26 @@ export function ListingEditor({
             )}
 
             {/* Condition — edit mode, sale only */}
-            {isEditing && pageType === "sale" && (
+            {isEditing && pageType === "sale" && conditionTypes.length > 0 && (
               <div className="flex flex-col gap-3">
                 <SubSectionLabel icon={Sparkles}>Condition</SubSectionLabel>
-                <SegmentedPill
-                  options={conditionTypes.map((ct) => ({
-                    label: ct.name,
-                    value: String(ct.id),
-                  }))}
-                  value={conditionId}
-                  onChange={setConditionId}
-                />
+                <div className="flex flex-wrap gap-1.5">
+                  {conditionTypes.map((ct) => (
+                    <button
+                      key={ct.id}
+                      type="button"
+                      onClick={() => setConditionId(String(ct.id))}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                        conditionId === String(ct.id)
+                          ? "bg-foreground text-background shadow-sm"
+                          : "ring-border text-muted-foreground hover:text-foreground bg-background ring-1",
+                      )}
+                    >
+                      {ct.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1724,54 +1822,6 @@ export function ListingEditor({
 
             {/* ── Pricing sub-section ────────────────────────────── */}
             {(() => {
-              function makeRateDisplay(rate: number) {
-                return (
-                  <span className="text-muted-foreground flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium shadow-sm">
-                    <ArrowUpDown className="size-3" />
-                    {"1 USD = "}
-                    {rate.toLocaleString()}
-                    {" MMK"}
-                  </span>
-                );
-              }
-
-              function makeRateControls(
-                useSystem: boolean,
-                setUseSystem: (v: boolean) => void,
-                custom: string,
-                setCustom: (v: string) => void,
-              ) {
-                return (
-                  <div className="flex flex-wrap items-center gap-3 border-t px-4 py-3">
-                    <span className="text-muted-foreground text-xs font-medium">
-                      Rate
-                    </span>
-                    <SegmentedPill
-                      options={[
-                        {
-                          label: `System (${exchangeRate.toLocaleString()})`,
-                          value: "system",
-                        },
-                        { label: "Custom", value: "custom" },
-                      ]}
-                      value={useSystem ? "system" : "custom"}
-                      onChange={(val) => setUseSystem(val === "system")}
-                    />
-                    {!useSystem && (
-                      <Input
-                        type="number"
-                        placeholder="Custom rate"
-                        value={custom}
-                        onChange={(e) => setCustom(e.target.value)}
-                        onWheel={(e) => e.currentTarget.blur()}
-                        autoComplete="off"
-                        className="w-32"
-                      />
-                    )}
-                  </div>
-                );
-              }
-
               // Edit mode: show one card based on pageType
               if (isEditing) {
                 return pageType === "sale" ? (
@@ -1788,8 +1838,16 @@ export function ListingEditor({
                       setSaleMmkPrice(v);
                       setSaleUsdPrice(convertSaleMmkToUsd(v));
                     }}
-                    rateDisplay={makeRateDisplay(saleActiveRate)}
-                    rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
+                    activeRate={saleActiveRate}
+                    useSystemRate={saleUseSystemRate}
+                    onToggleSystemRate={setSaleUseSystemRate}
+                    customRate={saleCustomRate}
+                    onCustomRateChange={setSaleCustomRate}
+                    systemRate={exchangeRate}
+                    displayCurrency={saleDisplayCurrency}
+                    onDisplayCurrencyChange={setSaleDisplayCurrency}
+                    hidePrice={saleHidePrice}
+                    onHidePriceChange={setSaleHidePrice}
                   />
                 ) : (
                   <PricingCard
@@ -1805,8 +1863,16 @@ export function ListingEditor({
                       setRentMmkPrice(v);
                       setRentUsdPrice(convertRentMmkToUsd(v));
                     }}
-                    rateDisplay={makeRateDisplay(rentActiveRate)}
-                    rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
+                    activeRate={rentActiveRate}
+                    useSystemRate={rentUseSystemRate}
+                    onToggleSystemRate={setRentUseSystemRate}
+                    customRate={rentCustomRate}
+                    onCustomRateChange={setRentCustomRate}
+                    systemRate={exchangeRate}
+                    displayCurrency={rentDisplayCurrency}
+                    onDisplayCurrencyChange={setRentDisplayCurrency}
+                    hidePrice={rentHidePrice}
+                    onHidePriceChange={setRentHidePrice}
                   />
                 );
               }
@@ -1828,8 +1894,16 @@ export function ListingEditor({
                         setSaleMmkPrice(v);
                         setSaleUsdPrice(convertSaleMmkToUsd(v));
                       }}
-                      rateDisplay={makeRateDisplay(saleActiveRate)}
-                      rateControls={makeRateControls(saleUseSystemRate, setSaleUseSystemRate, saleCustomRate, setSaleCustomRate)}
+                      activeRate={saleActiveRate}
+                      useSystemRate={saleUseSystemRate}
+                      onToggleSystemRate={setSaleUseSystemRate}
+                      customRate={saleCustomRate}
+                      onCustomRateChange={setSaleCustomRate}
+                      systemRate={exchangeRate}
+                      displayCurrency={saleDisplayCurrency}
+                      onDisplayCurrencyChange={setSaleDisplayCurrency}
+                      hidePrice={saleHidePrice}
+                      onHidePriceChange={setSaleHidePrice}
                     />
                   )}
                   {forRent && (
@@ -1846,8 +1920,16 @@ export function ListingEditor({
                         setRentMmkPrice(v);
                         setRentUsdPrice(convertRentMmkToUsd(v));
                       }}
-                      rateDisplay={makeRateDisplay(rentActiveRate)}
-                      rateControls={makeRateControls(rentUseSystemRate, setRentUseSystemRate, rentCustomRate, setRentCustomRate)}
+                      activeRate={rentActiveRate}
+                      useSystemRate={rentUseSystemRate}
+                      onToggleSystemRate={setRentUseSystemRate}
+                      customRate={rentCustomRate}
+                      onCustomRateChange={setRentCustomRate}
+                      systemRate={exchangeRate}
+                      displayCurrency={rentDisplayCurrency}
+                      onDisplayCurrencyChange={setRentDisplayCurrency}
+                      hidePrice={rentHidePrice}
+                      onHidePriceChange={setRentHidePrice}
                     />
                   )}
                   {!forSale && !forRent && (
@@ -1858,20 +1940,6 @@ export function ListingEditor({
                 </div>
               );
             })()}
-
-            {(forSale || forRent) && (
-              <label className="flex items-center justify-between rounded-lg border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <EyeOff className="size-4 text-muted-foreground" />
-                  <span className="text-sm">Hide price from buyers</span>
-                </div>
-                <Switch
-                  checked={hidePrice}
-                  onCheckedChange={setHidePrice}
-                />
-              </label>
-            )}
-
             {/* Step footer */}
             <div className="flex items-center justify-between pt-2">
               <Button
@@ -1926,7 +1994,7 @@ export function ListingEditor({
                 <Camera className="size-4 text-muted-foreground" />
                 Product Photos
                 {isCreateMode && (
-                  <span className="text-destructive text-xs font-normal">* (at least 1)</span>
+                  <span className="text-destructive text-xs font-normal">*</span>
                 )}
               </label>
               <Suspense

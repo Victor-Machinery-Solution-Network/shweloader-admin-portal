@@ -56,7 +56,10 @@ import {
   getEnquiriesWithDetails,
   getEnquiryStatusTypes as fetchEnquiryStatusTypes,
 } from "@/lib/actions/enquiry";
-import { getCustomFieldTemplates as fetchCustomFieldTemplates } from "@/lib/actions/custom-field-template";
+import {
+  getCustomFieldTemplates as fetchCustomFieldTemplates,
+  getCustomFieldTemplateById as fetchCustomFieldTemplateById,
+} from "@/lib/actions/custom-field-template";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -345,6 +348,10 @@ export function getEnquiryStatusTypes() {
 
 export function getCustomFieldTemplates() {
   return fetchCustomFieldTemplates();
+}
+
+export function getCustomFieldTemplateById(id: number) {
+  return fetchCustomFieldTemplateById(id);
 }
 
 // Permissions (cached at function level — called from server actions)

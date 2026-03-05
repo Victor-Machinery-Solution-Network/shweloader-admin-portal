@@ -258,7 +258,8 @@ export async function createListing(formData: FormData) {
 
     // Publishing options
     const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
-    const hidePrice = formData.get("hide_price") === "1" ? 1 : 0;
+    const saleHidePrice = formData.get("sale_hide_price") === "1" ? 1 : 0;
+    const rentHidePrice = formData.get("rent_hide_price") === "1" ? 1 : 0;
     const addToFeatured = formData.get("add_to_featured") === "1";
 
     if (!forSale && !forRent) {
@@ -317,9 +318,10 @@ export async function createListing(formData: FormData) {
         usd_price: formData.get("sale_usd_price")
           ? Number(formData.get("sale_usd_price"))
           : null,
-        hide_price: hidePrice,
+        hide_price: saleHidePrice,
         is_hidden: isHidden,
         is_sold_out: 0,
+        display_currency: (formData.get("sale_display_currency") as string) || "MMK",
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? created_by : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -356,8 +358,10 @@ export async function createListing(formData: FormData) {
         usd_price: formData.get("rent_usd_price")
           ? Number(formData.get("rent_usd_price"))
           : null,
-        hide_price: hidePrice,
+        hide_price: rentHidePrice,
         is_hidden: isHidden,
+        is_rented: 0,
+        display_currency: (formData.get("rent_display_currency") as string) || "MMK",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? created_by : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
@@ -462,8 +466,9 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
       usd_price: formData.get("sale_usd_price")
         ? Number(formData.get("sale_usd_price"))
         : null,
-      hide_price: formData.get("hide_price") === "1" ? 1 : 0,
+      hide_price: formData.get("sale_hide_price") === "1" ? 1 : 0,
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
+      display_currency: (formData.get("sale_display_currency") as string) || "MMK",
     });
 
     // 4. Sync product photos
@@ -486,11 +491,14 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
 export async function deleteSaleListing(saleId: number) {
   try {
     const deletedBy = await requirePermission("sale_listings", "delete");
-    // Get product_list_id for cascading soft delete
+    // Get product_list_id for cascading soft delete (only if not already deleted)
     const existing = await d1.query<{ product_list_id: number }>(
-      "SELECT product_list_id FROM sale_listing WHERE id = ?",
+      "SELECT product_list_id FROM sale_listing WHERE id = ? AND deleted_at IS NULL",
       [saleId],
     );
+    if (existing.results.length === 0) {
+      return { success: false, error: "Listing not found or already deleted" };
+    }
     const productListId = existing.results[0]?.product_list_id;
 
     // Soft delete the sale listing
@@ -558,8 +566,9 @@ export async function updateRentListing(rentId: number, formData: FormData) {
       usd_price: formData.get("rent_usd_price")
         ? Number(formData.get("rent_usd_price"))
         : null,
-      hide_price: formData.get("hide_price") === "1" ? 1 : 0,
+      hide_price: formData.get("rent_hide_price") === "1" ? 1 : 0,
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
+      display_currency: (formData.get("rent_display_currency") as string) || "MMK",
     });
 
     // 4. Sync product photos
@@ -582,11 +591,14 @@ export async function updateRentListing(rentId: number, formData: FormData) {
 export async function deleteRentListing(rentId: number) {
   try {
     const deletedBy = await requirePermission("rent_listings", "delete");
-    // Get product_list_id for cascading soft delete
+    // Get product_list_id for cascading soft delete (only if not already deleted)
     const existing = await d1.query<{ product_list_id: number }>(
-      "SELECT product_list_id FROM rent_listing WHERE id = ?",
+      "SELECT product_list_id FROM rent_listing WHERE id = ? AND deleted_at IS NULL",
       [rentId],
     );
+    if (existing.results.length === 0) {
+      return { success: false, error: "Listing not found or already deleted" };
+    }
     const productListId = existing.results[0]?.product_list_id;
 
     // Soft delete the rent listing
@@ -699,6 +711,25 @@ export async function toggleSaleHidePrice(id: number) {
   }
 }
 
+export async function toggleIsRented(id: number) {
+  try {
+    await requirePermission("rent_listings", "edit");
+    const current = await d1.query<{ is_rented: number }>(
+      "SELECT is_rented FROM rent_listing WHERE id = ?",
+      [id],
+    );
+    const newVal = current.results[0]?.is_rented === 1 ? 0 : 1;
+    await rentListingService.update(id, { is_rented: newVal });
+    invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    return { success: true, is_rented: newVal };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to toggle rented status"),
+    };
+  }
+}
+
 export async function toggleRentHidePrice(id: number) {
   try {
     await requirePermission("rent_listings", "edit");
@@ -772,7 +803,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, pl.hide_partner,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at, sl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -781,6 +812,12 @@ export async function getSaleListingsWithDetails(): Promise<
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       c.username AS partner_name,
       t.name AS township_name,
+      c.email AS partner_email, c.phone AS partner_phone,
+      c.company_name AS partner_company, c.office_address AS partner_address,
+      c.is_verified AS partner_verified, c.created_at AS partner_joined,
+      bt.name AS partner_business_type, pt.name AS partner_type_name,
+      pst.status_name AS partner_status, p.applied_at AS partner_applied_at,
+      p.reviewed_at AS partner_reviewed_at, p.app_user_id AS partner_app_user_id,
       ast.status_name AS approve_status_name,
       fl.id AS featured_id
     FROM sale_listing sl
@@ -790,6 +827,9 @@ export async function getSaleListingsWithDetails(): Promise<
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
+    LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
@@ -805,7 +845,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, pl.hide_partner,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at, rl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -814,6 +854,12 @@ export async function getRentListingsWithDetails(): Promise<
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       c.username AS partner_name,
       t.name AS township_name,
+      c.email AS partner_email, c.phone AS partner_phone,
+      c.company_name AS partner_company, c.office_address AS partner_address,
+      c.is_verified AS partner_verified, c.created_at AS partner_joined,
+      bt.name AS partner_business_type, pt.name AS partner_type_name,
+      pst.status_name AS partner_status, p.applied_at AS partner_applied_at,
+      p.reviewed_at AS partner_reviewed_at, p.app_user_id AS partner_app_user_id,
       ast.status_name AS approve_status_name,
       fl.id AS featured_id
     FROM rent_listing rl
@@ -822,6 +868,9 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
+    LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
@@ -905,7 +954,7 @@ export async function getSaleListingWithDetailsById(
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, pl.hide_partner,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -926,7 +975,7 @@ export async function getSaleListingWithDetailsById(
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
-    WHERE sl.id = ?`,
+    WHERE sl.id = ? AND sl.deleted_at IS NULL`,
     [id],
   );
   return result.results[0] ?? null;
@@ -938,7 +987,7 @@ export async function getRentListingWithDetailsById(
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, pl.hide_partner,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -958,7 +1007,7 @@ export async function getRentListingWithDetailsById(
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
-    WHERE rl.id = ?`,
+    WHERE rl.id = ? AND rl.deleted_at IS NULL`,
     [id],
   );
   return result.results[0] ?? null;
@@ -1294,7 +1343,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
     const forRent = formData.get("for_rent") === "1";
     const productType = formData.get("product_type") as "equipment" | "attachment";
     const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
-    const hidePrice = formData.get("hide_price") === "1" ? 1 : 0;
+    const saleHidePrice = formData.get("sale_hide_price") === "1" ? 1 : 0;
+    const rentHidePrice = formData.get("rent_hide_price") === "1" ? 1 : 0;
     const addToFeatured = formData.get("add_to_featured") === "1";
 
     if (!forSale && !forRent) {
@@ -1361,9 +1411,10 @@ export async function submitDraft(productListId: number, formData: FormData) {
         usd_price: formData.get("sale_usd_price")
           ? Number(formData.get("sale_usd_price"))
           : null,
-        hide_price: hidePrice,
+        hide_price: saleHidePrice,
         is_hidden: isHidden,
         is_sold_out: 0,
+        display_currency: (formData.get("sale_display_currency") as string) || "MMK",
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? userId : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -1398,8 +1449,10 @@ export async function submitDraft(productListId: number, formData: FormData) {
         usd_price: formData.get("rent_usd_price")
           ? Number(formData.get("rent_usd_price"))
           : null,
-        hide_price: hidePrice,
+        hide_price: rentHidePrice,
         is_hidden: isHidden,
+        is_rented: 0,
+        display_currency: (formData.get("rent_display_currency") as string) || "MMK",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? userId : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,

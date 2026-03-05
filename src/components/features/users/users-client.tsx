@@ -16,6 +16,7 @@ import { blacklistColumns } from "./blacklist-columns";
 import { BlacklistConfirmDialog } from "./blacklist-confirm-dialog";
 import { UnblacklistDialog } from "./unblacklist-dialog";
 import { BlacklistSearchDialog } from "./blacklist-search-dialog";
+import { UserForm } from "./user-form";
 import { columns as businessTypeColumns } from "@/components/features/business-types/columns";
 import { BusinessTypeForm } from "@/components/features/business-types/business-type-form";
 import {
@@ -40,10 +41,14 @@ export function UsersClient({
   blacklistEntries = [],
 }: UsersClientProps) {
   // Permissions
+  const canCreateUser = useHasPermission("users", "create");
   const canCreateBT = useHasPermission("business_types", "create");
   const canDeleteBT = useHasPermission("business_types", "delete");
   const canCreateBlacklist = useHasPermission("blacklist", "create");
   const canDeleteBlacklist = useHasPermission("blacklist", "delete");
+
+  // User create dialog
+  const [showCreateUser, setShowCreateUser] = useState(false);
 
   // Business type dialog
   const [showCreateBT, setShowCreateBT] = useState(false);
@@ -79,6 +84,19 @@ export function UsersClient({
   const userColumns = useMemo(
     () => createColumns(businessTypeMap, handleViewUser),
     [businessTypeMap, handleViewUser],
+  );
+
+  const renderUserToolbar = useCallback(
+    () => (
+      <>
+        {canCreateUser && (
+          <Button onClick={() => setShowCreateUser(true)} className="ml-auto">
+            <Plus /> Add User
+          </Button>
+        )}
+      </>
+    ),
+    [canCreateUser],
   );
 
   const userFilterConfig = useMemo<FilterConfig[]>(
@@ -234,13 +252,21 @@ export function UsersClient({
               initialColumnVisibility={{ is_approved_partner: false }}
               enablePagination
               pageSize={10}
+              toolbar={renderUserToolbar}
             />
           ) : (
             <EmptyState
               icon={Users}
               title="No users yet"
-              description="Users will appear here once they register on the website."
+              description="Users will appear here once they register on the website or you create one."
               fullPage={false}
+              action={
+                canCreateUser ? (
+                  <Button onClick={() => setShowCreateUser(true)}>
+                    <Plus /> Add User
+                  </Button>
+                ) : undefined
+              }
             />
           )}
         </TabsContent>
@@ -305,6 +331,15 @@ export function UsersClient({
           )}
         </TabsContent>
       </Tabs>
+
+      {/* User create form */}
+      {showCreateUser && (
+        <UserForm
+          open={showCreateUser}
+          onOpenChange={setShowCreateUser}
+          businessTypes={listedBusinessTypes}
+        />
+      )}
 
       {/* User detail dialog */}
       <UserDetailDialog

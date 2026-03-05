@@ -74,12 +74,16 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
       {/* ── Sticky Header ─────────────────────────────────────── */}
       <header className="bg-background/80 sticky top-0 z-10 border-b px-6 py-3 backdrop-blur-sm">
         <nav className="text-muted-foreground mb-1 flex items-center gap-1 text-xs">
-          <Link
-            href={config.returnRoute}
-            className="hover:text-foreground transition-colors"
-          >
-            {config.displayNamePlural}
-          </Link>
+          {config.entityKey === "listings" ? (
+            <span>{config.displayNamePlural}</span>
+          ) : (
+            <Link
+              href={config.returnRoute}
+              className="hover:text-foreground transition-colors"
+            >
+              {config.displayNamePlural}
+            </Link>
+          )}
           <ChevronRight className="size-3 opacity-40" />
           <span className="text-foreground font-medium">Import</span>
         </nav>

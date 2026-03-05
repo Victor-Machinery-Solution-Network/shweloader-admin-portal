@@ -28,9 +28,8 @@ import {
   Shield,
   UserCog,
   Trash2,
-  Plus,
 } from "lucide-react";
-import { ROUTES, SESSION_KEYS } from "@/lib/constants";
+import { ROUTES } from "@/lib/constants";
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +58,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { usePermissions } from "@/components/providers/permissions-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -95,7 +101,7 @@ export function AppSidebar() {
   const showAttachments =
     canRead("attachment_categories") || canRead("attachment_models");
   const showListings =
-    canRead("sale_listings") || canRead("rent_listings") || canRead("listing_templates");
+    canRead("sale_listings") || canRead("rent_listings") || canRead("listing_templates") || canRead("condition_types");
   const showArticles =
     canRead("articles") || canRead("article_categories");
 
@@ -113,7 +119,7 @@ export function AppSidebar() {
   // Auto-open collapsible sections based on current route
   const isEquipmentActive = pathname.startsWith(ROUTES.EQUIPMENT);
   const isAttachmentsActive = pathname.startsWith(ROUTES.ATTACHMENTS);
-  const isListingsActive = pathname.startsWith(ROUTES.LISTINGS) || pathname.startsWith(ROUTES.LISTING_TEMPLATES);
+  const isListingsActive = pathname.startsWith(ROUTES.LISTINGS) || pathname.startsWith(ROUTES.LISTING_TEMPLATES) || pathname.startsWith(ROUTES.CONDITION_TYPES);
   const isArticlesActive = pathname.startsWith("/articles");
 
   const [isEquipmentOpen, setIsEquipmentOpen] = useState(isEquipmentActive);
@@ -121,6 +127,7 @@ export function AppSidebar() {
     useState(isAttachmentsActive);
   const [isListingsOpen, setIsListingsOpen] = useState(isListingsActive);
   const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
+  const [showAddListingDialog, setShowAddListingDialog] = useState(false);
 
   // Auto-expand collapsible sections when navigating to their child routes
   useEffect(() => {
@@ -152,6 +159,7 @@ export function AppSidebar() {
       router.prefetch(ROUTES.LISTINGS_FOR_RENT);
       router.prefetch(ROUTES.LISTINGS_NEW);
       router.prefetch(ROUTES.LISTING_TEMPLATES);
+      router.prefetch(ROUTES.CONDITION_TYPES);
     }
   }, [isListingsOpen, router]);
 
@@ -163,6 +171,7 @@ export function AppSidebar() {
   }, [isArticlesOpen, router]);
 
   return (
+    <>
     <Sidebar variant="inset">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-2">
@@ -329,32 +338,36 @@ export function AppSidebar() {
                   <SidebarMenuSub>
                     {canRead("sale_listings") && (
                     <SidebarMenuSubItem>
-                      <div className="flex items-center w-full">
-                        <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE} className="flex-1">
-                          <Link href={ROUTES.LISTINGS_FOR_SALE}><span>For Sale</span></Link>
-                        </SidebarMenuSubButton>
-                        {canCreate("sale_listings") && (
-                          <AddListingDropdown pageType="sale" />
-                        )}
-                      </div>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_SALE}>
+                        <Link href={ROUTES.LISTINGS_FOR_SALE}><span>For Sale</span></Link>
+                      </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     )}
                     {canRead("rent_listings") && (
                     <SidebarMenuSubItem>
-                      <div className="flex items-center w-full">
-                        <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT} className="flex-1">
-                          <Link href={ROUTES.LISTINGS_FOR_RENT}><span>For Rent</span></Link>
-                        </SidebarMenuSubButton>
-                        {canCreate("rent_listings") && (
-                          <AddListingDropdown pageType="rent" />
-                        )}
-                      </div>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTINGS_FOR_RENT}>
+                        <Link href={ROUTES.LISTINGS_FOR_RENT}><span>For Rent</span></Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    )}
+                    {(canCreate("sale_listings") || canCreate("rent_listings")) && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton className="cursor-pointer" isActive={pathname === ROUTES.LISTINGS_NEW} onClick={() => setShowAddListingDialog(true)}>
+                        <span>Add Listing</span>
+                      </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     )}
                     {canRead("listing_templates") && (
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton asChild isActive={pathname === ROUTES.LISTING_TEMPLATES}>
-                        <Link href={ROUTES.LISTING_TEMPLATES}><span>Templates</span></Link>
+                        <Link href={ROUTES.LISTING_TEMPLATES}><span>Listing Templates</span></Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    )}
+                    {canRead("condition_types") && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={pathname === ROUTES.CONDITION_TYPES}>
+                        <Link href={ROUTES.CONDITION_TYPES}><span>Sale Conditions</span></Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     )}
@@ -574,49 +587,48 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+
+    {/* Add Listing Dialog */}
+    <Dialog open={showAddListingDialog} onOpenChange={setShowAddListingDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader className="items-center text-center">
+            <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
+              <ShoppingCart className="text-primary-foreground size-6" />
+            </div>
+            <DialogTitle className="text-xl">Add New Listing</DialogTitle>
+            <DialogDescription>How would you like to create your listing?</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href={ROUTES.LISTINGS_NEW}
+              onClick={() => setShowAddListingDialog(false)}
+              className="group flex flex-col items-center gap-3 rounded-xl border border-border p-5 text-center transition-colors hover:border-primary hover:bg-primary/5"
+            >
+              <div className="flex size-10 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-primary/10">
+                <FileText className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Fill Form</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Create manually</p>
+              </div>
+            </Link>
+            <Link
+              href="/bulk-upload/listings"
+              onClick={() => setShowAddListingDialog(false)}
+              className="group flex flex-col items-center gap-3 rounded-xl border border-border p-5 text-center transition-colors hover:border-primary hover:bg-primary/5"
+            >
+              <div className="flex size-10 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-primary/10">
+                <FileSpreadsheet className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Excel Upload</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Import in bulk</p>
+              </div>
+            </Link>
+          </div>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  + button dropdown for adding a listing                             */
-/* ------------------------------------------------------------------ */
-
-function AddListingDropdown({ pageType }: { pageType: "sale" | "rent" }) {
-  function handleFillForm() {
-<<<<<<< HEAD
-    sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
-    // Hard navigation ensures the form always re-mounts with the correct preset
-    window.location.href = ROUTES.LISTINGS_NEW;
-=======
-    sessionStorage.removeItem("listing-editor-autosave");
-    sessionStorage.setItem("newListingDefault", pageType);
-    router.push(ROUTES.LISTINGS_NEW);
->>>>>>> e2ef62b943fa76fc005efabb5fccc73b9c283140
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 mr-1"
-          aria-label={`Add ${pageType} listing`}
-        >
-          <Plus className="size-3.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="start">
-        <DropdownMenuItem onClick={handleFillForm}>
-          <FileText className="mr-2 size-4" aria-hidden="true" />
-          Fill Form
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/bulk-upload/listings">
-            <FileSpreadsheet className="mr-2 size-4" aria-hidden="true" />
-            Excel Upload
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}

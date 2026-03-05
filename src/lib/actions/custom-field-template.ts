@@ -25,6 +25,17 @@ export async function getCustomFieldTemplates(): Promise<
   }));
 }
 
+export async function getCustomFieldTemplateById(
+  id: number,
+): Promise<CustomFieldTemplateWithFields | null> {
+  const template = await customFieldTemplateService.getById(id);
+  if (!template) return null;
+  return {
+    ...template,
+    fields: JSON.parse(template.fields || "[]") as CustomFieldDefinition[],
+  };
+}
+
 // ─── Create ─────────────────────────────────────────────────────────────────
 
 export async function createCustomFieldTemplate(formData: FormData) {

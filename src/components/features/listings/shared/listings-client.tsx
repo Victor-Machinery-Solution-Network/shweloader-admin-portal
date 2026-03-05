@@ -65,6 +65,7 @@ const PAGE_CONFIG = {
 const HIDDEN_FILTER_COLUMNS: VisibilityState = {
   visibility: false,
   sold_status: false,
+  rent_status: false,
   is_featured: false,
   mmk_price: false,
   created_at: false,
@@ -188,7 +189,18 @@ export function ListingsClient({
               ],
             },
           ]
-        : []),
+        : [
+            {
+              columnId: "rent_status",
+              label: "Rent Status",
+              type: "multi-select" as const,
+              group: "Status",
+              options: [
+                { label: "Available", value: "Available" },
+                { label: "Rented", value: "Rented" },
+              ],
+            },
+          ]),
       {
         columnId: "is_featured",
         label: "Featured",
@@ -284,16 +296,10 @@ export function ListingsClient({
   );
 
   const handleAddListing = useCallback(() => {
-<<<<<<< HEAD
+    sessionStorage.removeItem(SESSION_KEYS.LISTING_AUTOSAVE);
     sessionStorage.setItem(SESSION_KEYS.NEW_LISTING_DEFAULT, pageType);
     window.location.href = "/listings/new";
   }, [pageType]);
-=======
-    sessionStorage.removeItem("listing-editor-autosave");
-    sessionStorage.setItem("newListingDefault", pageType);
-    router.push("/listings/new");
-  }, [pageType, router]);
->>>>>>> e2ef62b943fa76fc005efabb5fccc73b9c283140
 
   const addListingToolbar = canCreate ? (
     <DropdownMenu>
@@ -346,6 +352,10 @@ export function ListingsClient({
             <Icon className="size-4" aria-hidden="true" />
             {config.tabLabel}
           </TabsTrigger>
+          <TabsTrigger value="featured">
+            <Pin className="size-4" aria-hidden="true" />
+            Featured
+          </TabsTrigger>
           <TabsTrigger value="pending">
             <Clock className="size-4" aria-hidden="true" />
             Pending
@@ -353,22 +363,18 @@ export function ListingsClient({
               <TabCount>{pendingCount}</TabCount>
             )}
           </TabsTrigger>
-          <TabsTrigger value="rework">
-            <XCircle className="size-4" aria-hidden="true" />
-            Rework
-            {reworkCount > 0 && (
-              <TabCount>{reworkCount}</TabCount>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="featured">
-            <Pin className="size-4" aria-hidden="true" />
-            Featured Listings
-          </TabsTrigger>
           <TabsTrigger value="drafts">
             <FileEdit className="size-4" aria-hidden="true" />
             Drafts
             {draftCount > 0 && (
               <TabCount>{draftCount}</TabCount>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="rework">
+            <XCircle className="size-4" aria-hidden="true" />
+            Rework
+            {reworkCount > 0 && (
+              <TabCount>{reworkCount}</TabCount>
             )}
           </TabsTrigger>
         </TabsList>
@@ -423,50 +429,6 @@ export function ListingsClient({
           )}
         </TabsContent>
 
-        <TabsContent value="pending">
-          {pendingListings.length > 0 ? (
-            <DataTable
-              columns={pendingColumns}
-              data={pendingListings}
-              searchKeys={["model_name", "partner_name"]}
-              searchPlaceholder="Search pending listings"
-              filterConfig={pendingFilterConfig}
-              filterStorageKey={`listings-${pageType}-pending-filters`}
-              enablePagination
-              pageSize={10}
-            />
-          ) : (
-            <EmptyState
-              icon={Clock}
-              title="No pending listings"
-              description="All listings have been reviewed."
-              fullPage={false}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="rework">
-          {reworkListings.length > 0 ? (
-            <DataTable
-              columns={reworkColumns}
-              data={reworkListings}
-              searchKeys={["model_name", "partner_name"]}
-              searchPlaceholder="Search listings needing rework"
-              filterConfig={reworkFilterConfig}
-              filterStorageKey={`listings-${pageType}-rework-filters`}
-              enablePagination
-              pageSize={10}
-            />
-          ) : (
-            <EmptyState
-              icon={XCircle}
-              title="No listings need rework"
-              description="Listings sent back for rework will appear here."
-              fullPage={false}
-            />
-          )}
-        </TabsContent>
-
         <TabsContent value="featured">
           {featuredData.length > 0 ? (
             <DataTable
@@ -486,6 +448,28 @@ export function ListingsClient({
               icon={Pin}
               title="No featured listings"
               description="Feature a listing from the Listings tab to show it on the home page."
+              fullPage={false}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="pending">
+          {pendingListings.length > 0 ? (
+            <DataTable
+              columns={pendingColumns}
+              data={pendingListings}
+              searchKeys={["model_name", "partner_name"]}
+              searchPlaceholder="Search pending listings"
+              filterConfig={pendingFilterConfig}
+              filterStorageKey={`listings-${pageType}-pending-filters`}
+              enablePagination
+              pageSize={10}
+            />
+          ) : (
+            <EmptyState
+              icon={Clock}
+              title="No pending listings"
+              description="All listings have been reviewed."
               fullPage={false}
             />
           )}
@@ -511,6 +495,28 @@ export function ListingsClient({
               icon={FileEdit}
               title="No drafts"
               description="Save a listing as draft to continue later."
+              fullPage={false}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="rework">
+          {reworkListings.length > 0 ? (
+            <DataTable
+              columns={reworkColumns}
+              data={reworkListings}
+              searchKeys={["model_name", "partner_name"]}
+              searchPlaceholder="Search listings needing rework"
+              filterConfig={reworkFilterConfig}
+              filterStorageKey={`listings-${pageType}-rework-filters`}
+              enablePagination
+              pageSize={10}
+            />
+          ) : (
+            <EmptyState
+              icon={XCircle}
+              title="No listings need rework"
+              description="Listings sent back for rework will appear here."
               fullPage={false}
             />
           )}

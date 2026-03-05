@@ -9,6 +9,7 @@ import { useSession } from "next-auth/react";
 import { User, Bell, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <div className="flex flex-1 items-center justify-end">
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

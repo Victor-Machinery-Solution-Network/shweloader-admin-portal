@@ -24,7 +24,7 @@ export function PdfInput({
   name,
   value: controlledValue,
   onChange,
-  maxSizeMB = 10,
+  maxSizeMB = 50,
   placeholder = "Drag & drop a PDF here, or click to browse",
   className,
   disabled = false,

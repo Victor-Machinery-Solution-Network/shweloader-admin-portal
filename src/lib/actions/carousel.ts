@@ -37,17 +37,17 @@ export async function addCarouselImage(
     const linkUrl = (formData.get("link_url") as string) || null;
 
     // Parallel: get user, create image record, and get next display_order
-    const [added_by, { results: imageResults }, nextOrder] =
+    const [added_by, { results: imageRows }, nextOrder] =
       await Promise.all([
         requirePermission("carousels", "create"),
-        d1.create("image", {
-          image_url: imageKey,
-          uploaded_by: null,
-        }),
+        d1.query<{ image_id: number }>(
+          "INSERT INTO image (image_url, uploaded_by) VALUES (?, ?) RETURNING image_id",
+          [imageKey, null],
+        ),
         getLastDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
 
-    const imageId = (imageResults[0] as { image_id: number }).image_id;
+    const imageId = imageRows[0].image_id;
 
     // Create the junction record
     await d1.query(

@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Search } from "lucide-react";
 import { buildLinkMap } from "@/lib/utils";
+import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -211,14 +212,12 @@ export function ModelPickerDialog({
     return groups;
   }, [productType, filteredCategoryNames, subCategories, mainCategories]);
 
-  // ── Filtered models ───────────────────────────────────────────────────────
+  // ── Filtered models (always populated — filters narrow progressively) ─────
   const filteredModelNames = useMemo(() => {
     const brandId = selectedBrand ? brandMap.get(selectedBrand) : null;
 
     if (productType === "equipment") {
       const subCatId = selectedCategory ? subCategoryMap.get(selectedCategory) : null;
-      // Show nothing until at least one filter is chosen
-      if (!brandId && !subCatId) return [];
       return equipmentModels
         .filter((m) => {
           if (brandId && m.brand_id !== brandId) return false;
@@ -228,7 +227,6 @@ export function ModelPickerDialog({
         .map((m) => m.name);
     } else {
       const catId = selectedCategory ? attachCategoryMap.get(selectedCategory) : null;
-      if (!brandId && !catId) return [];
       return attachmentModels
         .filter((m) => {
           if (brandId && m.brand_id !== brandId) return false;
@@ -305,7 +303,6 @@ export function ModelPickerDialog({
   }
 
   const categoryLabel = productType === "equipment" ? "Sub Category" : "Category";
-  const hasFilters = !!selectedBrand || !!selectedCategory;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -322,77 +319,21 @@ export function ModelPickerDialog({
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 p-1 pr-2.5">
-            {/* Brand */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">Brand</label>
-              <Combobox
-                value={selectedBrand}
-                onValueChange={handleBrandChange}
-                items={filteredBrandNames}
-              >
-                <ComboboxInput
-                  placeholder="Search brand\u2026"
-                  showClear={!!selectedBrand}
-                />
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No brand found</ComboboxEmpty>
-                    <ComboboxCollection>
-                      {(name) => (
-                        <ComboboxItem key={name} value={name}>
-                          {name}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxCollection>
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-
-            {/* Category / Sub Category */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">{categoryLabel}</label>
-              {productType === "equipment" && groupedSubCategories ? (
+            <Field orientation="vertical">
+              <FieldLabel>Brand</FieldLabel>
+              <FieldContent>
                 <Combobox
-                  value={selectedCategory}
-                  onValueChange={handleCategoryChange}
-                  items={filteredCategoryNames}
+                  value={selectedBrand}
+                  onValueChange={handleBrandChange}
+                  items={filteredBrandNames}
                 >
                   <ComboboxInput
-                    placeholder="Search sub category\u2026"
-                    showClear={!!selectedCategory}
+                    placeholder="Search brand…"
+                    showClear={!!selectedBrand}
                   />
                   <ComboboxContent>
                     <ComboboxList>
-                      <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                      {Array.from(groupedSubCategories.entries()).map(
-                        ([groupName, items]) => (
-                          <ComboboxGroup key={groupName}>
-                            <ComboboxLabel>{groupName}</ComboboxLabel>
-                            {items.map((item) => (
-                              <ComboboxItem key={item.id} value={item.name}>
-                                {item.name}
-                              </ComboboxItem>
-                            ))}
-                          </ComboboxGroup>
-                        ),
-                      )}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              ) : (
-                <Combobox
-                  value={selectedCategory}
-                  onValueChange={handleCategoryChange}
-                  items={filteredCategoryNames}
-                >
-                  <ComboboxInput
-                    placeholder="Search category\u2026"
-                    showClear={!!selectedCategory}
-                  />
-                  <ComboboxContent>
-                    <ComboboxList>
-                      <ComboboxEmpty>No category found</ComboboxEmpty>
+                      <ComboboxEmpty>No brand found</ComboboxEmpty>
                       <ComboboxCollection>
                         {(name) => (
                           <ComboboxItem key={name} value={name}>
@@ -403,28 +344,77 @@ export function ModelPickerDialog({
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
-              )}
-            </div>
+              </FieldContent>
+            </Field>
 
-            {/* Model */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">Model</label>
-              {!hasFilters ? (
-                <p className="text-xs text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center">
-                  Select a brand or {categoryLabel.toLowerCase()} to see available models.
-                </p>
-              ) : filteredModelNames.length === 0 ? (
-                <p className="text-xs text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center">
-                  No models found for the selected filters.
-                </p>
-              ) : (
+            <Field orientation="vertical">
+              <FieldLabel>{categoryLabel}</FieldLabel>
+              <FieldContent>
+                {productType === "equipment" && groupedSubCategories ? (
+                  <Combobox
+                    value={selectedCategory}
+                    onValueChange={handleCategoryChange}
+                    items={filteredCategoryNames}
+                  >
+                    <ComboboxInput
+                      placeholder="Search sub category…"
+                      showClear={!!selectedCategory}
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        <ComboboxEmpty>No sub category found</ComboboxEmpty>
+                        {Array.from(groupedSubCategories.entries()).map(
+                          ([groupName, items]) => (
+                            <ComboboxGroup key={groupName}>
+                              <ComboboxLabel>{groupName}</ComboboxLabel>
+                              {items.map((item) => (
+                                <ComboboxItem key={item.id} value={item.name}>
+                                  {item.name}
+                                </ComboboxItem>
+                              ))}
+                            </ComboboxGroup>
+                          ),
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                ) : (
+                  <Combobox
+                    value={selectedCategory}
+                    onValueChange={handleCategoryChange}
+                    items={filteredCategoryNames}
+                  >
+                    <ComboboxInput
+                      placeholder="Search category…"
+                      showClear={!!selectedCategory}
+                    />
+                    <ComboboxContent>
+                      <ComboboxList>
+                        <ComboboxEmpty>No category found</ComboboxEmpty>
+                        <ComboboxCollection>
+                          {(name) => (
+                            <ComboboxItem key={name} value={name}>
+                              {name}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                )}
+              </FieldContent>
+            </Field>
+
+            <Field orientation="vertical">
+              <FieldLabel>Model</FieldLabel>
+              <FieldContent>
                 <Combobox
                   value={selectedModel}
                   onValueChange={(val) => setSelectedModel(val ?? "")}
                   items={filteredModelNames}
                 >
                   <ComboboxInput
-                    placeholder="Search model\u2026"
+                    placeholder="Search model…"
                     showClear={!!selectedModel}
                   />
                   <ComboboxContent>
@@ -440,8 +430,8 @@ export function ModelPickerDialog({
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
-              )}
-            </div>
+              </FieldContent>
+            </Field>
           </div>
 
           <DialogFooter>

@@ -6,7 +6,7 @@ import {
   slugify,
 } from "@/lib/api/r2-client";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const IMAGE_TYPES = new Set([
   "image/png",
@@ -54,7 +54,7 @@ function assertFileType(file: File) {
 
 function assertFileSize(file: File) {
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error("File too large. Maximum size is 10MB");
+    throw new Error("File too large. Maximum size is 50MB");
   }
 }
 

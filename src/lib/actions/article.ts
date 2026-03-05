@@ -408,7 +408,7 @@ export async function getArticleById(
     FROM article a
     LEFT JOIN article_category ac ON a.category_id = ac.category_id
     LEFT JOIN article_status_type ast ON a.article_status_type_id = ast.id
-    WHERE a.article_id = ?
+    WHERE a.article_id = ? AND a.deleted_at IS NULL
     LIMIT 1`,
     [id],
   );

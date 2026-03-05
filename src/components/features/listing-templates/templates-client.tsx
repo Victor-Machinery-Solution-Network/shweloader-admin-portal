@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import Link from "next/link";
 import { LayoutTemplate, Plus } from "lucide-react";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,9 @@ import type { FilterConfig } from "@/types/data-table-filters";
 import { FIELD_TYPE_LABELS, CUSTOM_FIELD_TYPES } from "@/types/custom-field";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
-import { TemplateForm } from "./template-form";
 import { createColumns } from "./columns";
 import { deleteCustomFieldTemplates } from "@/lib/actions/custom-field-template";
+import { ROUTES } from "@/lib/constants";
 import type { CustomFieldTemplateWithFields } from "@/types/custom-field";
 
 interface TemplatesClientProps {
@@ -21,7 +22,6 @@ interface TemplatesClientProps {
 export function TemplatesClient({ templates }: TemplatesClientProps) {
   const canCreate = useHasPermission("listing_templates", "create");
   const canDelete = useHasPermission("listing_templates", "delete");
-  const [showCreate, setShowCreate] = useState(false);
   const columns = useMemo(() => createColumns(), []);
 
   const filterConfig = useMemo<FilterConfig[]>(
@@ -69,8 +69,10 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
           />
         )}
         {canCreate && (
-          <Button onClick={() => setShowCreate(true)} className="ml-auto">
-            <Plus /> Add Template
+          <Button asChild className="ml-auto">
+            <Link href={ROUTES.LISTING_TEMPLATES_NEW}>
+              <Plus /> Add Template
+            </Link>
           </Button>
         )}
       </>
@@ -78,41 +80,34 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
     [handleBulkDelete, buildDescription, canCreate, canDelete],
   );
 
-  return (
-    <>
-      {templates.length > 0 ? (
-        <DataTable
-          columns={columns}
-          data={templates}
-          searchKeys={["name"]}
-          searchPlaceholder="Search templates"
-          filterConfig={filterConfig}
-          filterStorageKey="templates-filters"
-          enableSelection
-          enablePagination
-          pageSize={10}
-          getRowId={(row) => row.template_id}
-          toolbar={renderToolbar}
-        />
-      ) : (
-        <EmptyState
-          icon={LayoutTemplate}
-          title="No templates yet"
-          description="Create reusable field templates to quickly add custom fields to listings."
-          action={
-            canCreate ? (
-              <Button onClick={() => setShowCreate(true)}>
-                <Plus /> Add Template
-              </Button>
-            ) : undefined
-          }
-        />
-      )}
-
-      <TemplateForm
-        open={showCreate}
-        onOpenChange={setShowCreate}
-      />
-    </>
+  return templates.length > 0 ? (
+    <DataTable
+      columns={columns}
+      data={templates}
+      searchKeys={["name"]}
+      searchPlaceholder="Search templates"
+      filterConfig={filterConfig}
+      filterStorageKey="templates-filters"
+      enableSelection
+      enablePagination
+      pageSize={10}
+      getRowId={(row) => row.template_id}
+      toolbar={renderToolbar}
+    />
+  ) : (
+    <EmptyState
+      icon={LayoutTemplate}
+      title="No templates yet"
+      description="Create reusable field templates to quickly add custom fields to listings."
+      action={
+        canCreate ? (
+          <Button asChild>
+            <Link href={ROUTES.LISTING_TEMPLATES_NEW}>
+              <Plus /> Add Template
+            </Link>
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }

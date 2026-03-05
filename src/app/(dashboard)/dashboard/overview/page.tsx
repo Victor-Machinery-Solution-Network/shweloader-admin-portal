@@ -3,8 +3,8 @@ import { PermissionGate } from "@/components/shared/permission-gate";
 import DashboardOverviewClient from "./overview-client";
 
 export const metadata = {
-  title: "UI Component Showcase",
-  description: "All shadcn/ui primitives with every variant",
+  title: "Overview",
+  description: "Dashboard overview",
 };
 
 export default function DashboardOverviewPage() {

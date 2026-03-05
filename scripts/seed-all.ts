@@ -170,23 +170,24 @@ const FEATURES: FeatureDef[] = [
   { name: "sale_listings",             group_name: "Marketplace",     display_order: 10 },
   { name: "rent_listings",             group_name: "Marketplace",     display_order: 11 },
   { name: "featured_listings",         group_name: "Marketplace",     display_order: 12 },
-  { name: "enquiries",                 group_name: "Marketplace",     display_order: 13 },
-  // Users (14–16)
-  { name: "users",                     group_name: "Users",           display_order: 14 },
-  { name: "partners",                  group_name: "Users",           display_order: 15 },
-  { name: "business_types",            group_name: "Users",           display_order: 16 },
-  { name: "blacklist",                 group_name: "Users",           display_order: 17 },
-  // Content (18–21)
-  { name: "articles",                  group_name: "Content",         display_order: 18 },
-  { name: "article_categories",        group_name: "Content",         display_order: 19 },
-  { name: "announcements",             group_name: "Content",         display_order: 20 },
-  { name: "carousels",                 group_name: "Content",         display_order: 21 },
-  // Administration (22–26)
-  { name: "admin_users",               group_name: "Administration",  display_order: 22 },
-  { name: "roles",                     group_name: "Administration",  display_order: 23 },
-  { name: "listing_templates",         group_name: "Administration",  display_order: 24 },
-  { name: "app_settings",              group_name: "Administration",  display_order: 25 },
-  { name: "trash",                     group_name: "Administration",  display_order: 26 },
+  { name: "condition_types",            group_name: "Marketplace",     display_order: 13 },
+  { name: "enquiries",                 group_name: "Marketplace",     display_order: 14 },
+  // Users (15–18)
+  { name: "users",                     group_name: "Users",           display_order: 15 },
+  { name: "partners",                  group_name: "Users",           display_order: 16 },
+  { name: "business_types",            group_name: "Users",           display_order: 17 },
+  { name: "blacklist",                 group_name: "Users",           display_order: 18 },
+  // Content (19–22)
+  { name: "articles",                  group_name: "Content",         display_order: 19 },
+  { name: "article_categories",        group_name: "Content",         display_order: 20 },
+  { name: "announcements",             group_name: "Content",         display_order: 21 },
+  { name: "carousels",                 group_name: "Content",         display_order: 22 },
+  // Administration (23–27)
+  { name: "admin_users",               group_name: "Administration",  display_order: 23 },
+  { name: "roles",                     group_name: "Administration",  display_order: 24 },
+  { name: "listing_templates",         group_name: "Administration",  display_order: 25 },
+  { name: "app_settings",              group_name: "Administration",  display_order: 26 },
+  { name: "trash",                     group_name: "Administration",  display_order: 27 },
 ];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
@@ -199,7 +200,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   featured_listings: ["create", "read", "delete"],
   enquiries: ["read", "edit", "delete"],
   // Users — custom sets
-  users: ["read"],
+  users: ["create", "read"],
   partners: ["read", "approve"],
   blacklist: ["read", "create", "delete"],
   // Content
@@ -1333,7 +1334,7 @@ async function seedEquipmentMainCategories(adminIds: number[]) {
 
   const rows = missing.map((cat, i) => [
     cat.name,
-    `https://placehold.co/200x200/1a1a2e/ffffff?text=${encodeURIComponent(cat.name)}`,
+    "",
     String(existing.length + i),
     randomItem(adminIds),
   ]);
@@ -1368,7 +1369,7 @@ async function seedEquipmentSubCategories(adminIds: number[]) {
     const rows = missingSubs.map((sub, i) => [
       catId,
       sub.name,
-      `https://placehold.co/200x200/1a1a2e/ffffff?text=${encodeURIComponent(sub.name)}`,
+      "",
       String(existing.length + total + i),
       randomItem(adminIds),
     ]);
@@ -1493,7 +1494,7 @@ async function seedAttachmentCategories(adminIds: number[]) {
 
   const rows = missing.map((cat, i) => [
     cat.name,
-    `https://placehold.co/200x200/1a1a2e/ffffff?text=${encodeURIComponent(cat.name)}`,
+    "",
     String(existing.length + i),
     randomItem(adminIds),
   ]);
@@ -1801,12 +1802,10 @@ async function seedProductListsAndListings(
     const description = randomItem(LISTING_DESCRIPTIONS);
     const customFields = generateCustomFields();
     const createdBy = randomItem(adminIds);
-    const thumbnailUrl = `https://placehold.co/400x300/1a1a2e/ffffff?text=Equipment+${i + 1}`;
-
     await d1Execute(
       `INSERT INTO product_list (partner_id, equipment_model_id, attachment_model_id, custom_fields, description, thumbnail_url, township_id, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [partnerId, equipModelId, attachModelId, customFields, description, thumbnailUrl, townshipId, createdBy]
+      [partnerId, equipModelId, attachModelId, customFields, description, "", townshipId, createdBy]
     );
 
     // Get the ID
@@ -1823,7 +1822,7 @@ async function seedProductListsAndListings(
          VALUES (?, ?, ?, ?, 1)`,
         [
           pl.id,
-          `https://placehold.co/800x600/1a1a2e/ffffff?text=Product+${pl.id}+Image+${j + 1}`,
+          "",
           String(j),
           createdBy,
         ]
@@ -2036,7 +2035,7 @@ async function seedArticles(adminIds: number[]) {
         rejectionReason,
         publishDate,
         art.author_name,
-        `https://placehold.co/800x450/1a1a2e/ffffff?text=${encodeURIComponent(art.title.slice(0, 30))}`,
+        "",
         art.estimated_read_time,
       ]
     );
@@ -2075,20 +2074,12 @@ async function seedCarousel(adminIds: number[]) {
     return;
   }
 
-  const captions = [
-    "Top Quality Construction Equipment",
-    "Rent Heavy Machinery Nationwide",
-    "Trusted Dealers Across Myanmar",
-    "New Arrivals This Month",
-    "Equipment Financing Available",
-  ];
-
   for (let i = 0; i < 5; i++) {
     // Insert image record
     await d1Execute(
       "INSERT INTO image (image_url, uploaded_by) VALUES (?, ?)",
       [
-        `https://placehold.co/1200x400/1a1a2e/ffffff?text=${encodeURIComponent(captions[i])}`,
+        "",
         randomItem(adminIds),
       ]
     );

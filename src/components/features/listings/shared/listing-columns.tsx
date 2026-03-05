@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { assetUrl } from "@/lib/r2-url";
 import { formatDate } from "@/lib/utils";
@@ -11,8 +11,14 @@ import {
   DollarSign,
   PackageX,
   PackageCheck,
+  CalendarCheck,
+  CalendarX,
   Pin,
   PinOff,
+  User,
+  Building2,
+  Handshake,
+  Calendar,
 } from "lucide-react";
 
 /** DollarSign with diagonal slash — short ticks keep the center clean */
@@ -43,6 +49,15 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -54,6 +69,7 @@ import {
   toggleSaleHidden,
   toggleRentHidden,
   toggleSoldOut,
+  toggleIsRented,
   toggleSaleHidePrice,
   toggleRentHidePrice,
   addToFeatured,
@@ -191,6 +207,54 @@ function SoldOutToggle({
   );
 }
 
+function IsRentedToggle({
+  isRented,
+  listingId,
+}: {
+  isRented: boolean;
+  listingId: number;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const label = isRented ? "Mark available" : "Mark as rented";
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isRented ? "destructive" : "outline"}
+          size="icon-sm"
+          disabled={isPending}
+          aria-label={label}
+          className={
+            isRented
+              ? "rounded-full"
+              : "text-muted-foreground rounded-full border-dashed"
+          }
+          onClick={() =>
+            startTransition(async () => {
+              const result = await toggleIsRented(listingId);
+              if (result.success) {
+                toast.success(
+                  result.is_rented ? "Marked as rented" : "Marked as available",
+                );
+              } else {
+                toast.error(result.error ?? "Failed to toggle");
+              }
+            })
+          }
+        >
+          {isRented ? (
+            <CalendarCheck aria-hidden="true" className="size-5" />
+          ) : (
+            <CalendarX aria-hidden="true" className="size-5" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function FeatureToggle({
   featuredId,
   listingType,
@@ -283,15 +347,191 @@ function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
   };
 }
 
-function partnerColumn<T extends ListingBase>(): ColumnDef<T> {
+// --- Partner Info Dialog (read-only, uses prefetched data) ---
+
+interface PartnerInfo {
+  partner_name: string | null;
+  partner_email: string | null;
+  partner_phone: string | null;
+  partner_company: string | null;
+  partner_address: string | null;
+  partner_verified: number | null;
+  partner_joined: string | null;
+  partner_business_type: string | null;
+  partner_type_name: string | null;
+  partner_status: string | null;
+  partner_applied_at: string | null;
+  partner_reviewed_at: string | null;
+  partner_app_user_id: number | null;
+}
+
+function DetailRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="text-muted-foreground text-sm shrink-0">{label}</span>
+      <span className={`text-sm text-right ${value ? "" : "text-muted-foreground"}`}>
+        {value ?? "\u2014"}
+      </span>
+    </div>
+  );
+}
+
+function PartnerInfoDialog({
+  data,
+  open,
+  onOpenChange,
+}: {
+  data: PartnerInfo;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const isVerified = data.partner_verified === 1;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Partner Details</DialogTitle>
+          <DialogDescription>
+            {data.partner_status && (
+              <Badge
+                variant={
+                  data.partner_status.toLowerCase() === "approved"
+                    ? "success"
+                    : data.partner_status.toLowerCase() === "rejected"
+                      ? "destructive"
+                      : "secondary"
+                }
+                className="text-xs"
+              >
+                {data.partner_status}
+              </Badge>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 p-1 -m-1">
+          {/* User Profile */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <User className="size-4 text-muted-foreground" />
+              User Profile
+            </div>
+            <div className="space-y-2.5">
+              <DetailRow label="Name" value={data.partner_name} />
+              <DetailRow label="Email" value={data.partner_email} />
+              <DetailRow label="Phone" value={data.partner_phone} />
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground text-sm shrink-0">Verified</span>
+                <Badge variant={isVerified ? "success" : "destructive"} className="text-xs">
+                  {isVerified ? "Yes" : "No"}
+                </Badge>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Business Info */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="size-4 text-muted-foreground" />
+              Business
+            </div>
+            <div className="space-y-2.5">
+              <DetailRow label="Company" value={data.partner_company} />
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground text-sm shrink-0">Type</span>
+                {data.partner_business_type ? (
+                  <Badge variant="outline" className="text-xs">{data.partner_business_type}</Badge>
+                ) : (
+                  <span className="text-muted-foreground text-sm">{"\u2014"}</span>
+                )}
+              </div>
+              <DetailRow label="Address" value={data.partner_address} />
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Partner Info */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Handshake className="size-4 text-muted-foreground" />
+              Partner Info
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground text-sm shrink-0">Partner Type</span>
+                {data.partner_type_name ? (
+                  <Badge variant="outline" className="text-xs">{data.partner_type_name}</Badge>
+                ) : (
+                  <span className="text-muted-foreground text-sm">{"\u2014"}</span>
+                )}
+              </div>
+              {data.partner_applied_at && (
+                <DetailRow label="Applied" value={formatDate(data.partner_applied_at)} />
+              )}
+              {data.partner_reviewed_at && (
+                <DetailRow
+                  label={data.partner_status?.toLowerCase() === "approved" ? "Approved" : "Reviewed"}
+                  value={formatDate(data.partner_reviewed_at)}
+                />
+              )}
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Account */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Calendar className="size-4 text-muted-foreground" />
+              Account
+            </div>
+            <div className="space-y-2.5">
+              <DetailRow label="User ID" value={data.partner_app_user_id ? `#${data.partner_app_user_id}` : null} />
+              <DetailRow label="Joined" value={data.partner_joined ? formatDate(data.partner_joined) : null} />
+            </div>
+          </section>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PartnerCell({ data }: { data: PartnerInfo }) {
+  const [open, setOpen] = useState(false);
+
+  if (!data.partner_name) return <span className="text-muted-foreground text-sm">{"\u2014"}</span>;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm text-left hover:underline underline-offset-2 cursor-pointer"
+      >
+        {data.partner_name}
+      </button>
+      {open && (
+        <PartnerInfoDialog data={data} open={open} onOpenChange={setOpen} />
+      )}
+    </>
+  );
+}
+
+function partnerColumn<T extends ListingBase & PartnerInfo>(): ColumnDef<T> {
   return {
     accessorKey: "partner_name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Partner" />
     ),
-    cell: ({ row }) => (
-      <span className="text-sm">{row.original.partner_name ?? "\u2014"}</span>
-    ),
+    cell: ({ row }) => <PartnerCell data={row.original} />,
   };
 }
 
@@ -425,7 +665,7 @@ function SaleActionsCell({ row }: { row: { original: SaleListingWithDetails } })
 
 function RentActionsCell({ row }: { row: { original: RentListingWithDetails } }) {
   const canEdit = useHasPermission("rent_listings", "edit");
-  const { id, is_hidden, hide_price, featured_id } = row.original;
+  const { id, is_hidden, is_rented, hide_price, featured_id } = row.original;
   return (
     <TooltipProvider>
       <div className="flex items-center justify-end gap-1">
@@ -457,6 +697,7 @@ function RentActionsCell({ row }: { row: { original: RentListingWithDetails } })
                 }
               }}
             />
+            <IsRentedToggle isRented={is_rented === 1} listingId={id} />
             <FeatureToggle
               featuredId={featured_id}
               listingType="rent"
@@ -489,6 +730,7 @@ function saleFilterColumns(): ColumnDef<SaleListingWithDetails>[] {
 function rentFilterColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
     { id: "visibility", accessorFn: (row) => row.is_hidden === 1 ? "Hidden" : "Visible", enableSorting: false },
+    { id: "rent_status", accessorFn: (row) => row.is_rented === 1 ? "Rented" : "Available", enableSorting: false },
     { id: "is_featured", accessorFn: (row) => row.featured_id != null ? "Yes" : "No", enableSorting: false },
     { id: "mmk_price", accessorFn: (row) => row.mmk_price, enableSorting: false },
     { id: "created_at", accessorFn: (row) => row.created_at, enableSorting: false },
@@ -499,7 +741,7 @@ export function createSaleColumns(): ColumnDef<SaleListingWithDetails>[] {
   return [
     {
       id: "index",
-      header: "#",
+      header: "No.",
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs tabular-nums">
           {row.index + 1}
@@ -545,7 +787,7 @@ export function createRentColumns(): ColumnDef<RentListingWithDetails>[] {
   return [
     {
       id: "index",
-      header: "#",
+      header: "No.",
       cell: ({ row }) => (
         <span className="text-muted-foreground text-xs tabular-nums">
           {row.index + 1}

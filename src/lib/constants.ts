@@ -39,6 +39,8 @@ export const ROUTES = {
   LISTINGS_FOR_RENT: "/listings/for-rent",
   LISTINGS_NEW: "/listings/new",
   LISTING_TEMPLATES: "/listing-templates",
+  LISTING_TEMPLATES_NEW: "/listing-templates/new",
+  CONDITION_TYPES: "/condition-types",
   ENQUIRIES: "/enquiries",
 
   // Users

@@ -101,26 +101,55 @@ export function StepMatchImages({
             nameWithoutExt === rowNum3
           ) {
             const isPdf = file.type === "application/pdf";
-            const targetField =
-              imageFields.find((f) =>
-                isPdf
-                  ? f.r2Path.includes("pdf")
-                  : !f.r2Path.includes("pdf"),
-              ) ?? imageFields[0];
+            const isThumbnail =
+              !isPdf &&
+              (nameWithoutExt.endsWith("-thumbnail") ||
+                nameWithoutExt.endsWith("_thumbnail"));
+
+            if (!updates.has(row.rowIndex)) {
+              updates.set(row.rowIndex, {});
+            }
+            const rowUpdates = updates.get(row.rowIndex)!;
+
+            // Determine target field:
+            // - PDFs → first pdf field
+            // - Files ending with -thumb / _thumb → thumbnail (isPrimary) field
+            // - Other images → product photos (non-primary) field
+            let targetField: BulkUploadImageField | undefined;
+
+            if (isPdf) {
+              targetField = imageFields.find(
+                (f) =>
+                  f.r2Path.includes("pdf") &&
+                  (rowUpdates[f.field]?.length ?? 0) < (f.maxPerRow ?? 1),
+              );
+            } else if (isThumbnail) {
+              targetField = imageFields.find(
+                (f) =>
+                  f.isPrimary &&
+                  !f.r2Path.includes("pdf") &&
+                  (rowUpdates[f.field]?.length ?? 0) < (f.maxPerRow ?? 1),
+              );
+            } else {
+              // Regular images → non-primary image fields first, then primary as fallback
+              targetField = imageFields.find(
+                (f) =>
+                  !f.isPrimary &&
+                  !f.r2Path.includes("pdf") &&
+                  (rowUpdates[f.field]?.length ?? 0) < (f.maxPerRow ?? 1),
+              ) ?? imageFields.find(
+                (f) =>
+                  !f.r2Path.includes("pdf") &&
+                  (rowUpdates[f.field]?.length ?? 0) < (f.maxPerRow ?? 1),
+              );
+            }
 
             if (targetField) {
-              if (!updates.has(row.rowIndex)) {
-                updates.set(row.rowIndex, {});
-              }
-              const rowUpdates = updates.get(row.rowIndex)!;
               if (!rowUpdates[targetField.field]) {
                 rowUpdates[targetField.field] = [];
               }
-              const maxPerRow = targetField.maxPerRow ?? 1;
-              if (rowUpdates[targetField.field].length < maxPerRow) {
-                rowUpdates[targetField.field].push(file);
-                matched++;
-              }
+              rowUpdates[targetField.field].push(file);
+              matched++;
             }
             break;
           }
@@ -203,6 +232,11 @@ export function StepMatchImages({
                 <code className="rounded bg-muted px-1.5 py-0.5">
                   row-1.jpg
                 </code>
+                . Add{" "}
+                <code className="rounded bg-muted px-1.5 py-0.5">
+                  -thumbnail
+                </code>{" "}
+                suffix for thumbnails.
               </p>
             </div>
 

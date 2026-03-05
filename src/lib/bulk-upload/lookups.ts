@@ -139,6 +139,38 @@ const ASSOCIATION_FETCHERS: Record<string, () => Promise<AssociationMap>> = {
     );
     return groupByParent(result.results);
   },
+
+  districtsByStateRegion: async () => {
+    const result = await d1.query<{ parent: string; child: string }>(
+      `SELECT sr.name AS parent, d.name || ' (' || sr.name || ')' AS child
+       FROM district d
+       JOIN state_region sr ON d.state_region_id = sr.state_region_id
+       WHERE d.deleted_at IS NULL AND sr.deleted_at IS NULL
+       ORDER BY sr.name, d.name`,
+    );
+    return groupByParent(result.results);
+  },
+
+  townshipsByDistrict: async () => {
+    const [districts, stateRegions, townships] = await Promise.all([
+      getDistricts(),
+      getStateRegions(),
+      getTownships(),
+    ]);
+    const regionMap = new Map(
+      stateRegions.map((sr) => [sr.state_region_id, sr.name]),
+    );
+    // Build parent label (same format as districts lookup) → child township names
+    const map: AssociationMap = {};
+    for (const t of townships) {
+      const district = districts.find((d) => d.district_id === t.district_id);
+      if (!district) continue;
+      const parentLabel = `${district.name} (${regionMap.get(district.state_region_id) ?? "Unknown"})`;
+      if (!map[parentLabel]) map[parentLabel] = [];
+      map[parentLabel].push(t.name);
+    }
+    return map;
+  },
 };
 
 function groupByParent(rows: { parent: string; child: string }[]): AssociationMap {

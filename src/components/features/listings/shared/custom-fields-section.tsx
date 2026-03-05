@@ -269,7 +269,7 @@ export function CustomFieldsSection({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              className="shrink-0 text-muted-foreground hover:text-destructive"
               onClick={() => handleFieldRemove(field.key)}
             >
               <X className="size-4" />

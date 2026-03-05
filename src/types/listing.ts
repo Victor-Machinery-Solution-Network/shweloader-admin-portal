@@ -45,6 +45,7 @@ export interface SaleListing {
   hide_price: number;
   is_hidden: number;
   is_sold_out: number;
+  display_currency: string;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -65,6 +66,8 @@ export interface RentListing {
   usd_price: number | null;
   hide_price: number;
   is_hidden: number;
+  is_rented: number;
+  display_currency: string;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -99,6 +102,7 @@ export interface SaleListingWithDetails {
   hide_price: number;
   is_hidden: number;
   is_sold_out: number;
+  display_currency: string;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
@@ -117,6 +121,19 @@ export interface SaleListingWithDetails {
   product_type: "equipment" | "attachment";
   partner_name: string | null;
   township_name: string | null;
+  // Partner details (prefetched)
+  partner_email: string | null;
+  partner_phone: string | null;
+  partner_company: string | null;
+  partner_address: string | null;
+  partner_verified: number | null;
+  partner_joined: string | null;
+  partner_business_type: string | null;
+  partner_type_name: string | null;
+  partner_status: string | null;
+  partner_applied_at: string | null;
+  partner_reviewed_at: string | null;
+  partner_app_user_id: number | null;
   // Approval status
   approve_status_name: string | null;
   approved_at: string | null;
@@ -133,6 +150,8 @@ export interface RentListingWithDetails {
   usd_price: number | null;
   hide_price: number;
   is_hidden: number;
+  is_rented: number;
+  display_currency: string;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
@@ -151,6 +170,19 @@ export interface RentListingWithDetails {
   product_type: "equipment" | "attachment";
   partner_name: string | null;
   township_name: string | null;
+  // Partner details (prefetched)
+  partner_email: string | null;
+  partner_phone: string | null;
+  partner_company: string | null;
+  partner_address: string | null;
+  partner_verified: number | null;
+  partner_joined: string | null;
+  partner_business_type: string | null;
+  partner_type_name: string | null;
+  partner_status: string | null;
+  partner_applied_at: string | null;
+  partner_reviewed_at: string | null;
+  partner_app_user_id: number | null;
   // Approval status
   approve_status_name: string | null;
   approved_at: string | null;

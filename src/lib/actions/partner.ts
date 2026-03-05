@@ -34,6 +34,31 @@ export async function getPartnersWithDetails(): Promise<PartnerWithDetails[]> {
   return result.results;
 }
 
+export async function getPartnerDetails(partnerId: number): Promise<PartnerWithDetails | null> {
+  const result = await d1.query<PartnerWithDetails>(
+    `SELECT
+      p.*,
+      c.username AS user_name,
+      c.email AS user_email,
+      c.phone AS user_phone,
+      c.company_name AS user_company,
+      c.office_address AS user_address,
+      c.is_verified AS user_verified,
+      c.created_at AS user_joined,
+      bt.name AS business_type_name,
+      pt.name AS partner_type_name,
+      pst.status_name AS status_name
+    FROM partner p
+    LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
+    LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    WHERE p.id = ? AND p.deleted_at IS NULL`,
+    [partnerId],
+  );
+  return result.results[0] ?? null;
+}
+
 // ─── Partner Actions ─────────────────────────────────────────────────────────
 
 export async function approvePartner(id: number) {

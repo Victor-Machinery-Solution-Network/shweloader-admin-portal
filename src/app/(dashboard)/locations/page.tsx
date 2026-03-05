@@ -16,7 +16,7 @@ export const metadata = {
 export default function LocationsPage() {
   return (
     <>
-      <PageHeader title="Locations" description="Manage Myanmar locations (State/Region, District, Township)" />
+      <PageHeader title="Locations" description="Manage states, districts, and townships." />
       <Suspense fallback={<DataTableSkeleton />}>
         <PermissionGate feature="locations">
           <LocationsContent />
