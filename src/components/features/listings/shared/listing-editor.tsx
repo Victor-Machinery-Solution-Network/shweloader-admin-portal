@@ -309,6 +309,7 @@ function PricingCard({
   onDisplayCurrencyChange,
   hidePrice,
   onHidePriceChange,
+  error,
 }: {
   icon?: LucideIcon;
   label: string;
@@ -326,17 +327,20 @@ function PricingCard({
   onDisplayCurrencyChange: (v: string) => void;
   hidePrice: boolean;
   onHidePriceChange: (v: boolean) => void;
+  error?: string;
 }) {
   const [showRateSettings, setShowRateSettings] = useState(false);
 
   return (
     <div className="flex flex-col gap-3">
-      <SubSectionLabel icon={icon}>{label}</SubSectionLabel>
+      <SubSectionLabel icon={icon}>
+        {label} <span className="text-destructive">*</span>
+      </SubSectionLabel>
 
       {/* Currency inputs — side by side */}
       <div className="grid grid-cols-2 gap-3">
         {/* USD */}
-        <div className="group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10">
+        <div className={cn("group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10", error && "border-destructive")}>
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
               $
@@ -358,7 +362,7 @@ function PricingCard({
         </div>
 
         {/* MMK */}
-        <div className="group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10">
+        <div className={cn("group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10", error && "border-destructive")}>
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
               K
@@ -379,6 +383,10 @@ function PricingCard({
           </div>
         </div>
       </div>
+
+      {error && (
+        <p className="text-destructive text-xs">{error}</p>
+      )}
 
       {/* Rate + Display currency — compact row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -1904,6 +1912,7 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setSaleDisplayCurrency}
                       hidePrice={saleHidePrice}
                       onHidePriceChange={setSaleHidePrice}
+                      error={submitted && (!saleUsdPrice || parseFloat(saleUsdPrice) <= 0) ? "Please enter a sale price" : undefined}
                     />
                   )}
                   {forRent && (
@@ -1930,6 +1939,7 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setRentDisplayCurrency}
                       hidePrice={rentHidePrice}
                       onHidePriceChange={setRentHidePrice}
+                      error={submitted && (!rentUsdPrice || parseFloat(rentUsdPrice) <= 0) ? "Please enter a rental price" : undefined}
                     />
                   )}
                   {!forSale && !forRent && (

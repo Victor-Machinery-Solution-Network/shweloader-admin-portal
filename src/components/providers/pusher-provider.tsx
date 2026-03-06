@@ -11,6 +11,8 @@ import {
 import { useSession, signOut } from "next-auth/react";
 import PusherClient from "pusher-js";
 
+type Listener = { event: string; callback: (data: unknown) => void };
+
 interface PusherContextValue {
   /** Subscribe to an event on the user's private channel */
   subscribe: (event: string, callback: (data: unknown) => void) => () => void;
@@ -22,8 +24,8 @@ const PusherContext = createContext<PusherContextValue>({
 
 export function PusherProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const pusherRef = useRef<PusherClient | null>(null);
   const channelRef = useRef<ReturnType<PusherClient["subscribe"]> | null>(null);
+  const listenersRef = useRef<Set<Listener>>(new Set());
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
@@ -39,7 +41,6 @@ export function PusherProvider({ children }: { children: ReactNode }) {
     });
 
     const channel = pusher.subscribe(`private-user-${session.user.id}`);
-    pusherRef.current = pusher;
     channelRef.current = channel;
 
     // Listen for session revocation (deactivation or role change)
@@ -48,21 +49,37 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       window.location.href = "/login";
     });
 
+    // Bind any listeners that were registered before the channel was ready
+    for (const listener of listenersRef.current) {
+      channel.bind(listener.event, listener.callback);
+    }
+
     return () => {
       channel.unbind_all();
       pusher.unsubscribe(`private-user-${session.user.id}`);
       pusher.disconnect();
-      pusherRef.current = null;
       channelRef.current = null;
     };
   }, [status, session?.user?.id]);
 
   const subscribe = useCallback(
     (event: string, callback: (data: unknown) => void) => {
+      const listener: Listener = { event, callback };
+      listenersRef.current.add(listener);
+
+      // If channel is already connected, bind immediately
       const channel = channelRef.current;
-      if (!channel) return () => {};
-      channel.bind(event, callback);
-      return () => channel.unbind(event, callback);
+      if (channel) {
+        channel.bind(event, callback);
+      }
+
+      return () => {
+        listenersRef.current.delete(listener);
+        const ch = channelRef.current;
+        if (ch) {
+          ch.unbind(event, callback);
+        }
+      };
     },
     [],
   );

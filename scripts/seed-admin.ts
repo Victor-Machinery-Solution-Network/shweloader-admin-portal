@@ -81,24 +81,24 @@ const FEATURES = [
   { name: "attachment_models", group_name: "Catalog", display_order: 7 },
   { name: "brands", group_name: "Catalog", display_order: 8 },
   { name: "locations", group_name: "Catalog", display_order: 9 },
-  // Marketplace (10–13)
+  // Marketplace (10–14)
   { name: "sale_listings", group_name: "Marketplace", display_order: 10 },
   { name: "rent_listings", group_name: "Marketplace", display_order: 11 },
   { name: "featured_listings", group_name: "Marketplace", display_order: 12 },
   { name: "enquiries", group_name: "Marketplace", display_order: 13 },
-  // Users (14–16)
-  { name: "users", group_name: "Users", display_order: 14 },
-  { name: "partners", group_name: "Users", display_order: 15 },
-  { name: "business_types", group_name: "Users", display_order: 16 },
-  // Content (17–20)
-  { name: "articles", group_name: "Content", display_order: 17 },
-  { name: "article_categories", group_name: "Content", display_order: 18 },
-  { name: "announcements", group_name: "Content", display_order: 19 },
-  { name: "carousels", group_name: "Content", display_order: 20 },
-  // Administration (21–25)
-  { name: "admin_users", group_name: "Administration", display_order: 21 },
-  { name: "roles", group_name: "Administration", display_order: 22 },
-  { name: "listing_templates", group_name: "Administration", display_order: 23 },
+  { name: "listing_templates", group_name: "Marketplace", display_order: 14 },
+  // Users (15–17)
+  { name: "users", group_name: "Users", display_order: 15 },
+  { name: "partners", group_name: "Users", display_order: 16 },
+  { name: "business_types", group_name: "Users", display_order: 17 },
+  // Content (18–21)
+  { name: "articles", group_name: "Content", display_order: 18 },
+  { name: "article_categories", group_name: "Content", display_order: 19 },
+  { name: "announcements", group_name: "Content", display_order: 20 },
+  { name: "carousels", group_name: "Content", display_order: 21 },
+  // Administration (22–25)
+  { name: "admin_users", group_name: "Administration", display_order: 22 },
+  { name: "roles", group_name: "Administration", display_order: 23 },
   { name: "app_settings", group_name: "Administration", display_order: 24 },
   { name: "trash", group_name: "Administration", display_order: 25 },
 ];

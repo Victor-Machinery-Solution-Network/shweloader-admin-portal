@@ -17,7 +17,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Notification } from "@/types/notification";
 
 function getNotificationIcon(type: Notification["type"]) {
@@ -144,7 +143,7 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 overflow-hidden p-0"
+        className="w-80 gap-0 overflow-hidden p-0"
         sideOffset={8}
       >
         {/* Header */}
@@ -172,19 +171,17 @@ export function NotificationBell() {
 
         {/* Notification list */}
         {notifications.length > 0 ? (
-          <ScrollArea className="max-h-[320px]">
-            <div className="py-1">
-              {notifications.map((n) => (
-                <NotificationItem
-                  key={n.notification_id}
-                  notification={n}
-                  onRead={markRead}
-                  onRemove={remove}
-                  onNavigate={(url) => router.push(url)}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="max-h-80 overflow-y-auto overscroll-contain py-1">
+            {notifications.map((n) => (
+              <NotificationItem
+                key={n.notification_id}
+                notification={n}
+                onRead={markRead}
+                onRemove={remove}
+                onNavigate={(url) => router.push(url)}
+              />
+            ))}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-muted">

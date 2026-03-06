@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePusher } from "@/components/providers/pusher-provider";
 import {
   getMyNotifications,
@@ -16,6 +17,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+  const router = useRouter();
   const { subscribe } = usePusher();
   const mountedRef = useRef(true);
 
@@ -38,7 +40,7 @@ export function useNotifications() {
   // Pusher subscription for real-time updates
   useEffect(() => {
     const unsubscribe = subscribe("new-notification", () => {
-      // Refetch on any new notification event
+      // Refetch notifications
       Promise.all([getMyNotifications(), getMyUnreadCount()]).then(
         ([notifs, count]) => {
           if (!mountedRef.current) return;
@@ -46,9 +48,11 @@ export function useNotifications() {
           setUnreadCount(count);
         },
       );
+      // Refresh server components so tables/pages show new data
+      router.refresh();
     });
     return unsubscribe;
-  }, [subscribe]);
+  }, [subscribe, router]);
 
   const markRead = useCallback(async (notificationId: number) => {
     const result = await markNotificationRead(notificationId);
