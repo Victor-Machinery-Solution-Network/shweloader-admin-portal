@@ -21,9 +21,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   }
 
-  // Only allow users to subscribe to their own private channel
-  const expectedChannel = `private-user-${session.user.id}`;
-  if (channelName !== expectedChannel) {
+  // Authorize based on channel pattern
+  if (channelName === `private-user-${session.user.id}`) {
+    // Existing: user's notification channel
+  } else if (channelName.startsWith("private-chat-")) {
+    // Chat session channel — any admin with chat:read
+    if (!session.user.permissions?.includes("chat:read")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (channelName === "private-admin-chat") {
+    // Admin chat inbox channel
+    if (!session.user.permissions?.includes("chat:read")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
