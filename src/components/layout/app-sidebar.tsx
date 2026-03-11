@@ -28,6 +28,7 @@ import {
   Shield,
   UserCog,
   Trash2,
+  Headset,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -109,7 +110,7 @@ export function AppSidebar() {
   const showDashboard = canRead("dashboard") || canRead("analytics");
   const showCatalog =
     showEquipment || showAttachments || canRead("brands") || canRead("locations");
-  const showMarketplace = showListings || canRead("enquiries");
+  const showMarketplace = showListings || canRead("enquiries") || canRead("chat");
   const showUsers = canRead("users") || canRead("partners");
   const showContent =
     showArticles || canRead("carousels") || canRead("announcements");
@@ -381,6 +382,13 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === ROUTES.ENQUIRIES}>
                   <Link href={ROUTES.ENQUIRIES}><MessageSquare aria-hidden="true" /><span>Enquiries</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              )}
+              {canRead("chat") && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === ROUTES.CHAT}>
+                  <Link href={ROUTES.CHAT}><Headset aria-hidden="true" /><span>Chat</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               )}
