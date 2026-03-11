@@ -59,5 +59,30 @@ export async function triggerNotificationBatch(
   await Promise.all(batches.map((batch) => pusher.triggerBatch(batch)));
 }
 
+/**
+ * Trigger a chat event on a session's private channel.
+ * Channel name: `private-chat-{sessionId}`
+ */
+export async function triggerChatEvent(
+  sessionId: number,
+  eventName: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const pusher = getPusher();
+  await pusher.trigger(`private-chat-${sessionId}`, eventName, data);
+}
+
+/**
+ * Trigger an event on the admin chat inbox channel.
+ * Channel name: `private-admin-chat`
+ */
+export async function triggerAdminChatEvent(
+  eventName: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const pusher = getPusher();
+  await pusher.trigger("private-admin-chat", eventName, data);
+}
+
 /** Re-export for use in the auth endpoint */
 export { getPusher };
