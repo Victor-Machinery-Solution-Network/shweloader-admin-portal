@@ -1,7 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { ChatSessionWithDetails } from "@/types/chat";
 

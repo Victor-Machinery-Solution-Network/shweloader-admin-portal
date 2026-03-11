@@ -3,13 +3,12 @@
 import Image from "next/image";
 import { FileText } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatFileSize } from "@/lib/utils";
 import { format } from "date-fns";
 import type { ChatMessageWithDetails } from "@/types/chat";
 
 interface MessageBubbleProps {
   message: ChatMessageWithDetails;
-  isAdmin: boolean;
 }
 
 function getInitials(name: string): string {
@@ -31,13 +30,7 @@ function formatTimestamp(dateStr: string): string {
   }
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-export function MessageBubble({ message, isAdmin }: MessageBubbleProps) {
+export function MessageBubble({ message }: MessageBubbleProps) {
   const isAdminMessage = message.sender_type === "admin";
   const initials = getInitials(message.sender_name);
   const timestamp = formatTimestamp(message.created_at);

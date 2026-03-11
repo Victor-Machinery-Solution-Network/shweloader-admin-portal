@@ -4,7 +4,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { Paperclip, Send, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, formatFileSize } from "@/lib/utils";
 
 interface ChatInputBarProps {
   onSend: (message: string, files: File[]) => void;
@@ -17,12 +17,6 @@ const MAX_FILES = 5;
 
 function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {

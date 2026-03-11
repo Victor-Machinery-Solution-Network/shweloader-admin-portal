@@ -57,7 +57,10 @@ export function ConversationPanel({
     setIsSending(true);
     try {
       // Text-only for now; file upload support to be added later
-      await sendMessage(session.id, message || null, undefined);
+      const result = await sendMessage(session.id, message || null, undefined);
+      if (!result.success) {
+        console.error("Failed to send message:", result.error);
+      }
     } finally {
       setIsSending(false);
     }
@@ -67,8 +70,12 @@ export function ConversationPanel({
     if (!session || isClosing) return;
     setIsClosing(true);
     try {
-      await closeSession(session.id);
-      onSessionClosed();
+      const result = await closeSession(session.id);
+      if (result.success) {
+        onSessionClosed();
+      } else {
+        console.error("Failed to close session:", result.error);
+      }
     } finally {
       setIsClosing(false);
     }
@@ -183,7 +190,6 @@ export function ConversationPanel({
               <MessageBubble
                 key={msg.id}
                 message={msg}
-                isAdmin={msg.sender_type === "admin"}
               />
             ))
           )}

@@ -21,6 +21,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   // Fetch messages on session change
   useEffect(() => {
     mountedRef.current = true;
+    setSessionClosed(false);
     if (!sessionId) {
       setMessages([]);
       return;

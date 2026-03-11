@@ -84,6 +84,13 @@ export function buildLinkMap<T>(
   return map;
 }
 
+/** Format byte count as human-readable file size (B, KB, MB). */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** Convert USD to MMK using the given rate. Returns "" for invalid input. */
 export function convertUsdToMmk(usd: string, rate: number): string {
   const n = parseFloat(usd);
