@@ -25,7 +25,7 @@ export async function getEnquiriesWithDetails(): Promise<
        e.updated_at,
        e.updated_by,
        est.status_name,
-       c.username AS user_name,
+       c.full_name AS user_name,
        c.email AS user_email,
        c.phone AS user_phone,
        c.company_name AS user_company,
@@ -50,10 +50,30 @@ export async function getEnquiriesWithDetails(): Promise<
          WHEN e.sale_listing_id IS NOT NULL THEN 'sale'
          WHEN e.rent_listing_id IS NOT NULL THEN 'rent'
          ELSE NULL
-       END AS listing_type
+       END AS listing_type,
+       CASE
+         WHEN e.sale_listing_id IS NOT NULL THEN
+           (SELECT pl.thumbnail_url FROM sale_listing sl
+            JOIN product_list pl ON sl.product_list_id = pl.id
+            WHERE sl.id = e.sale_listing_id LIMIT 1)
+         WHEN e.rent_listing_id IS NOT NULL THEN
+           (SELECT pl.thumbnail_url FROM rent_listing rl
+            JOIN product_list pl ON rl.product_list_id = pl.id
+            WHERE rl.id = e.rent_listing_id LIMIT 1)
+         ELSE NULL
+       END AS thumbnail_url,
+       cs.id AS session_id,
+       COALESCE(cm_agg.message_count, 0) AS message_count,
+       cm_agg.last_reply_at
      FROM enquiry e
      LEFT JOIN enquiry_status_type est ON e.enquiry_status_id = est.id
      LEFT JOIN app_user c ON e.app_user_id = c.app_user_id
+     LEFT JOIN chat_session cs ON cs.enquiry_id = e.id
+     LEFT JOIN (
+       SELECT chat_session_id, COUNT(*) AS message_count, MAX(created_at) AS last_reply_at
+       FROM chat_message
+       GROUP BY chat_session_id
+     ) cm_agg ON cm_agg.chat_session_id = cs.id
      WHERE e.deleted_at IS NULL
      ORDER BY e.created_at DESC`,
   );
@@ -70,31 +90,6 @@ export async function getEnquiryStatusTypes(): Promise<EnquiryStatusType[]> {
 
 // ─── Mutations ──────────────────────────────────────────────────────────────
 
-/** Update enquiry status */
-export async function updateEnquiryStatus(
-  enquiryId: number,
-  statusId: number,
-) {
-  try {
-    const updatedBy = await requirePermission("enquiries", "edit");
-
-    await d1.query(
-      `UPDATE enquiry
-       SET enquiry_status_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [statusId, updatedBy, enquiryId],
-    );
-
-    invalidateTag(CACHE_TAGS.ENQUIRIES);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, "Failed to update enquiry status"),
-    };
-  }
-}
-
 /** Delete a single enquiry */
 export async function deleteEnquiry(enquiryId: number) {
   try {
@@ -103,8 +98,15 @@ export async function deleteEnquiry(enquiryId: number) {
       "UPDATE enquiry SET deleted_at = ?, deleted_by = ? WHERE id = ?",
       [new Date().toISOString(), deletedBy, enquiryId],
     );
+    // Close linked chat session (preserve message history)
+    await d1.query(
+      `UPDATE chat_session SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE enquiry_id = ?`,
+      [enquiryId],
+    ).catch(() => {}); // Non-critical — don't fail the delete
     saveTrashMetadata("enquiry", enquiryId, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ENQUIRIES);
+    invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true };
   } catch (error) {
     return {
@@ -127,10 +129,17 @@ export async function deleteEnquiries(ids: number[]) {
       `UPDATE enquiry SET deleted_at = ?, deleted_by = ? WHERE id IN (${placeholders})`,
       [now, deletedBy, ...ids],
     );
+    // Close linked chat sessions
+    await d1.query(
+      `UPDATE chat_session SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE enquiry_id IN (${placeholders})`,
+      [...ids],
+    ).catch(() => {});
     for (const id of ids) {
       saveTrashMetadata("enquiry", id, deletedBy).catch(() => {});
     }
     invalidateTag(CACHE_TAGS.ENQUIRIES);
+    invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true };
   } catch (error) {
     return {
