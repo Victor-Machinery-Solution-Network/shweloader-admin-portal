@@ -62,6 +62,10 @@ export function UserForm({
   const [copied, setCopied] = useState(false);
 
   function handleSubmit(formData: FormData) {
+    if (!selectedBT) {
+      toast.error("Business type is required");
+      return;
+    }
     if (isOther) {
       // Custom business type — server action will create it with is_listed = 0
       const otherName = formData.get("business_type_other") as string;
@@ -133,9 +137,10 @@ export function UserForm({
           <Field orientation="vertical">
             <FieldLabel>Full Name</FieldLabel>
             <FieldContent>
-              <Input
+              <RequiredInput
                 name="full_name"
                 placeholder="e.g. Aung Kyaw"
+                errorMessage="Full name is required"
                 autoComplete="off"
               />
             </FieldContent>
@@ -171,20 +176,8 @@ export function UserForm({
             </FieldContent>
           </Field>
 
-          {/* Row 3: Company */}
-          <Field orientation="vertical">
-            <FieldLabel>Company Name</FieldLabel>
-            <FieldContent>
-              <Input
-                name="company_name"
-                placeholder="e.g. ABC Construction Co."
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
           {/* Row 3: Business type + specify (if Other) */}
-          <Field orientation="vertical">
+          <Field orientation="vertical" className={isOther ? undefined : "sm:col-span-2 sm:max-w-[calc(50%-0.75rem)]"}>
             <FieldLabel>Business Type</FieldLabel>
             <FieldContent>
               <Combobox
@@ -226,12 +219,33 @@ export function UserForm({
             </Field>
           )}
 
-          {/* Row 4: Office address (full width) */}
-          <Field orientation="vertical" className="sm:col-span-2">
-            <FieldLabel>Office Address</FieldLabel>
+          {/* Row 4: Company + Address */}
+          <Field orientation="vertical">
+            <FieldLabel>
+              Company Name{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </FieldLabel>
             <FieldContent>
               <Input
-                name="office_address"
+                name="company_name"
+                placeholder="e.g. ABC Construction Co."
+                autoComplete="off"
+              />
+            </FieldContent>
+          </Field>
+
+          <Field orientation="vertical">
+            <FieldLabel>
+              Address{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                name="address"
                 placeholder="e.g. No. 123, Main Street, Yangon"
                 autoComplete="off"
               />

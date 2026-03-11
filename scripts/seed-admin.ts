@@ -266,27 +266,28 @@ const FEATURES = [
   { name: "attachment_models", group_name: "Catalog", display_order: 7 },
   { name: "brands", group_name: "Catalog", display_order: 8 },
   { name: "locations", group_name: "Catalog", display_order: 9 },
-  // Marketplace (10–14)
+  // Marketplace (10–15)
   { name: "sale_listings", group_name: "Marketplace", display_order: 10 },
   { name: "rent_listings", group_name: "Marketplace", display_order: 11 },
   { name: "featured_listings", group_name: "Marketplace", display_order: 12 },
   { name: "enquiries", group_name: "Marketplace", display_order: 13 },
   { name: "listing_templates", group_name: "Marketplace", display_order: 14 },
-  // Users (15–17)
-  { name: "users", group_name: "Users", display_order: 15 },
-  { name: "partners", group_name: "Users", display_order: 16 },
-  { name: "business_types", group_name: "Users", display_order: 17 },
-  { name: "blacklist", group_name: "Users", display_order: 18 },
-  // Content (19–22)
-  { name: "articles", group_name: "Content", display_order: 19 },
-  { name: "article_categories", group_name: "Content", display_order: 20 },
-  { name: "announcements", group_name: "Content", display_order: 21 },
-  { name: "carousels", group_name: "Content", display_order: 22 },
-  // Administration (23–26)
-  { name: "admin_users", group_name: "Administration", display_order: 23 },
-  { name: "roles", group_name: "Administration", display_order: 24 },
-  { name: "app_settings", group_name: "Administration", display_order: 25 },
-  { name: "trash", group_name: "Administration", display_order: 26 },
+  { name: "condition_types", group_name: "Marketplace", display_order: 15 },
+  // Users (16–19)
+  { name: "users", group_name: "Users", display_order: 16 },
+  { name: "partners", group_name: "Users", display_order: 17 },
+  { name: "business_types", group_name: "Users", display_order: 18 },
+  { name: "blacklist", group_name: "Users", display_order: 19 },
+  // Content (20–23)
+  { name: "articles", group_name: "Content", display_order: 20 },
+  { name: "article_categories", group_name: "Content", display_order: 21 },
+  { name: "announcements", group_name: "Content", display_order: 22 },
+  { name: "carousels", group_name: "Content", display_order: 23 },
+  // Administration (24–27)
+  { name: "admin_users", group_name: "Administration", display_order: 24 },
+  { name: "roles", group_name: "Administration", display_order: 25 },
+  { name: "app_settings", group_name: "Administration", display_order: 26 },
+  { name: "trash", group_name: "Administration", display_order: 27 },
 ];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
@@ -295,6 +296,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   sale_listings: ["create", "read", "edit", "delete", "approve"],
   rent_listings: ["create", "read", "edit", "delete", "approve"],
   featured_listings: ["create", "read", "delete"],
+  condition_types: ["create", "read", "edit", "delete"],
   enquiries: ["read", "edit", "delete"],
   users: ["read", "create"],
   partners: ["read", "approve"],

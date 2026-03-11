@@ -23,11 +23,11 @@ function generatePassword(): string {
 
 export async function createAppUser(formData: FormData) {
   const username = formData.get("username") as string;
-  const fullName = (formData.get("full_name") as string) || null;
+  const fullName = formData.get("full_name") as string;
   const email = (formData.get("email") as string) || null;
   const phone = formData.get("phone") as string;
   const companyName = (formData.get("company_name") as string) || null;
-  const officeAddress = (formData.get("office_address") as string) || null;
+  const address = (formData.get("address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
   const isApprovedPartner = formData.get("is_approved_partner") === "1";
@@ -35,15 +35,21 @@ export async function createAppUser(formData: FormData) {
   if (!username?.trim()) {
     return { success: false, error: "Username is required" };
   }
+  if (!fullName?.trim()) {
+    return { success: false, error: "Full name is required" };
+  }
   if (!phone?.trim()) {
     return { success: false, error: "Phone number is required" };
+  }
+  if (!businessTypeId && !businessTypeOther?.trim()) {
+    return { success: false, error: "Business type is required" };
   }
 
   try {
     const actorId = await requirePermission("users", "create");
 
     // Resolve business type ID — create an unlisted type if "Other" was specified
-    let resolvedBtId: number | null = businessTypeId ? Number(businessTypeId) : null;
+    let resolvedBtId: number = businessTypeId ? Number(businessTypeId) : 0;
 
     if (businessTypeOther?.trim()) {
       const otherName = businessTypeOther.trim();
@@ -72,12 +78,12 @@ export async function createAppUser(formData: FormData) {
 
     const newUser = await appUserService.create({
       username: username.trim(),
-      full_name: fullName?.trim() || null,
+      full_name: fullName.trim(),
       email: email?.trim().toLowerCase() || null,
       password_hash,
       phone: phone.trim(),
       company_name: companyName?.trim() || null,
-      office_address: officeAddress?.trim() || null,
+      address: address?.trim() || null,
       business_type_id: resolvedBtId,
       is_verified: 1,
     });

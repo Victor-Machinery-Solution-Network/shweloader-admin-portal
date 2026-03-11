@@ -180,7 +180,7 @@ export async function getUsersPageData() {
         'full_name', t.full_name, 'email', t.email,
         'password_hash', t.password_hash,
         'phone', t.phone, 'is_verified', t.is_verified,
-        'company_name', t.company_name, 'office_address', t.office_address,
+        'company_name', t.company_name, 'address', t.address,
         'business_type_id', t.business_type_id,
         'created_at', t.created_at, 'deleted_at', t.deleted_at,
         'deleted_by', t.deleted_by,
