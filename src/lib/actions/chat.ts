@@ -17,8 +17,6 @@ import type {
 export async function getChatSessionsWithDetails(): Promise<
   ChatSessionWithDetails[]
 > {
-  await requirePermission("chat", "read");
-
   const result = await d1.query<ChatSessionWithDetails>(
     `SELECT
       cs.id, cs.app_user_id, cs.enquiry_id, cs.status,
