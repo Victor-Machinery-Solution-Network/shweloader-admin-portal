@@ -1,7 +1,13 @@
 /**
- * Seed script: Bootstrap the first admin user with full RBAC
+ * Seed script: Bootstrap everything needed before the portal is usable
  *
- * Seeds: permissions → features → feature_permissions → Super Admin role → admin user
+ * Seeds (in order):
+ *   1. Lookup/type tables (partner_type, status types)
+ *   2. RBAC (permissions → features → feature_permissions)
+ *   3. Super Admin role + role_permissions
+ *   4. Bootstrap admin user
+ *   5. Carousel container + app settings
+ *
  * Idempotent: skips records that already exist.
  *
  * Usage:
@@ -58,7 +64,28 @@ async function d1Execute(query: string, params: unknown[] = []) {
   }
 }
 
-// ─── RBAC Data (must match seed-all.ts) ─────────────────────────────────────
+// ─── Lookup / Type Data ─────────────────────────────────────────────────────
+
+const PARTNER_TYPES = ["Dealer", "Rental Company", "Individual Seller"];
+const PARTNER_STATUS_TYPES = ["Pending", "Approved", "Rejected"];
+const ENQUIRY_STATUS_TYPES = ["Pending", "Resolved"];
+const APPROVAL_STATUS_TYPES = ["Pending", "Approved", "Rework"];
+const ARTICLE_STATUS_TYPES = [
+  "Draft",
+  "Pending Review",
+  "Published",
+  "Hidden",
+  "Rework",
+];
+
+const APP_SETTINGS = [
+  { setting_key: "carousel_enabled", value: "true" },
+  { setting_key: "announcement_bar_enabled", value: "true" },
+  { setting_key: "articles_enabled", value: "true" },
+  { setting_key: "exchange_rate", value: "3200" },
+];
+
+// ─── RBAC Data ──────────────────────────────────────────────────────────────
 
 const PERMISSIONS = [
   { name: "create", display_order: 1 },
@@ -91,16 +118,17 @@ const FEATURES = [
   { name: "users", group_name: "Users", display_order: 15 },
   { name: "partners", group_name: "Users", display_order: 16 },
   { name: "business_types", group_name: "Users", display_order: 17 },
-  // Content (18–21)
-  { name: "articles", group_name: "Content", display_order: 18 },
-  { name: "article_categories", group_name: "Content", display_order: 19 },
-  { name: "announcements", group_name: "Content", display_order: 20 },
-  { name: "carousels", group_name: "Content", display_order: 21 },
-  // Administration (22–25)
-  { name: "admin_users", group_name: "Administration", display_order: 22 },
-  { name: "roles", group_name: "Administration", display_order: 23 },
-  { name: "app_settings", group_name: "Administration", display_order: 24 },
-  { name: "trash", group_name: "Administration", display_order: 25 },
+  { name: "blacklist", group_name: "Users", display_order: 18 },
+  // Content (19–22)
+  { name: "articles", group_name: "Content", display_order: 19 },
+  { name: "article_categories", group_name: "Content", display_order: 20 },
+  { name: "announcements", group_name: "Content", display_order: 21 },
+  { name: "carousels", group_name: "Content", display_order: 22 },
+  // Administration (23–26)
+  { name: "admin_users", group_name: "Administration", display_order: 23 },
+  { name: "roles", group_name: "Administration", display_order: 24 },
+  { name: "app_settings", group_name: "Administration", display_order: 25 },
+  { name: "trash", group_name: "Administration", display_order: 26 },
 ];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
@@ -110,8 +138,9 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   rent_listings: ["create", "read", "edit", "delete", "approve"],
   featured_listings: ["create", "read", "delete"],
   enquiries: ["read", "edit", "delete"],
-  users: ["read"],
+  users: ["read", "create"],
   partners: ["read", "approve"],
+  blacklist: ["read", "create", "delete"],
   articles: ["create", "read", "edit", "delete", "approve"],
   app_settings: ["read", "edit"],
   trash: ["read", "restore", "delete"],
@@ -135,8 +164,33 @@ async function seedAdmin() {
     process.exit(1);
   }
 
-  // ── 1. Seed permissions ─────────────────────────────────────────────────
-  console.log("1. Seeding permissions...");
+  // ── 1. Seed lookup/type tables ───────────────────────────────────────────
+  console.log("1. Seeding lookup/type tables...");
+
+  const lookupTables: { table: string; column: string; values: string[] }[] = [
+    { table: "partner_type", column: "name", values: PARTNER_TYPES },
+    { table: "partner_status_type", column: "status_name", values: PARTNER_STATUS_TYPES },
+    { table: "enquiry_status_type", column: "status_name", values: ENQUIRY_STATUS_TYPES },
+    { table: "approval_status_type", column: "status_name", values: APPROVAL_STATUS_TYPES },
+    { table: "article_status_type", column: "status_name", values: ARTICLE_STATUS_TYPES },
+  ];
+
+  for (const { table, column, values } of lookupTables) {
+    const existing = await d1Query<Record<string, string>>(
+      `SELECT ${column} FROM ${table}`,
+    );
+    const existingSet = new Set(existing.map((r) => r[column]));
+    let added = 0;
+    for (const val of values) {
+      if (existingSet.has(val)) continue;
+      await d1Execute(`INSERT INTO ${table} (${column}) VALUES (?)`, [val]);
+      added++;
+    }
+    console.log(`   ${table}: ${added} added, ${existingSet.size} existed`);
+  }
+
+  // ── 2. Seed permissions ─────────────────────────────────────────────────
+  console.log("2. Seeding permissions...");
   const existingPerms = await d1Query<{ name: string }>(
     "SELECT name FROM permission",
   );
@@ -154,8 +208,8 @@ async function seedAdmin() {
     `   ${addedPerms} added, ${existingPermNames.size} already existed`,
   );
 
-  // ── 2. Seed features ────────────────────────────────────────────────────
-  console.log("2. Seeding features...");
+  // ── 3. Seed features ────────────────────────────────────────────────────
+  console.log("3. Seeding features...");
   const existingFeats = await d1Query<{ name: string }>(
     "SELECT name FROM feature",
   );
@@ -173,8 +227,8 @@ async function seedAdmin() {
     `   ${addedFeats} added, ${existingFeatNames.size} already existed`,
   );
 
-  // ── 3. Seed feature_permissions ─────────────────────────────────────────
-  console.log("3. Seeding feature_permissions...");
+  // ── 4. Seed feature_permissions ─────────────────────────────────────────
+  console.log("4. Seeding feature_permissions...");
   const features = await d1Query<{ feature_id: number; name: string }>(
     "SELECT feature_id, name FROM feature",
   );
@@ -209,8 +263,8 @@ async function seedAdmin() {
   }
   console.log(`   ${addedFP} added, ${existingFP.length} already existed`);
 
-  // ── 4. Create Super Admin role ──────────────────────────────────────────
-  console.log("4. Creating Super Admin role...");
+  // ── 5. Create Super Admin role ──────────────────────────────────────────
+  console.log("5. Creating Super Admin role...");
   const existingRole = await d1Query<{ role_id: number }>(
     "SELECT role_id FROM role WHERE name = ?",
     ["Super Admin"],
@@ -233,8 +287,8 @@ async function seedAdmin() {
     console.log(`   Created (role_id: ${superAdminRoleId})`);
   }
 
-  // ── 5. Assign all permissions to Super Admin ────────────────────────────
-  console.log("5. Assigning all permissions to Super Admin...");
+  // ── 6. Assign all permissions to Super Admin ────────────────────────────
+  console.log("6. Assigning all permissions to Super Admin...");
   const allFP = await d1Query<{ feature_permission_id: number }>(
     "SELECT feature_permission_id FROM feature_permission",
   );
@@ -259,8 +313,8 @@ async function seedAdmin() {
     `   ${addedRP} granted, ${existingRPSet.size} already existed (total: ${allFP.length})`,
   );
 
-  // ── 6. Create admin user with Super Admin role ──────────────────────────
-  console.log("6. Creating admin user...");
+  // ── 7. Create admin user with Super Admin role ──────────────────────────
+  console.log("7. Creating admin user...");
   const existingAdmin = await d1Query<{ user_id: number }>(
     "SELECT user_id FROM admin_user WHERE email = ?",
     [ADMIN_EMAIL],
@@ -288,6 +342,40 @@ async function seedAdmin() {
     );
     console.log(`   Created (user_id: ${inserted.user_id})`);
   }
+
+  // ── 8. Seed carousel container ──────────────────────────────────────────
+  console.log("8. Seeding carousel...");
+  const existingCarousel = await d1Query<{ carousel_id: number }>(
+    "SELECT carousel_id FROM carousel LIMIT 1",
+  );
+  if (existingCarousel.length > 0) {
+    console.log(`   Already exists (carousel_id: ${existingCarousel[0].carousel_id})`);
+  } else {
+    await d1Execute(
+      "INSERT INTO carousel (name, description) VALUES (?, ?)",
+      ["Main Homepage Carousel", "Primary carousel displayed on the homepage"],
+    );
+    console.log("   Created 'Main Homepage Carousel'");
+  }
+
+  // ── 9. Seed app settings ──────────────────────────────────────────────
+  console.log("9. Seeding app_setting...");
+  let addedSettings = 0;
+  for (const s of APP_SETTINGS) {
+    const existing = await d1Query<{ id: number }>(
+      "SELECT id FROM app_setting WHERE setting_key = ?",
+      [s.setting_key],
+    );
+    if (existing.length > 0) continue;
+    await d1Execute(
+      "INSERT INTO app_setting (setting_key, value) VALUES (?, ?)",
+      [s.setting_key, s.value],
+    );
+    addedSettings++;
+  }
+  console.log(
+    `   ${addedSettings} added, ${APP_SETTINGS.length - addedSettings} existed`,
+  );
 
   console.log("\n  Done! Login with:");
   console.log(`  Email:    ${ADMIN_EMAIL}`);
