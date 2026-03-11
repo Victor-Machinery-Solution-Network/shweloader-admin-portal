@@ -60,6 +60,10 @@ import {
   getCustomFieldTemplates as fetchCustomFieldTemplates,
   getCustomFieldTemplateById as fetchCustomFieldTemplateById,
 } from "@/lib/actions/custom-field-template";
+import {
+  getChatSessionsWithDetails as fetchChatSessions,
+  getTotalUnreadCount as fetchTotalUnread,
+} from "@/lib/actions/chat";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -353,6 +357,16 @@ export function getCustomFieldTemplates() {
 
 export function getCustomFieldTemplateById(id: number) {
   return fetchCustomFieldTemplateById(id);
+}
+
+// Chat
+
+export function getChatSessions() {
+  return fetchChatSessions();
+}
+
+export function getChatUnreadCount() {
+  return fetchTotalUnread();
 }
 
 // Permissions (cached at function level — called from server actions)
