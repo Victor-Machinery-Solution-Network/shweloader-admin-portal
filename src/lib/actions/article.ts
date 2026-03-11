@@ -366,7 +366,13 @@ export async function createAndSubmitForReview(formData: FormData) {
     invalidateTag(CACHE_TAGS.ARTICLES);
 
     // Non-blocking notification to approvers
-    const articleId = (created as ArticleWithDetails).article_id;
+    let articleId = (created as ArticleWithDetails).article_id ?? null;
+    if (!articleId) {
+      const lastRow = await d1.query<{ article_id: number }>(
+        "SELECT article_id FROM article ORDER BY article_id DESC LIMIT 1",
+      );
+      articleId = lastRow.results[0]?.article_id ?? null;
+    }
     if (articleId) {
       notifyArticleSubmitted(articleId, title.trim(), created_by).catch(() => {});
     }
