@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { appUserService, businessTypeService } from "@/lib/services/app-user";
+import { businessTypeService } from "@/lib/services/app-user";
 import { partnerService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
@@ -76,21 +76,24 @@ export async function createAppUser(formData: FormData) {
     const password = generatePassword();
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const newUser = await appUserService.create({
-      username: username.trim(),
-      full_name: fullName.trim(),
-      email: email?.trim().toLowerCase() || null,
-      password_hash,
-      phone: phone.trim(),
-      company_name: companyName?.trim() || null,
-      address: address?.trim() || null,
-      business_type_id: resolvedBtId,
-      is_verified: 1,
-    });
+    const trimmedUsername = username.trim();
+    const trimmedFullName = fullName.trim();
+    const trimmedEmail = email?.trim().toLowerCase() || null;
+    const trimmedPhone = phone.trim();
+    const trimmedCompany = companyName?.trim() || null;
+    const trimmedAddress = address?.trim() || null;
+
+    // Use raw SQL with RETURNING to guarantee app_user_id is in the response
+    // (the REST proxy's POST endpoint may not return custom PK columns)
+    const userResult = await d1.query<{ app_user_id: number }>(
+      `INSERT INTO app_user (username, full_name, email, password_hash, phone, company_name, address, business_type_id, is_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING app_user_id`,
+      [trimmedUsername, trimmedFullName, trimmedEmail, password_hash, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId],
+    );
+    const newUserId = userResult.results[0].app_user_id;
 
     // If partner switch is on, create an approved partner record
     if (isApprovedPartner) {
-      // Look up the "Approved" status ID
       const statusResult = await d1.query<{ id: number }>(
         "SELECT id FROM partner_status_type WHERE status_name = 'Approved' LIMIT 1",
         [],
@@ -99,12 +102,13 @@ export async function createAppUser(formData: FormData) {
 
       if (approvedStatusId) {
         await partnerService.create({
-          app_user_id: newUser.app_user_id,
+          app_user_id: newUserId,
           partner_type_id: null,
           status_id: approvedStatusId,
           reviewed_at: new Date().toISOString(),
           reviewed_by: actorId,
         });
+        invalidateTag(CACHE_TAGS.PARTNERS);
       }
     }
 

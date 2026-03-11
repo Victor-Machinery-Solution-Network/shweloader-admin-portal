@@ -17,6 +17,7 @@ import { BlacklistConfirmDialog } from "./blacklist-confirm-dialog";
 import { UnblacklistDialog } from "./unblacklist-dialog";
 import { BlacklistSearchDialog } from "./blacklist-search-dialog";
 import { UserForm } from "./user-form";
+import { PasswordRevealDialog } from "./password-reveal-dialog";
 import { columns as businessTypeColumns } from "@/components/features/business-types/columns";
 import { BusinessTypeForm } from "@/components/features/business-types/business-type-form";
 import {
@@ -49,6 +50,7 @@ export function UsersClient({
 
   // User create dialog
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   // Business type dialog
   const [showCreateBT, setShowCreateBT] = useState(false);
@@ -338,8 +340,15 @@ export function UsersClient({
           open={showCreateUser}
           onOpenChange={setShowCreateUser}
           businessTypes={listedBusinessTypes}
+          onPasswordGenerated={setGeneratedPassword}
         />
       )}
+
+      {/* Auto-generated password reveal dialog */}
+      <PasswordRevealDialog
+        password={generatedPassword}
+        onClose={() => setGeneratedPassword(null)}
+      />
 
       {/* User detail dialog */}
       <UserDetailDialog

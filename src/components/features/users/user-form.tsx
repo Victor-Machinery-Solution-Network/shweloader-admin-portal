@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import { UserPlus, Copy, Check } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -19,14 +18,6 @@ import {
   ComboboxCollection,
 } from "@/components/ui/combobox";
 import { FormDialog } from "@/components/shared/form-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { createAppUser } from "@/lib/actions/app-user";
 import type { BusinessType } from "@/types/app-user";
 
@@ -34,12 +25,14 @@ interface UserFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessTypes: BusinessType[];
+  onPasswordGenerated: (password: string) => void;
 }
 
 export function UserForm({
   open,
   onOpenChange,
   businessTypes,
+  onPasswordGenerated,
 }: UserFormProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -56,10 +49,6 @@ export function UserForm({
   const [selectedBT, setSelectedBT] = useState("");
   const isOther = selectedBT === OTHER_OPTION;
   const [isPartner, setIsPartner] = useState(false);
-
-  // Generated password dialog
-  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   function handleSubmit(formData: FormData) {
     if (!selectedBT) {
@@ -86,41 +75,32 @@ export function UserForm({
         onOpenChange(false);
         setSelectedBT("");
         setIsPartner(false);
-        setGeneratedPassword(result.password);
+        onPasswordGenerated(result.password);
       } else {
         toast.error(result.error ?? "Something went wrong");
       }
     });
   }
 
-  function handleCopyPassword() {
-    if (!generatedPassword) return;
-    navigator.clipboard.writeText(generatedPassword);
-    setCopied(true);
-    toast.success("Password copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   return (
-    <>
-      <FormDialog
-        open={open}
-        onOpenChange={(val) => {
-          onOpenChange(val);
-          if (!val) {
-            setSelectedBT("");
-            setIsPartner(false);
-          }
-        }}
-        title="Add User"
-        description="Create a new app user account. A password will be auto-generated."
-        icon={<UserPlus className="text-primary-foreground size-6" />}
-        onSubmit={handleSubmit}
-        isPending={isPending}
-        submitLabel="Create"
-        className="sm:max-w-2xl"
-      >
-        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+    <FormDialog
+      open={open}
+      onOpenChange={(val) => {
+        onOpenChange(val);
+        if (!val) {
+          setSelectedBT("");
+          setIsPartner(false);
+        }
+      }}
+      title="Add User"
+      description="Create a new app user account. A password will be auto-generated."
+      icon={<UserPlus className="text-primary-foreground size-6" />}
+      onSubmit={handleSubmit}
+      isPending={isPending}
+      submitLabel="Create"
+      className="sm:max-w-2xl"
+    >
+      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           {/* Row 1: Identity (required) */}
           <Field orientation="vertical">
             <FieldLabel>Username</FieldLabel>
@@ -268,53 +248,5 @@ export function UserForm({
           </div>
         </div>
       </FormDialog>
-
-      {/* Auto-generated password reveal dialog */}
-      <Dialog
-        open={!!generatedPassword}
-        onOpenChange={(val) => {
-          if (!val) {
-            setGeneratedPassword(null);
-            setCopied(false);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>User Created Successfully</DialogTitle>
-            <DialogDescription>
-              Share this password with the user. It will not be shown again.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2">
-            <code className="bg-muted flex-1 rounded-lg px-4 py-3 font-mono text-sm select-all">
-              {generatedPassword}
-            </code>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleCopyPassword}
-              className="shrink-0"
-            >
-              {copied ? (
-                <Check className="size-4 text-green-600" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                setGeneratedPassword(null);
-                setCopied(false);
-              }}
-            >
-              Done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

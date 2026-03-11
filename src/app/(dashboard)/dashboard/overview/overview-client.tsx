@@ -118,18 +118,20 @@ function StatCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between pb-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Badge
-          variant={isPositive ? "success" : "destructive"}
-          className="gap-1 text-xs"
-        >
-          <TrendIcon className="size-3" />
-          {isPositive ? "+" : ""}
-          {change}%
-        </Badge>
+      <CardHeader className="pb-0">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {title}
+          </CardTitle>
+          <Badge
+            variant={isPositive ? "success" : "destructive"}
+            className="gap-1 text-xs"
+          >
+            <TrendIcon className="size-3" />
+            {isPositive ? "+" : ""}
+            {change}%
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-3xl font-bold tracking-tight">{value}</p>
