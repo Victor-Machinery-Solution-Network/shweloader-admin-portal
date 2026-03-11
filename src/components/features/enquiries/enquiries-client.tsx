@@ -1,96 +1,179 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
-import { MessageSquare } from "lucide-react";
+import { useState, useMemo } from "react";
+import { MessageSquare, Search } from "lucide-react";
 import { useHasPermission } from "@/hooks/use-permissions";
-import { DataTable } from "@/components/ui/data-table";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  TabCount,
+} from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
-import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
-import { createEnquiryColumns } from "./columns";
-import { deleteEnquiries } from "@/lib/actions/enquiry";
+import { EnquiryCard } from "./enquiry-card";
 import type { EnquiryWithDetails, EnquiryStatusType } from "@/types/enquiry";
-import type { FilterConfig } from "@/types/data-table-filters";
 
 interface EnquiriesClientProps {
   enquiries: EnquiryWithDetails[];
   statusTypes: EnquiryStatusType[];
 }
 
+type TabValue = "all" | "pending" | "replied" | "resolved";
+
 export function EnquiriesClient({
   enquiries,
-  statusTypes,
 }: EnquiriesClientProps) {
   const canDelete = useHasPermission("enquiries", "delete");
-  const columns = useMemo(
-    () => createEnquiryColumns(statusTypes),
-    [statusTypes],
+  const canChat = useHasPermission("chat", "edit");
+
+  const [search, setSearch] = useState("");
+  const [listingTypeFilter, setListingTypeFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<TabValue>("all");
+
+  // Counts derived from unfiltered enquiries (search/listing-type don't affect counts)
+  const allCount = enquiries.length;
+  const pendingCount = useMemo(
+    () =>
+      enquiries.filter(
+        (e) => e.status_name?.toLowerCase() === "pending",
+      ).length,
+    [enquiries],
+  );
+  const repliedCount = useMemo(
+    () =>
+      enquiries.filter(
+        (e) => e.status_name?.toLowerCase() === "replied",
+      ).length,
+    [enquiries],
+  );
+  const resolvedCount = useMemo(
+    () =>
+      enquiries.filter(
+        (e) => e.status_name?.toLowerCase() === "resolved",
+      ).length,
+    [enquiries],
   );
 
-  const filterConfig = useMemo<FilterConfig[]>(
-    () => [
-      {
-        columnId: "status_name",
-        label: "Status",
-        type: "multi-select",
-        options: statusTypes.map((s) => ({
-          label: s.status_name,
-          value: s.status_name,
-        })),
-      },
-      {
-        columnId: "listing_type",
-        label: "Listing Type",
-        type: "multi-select",
-        options: [
-          { label: "For Sale", value: "sale" },
-          { label: "For Rent", value: "rent" },
-        ],
-      },
-      { columnId: "created_at", label: "Date", type: "date-range" },
-    ],
-    [statusTypes],
-  );
+  const filteredEnquiries = useMemo(() => {
+    let result = enquiries;
 
-  async function handleBulkDelete(rows: EnquiryWithDetails[]) {
-    const ids = rows.map((r) => r.id);
-    return deleteEnquiries(ids);
+    // Tab filter
+    if (activeTab !== "all") {
+      result = result.filter(
+        (e) => e.status_name?.toLowerCase() === activeTab,
+      );
+    }
+
+    // Search filter
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      result = result.filter(
+        (e) =>
+          e.user_name?.toLowerCase().includes(term) ||
+          e.user_company?.toLowerCase().includes(term) ||
+          e.model_name?.toLowerCase().includes(term) ||
+          e.message?.toLowerCase().includes(term),
+      );
+    }
+
+    // Listing type filter
+    if (listingTypeFilter !== "all") {
+      result = result.filter((e) => e.listing_type === listingTypeFilter);
+    }
+
+    return result;
+  }, [enquiries, activeTab, search, listingTypeFilter]);
+
+  if (enquiries.length === 0) {
+    return (
+      <EmptyState
+        icon={MessageSquare}
+        title="No enquiries yet"
+        description="User enquiries will appear here."
+      />
+    );
   }
 
-  const renderToolbar = useCallback(
-    (selected: EnquiryWithDetails[]) => (
-      <>
-        {canDelete && (
-          <BulkDeleteButton
-            selectedRows={selected}
-            onDelete={handleBulkDelete}
-            itemLabel="enquiry"
+  const tabContent = (
+    <div className="flex flex-col gap-3">
+      {/* Filters row */}
+      <div className="flex gap-3 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search enquiries…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
           />
-        )}
-      </>
-    ),
-    [canDelete],
+        </div>
+        <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
+          <SelectTrigger className="w-[140px] shrink-0">
+            <SelectValue placeholder="Listing type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="sale">For Sale</SelectItem>
+            <SelectItem value="rent">For Rent</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Enquiry cards */}
+      {filteredEnquiries.length === 0 ? (
+        <EmptyState
+          icon={MessageSquare}
+          title="No enquiries found"
+          description="Try adjusting your filters"
+        />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {filteredEnquiries.map((enquiry) => (
+            <EnquiryCard
+              key={enquiry.id}
+              enquiry={enquiry}
+              canDelete={canDelete}
+              canChat={canChat}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 
-  return enquiries.length > 0 ? (
-    <DataTable
-      columns={columns}
-      data={enquiries}
-      searchKeys={["user_name", "user_email", "user_company", "model_name", "message"]}
-      searchPlaceholder="Search enquiries"
-      filterConfig={filterConfig}
-      filterStorageKey="enquiries-filters"
-      initialColumnVisibility={{ listing_type: false }}
-      enablePagination
-      pageSize={10}
-      enableSelection
-      getRowId={(row) => row.id}
-      toolbar={renderToolbar}
-    />
-  ) : (
-    <EmptyState
-      icon={MessageSquare}
-      title="No enquiries yet"
-      description="User enquiries will appear here."
-    />
+  return (
+    <Tabs
+      value={activeTab}
+      onValueChange={(v) => setActiveTab(v as TabValue)}
+    >
+      <TabsList variant="segment">
+        <TabsTrigger value="all">
+          All <TabCount>{allCount}</TabCount>
+        </TabsTrigger>
+        <TabsTrigger value="pending">
+          Pending <TabCount>{pendingCount}</TabCount>
+        </TabsTrigger>
+        <TabsTrigger value="replied">
+          Replied <TabCount>{repliedCount}</TabCount>
+        </TabsTrigger>
+        <TabsTrigger value="resolved">
+          Resolved <TabCount>{resolvedCount}</TabCount>
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="all">{tabContent}</TabsContent>
+      <TabsContent value="pending">{tabContent}</TabsContent>
+      <TabsContent value="replied">{tabContent}</TabsContent>
+      <TabsContent value="resolved">{tabContent}</TabsContent>
+    </Tabs>
   );
 }
