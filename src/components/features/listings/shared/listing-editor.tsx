@@ -881,7 +881,9 @@ export function ListingEditor({
     !!modelMap.get(selectedModel) &&
     (isEditing || isDraftMode || forSale || forRent) &&
     (!conditionRequired || !!conditionId);
-  const step1Valid = !!partnerMap.get(selectedPartner);
+  const salePriceValid = !forSale || (!!saleUsdPrice && parseFloat(saleUsdPrice) > 0);
+  const rentPriceValid = !forRent || (!!rentUsdPrice && parseFloat(rentUsdPrice) > 0);
+  const step1Valid = !!partnerMap.get(selectedPartner) && salePriceValid && rentPriceValid;
 
   // In edit/draft mode, all steps are "done" (data pre-populated)
   const stepDone = isEditing || isDraftMode
@@ -901,7 +903,9 @@ export function ListingEditor({
     if (currentStep === 1) {
       setStep1Attempted(true);
       if (!step1Valid) {
-        toast.error("Please select a partner");
+        if (!partnerMap.get(selectedPartner)) toast.error("Please select a partner");
+        else if (!salePriceValid) toast.error("Please enter a sale price");
+        else if (!rentPriceValid) toast.error("Please enter a rental price");
         return;
       }
     }
@@ -1912,7 +1916,7 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setSaleDisplayCurrency}
                       hidePrice={saleHidePrice}
                       onHidePriceChange={setSaleHidePrice}
-                      error={submitted && (!saleUsdPrice || parseFloat(saleUsdPrice) <= 0) ? "Please enter a sale price" : undefined}
+                      error={step1Attempted && !salePriceValid ? "Please enter a sale price" : undefined}
                     />
                   )}
                   {forRent && (
@@ -1939,7 +1943,7 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setRentDisplayCurrency}
                       hidePrice={rentHidePrice}
                       onHidePriceChange={setRentHidePrice}
-                      error={submitted && (!rentUsdPrice || parseFloat(rentUsdPrice) <= 0) ? "Please enter a rental price" : undefined}
+                      error={step1Attempted && !rentPriceValid ? "Please enter a rental price" : undefined}
                     />
                   )}
                   {!forSale && !forRent && (
