@@ -24,6 +24,14 @@ export interface EnquiryWithDetails extends Enquiry {
   model_name: string | null;
   /** "sale" or "rent" */
   listing_type: string | null;
+  /** Linked chat session (null if no reply thread yet) */
+  session_id: number | null;
+  /** Total messages in conversation thread */
+  message_count: number;
+  /** Timestamp of most recent reply in thread */
+  last_reply_at: string | null;
+  /** Product thumbnail from product_list */
+  thumbnail_url: string | null;
 }
 
 /** Matches the enquiry_status_type table in D1 */
