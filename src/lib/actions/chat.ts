@@ -39,17 +39,18 @@ export async function getChatSessionsWithDetails(): Promise<
       COALESCE(sl.mmk_price, rl.mmk_price) AS mmk_price,
       COALESCE(sl.usd_price, rl.usd_price) AS usd_price,
       COALESCE(sl.display_currency, rl.display_currency) AS display_currency,
-      p.company_name AS partner_name
+      pau.company_name AS partner_name
     FROM chat_session cs
     JOIN app_user au ON au.app_user_id = cs.app_user_id
     LEFT JOIN enquiry e ON e.id = cs.enquiry_id AND e.deleted_at IS NULL
     LEFT JOIN sale_listing sl ON sl.id = e.sale_listing_id
     LEFT JOIN rent_listing rl ON rl.id = e.rent_listing_id
     LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
-    LEFT JOIN equipment_model em ON em.id = pl.equipment_model_id
-    LEFT JOIN attachment_model am ON am.id = pl.attachment_model_id
-    LEFT JOIN product_brand pb ON pb.id = COALESCE(em.brand_id, am.brand_id)
+    LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+    LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
     LEFT JOIN partner p ON p.id = pl.partner_id
+    LEFT JOIN app_user pau ON pau.app_user_id = p.app_user_id
     ORDER BY cs.last_message_at DESC`,
   );
   return result.results;

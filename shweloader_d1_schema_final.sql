@@ -6,7 +6,6 @@ PRAGMA foreign_keys = OFF;
 
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
-DROP TABLE IF EXISTS otp_verification;
 DROP TABLE IF EXISTS notification;
 DROP TABLE IF EXISTS enquiry;
 DROP TABLE IF EXISTS featured_listing;
@@ -998,21 +997,6 @@ CREATE TABLE IF NOT EXISTS notification (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notification_recipient ON notification(recipient_id, is_read, created_at DESC);
-
--- ════════════════════════════════════════════════════════════════════════════
--- OTP VERIFICATION (mobile app)
--- ════════════════════════════════════════════════════════════════════════════
-
-CREATE TABLE IF NOT EXISTS otp_verification (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    phone TEXT NOT NULL,
-    code TEXT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    used INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_otp_phone ON otp_verification(phone, used, expires_at);
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- SAVED ITEM / BOOKMARKS (mobile app)
