@@ -18,8 +18,9 @@ export interface BlacklistImpactPreview {
   user: {
     app_user_id: number;
     username: string;
-    email: string;
-    phone: string | null;
+    full_name: string | null;
+    email: string | null;
+    phone: string;
     company_name: string | null;
   };
   listing_count: number;

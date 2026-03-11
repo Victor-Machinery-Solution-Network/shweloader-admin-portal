@@ -177,7 +177,8 @@ export async function getUsersPageData() {
     SELECT
       (SELECT json_group_array(json_object(
         'app_user_id', t.app_user_id, 'username', t.username,
-        'email', t.email, 'password_hash', t.password_hash,
+        'full_name', t.full_name, 'email', t.email,
+        'password_hash', t.password_hash,
         'phone', t.phone, 'is_verified', t.is_verified,
         'company_name', t.company_name, 'office_address', t.office_address,
         'business_type_id', t.business_type_id,

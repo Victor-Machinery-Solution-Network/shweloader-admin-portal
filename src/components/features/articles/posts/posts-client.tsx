@@ -152,13 +152,6 @@ export function PostsClient({
   return (
     <Tabs defaultValue="drafts">
       <TabsList>
-        <TabsTrigger value="drafts">
-          <FileEdit className="size-4" />
-          Drafts
-          {draftCount > 0 && (
-            <TabCount>{draftCount}</TabCount>
-          )}
-        </TabsTrigger>
         <TabsTrigger value="published">
           <BookOpen className="size-4" />
           Published
@@ -168,6 +161,13 @@ export function PostsClient({
           Pending
           {pendingCount > 0 && (
             <TabCount>{pendingCount}</TabCount>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="drafts">
+          <FileEdit className="size-4" />
+          Drafts
+          {draftCount > 0 && (
+            <TabCount>{draftCount}</TabCount>
           )}
         </TabsTrigger>
         <TabsTrigger value="rework">

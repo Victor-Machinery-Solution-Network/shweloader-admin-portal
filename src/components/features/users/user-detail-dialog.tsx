@@ -64,7 +64,7 @@ export function UserDetailDialog({
               </Badge>
             )}
           </div>
-          <DialogDescription>{user.email}</DialogDescription>
+          <DialogDescription>{user.full_name || user.phone}</DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 pr-1">
@@ -75,8 +75,9 @@ export function UserDetailDialog({
               Contact
             </div>
             <div className="space-y-2.5">
-              <DetailRow label="Email" value={user.email} />
+              <DetailRow label="Full Name" value={user.full_name} />
               <DetailRow label="Phone" value={user.phone} />
+              <DetailRow label="Email" value={user.email} />
             </div>
           </section>
 

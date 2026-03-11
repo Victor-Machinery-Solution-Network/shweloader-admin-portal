@@ -55,7 +55,7 @@ export function createColumns(
               )}
             </div>
             <span className="text-muted-foreground text-xs truncate">
-              {row.original.email}
+              {row.original.full_name || row.original.phone}
             </span>
           </div>
         </div>

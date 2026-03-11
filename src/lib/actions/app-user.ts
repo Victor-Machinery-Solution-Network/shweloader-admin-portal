@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { appUserService, businessTypeService } from "@/lib/services/app-user";
+import { partnerService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
@@ -22,19 +23,20 @@ function generatePassword(): string {
 
 export async function createAppUser(formData: FormData) {
   const username = formData.get("username") as string;
-  const email = formData.get("email") as string;
-  const phone = (formData.get("phone") as string) || null;
+  const fullName = (formData.get("full_name") as string) || null;
+  const email = (formData.get("email") as string) || null;
+  const phone = formData.get("phone") as string;
   const companyName = (formData.get("company_name") as string) || null;
   const officeAddress = (formData.get("office_address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
-  const isApprovedPartner = formData.get("is_approved_partner") === "1" ? 1 : 0;
+  const isApprovedPartner = formData.get("is_approved_partner") === "1";
 
   if (!username?.trim()) {
     return { success: false, error: "Username is required" };
   }
-  if (!email?.trim()) {
-    return { success: false, error: "Email is required" };
+  if (!phone?.trim()) {
+    return { success: false, error: "Phone number is required" };
   }
 
   try {
@@ -68,17 +70,37 @@ export async function createAppUser(formData: FormData) {
     const password = generatePassword();
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    await appUserService.create({
+    const newUser = await appUserService.create({
       username: username.trim(),
-      email: email.trim().toLowerCase(),
+      full_name: fullName?.trim() || null,
+      email: email?.trim().toLowerCase() || null,
       password_hash,
-      phone: phone?.trim() || null,
+      phone: phone.trim(),
       company_name: companyName?.trim() || null,
       office_address: officeAddress?.trim() || null,
       business_type_id: resolvedBtId,
       is_verified: 1,
-      is_approved_partner: isApprovedPartner,
     });
+
+    // If partner switch is on, create an approved partner record
+    if (isApprovedPartner) {
+      // Look up the "Approved" status ID
+      const statusResult = await d1.query<{ id: number }>(
+        "SELECT id FROM partner_status_type WHERE status_name = 'Approved' LIMIT 1",
+        [],
+      );
+      const approvedStatusId = statusResult.results[0]?.id;
+
+      if (approvedStatusId) {
+        await partnerService.create({
+          app_user_id: newUser.app_user_id,
+          partner_type_id: null,
+          status_id: approvedStatusId,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: actorId,
+        });
+      }
+    }
 
     invalidateTag(CACHE_TAGS.USERS);
     return { success: true, password };

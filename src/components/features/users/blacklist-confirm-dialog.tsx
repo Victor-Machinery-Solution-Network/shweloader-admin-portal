@@ -111,12 +111,12 @@ export function BlacklistConfirmDialog({
                 <div className="flex flex-col min-w-0">
                   <span className="font-medium">{preview.user.username}</span>
                   <span className="text-muted-foreground text-xs truncate">
-                    {preview.user.email}
+                    {preview.user.full_name || preview.user.phone}
                   </span>
                 </div>
-                {preview.user.phone && (
+                {preview.user.email && (
                   <span className="text-muted-foreground text-xs shrink-0">
-                    {preview.user.phone}
+                    {preview.user.email}
                   </span>
                 )}
               </div>

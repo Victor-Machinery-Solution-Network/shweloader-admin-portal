@@ -7,6 +7,7 @@
  *   3. Super Admin role + role_permissions
  *   4. Bootstrap admin user
  *   5. Carousel container + app settings
+ *   6. Locations (state/region → district → township)
  *
  * Idempotent: skips records that already exist.
  *
@@ -77,6 +78,163 @@ const ARTICLE_STATUS_TYPES = [
   "Hidden",
   "Rework",
 ];
+
+// ─── Myanmar Location Hierarchy: State/Region → District → Townships ────────
+
+const MYANMAR_LOCATIONS: Record<string, { type: "state" | "region" | "union_territory"; districts: Record<string, string[]> }> = {
+  // 7 States
+  "Chin State": {
+    type: "state",
+    districts: {
+      "Falam District": ["Falam", "Tiddim", "Ton Zang", "Reed"],
+      "Hakha District": ["Hakha", "Thantlang", "Htantlang"],
+      "Mindat District": ["Mindat", "Matupi", "Kanpetlet"],
+      "Paletwa District": ["Paletwa"],
+    },
+  },
+  "Kachin State": {
+    type: "state",
+    districts: {
+      "Bhamo District": ["Bhamo", "Shwegu", "Momauk", "Mansi"],
+      "Mohnyin District": ["Mohnyin", "Mogaung", "Phakant", "Hopin"],
+      "Myitkyina District": ["Myitkyina", "Waingmaw", "Injangyang", "Tanai", "Chipwi", "Tsawlaw"],
+      "Putao District": ["Putao", "Sumprabum", "Machanbaw", "Nawngmun", "Khaunglanhpu"],
+    },
+  },
+  "Kayah State": {
+    type: "state",
+    districts: {
+      "Bawlakhe District": ["Bawlakhe", "Hpasawng", "Mese"],
+      "Loikaw District": ["Loikaw", "Demoso", "Hpruso", "Shadaw"],
+    },
+  },
+  "Kayin State": {
+    type: "state",
+    districts: {
+      "Hpa-an District": ["Hpa-an", "Hlaingbwe", "Paingkyon", "Shan Ywa Thit"],
+      "Kawkareik District": ["Kawkareik", "Kyainseikgyi", "Kyondo"],
+      "Myawaddy District": ["Myawaddy"],
+      "Papun District": ["Papun", "Thandaunggyi"],
+    },
+  },
+  "Mon State": {
+    type: "state",
+    districts: {
+      "Mawlamyine District": ["Mawlamyine", "Kyaikmaraw", "Chaungzon", "Thanbyuzayat", "Mudon", "Ye", "Lamine", "Khawzar"],
+      "Thaton District": ["Thaton", "Paung", "Bilin", "Kyaikhto"],
+    },
+  },
+  "Rakhine State": {
+    type: "state",
+    districts: {
+      "Kyaukpyu District": ["Kyaukpyu", "Manaung", "Ann", "Ramree"],
+      "Maungdaw District": ["Maungdaw", "Buthidaung"],
+      "Sittwe District": ["Sittwe", "Pauktaw", "Ponnagyun", "Rathedaung"],
+      "Thandwe District": ["Thandwe", "Toungup", "Gwa", "Gya"],
+      "Mrauk-U District": ["Mrauk-U", "Kyauktaw", "Minbya", "Myebon"],
+    },
+  },
+  "Shan State": {
+    type: "state",
+    districts: {
+      "Kengtung District": ["Kengtung", "Mong Khet", "Mong Yang", "Mong La"],
+      "Kunlong District": ["Kunlong", "Chin Shwe Haw"],
+      "Kyaukme District": ["Kyaukme", "Hsipaw", "Namtu", "Nawnghkio", "Mantong", "Namhsan"],
+      "Lashio District": ["Lashio", "Theinni", "Tangyan", "Mongyai"],
+      "Laukkaing District": ["Laukkaing", "Konkyan"],
+      "Loilen District": ["Loilen", "Panglong", "Kunhing", "Kali", "Namsang", "Mongnai"],
+      "Muse District": ["Muse", "Namhkam", "Kutkai"],
+      "Tachileik District": ["Tachileik", "Mongsat", "Mongping", "Mongyawng", "Mongton", "Monghsat"],
+      "Taunggyi District": ["Taunggyi", "Nyaungshwe", "Hopong", "Hsihseng", "Kalaw", "Lawksawk", "Pinlaung", "Pekon", "Ywangan", "Pindaya"],
+      "Wa SAZ": ["Hopang", "Mongmao", "Panwai", "Nahphan", "Metman"],
+      "Mong Hsu District": ["Mong Hsu", "Mong Kung"],
+      "Langkho District": ["Langkho", "Mawkmai", "Mongshu"],
+    },
+  },
+  // 7 Regions
+  "Ayeyarwady Region": {
+    type: "region",
+    districts: {
+      "Hinthada District": ["Hinthada", "Lemyethna", "Zalun", "Ingapu", "Myanaung", "Kyangin"],
+      "Labutta District": ["Labutta", "Mawlamyinegyun"],
+      "Myaungmya District": ["Myaungmya", "Einme", "Wakema"],
+      "Pathein District": ["Pathein", "Kangyidaunt", "Ngapudaw", "Thabaung", "Kyonpyaw", "Kyaunggon", "Yekyi", "Hainggyikyun"],
+      "Phyarpon District": ["Phyarpon", "Bogale", "Dedaye"],
+      "Maubin District": ["Maubin", "Pantanaw", "Nyaungdon", "Danubyu"],
+    },
+  },
+  "Bago Region": {
+    type: "region",
+    districts: {
+      "Bago District": ["Bago", "Daik-U", "Kawa", "Thanatpin", "Waw", "Nyaunglebin", "Kyauktaga", "Shwegyin"],
+      "Pyay District": ["Pyay", "Paukkhaung", "Padaung", "Paungde", "Thegon", "Shwedaung"],
+      "Taungoo District": ["Taungoo", "Yedashe", "Kyaukkyi", "Oktwin", "Pyu", "Htantabin", "Phyu"],
+      "Thayarwady District": ["Thayarwady", "Letpadan", "Minhla", "Monyo", "Okpho", "Gyobingauk", "Nattalin", "Zigon"],
+    },
+  },
+  "Magway Region": {
+    type: "region",
+    districts: {
+      "Gangaw District": ["Gangaw", "Tilin", "Saw"],
+      "Magway District": ["Magway", "Natmauk", "Taungdwingyi", "Myothit"],
+      "Minbu District": ["Minbu", "Pwintbyu", "Ngape", "Salin", "Sidoktaya"],
+      "Pakokku District": ["Pakokku", "Yesagyo", "Myaing", "Pauk"],
+      "Thayet District": ["Thayet", "Aunglan", "Kamma", "Minhla", "Sinbaungwe"],
+    },
+  },
+  "Mandalay Region": {
+    type: "region",
+    districts: {
+      "Kyaukse District": ["Kyaukse", "Myittha", "Sintgaing", "Tada-U"],
+      "Mandalay District": ["Aungmyaythazan", "Chanayethazan", "Chanmyathazi", "Mahaaungmyay", "Pyigyidagon", "Amarapura", "Patheingyi"],
+      "Meiktila District": ["Meiktila", "Mahlaing", "Thazi", "Wundwin"],
+      "Myingyan District": ["Myingyan", "Natogyi", "Ngazun", "Taungtha", "Kyaukpadaung"],
+      "NyaungU District": ["NyaungU", "Ngathayouk"],
+      "Pyinoolwin District": ["Pyin Oo Lwin", "Madaya", "Mogoke", "Singu", "Thabeikkyin"],
+      "Yamethin District": ["Yamethin", "Pyawbwe"],
+    },
+  },
+  "Sagaing Region": {
+    type: "region",
+    districts: {
+      "Hkamti District": ["Hkamti", "Homalin", "Leshi", "Lahe", "Nanyun"],
+      "Kanbalu District": ["Kanbalu", "Kyunhla", "Ye-U"],
+      "Katha District": ["Katha", "Indaw", "Tigyaing", "Banmauk", "Kawlin", "Wuntho", "Pinlebu"],
+      "Kalay District": ["Kalay", "Kalewa", "Mingin"],
+      "Mawlaik District": ["Mawlaik", "Paungbyin"],
+      "Monywa District": ["Monywa", "Budalin", "Ayadaw", "Chaung-U"],
+      "Sagaing District": ["Sagaing", "Myinmu", "Myaung"],
+      "Shwebo District": ["Shwebo", "Wetlet", "Khin-U", "Tabayin", "Depayin"],
+      "Tamu District": ["Tamu"],
+      "Yinmabin District": ["Yinmabin", "Salingyi", "Pale", "Kani"],
+    },
+  },
+  "Tanintharyi Region": {
+    type: "region",
+    districts: {
+      "Dawei District": ["Dawei", "Launglon", "Thayetchaung", "Yebyu"],
+      "Kawthaung District": ["Kawthaung", "Bokpyin"],
+      "Myeik District": ["Myeik", "Tanintharyi", "Palaw", "Kyunsu"],
+    },
+  },
+  "Yangon Region": {
+    type: "region",
+    districts: {
+      "Yangon East District": ["Botataung", "Dagon Seikkan", "Dawbon", "East Dagon", "Mingala Taungnyunt", "North Dagon", "North Okkalapa", "Pazundaung", "South Dagon", "South Okkalapa", "Tamwe", "Thaketa", "Thingangyun", "Yankin"],
+      "Yangon West District": ["Ahlon", "Bahan", "Dagon", "Hlaing", "Kamayut", "Kyauktada", "Kyimyindaing", "Lanmadaw", "Latha", "Mayangon", "Pabedan", "Sanchaung", "Seikkan"],
+      "Yangon South District": ["Cocokyun", "Dala", "Kawhmu", "Kungyangon", "Seikkyi Kanaungto", "Twante"],
+      "Yangon North District": ["Hlaingthaya", "Hmawbi", "Htantabin", "Insein", "Mingaladon", "Shwepyitha", "Taikkyi", "Hlegu", "Thanlyin"],
+    },
+  },
+  // Union Territory
+  "Naypyidaw Union Territory": {
+    type: "union_territory",
+    districts: {
+      "Ottara District": ["Ottarathiri", "Pobbathiri", "Tatkon", "Pyinmana"],
+      "Dekkhinathiri District": ["Dekkhinathiri", "Zabuthiri", "Lewe", "Zeyathiri"],
+    },
+  },
+};
 
 const APP_SETTINGS = [
   { setting_key: "carousel_enabled", value: "true" },
@@ -376,6 +534,79 @@ async function seedAdmin() {
   console.log(
     `   ${addedSettings} added, ${APP_SETTINGS.length - addedSettings} existed`,
   );
+
+  // ── 10. Seed locations (State/Region → District → Township) ─────────────
+  console.log("10. Seeding locations...");
+
+  // 10a. State/Region
+  const existingSR = await d1Query<{ name: string }>("SELECT name FROM state_region");
+  const existingSRNames = new Set(existingSR.map((r) => r.name));
+  let addedSR = 0;
+  for (const [name, data] of Object.entries(MYANMAR_LOCATIONS)) {
+    if (existingSRNames.has(name)) continue;
+    await d1Execute(
+      "INSERT INTO state_region (name, type, created_by) VALUES (?, ?, NULL)",
+      [name, data.type],
+    );
+    addedSR++;
+  }
+  console.log(`   state_region: ${addedSR} added, ${existingSRNames.size} existed`);
+
+  // Build state_region_id lookup
+  const srRows = await d1Query<{ state_region_id: number; name: string }>(
+    "SELECT state_region_id, name FROM state_region",
+  );
+  const srIdMap = new Map(srRows.map((r) => [r.name, r.state_region_id]));
+
+  // 10b. Districts
+  const existingDist = await d1Query<{ name: string; state_region_id: number }>(
+    "SELECT name, state_region_id FROM district",
+  );
+  const existingDistKeys = new Set(existingDist.map((r) => `${r.state_region_id}:${r.name}`));
+  let addedDist = 0;
+  for (const [srName, srData] of Object.entries(MYANMAR_LOCATIONS)) {
+    const srId = srIdMap.get(srName);
+    if (!srId) continue;
+    for (const distName of Object.keys(srData.districts)) {
+      if (existingDistKeys.has(`${srId}:${distName}`)) continue;
+      await d1Execute(
+        "INSERT INTO district (name, state_region_id, created_by) VALUES (?, ?, NULL)",
+        [distName, srId],
+      );
+      addedDist++;
+    }
+  }
+  console.log(`   district: ${addedDist} added, ${existingDist.length} existed`);
+
+  // Build district_id lookup
+  const distDbRows = await d1Query<{ district_id: number; name: string; state_region_id: number }>(
+    "SELECT district_id, name, state_region_id FROM district",
+  );
+  const distIdMap = new Map(distDbRows.map((r) => [`${r.state_region_id}:${r.name}`, r.district_id]));
+
+  // 10c. Townships
+  const existingTwn = await d1Query<{ name: string; district_id: number }>(
+    "SELECT name, district_id FROM township",
+  );
+  const existingTwnKeys = new Set(existingTwn.map((r) => `${r.district_id}:${r.name}`));
+  let addedTwn = 0;
+  for (const [srName, srData] of Object.entries(MYANMAR_LOCATIONS)) {
+    const srId = srIdMap.get(srName);
+    if (!srId) continue;
+    for (const [distName, townships] of Object.entries(srData.districts)) {
+      const distId = distIdMap.get(`${srId}:${distName}`);
+      if (!distId) continue;
+      for (const twnName of townships) {
+        if (existingTwnKeys.has(`${distId}:${twnName}`)) continue;
+        await d1Execute(
+          "INSERT INTO township (name, district_id, created_by) VALUES (?, ?, NULL)",
+          [twnName, distId],
+        );
+        addedTwn++;
+      }
+    }
+  }
+  console.log(`   township: ${addedTwn} added, ${existingTwn.length} existed`);
 
   console.log("\n  Done! Login with:");
   console.log(`  Email:    ${ADMIN_EMAIL}`);

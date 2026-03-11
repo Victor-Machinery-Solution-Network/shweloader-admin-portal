@@ -245,7 +245,7 @@ export function UsersClient({
             <DataTable
               columns={userColumns}
               data={users}
-              searchKeys={["username", "email", "phone", "company_name"]}
+              searchKeys={["username", "full_name", "phone", "email", "company_name"]}
               searchPlaceholder="Search users"
               filterConfig={userFilterConfig}
               filterStorageKey="users-filters"

@@ -685,7 +685,7 @@ export function ArticleEditor({
                     value={coverImage}
                     onChange={setCoverImage}
                     placeholder="Upload cover image"
-                    maxSizeMB={5}
+                    maxSizeMB={50}
                   />
                   {strictValidation && !coverImage && (
                     <p className="text-destructive text-xs">Cover image is required</p>

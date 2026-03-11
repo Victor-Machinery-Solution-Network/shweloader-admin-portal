@@ -33,7 +33,7 @@ export function ImageInput({
   value: controlledValue,
   onChange,
   accept = 'image/*',
-  maxSizeMB = 10,
+  maxSizeMB = 50,
   placeholder = 'Drop an image here or click to browse',
   className,
   disabled = false,
@@ -151,6 +151,16 @@ export function ImageInput({
       : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  /** Truncate long filenames with ellipsis in the middle, e.g. "abcdef...xyz.jpg" */
+  function truncateFilename(name: string, maxLen = 60) {
+    if (name.length <= maxLen) return name;
+    const ext = name.lastIndexOf('.') !== -1 ? name.slice(name.lastIndexOf('.')) : '';
+    const keep = maxLen - ext.length - 3; // 3 for "..."
+    const front = Math.ceil(keep / 2);
+    const back = Math.floor(keep / 2);
+    return name.slice(0, front) + '...' + name.slice(name.length - back - ext.length);
+  }
+
   return (
     <div className={cn('space-y-2', className)}>
       {/* File input for FormData submission */}
@@ -191,13 +201,13 @@ export function ImageInput({
             <div className="shrink-0 truncate border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
               {fileInfo ? (
                 <>
-                  {fileInfo.name}
+                  {truncateFilename(fileInfo.name)}
                   <span className="ml-1.5 text-muted-foreground/60">
                     ({formatSize(fileInfo.size)})
                   </span>
                 </>
               ) : (
-                urlFileName
+                urlFileName && truncateFilename(urlFileName)
               )}
             </div>
           </div>

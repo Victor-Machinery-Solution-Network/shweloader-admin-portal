@@ -65,7 +65,7 @@ export function UserDetailSheet({
                     )}
                   </div>
                   <SheetDescription className="truncate">
-                    {data.email}
+                    {data.full_name || data.phone}
                   </SheetDescription>
                 </div>
               </div>
@@ -75,8 +75,9 @@ export function UserDetailSheet({
               <Separator />
               <div className="p-6 space-y-5">
                 <DetailSection title="Contact">
-                  <DetailRow label="Email" value={data.email} />
+                  <DetailRow label="Full Name" value={data.full_name} />
                   <DetailRow label="Phone" value={data.phone} />
+                  <DetailRow label="Email" value={data.email} />
                 </DetailSection>
 
                 <Separator />

@@ -86,6 +86,7 @@ export async function getBlacklistImpactPreview(
     user: {
       app_user_id: targetUser.app_user_id,
       username: targetUser.username,
+      full_name: targetUser.full_name,
       email: targetUser.email,
       phone: targetUser.phone,
       company_name: targetUser.company_name,

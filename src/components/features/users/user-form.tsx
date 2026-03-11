@@ -74,7 +74,6 @@ export function UserForm({
       if (btId) formData.set("business_type_id", String(btId));
     }
     formData.set("is_approved_partner", isPartner ? "1" : "0");
-
     startTransition(async () => {
       const result = await createAppUser(formData);
 
@@ -132,30 +131,47 @@ export function UserForm({
           </Field>
 
           <Field orientation="vertical">
-            <FieldLabel>Email</FieldLabel>
+            <FieldLabel>Full Name</FieldLabel>
             <FieldContent>
-              <RequiredInput
-                name="email"
-                type="email"
-                placeholder="e.g. user@example.com"
-                errorMessage="Email is required"
+              <Input
+                name="full_name"
+                placeholder="e.g. Aung Kyaw"
                 autoComplete="off"
               />
             </FieldContent>
           </Field>
 
-          {/* Row 2: Contact */}
+          {/* Row 2: Contact (phone required, email optional) */}
           <Field orientation="vertical">
             <FieldLabel>Phone</FieldLabel>
             <FieldContent>
-              <Input
+              <RequiredInput
                 name="phone"
                 placeholder="e.g. 09xxxxxxxxx"
+                errorMessage="Phone number is required"
                 autoComplete="off"
               />
             </FieldContent>
           </Field>
 
+          <Field orientation="vertical">
+            <FieldLabel>
+              Email{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                name="email"
+                type="email"
+                placeholder="e.g. user@example.com"
+                autoComplete="off"
+              />
+            </FieldContent>
+          </Field>
+
+          {/* Row 3: Company */}
           <Field orientation="vertical">
             <FieldLabel>Company Name</FieldLabel>
             <FieldContent>
