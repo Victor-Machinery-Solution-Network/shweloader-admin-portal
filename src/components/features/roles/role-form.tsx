@@ -8,6 +8,7 @@ import {
   Eye,
   Trash2,
   CheckCircle,
+  RotateCcw,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -34,6 +35,7 @@ const PERMISSION_STYLE: Record<string, { icon: LucideIcon; color: string; bg: st
   edit:    { icon: Pencil,      color: "text-amber-500",   bg: "bg-amber-500/10" },
   delete:  { icon: Trash2,      color: "text-rose-500",    bg: "bg-rose-500/10" },
   approve: { icon: CheckCircle, color: "text-violet-500",  bg: "bg-violet-500/10" },
+  restore: { icon: RotateCcw,   color: "text-teal-500",    bg: "bg-teal-500/10" },
 };
 
 const GROUP_STYLE: Record<string, { icon: LucideIcon; color: string; bg: string }> = {

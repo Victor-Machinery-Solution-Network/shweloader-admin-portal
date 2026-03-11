@@ -88,8 +88,8 @@ const APP_SETTINGS = [
 // ─── RBAC Data ──────────────────────────────────────────────────────────────
 
 const PERMISSIONS = [
-  { name: "create", display_order: 1 },
-  { name: "read", display_order: 2 },
+  { name: "read", display_order: 1 },
+  { name: "create", display_order: 2 },
   { name: "edit", display_order: 3 },
   { name: "delete", display_order: 4 },
   { name: "approve", display_order: 5 },

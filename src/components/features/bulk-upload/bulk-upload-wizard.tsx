@@ -92,7 +92,7 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
             Excel Import
           </h1>
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={() => router.push(config.returnRoute)}
           >

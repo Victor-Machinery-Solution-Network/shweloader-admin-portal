@@ -306,7 +306,7 @@ export function ArticleEditor({
                 {/* Discard / Back — always shown */}
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   disabled={isPending}
                   onClick={() => {

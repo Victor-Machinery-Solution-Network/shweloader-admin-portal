@@ -168,10 +168,10 @@ export function ImageInput({
         <input type="hidden" name={`${name}_removed`} value="1" />
       )}
 
-      <div className={aspectClassName}>
+      <div className={cn(aspectClassName, 'min-w-0')}>
         {displayUrl ? (
           /* Preview state */
-          <div className="flex h-full flex-col overflow-hidden rounded-lg border">
+          <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border">
             <div className="relative min-h-0 flex-1">
               <img
                 src={displayUrl}
