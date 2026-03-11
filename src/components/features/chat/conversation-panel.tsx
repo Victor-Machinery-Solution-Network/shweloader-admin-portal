@@ -18,6 +18,7 @@ import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
 import { useChatMessages } from "@/hooks/use-chat";
 import { sendMessage, closeSession } from "@/lib/actions/chat";
+import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import type { ChatSessionWithDetails } from "@/types/chat";
 
@@ -51,13 +52,25 @@ export function ConversationPanel({
     }
   }, [sessionClosed, onSessionClosed]);
 
-  async function handleSend(message: string, _files: File[]) {
+  async function handleSend(message: string, files: File[]) {
     if (!session || isSending) return;
 
     setIsSending(true);
     try {
-      // Text-only for now; file upload support to be added later
-      const result = await sendMessage(session.id, message || null, undefined);
+      // Upload attachments if any
+      let attachmentData: { fileUrl: string; fileName: string; fileSize: number; fileType: string }[] | undefined;
+      if (files.length > 0) {
+        const formData = new FormData();
+        for (const file of files) formData.append("files", file);
+        const uploadResult = await uploadChatAttachments(session.id, formData);
+        if (!uploadResult.success) {
+          console.error("Failed to upload attachments:", uploadResult.error);
+          return;
+        }
+        attachmentData = uploadResult.attachments;
+      }
+
+      const result = await sendMessage(session.id, message || null, attachmentData);
       if (!result.success) {
         console.error("Failed to send message:", result.error);
       }
