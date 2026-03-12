@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -20,7 +20,6 @@ import { StepReviewImport } from "./step-review-import";
 import type {
   BulkUploadConfig,
   ParsedRow,
-  LookupData,
   ImportResult,
 } from "@/types/bulk-upload";
 
@@ -55,8 +54,31 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
   const stepIndex = steps.indexOf(currentStep);
 
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
-  const [lookups, setLookups] = useState<LookupData>({});
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+
+  useEffect(() => {
+    // If users land on deeper steps without parsed data, route back to upload safely.
+    if (parsedRows.length > 0 || importResult) return;
+    if (currentStep !== "images" && currentStep !== "review") return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", "upload");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [currentStep, importResult, parsedRows.length, router, searchParams]);
+
+  const clearWizardState = useCallback(() => {
+    setParsedRows([]);
+    setImportResult(null);
+    setResetKey((k) => k + 1);
+  }, []);
+
+  const resetWizard = useCallback(() => {
+    clearWizardState();
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", "upload");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [clearWizardState, searchParams, router]);
 
   const goToStep = useCallback(
     (step: Step) => {
@@ -177,11 +199,13 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
         )}
         {currentStep === "upload" && (
           <StepUploadValidate
+            key={resetKey}
             config={config}
             parsedRows={parsedRows}
-            onParsed={(rows, lu) => {
+            onParsed={(rows) => {
               setParsedRows(rows);
-              setLookups(lu);
+              // A new parse starts a new import session.
+              setImportResult(null);
             }}
             onNext={() => goToStep(afterUpload)}
             onBack={() => goToStep("download")}
@@ -200,10 +224,16 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
           <StepReviewImport
             config={config}
             parsedRows={parsedRows}
-            lookups={lookups}
             importResult={importResult}
-            onImported={setImportResult}
-            onBack={() => goToStep("upload")}
+            onImported={(result) => {
+              setImportResult(result);
+              setParsedRows([]);
+            }}
+            onBack={() => {
+              setImportResult(null);
+              goToStep("upload");
+            }}
+            onReset={resetWizard}
           />
         )}
       </div>

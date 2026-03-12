@@ -13,7 +13,12 @@ import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getLastDisplayOrder } from "@/lib/actions/reorder";
 import { nKeysBetween } from "@/lib/utils/display-order";
-import { processFileField, processFileWithOriginalName, deleteFile, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import {
+  processFileField,
+  processFileWithOriginalName,
+  deleteFile,
+  cleanupOldFile,
+} from "@/lib/actions/upload-helpers";
 import { isR2Key, slugify } from "@/lib/api/r2-client";
 import type {
   SaleListingWithDetails,
@@ -47,9 +52,7 @@ async function processProductPhotos(
   const r2Path = `products/photos/${productListId}/`;
 
   // 1. Collect all entries (preserving order)
-  type PhotoEntry =
-    | { type: "url"; url: string }
-    | { type: "file"; file: File };
+  type PhotoEntry = { type: "url"; url: string } | { type: "file"; file: File };
   const entries: PhotoEntry[] = [];
   let i = 0;
 
@@ -158,6 +161,60 @@ function extractProductFields(formData: FormData) {
   };
 }
 
+const DRAFT_FOR_SALE_KEY = "__draft_for_sale";
+const DRAFT_FOR_RENT_KEY = "__draft_for_rent";
+
+interface DraftMetaField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+function buildDraftCustomFields(
+  customFieldsRaw: string | null,
+  forSale: boolean,
+  forRent: boolean,
+): string | null {
+  let fields: DraftMetaField[] = [];
+
+  if (customFieldsRaw) {
+    try {
+      const parsed = JSON.parse(customFieldsRaw);
+      if (Array.isArray(parsed)) {
+        fields = parsed.filter(
+          (f): f is DraftMetaField =>
+            !!f &&
+            typeof f === "object" &&
+            typeof (f as Record<string, unknown>).key === "string" &&
+            typeof (f as Record<string, unknown>).label === "string" &&
+            typeof (f as Record<string, unknown>).value === "string",
+        );
+      }
+    } catch {
+      fields = [];
+    }
+  }
+
+  const withoutMeta = fields.filter(
+    (f) => f.key !== DRAFT_FOR_SALE_KEY && f.key !== DRAFT_FOR_RENT_KEY,
+  );
+
+  withoutMeta.push(
+    {
+      key: DRAFT_FOR_SALE_KEY,
+      label: "__draft_meta",
+      value: forSale ? "1" : "0",
+    },
+    {
+      key: DRAFT_FOR_RENT_KEY,
+      label: "__draft_meta",
+      value: forRent ? "1" : "0",
+    },
+  );
+
+  return withoutMeta.length > 0 ? JSON.stringify(withoutMeta) : null;
+}
+
 // ─── Helper: generate unique alphanumeric listing ID ─────────────────────────
 
 const ID_CHARSET = "0123456789ABCDEFGHJKMNPQRSTUVWXYZ"; // 33 chars (excludes O, I, L)
@@ -200,7 +257,9 @@ async function generateListingId(
 // ─── Helper: create product_list and get its ID ─────────────────────────────
 
 async function createProductAndGetId(
-  productFields: ReturnType<typeof extractProductFields> & { thumbnail_url?: string | null },
+  productFields: ReturnType<typeof extractProductFields> & {
+    thumbnail_url?: string | null;
+  },
   created_by: number | null,
 ) {
   const product = await productListService.create({
@@ -276,8 +335,10 @@ export async function createListing(formData: FormData) {
     }
 
     // Determine approval status: auto-approve if user has approve permission
-    const canApproveSale = forSale && await hasApprovePermission("sale_listings");
-    const canApproveRent = forRent && await hasApprovePermission("rent_listings");
+    const canApproveSale =
+      forSale && (await hasApprovePermission("sale_listings"));
+    const canApproveRent =
+      forRent && (await hasApprovePermission("rent_listings"));
 
     // 1. Create product_list first (need ID for unique R2 paths)
     const productId = await createProductAndGetId(
@@ -287,7 +348,10 @@ export async function createListing(formData: FormData) {
 
     // 2. Upload thumbnail using product_list_id for unique path
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productId),
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productId),
     );
     if (thumbnail_url) {
       uploadedKeys.push(thumbnail_url);
@@ -321,14 +385,14 @@ export async function createListing(formData: FormData) {
         hide_price: saleHidePrice,
         is_hidden: isHidden,
         is_sold_out: 0,
-        display_currency: (formData.get("sale_display_currency") as string) || "MMK",
+        display_currency:
+          (formData.get("sale_display_currency") as string) || "MMK",
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? created_by : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
         created_by,
       });
-      saleListingId =
-        (saleResult as unknown as { id: number })?.id ?? null;
+      saleListingId = (saleResult as unknown as { id: number })?.id ?? null;
       if (!saleListingId) {
         const lastRow = await d1.query<{ id: number }>(
           "SELECT id FROM sale_listing ORDER BY id DESC LIMIT 1",
@@ -361,14 +425,14 @@ export async function createListing(formData: FormData) {
         hide_price: rentHidePrice,
         is_hidden: isHidden,
         is_rented: 0,
-        display_currency: (formData.get("rent_display_currency") as string) || "MMK",
+        display_currency:
+          (formData.get("rent_display_currency") as string) || "MMK",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? created_by : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
         created_by,
       });
-      rentListingId =
-        (rentResult as unknown as { id: number })?.id ?? null;
+      rentListingId = (rentResult as unknown as { id: number })?.id ?? null;
       if (!rentListingId) {
         const lastRow = await d1.query<{ id: number }>(
           "SELECT id FROM rent_listing ORDER BY id DESC LIMIT 1",
@@ -411,10 +475,20 @@ export async function createListing(formData: FormData) {
     // 7. Fire-and-forget notifications for non-auto-approved listings
     const modelName = await getModelNameForProduct(productId);
     if (forSale && saleListingId && !canApproveSale) {
-      notifyListingSubmitted(saleListingId, "sale", modelName, created_by).catch(() => {});
+      notifyListingSubmitted(
+        saleListingId,
+        "sale",
+        modelName,
+        created_by,
+      ).catch(() => {});
     }
     if (forRent && rentListingId && !canApproveRent) {
-      notifyListingSubmitted(rentListingId, "rent", modelName, created_by).catch(() => {});
+      notifyListingSubmitted(
+        rentListingId,
+        "rent",
+        modelName,
+        created_by,
+      ).catch(() => {});
     }
 
     return { success: true };
@@ -436,7 +510,10 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
   try {
     await requirePermission("sale_listings", "edit");
     // Get existing sale listing to find product_list_id and thumbnail
-    const existing = await d1.query<{ product_list_id: number; thumbnail_url: string | null }>(
+    const existing = await d1.query<{
+      product_list_id: number;
+      thumbnail_url: string | null;
+    }>(
       "SELECT sl.product_list_id, pl.thumbnail_url FROM sale_listing sl JOIN product_list pl ON sl.product_list_id = pl.id WHERE sl.id = ?",
       [saleId],
     );
@@ -449,11 +526,18 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productListId), existing.results[0]?.thumbnail_url,
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productListId),
+      existing.results[0]?.thumbnail_url,
     );
 
     // 2. Update product_list
-    await productListService.update(productListId, { ...productFields, thumbnail_url });
+    await productListService.update(productListId, {
+      ...productFields,
+      thumbnail_url,
+    });
 
     // 3. Update sale_listing
     await saleListingService.update(saleId, {
@@ -468,7 +552,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
         : null,
       hide_price: formData.get("sale_hide_price") === "1" ? 1 : 0,
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
-      display_currency: (formData.get("sale_display_currency") as string) || "MMK",
+      display_currency:
+        (formData.get("sale_display_currency") as string) || "MMK",
     });
 
     // 4. Sync product photos
@@ -505,7 +590,9 @@ export async function deleteSaleListing(saleId: number) {
     await saleListingService.softDelete(saleId, deletedBy);
 
     const batchId = crypto.randomUUID();
-    saveTrashMetadata("sale_listing", saleId, deletedBy, { batchId }).catch(() => {});
+    saveTrashMetadata("sale_listing", saleId, deletedBy, { batchId }).catch(
+      () => {},
+    );
 
     // Soft delete product_list if no other listing references it
     if (productListId) {
@@ -517,7 +604,9 @@ export async function deleteSaleListing(saleId: number) {
 
       if (remaining === 0) {
         await productListService.softDelete(productListId, deletedBy);
-        saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
+        saveTrashMetadata("product_list", productListId, deletedBy, {
+          batchId,
+        }).catch(() => {});
       }
     }
 
@@ -539,7 +628,10 @@ export async function updateRentListing(rentId: number, formData: FormData) {
   try {
     await requirePermission("rent_listings", "edit");
     // Get existing rent listing to find product_list_id and thumbnail
-    const existing = await d1.query<{ product_list_id: number; thumbnail_url: string | null }>(
+    const existing = await d1.query<{
+      product_list_id: number;
+      thumbnail_url: string | null;
+    }>(
       "SELECT rl.product_list_id, pl.thumbnail_url FROM rent_listing rl JOIN product_list pl ON rl.product_list_id = pl.id WHERE rl.id = ?",
       [rentId],
     );
@@ -552,11 +644,18 @@ export async function updateRentListing(rentId: number, formData: FormData) {
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productListId), existing.results[0]?.thumbnail_url,
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productListId),
+      existing.results[0]?.thumbnail_url,
     );
 
     // 2. Update product_list
-    await productListService.update(productListId, { ...productFields, thumbnail_url });
+    await productListService.update(productListId, {
+      ...productFields,
+      thumbnail_url,
+    });
 
     // 3. Update rent_listing
     await rentListingService.update(rentId, {
@@ -568,7 +667,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
         : null,
       hide_price: formData.get("rent_hide_price") === "1" ? 1 : 0,
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
-      display_currency: (formData.get("rent_display_currency") as string) || "MMK",
+      display_currency:
+        (formData.get("rent_display_currency") as string) || "MMK",
     });
 
     // 4. Sync product photos
@@ -605,7 +705,9 @@ export async function deleteRentListing(rentId: number) {
     await rentListingService.softDelete(rentId, deletedBy);
 
     const batchId = crypto.randomUUID();
-    saveTrashMetadata("rent_listing", rentId, deletedBy, { batchId }).catch(() => {});
+    saveTrashMetadata("rent_listing", rentId, deletedBy, { batchId }).catch(
+      () => {},
+    );
 
     // Soft delete product_list if no other listing references it
     if (productListId) {
@@ -617,7 +719,9 @@ export async function deleteRentListing(rentId: number) {
 
       if (remaining === 0) {
         await productListService.softDelete(productListId, deletedBy);
-        saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
+        saveTrashMetadata("product_list", productListId, deletedBy, {
+          batchId,
+        }).catch(() => {});
       }
     }
 
@@ -790,7 +894,6 @@ export async function removeFromFeatured(featuredId: number) {
     };
   }
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUERY ACTIONS (JOIN)
@@ -1027,14 +1130,22 @@ export async function approveListingSale(id: number) {
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{ product_list_id: number; created_by: number | null }>(
-      "SELECT product_list_id, created_by FROM sale_listing WHERE id = ?",
-      [id],
-    );
+    const listing = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+    }>("SELECT product_list_id, created_by FROM sale_listing WHERE id = ?", [
+      id,
+    ]);
     const row = listing.results[0];
     if (row?.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
-      notifyListingApproved(id, "sale", modelName, row.created_by, userId).catch(() => {});
+      notifyListingApproved(
+        id,
+        "sale",
+        modelName,
+        row.created_by,
+        userId,
+      ).catch(() => {});
     }
 
     return { success: true };
@@ -1056,14 +1167,23 @@ export async function requestReworkSale(id: number, reason?: string) {
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{ product_list_id: number; created_by: number | null }>(
-      "SELECT product_list_id, created_by FROM sale_listing WHERE id = ?",
-      [id],
-    );
+    const listing = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+    }>("SELECT product_list_id, created_by FROM sale_listing WHERE id = ?", [
+      id,
+    ]);
     const row = listing.results[0];
     if (row?.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
-      notifyListingRework(id, "sale", modelName, row.created_by, userId, reason).catch(() => {});
+      notifyListingRework(
+        id,
+        "sale",
+        modelName,
+        row.created_by,
+        userId,
+        reason,
+      ).catch(() => {});
     }
 
     return { success: true };
@@ -1085,14 +1205,22 @@ export async function approveListingRent(id: number) {
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{ product_list_id: number; created_by: number | null }>(
-      "SELECT product_list_id, created_by FROM rent_listing WHERE id = ?",
-      [id],
-    );
+    const listing = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+    }>("SELECT product_list_id, created_by FROM rent_listing WHERE id = ?", [
+      id,
+    ]);
     const row = listing.results[0];
     if (row?.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
-      notifyListingApproved(id, "rent", modelName, row.created_by, userId).catch(() => {});
+      notifyListingApproved(
+        id,
+        "rent",
+        modelName,
+        row.created_by,
+        userId,
+      ).catch(() => {});
     }
 
     return { success: true };
@@ -1114,14 +1242,23 @@ export async function requestReworkRent(id: number, reason?: string) {
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{ product_list_id: number; created_by: number | null }>(
-      "SELECT product_list_id, created_by FROM rent_listing WHERE id = ?",
-      [id],
-    );
+    const listing = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+    }>("SELECT product_list_id, created_by FROM rent_listing WHERE id = ?", [
+      id,
+    ]);
     const row = listing.results[0];
     if (row?.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
-      notifyListingRework(id, "rent", modelName, row.created_by, userId, reason).catch(() => {});
+      notifyListingRework(
+        id,
+        "rent",
+        modelName,
+        row.created_by,
+        userId,
+        reason,
+      ).catch(() => {});
     }
 
     return { success: true };
@@ -1207,12 +1344,26 @@ export async function saveDraft(formData: FormData) {
 
     // Extract whatever fields are filled (all optional for drafts)
     const productType = formData.get("product_type") as string | null;
-    const modelId = formData.get("model_id") ? Number(formData.get("model_id")) : null;
-    const partnerId = formData.get("partner_id") ? Number(formData.get("partner_id")) : null;
-    const townshipId = formData.get("township_id") ? Number(formData.get("township_id")) : null;
+    const modelId = formData.get("model_id")
+      ? Number(formData.get("model_id"))
+      : null;
+    const partnerId = formData.get("partner_id")
+      ? Number(formData.get("partner_id"))
+      : null;
+    const townshipId = formData.get("township_id")
+      ? Number(formData.get("township_id"))
+      : null;
     const description = (formData.get("description") as string)?.trim() || null;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
-    const customFields = (formData.get("custom_fields") as string)?.trim() || null;
+    const forSale = formData.get("for_sale") === "1";
+    const forRent = formData.get("for_rent") === "1";
+    const customFieldsRaw =
+      (formData.get("custom_fields") as string)?.trim() || null;
+    const customFields = buildDraftCustomFields(
+      customFieldsRaw,
+      forSale,
+      forRent,
+    );
 
     const product = await productListService.create({
       partner_id: partnerId,
@@ -1226,7 +1377,8 @@ export async function saveDraft(formData: FormData) {
       created_by: userId,
     });
 
-    let productId = (product as unknown as Record<string, unknown>)?.id as number;
+    let productId = (product as unknown as Record<string, unknown>)
+      ?.id as number;
     if (!productId) {
       const lastRow = await d1.query<{ id: number }>(
         "SELECT id FROM product_list ORDER BY id DESC LIMIT 1",
@@ -1236,7 +1388,10 @@ export async function saveDraft(formData: FormData) {
 
     // Upload thumbnail if provided
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productId),
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productId),
     );
     if (thumbnail_url) {
       uploadedKeys.push(thumbnail_url);
@@ -1266,7 +1421,11 @@ export async function updateDraft(productListId: number, formData: FormData) {
     const userId = await requireAuth();
 
     // Verify ownership
-    const existing = await d1.query<{ created_by: number | null; is_draft: number; thumbnail_url: string | null }>(
+    const existing = await d1.query<{
+      created_by: number | null;
+      is_draft: number;
+      thumbnail_url: string | null;
+    }>(
       "SELECT created_by, is_draft, thumbnail_url FROM product_list WHERE id = ?",
       [productListId],
     );
@@ -1279,16 +1438,34 @@ export async function updateDraft(productListId: number, formData: FormData) {
     }
 
     const productType = formData.get("product_type") as string | null;
-    const modelId = formData.get("model_id") ? Number(formData.get("model_id")) : null;
-    const partnerId = formData.get("partner_id") ? Number(formData.get("partner_id")) : null;
-    const townshipId = formData.get("township_id") ? Number(formData.get("township_id")) : null;
+    const modelId = formData.get("model_id")
+      ? Number(formData.get("model_id"))
+      : null;
+    const partnerId = formData.get("partner_id")
+      ? Number(formData.get("partner_id"))
+      : null;
+    const townshipId = formData.get("township_id")
+      ? Number(formData.get("township_id"))
+      : null;
     const description = (formData.get("description") as string)?.trim() || null;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
-    const customFields = (formData.get("custom_fields") as string)?.trim() || null;
+    const forSale = formData.get("for_sale") === "1";
+    const forRent = formData.get("for_rent") === "1";
+    const customFieldsRaw =
+      (formData.get("custom_fields") as string)?.trim() || null;
+    const customFields = buildDraftCustomFields(
+      customFieldsRaw,
+      forSale,
+      forRent,
+    );
 
     // Handle thumbnail
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productListId), row.thumbnail_url,
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productListId),
+      row.thumbnail_url,
     );
 
     await productListService.update(productListId, {
@@ -1325,7 +1502,11 @@ export async function submitDraft(productListId: number, formData: FormData) {
     const userId = await requireAuth();
 
     // Verify ownership + draft status
-    const existing = await d1.query<{ created_by: number | null; is_draft: number; thumbnail_url: string | null }>(
+    const existing = await d1.query<{
+      created_by: number | null;
+      is_draft: number;
+      thumbnail_url: string | null;
+    }>(
       "SELECT created_by, is_draft, thumbnail_url FROM product_list WHERE id = ?",
       [productListId],
     );
@@ -1341,7 +1522,9 @@ export async function submitDraft(productListId: number, formData: FormData) {
     const productFields = extractProductFields(formData);
     const forSale = formData.get("for_sale") === "1";
     const forRent = formData.get("for_rent") === "1";
-    const productType = formData.get("product_type") as "equipment" | "attachment";
+    const productType = formData.get("product_type") as
+      | "equipment"
+      | "attachment";
     const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
     const saleHidePrice = formData.get("sale_hide_price") === "1" ? 1 : 0;
     const rentHidePrice = formData.get("rent_hide_price") === "1" ? 1 : 0;
@@ -1353,7 +1536,10 @@ export async function submitDraft(productListId: number, formData: FormData) {
     if (!productFields.partner_id) {
       return { success: false, error: "Partner is required" };
     }
-    if (!productFields.equipment_model_id && !productFields.attachment_model_id) {
+    if (
+      !productFields.equipment_model_id &&
+      !productFields.attachment_model_id
+    ) {
       return { success: false, error: "Model is required" };
     }
 
@@ -1361,12 +1547,18 @@ export async function submitDraft(productListId: number, formData: FormData) {
     if (forSale) await requirePermission("sale_listings", "create");
     if (forRent) await requirePermission("rent_listings", "create");
 
-    const canApproveSale = forSale && await hasApprovePermission("sale_listings");
-    const canApproveRent = forRent && await hasApprovePermission("rent_listings");
+    const canApproveSale =
+      forSale && (await hasApprovePermission("sale_listings"));
+    const canApproveRent =
+      forRent && (await hasApprovePermission("rent_listings"));
 
     // Handle thumbnail
     const thumbnail_url = await processFileField(
-      formData, "thumbnail_url", "products/thumbnails/", String(productListId), row.thumbnail_url,
+      formData,
+      "thumbnail_url",
+      "products/thumbnails/",
+      String(productListId),
+      row.thumbnail_url,
     );
     if (thumbnail_url && thumbnail_url !== row.thumbnail_url) {
       uploadedKeys.push(thumbnail_url);
@@ -1414,7 +1606,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         hide_price: saleHidePrice,
         is_hidden: isHidden,
         is_sold_out: 0,
-        display_currency: (formData.get("sale_display_currency") as string) || "MMK",
+        display_currency:
+          (formData.get("sale_display_currency") as string) || "MMK",
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? userId : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -1452,7 +1645,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         hide_price: rentHidePrice,
         is_hidden: isHidden,
         is_rented: 0,
-        display_currency: (formData.get("rent_display_currency") as string) || "MMK",
+        display_currency:
+          (formData.get("rent_display_currency") as string) || "MMK",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? userId : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
@@ -1494,10 +1688,14 @@ export async function submitDraft(productListId: number, formData: FormData) {
     // Notifications for non-auto-approved
     const modelName = await getModelNameForProduct(productListId);
     if (forSale && saleListingId && !canApproveSale) {
-      notifyListingSubmitted(saleListingId, "sale", modelName, userId).catch(() => {});
+      notifyListingSubmitted(saleListingId, "sale", modelName, userId).catch(
+        () => {},
+      );
     }
     if (forRent && rentListingId && !canApproveRent) {
-      notifyListingSubmitted(rentListingId, "rent", modelName, userId).catch(() => {});
+      notifyListingSubmitted(rentListingId, "rent", modelName, userId).catch(
+        () => {},
+      );
     }
 
     return { success: true };
@@ -1515,10 +1713,12 @@ export async function deleteDraft(productListId: number) {
   try {
     const userId = await requireAuth();
 
-    const existing = await d1.query<{ created_by: number | null; is_draft: number }>(
-      "SELECT created_by, is_draft FROM product_list WHERE id = ?",
-      [productListId],
-    );
+    const existing = await d1.query<{
+      created_by: number | null;
+      is_draft: number;
+    }>("SELECT created_by, is_draft FROM product_list WHERE id = ?", [
+      productListId,
+    ]);
     const row = existing.results[0];
     if (!row || row.is_draft !== 1) {
       return { success: false, error: "Draft not found" };

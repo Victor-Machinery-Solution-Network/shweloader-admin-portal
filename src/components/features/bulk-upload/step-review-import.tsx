@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Loader2,
+  Upload,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,10 +41,10 @@ import type {
 interface StepReviewImportProps {
   config: BulkUploadConfig;
   parsedRows: ParsedRow[];
-  lookups: Record<string, { label: string; value: string | number }[]>;
   importResult: ImportResult | null;
   onImported: (result: ImportResult) => void;
   onBack: () => void;
+  onReset: () => void;
 }
 
 export function StepReviewImport({
@@ -52,9 +53,15 @@ export function StepReviewImport({
   importResult,
   onImported,
   onBack,
+  onReset,
 }: StepReviewImportProps) {
   const router = useRouter();
   const [isImporting, setIsImporting] = useState(false);
+
+  // Keep a ref to always read the latest parsedRows inside async handlers,
+  // avoiding stale closures (especially with React Compiler memoisation).
+  const parsedRowsRef = useRef(parsedRows);
+  parsedRowsRef.current = parsedRows;
 
   const validRows = parsedRows.filter((r) => r.status === "valid");
   const errorRows = parsedRows.filter((r) => r.status === "error");
@@ -64,19 +71,27 @@ export function StepReviewImport({
   );
 
   async function handleImport() {
+    // Read from ref to guarantee we use the latest rows
+    const rows = parsedRowsRef.current;
+    if (rows.length === 0) return;
+
+    const hasImgs = rows.some((r) =>
+      Object.values(r.images).some((files) => files && files.length > 0),
+    );
+
     setIsImporting(true);
     try {
       let result;
 
-      if (hasImages) {
+      if (hasImgs) {
         const formData = new FormData();
-        const rowsForJson = parsedRows.map((r) => ({
+        const rowsForJson = rows.map((r) => ({
           ...r,
           images: {},
         }));
         formData.append("rows", JSON.stringify(rowsForJson));
 
-        for (const row of parsedRows) {
+        for (const row of rows) {
           for (const [fieldName, files] of Object.entries(row.images)) {
             if (!files) continue;
             for (let i = 0; i < files.length; i++) {
@@ -88,12 +103,9 @@ export function StepReviewImport({
           }
         }
 
-        result = await processBulkImportWithImages(
-          config.entityKey,
-          formData,
-        );
+        result = await processBulkImportWithImages(config.entityKey, formData);
       } else {
-        result = await processBulkImport(config.entityKey, parsedRows);
+        result = await processBulkImport(config.entityKey, rows);
       }
 
       onImported(result);
@@ -108,8 +120,7 @@ export function StepReviewImport({
 
   // ── Import complete view ──────────────────────────────────────────────
   if (importResult) {
-    const allSuccess =
-      importResult.failed === 0 && importResult.skipped === 0;
+    const allSuccess = importResult.failed === 0 && importResult.skipped === 0;
     const successRate = Math.round(
       (importResult.succeeded / importResult.total) * 100,
     );
@@ -171,9 +182,7 @@ export function StepReviewImport({
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-14 text-center">#</TableHead>
-                      <TableHead className="w-24 text-center">
-                        Status
-                      </TableHead>
+                      <TableHead className="w-24 text-center">Status</TableHead>
                       <TableHead>Detail</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -212,14 +221,11 @@ export function StepReviewImport({
 
             {/* Actions */}
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={onBack}>
-                <ArrowLeft className="size-4" />
-                Back
+              <Button variant="outline" onClick={onReset}>
+                <Upload className="size-4" />
+                Import Another
               </Button>
-              <Button
-                size="lg"
-                onClick={() => router.push(config.returnRoute)}
-              >
+              <Button size="lg" onClick={() => router.push(config.returnRoute)}>
                 Go to {config.displayNamePlural}
                 <ArrowRight className="size-4" />
               </Button>
@@ -312,7 +318,7 @@ export function StepReviewImport({
                       {config.columns.map((col) => (
                         <TableCell
                           key={col.field}
-                          className="max-w-[150px] truncate text-sm"
+                          className="max-w-37.5 truncate text-sm"
                         >
                           {String(row.data[col.field] ?? "")}
                         </TableCell>

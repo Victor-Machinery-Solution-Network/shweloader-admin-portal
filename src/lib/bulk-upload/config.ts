@@ -593,7 +593,7 @@ export const BULK_UPLOAD_CONFIGS: Record<string, BulkUploadConfig> = {
       {
         label: "Category Icon",
         field: "image_url",
-        r2Path: "categories/equipment/",
+        r2Path: "categories/equipments/main/",
         isPrimary: true,
         maxPerRow: 1,
       },
@@ -634,7 +634,7 @@ export const BULK_UPLOAD_CONFIGS: Record<string, BulkUploadConfig> = {
       {
         label: "Category Icon",
         field: "image_url",
-        r2Path: "categories/equipment-sub/",
+        r2Path: "categories/equipments/sub/",
         isPrimary: true,
         maxPerRow: 1,
       },
@@ -723,9 +723,7 @@ export const BULK_UPLOAD_CONFIGS: Record<string, BulkUploadConfig> = {
   },
 };
 
-export function getBulkUploadConfig(
-  entityKey: string,
-): BulkUploadConfig {
+export function getBulkUploadConfig(entityKey: string): BulkUploadConfig {
   const config = BULK_UPLOAD_CONFIGS[entityKey];
   if (!config) throw new Error(`Unknown bulk upload entity: ${entityKey}`);
   return config;

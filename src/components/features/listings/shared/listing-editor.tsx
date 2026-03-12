@@ -83,7 +83,11 @@ import type {
   ApprovedPartner,
   ConditionType,
 } from "@/types/listing";
-import type { EquipmentModel, EquipmentMainCategory, EquipmentSubCategory } from "@/types/equipment";
+import type {
+  EquipmentModel,
+  EquipmentMainCategory,
+  EquipmentSubCategory,
+} from "@/types/equipment";
 import type { AttachmentModel, AttachmentCategory } from "@/types/attachment";
 import type { ProductBrand } from "@/types/brand";
 import type { StateRegion, District, Township } from "@/types/location";
@@ -100,7 +104,8 @@ const LazySortableImageGallery = lazy(() =>
     default: mod.SortableImageGallery,
   })),
 );
-type GalleryItem = import("@/components/shared/sortable-image-gallery").GalleryItem;
+type GalleryItem =
+  import("@/components/shared/sortable-image-gallery").GalleryItem;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +167,8 @@ const TOTAL_STEPS = STEP_META.length;
 // ─── Auto-save ──────────────────────────────────────────────────────────────
 
 const AUTOSAVE_KEY = SESSION_KEYS.LISTING_AUTOSAVE;
+const DRAFT_FOR_SALE_KEY = "__draft_for_sale";
+const DRAFT_FOR_RENT_KEY = "__draft_for_rent";
 
 interface AutoSaveState {
   currentStep: number;
@@ -192,8 +199,28 @@ interface AutoSaveState {
   description: string;
 }
 
-// ─── Reusable pieces ─────────────────────────────────────────────────────────
+function readDraftListingTypeFlags(customFields: string | null | undefined): {
+  forSale: boolean;
+  forRent: boolean;
+} {
+  if (!customFields) return { forSale: false, forRent: false };
+  try {
+    const parsed = JSON.parse(customFields);
+    if (!Array.isArray(parsed)) return { forSale: false, forRent: false };
 
+    const forSale = parsed.some(
+      (f) => f?.key === DRAFT_FOR_SALE_KEY && f?.value === "1",
+    );
+    const forRent = parsed.some(
+      (f) => f?.key === DRAFT_FOR_RENT_KEY && f?.value === "1",
+    );
+    return { forSale, forRent };
+  } catch {
+    return { forSale: false, forRent: false };
+  }
+}
+
+// ─── Reusable pieces ─────────────────────────────────────────────────────────
 
 function OptionCard({
   selected,
@@ -340,13 +367,20 @@ function PricingCard({
       {/* Currency inputs — side by side */}
       <div className="grid grid-cols-2 gap-3">
         {/* USD */}
-        <div className={cn("group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10", error && "border-destructive")}>
+        <div
+          className={cn(
+            "group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10",
+            error && "border-destructive",
+          )}
+        >
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
               $
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">USD</p>
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
+                USD
+              </p>
               <input
                 type="number"
                 inputMode="decimal"
@@ -362,13 +396,20 @@ function PricingCard({
         </div>
 
         {/* MMK */}
-        <div className={cn("group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10", error && "border-destructive")}>
+        <div
+          className={cn(
+            "group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10",
+            error && "border-destructive",
+          )}
+        >
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600">
               K
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">MMK</p>
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
+                MMK
+              </p>
               <input
                 type="number"
                 inputMode="numeric"
@@ -384,9 +425,7 @@ function PricingCard({
         </div>
       </div>
 
-      {error && (
-        <p className="text-destructive text-xs">{error}</p>
-      )}
+      {error && <p className="text-destructive text-xs">{error}</p>}
 
       {/* Rate + Display currency — compact row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -434,7 +473,10 @@ function PricingCard({
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-150">
           <div className="inline-flex rounded-full border bg-background p-0.5">
             {[
-              { label: `System (${systemRate.toLocaleString()})`, value: "system" },
+              {
+                label: `System (${systemRate.toLocaleString()})`,
+                value: "system",
+              },
               { label: "Custom", value: "custom" },
             ].map((opt) => (
               <button
@@ -470,12 +512,11 @@ function PricingCard({
       <label className="flex items-center justify-between rounded-lg border px-4 py-2.5">
         <div className="flex items-center gap-2">
           <EyeOff className="size-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Hide price from buyers</span>
+          <span className="text-xs text-muted-foreground">
+            Hide price from buyers
+          </span>
         </div>
-        <Switch
-          checked={hidePrice}
-          onCheckedChange={onHidePriceChange}
-        />
+        <Switch checked={hidePrice} onCheckedChange={onHidePriceChange} />
       </label>
     </div>
   );
@@ -536,6 +577,10 @@ export function ListingEditor({
   // Source data: use draft or listing for initialization
   const sourceData = draft ?? listing;
   const isCreateMode = !isEditing && !isDraftMode;
+  const draftListingFlags = useMemo(
+    () => readDraftListingTypeFlags(draft?.custom_fields),
+    [draft?.custom_fields],
+  );
 
   // ── Auto-save: read saved state once on initial mount (create mode only) ──
   const [savedState] = useState<AutoSaveState | null>(() => {
@@ -576,11 +621,13 @@ export function ListingEditor({
   const [forSale, setForSale] = useState(() => {
     if (newListingDefault === "sale") return true;
     if (newListingDefault === "rent") return false;
+    if (isDraftMode) return draftListingFlags.forSale;
     return savedState?.forSale ?? (isEditing ? pageType === "sale" : false);
   });
   const [forRent, setForRent] = useState(() => {
     if (newListingDefault === "rent") return true;
     if (newListingDefault === "sale") return false;
+    if (isDraftMode) return draftListingFlags.forRent;
     return savedState?.forRent ?? (isEditing ? pageType === "rent" : false);
   });
 
@@ -606,16 +653,26 @@ export function ListingEditor({
     savedState?.selectedPartner ?? initPartnerLabel,
   );
   const [selectedModel, setSelectedModel] = useState<string>(
-    savedState?.selectedModel ?? (sourceData?.model_name ?? ""),
+    savedState?.selectedModel ?? sourceData?.model_name ?? "",
   );
   // ── Cascading location state ───────────────────────────────────────────
   // Derive initial hierarchy from existing township_id in edit mode
   const initLocation = useMemo(() => {
-    if (!sourceData?.township_id) return { stateRegionId: "", districtId: "", townshipId: "" };
-    const township = townships.find((t) => t.township_id === sourceData.township_id);
+    if (!sourceData?.township_id)
+      return { stateRegionId: "", districtId: "", townshipId: "" };
+    const township = townships.find(
+      (t) => t.township_id === sourceData.township_id,
+    );
     if (!township) return { stateRegionId: "", districtId: "", townshipId: "" };
-    const district = districts.find((d) => d.district_id === township.district_id);
-    if (!district) return { stateRegionId: "", districtId: "", townshipId: String(township.township_id) };
+    const district = districts.find(
+      (d) => d.district_id === township.district_id,
+    );
+    if (!district)
+      return {
+        stateRegionId: "",
+        districtId: "",
+        townshipId: String(township.township_id),
+      };
     return {
       stateRegionId: String(district.state_region_id),
       districtId: String(township.district_id),
@@ -641,7 +698,7 @@ export function ListingEditor({
   // ── Media state ─────────────────────────────────────────────────────────
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
-    savedState?.thumbnailUrl ?? (sourceData?.thumbnail_url ?? null),
+    savedState?.thumbnailUrl ?? sourceData?.thumbnail_url ?? null,
   );
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
     existingImages.map((img, i) => ({
@@ -655,41 +712,65 @@ export function ListingEditor({
 
   const [saleUsdPrice, setSaleUsdPrice] = useState<string>(
     savedState?.saleUsdPrice ??
-      (isEditing && pageType === "sale" ? (listing?.usd_price?.toString() ?? "") : ""),
+      (isEditing && pageType === "sale"
+        ? (listing?.usd_price?.toString() ?? "")
+        : ""),
   );
   const [saleMmkPrice, setSaleMmkPrice] = useState<string>(
     savedState?.saleMmkPrice ??
-      (isEditing && pageType === "sale" ? (listing?.mmk_price?.toString() ?? "") : ""),
+      (isEditing && pageType === "sale"
+        ? (listing?.mmk_price?.toString() ?? "")
+        : ""),
   );
   const [rentUsdPrice, setRentUsdPrice] = useState<string>(
     savedState?.rentUsdPrice ??
-      (isEditing && pageType === "rent" ? (listing?.usd_price?.toString() ?? "") : ""),
+      (isEditing && pageType === "rent"
+        ? (listing?.usd_price?.toString() ?? "")
+        : ""),
   );
   const [rentMmkPrice, setRentMmkPrice] = useState<string>(
     savedState?.rentMmkPrice ??
-      (isEditing && pageType === "rent" ? (listing?.mmk_price?.toString() ?? "") : ""),
+      (isEditing && pageType === "rent"
+        ? (listing?.mmk_price?.toString() ?? "")
+        : ""),
   );
   // Independent rate controls per listing type
-  const [saleUseSystemRate, setSaleUseSystemRate] = useState(savedState?.saleUseSystemRate ?? true);
-  const [saleCustomRate, setSaleCustomRate] = useState<string>(savedState?.saleCustomRate ?? String(exchangeRate));
-  const [rentUseSystemRate, setRentUseSystemRate] = useState(savedState?.rentUseSystemRate ?? true);
-  const [rentCustomRate, setRentCustomRate] = useState<string>(savedState?.rentCustomRate ?? String(exchangeRate));
+  const [saleUseSystemRate, setSaleUseSystemRate] = useState(
+    savedState?.saleUseSystemRate ?? true,
+  );
+  const [saleCustomRate, setSaleCustomRate] = useState<string>(
+    savedState?.saleCustomRate ?? String(exchangeRate),
+  );
+  const [rentUseSystemRate, setRentUseSystemRate] = useState(
+    savedState?.rentUseSystemRate ?? true,
+  );
+  const [rentCustomRate, setRentCustomRate] = useState<string>(
+    savedState?.rentCustomRate ?? String(exchangeRate),
+  );
 
   // ── Visibility toggles ──────────────────────────────────────────────────
-  const [hidePartner, setHidePartner] = useState(savedState?.hidePartner ?? (sourceData?.hide_partner === 1));
+  const [hidePartner, setHidePartner] = useState(
+    savedState?.hidePartner ?? sourceData?.hide_partner === 1,
+  );
   const [saleHidePrice, setSaleHidePrice] = useState(
-    savedState?.saleHidePrice ?? (isEditing && pageType === "sale" ? listing?.hide_price === 1 : false),
+    savedState?.saleHidePrice ??
+      (isEditing && pageType === "sale" ? listing?.hide_price === 1 : false),
   );
   const [rentHidePrice, setRentHidePrice] = useState(
-    savedState?.rentHidePrice ?? (isEditing && pageType === "rent" ? listing?.hide_price === 1 : false),
+    savedState?.rentHidePrice ??
+      (isEditing && pageType === "rent" ? listing?.hide_price === 1 : false),
   );
 
   // ── Display currency (controls which currency the mobile app shows) ────
   const [saleDisplayCurrency, setSaleDisplayCurrency] = useState<string>(
-    savedState?.saleDisplayCurrency ?? (listing?.display_currency as string) ?? "MMK",
+    savedState?.saleDisplayCurrency ??
+      (listing?.display_currency as string) ??
+      "MMK",
   );
   const [rentDisplayCurrency, setRentDisplayCurrency] = useState<string>(
-    savedState?.rentDisplayCurrency ?? (listing?.display_currency as string) ?? "MMK",
+    savedState?.rentDisplayCurrency ??
+      (listing?.display_currency as string) ??
+      "MMK",
   );
 
   const saleActiveRate = saleUseSystemRate
@@ -699,10 +780,14 @@ export function ListingEditor({
     ? exchangeRate
     : parseFloat(rentCustomRate) || 0;
 
-  const convertSaleUsdToMmk = (usd: string) => convertUsdToMmk(usd, saleActiveRate);
-  const convertSaleMmkToUsd = (mmk: string) => convertMmkToUsd(mmk, saleActiveRate);
-  const convertRentUsdToMmk = (usd: string) => convertUsdToMmk(usd, rentActiveRate);
-  const convertRentMmkToUsd = (mmk: string) => convertMmkToUsd(mmk, rentActiveRate);
+  const convertSaleUsdToMmk = (usd: string) =>
+    convertUsdToMmk(usd, saleActiveRate);
+  const convertSaleMmkToUsd = (mmk: string) =>
+    convertMmkToUsd(mmk, saleActiveRate);
+  const convertRentUsdToMmk = (usd: string) =>
+    convertUsdToMmk(usd, rentActiveRate);
+  const convertRentMmkToUsd = (mmk: string) =>
+    convertMmkToUsd(mmk, rentActiveRate);
 
   // Recalculate sale MMK when sale rate changes
   useEffect(() => {
@@ -754,18 +839,22 @@ export function ListingEditor({
     [stateRegions],
   );
   const stateRegionIdByName = useMemo(
-    () => new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
+    () =>
+      new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
     [stateRegions],
   );
   const stateRegionNameById = useMemo(
-    () => new Map(stateRegions.map((sr) => [String(sr.state_region_id), sr.name])),
+    () =>
+      new Map(stateRegions.map((sr) => [String(sr.state_region_id), sr.name])),
     [stateRegions],
   );
 
   const filteredDistricts = useMemo(
     () =>
       selectedStateRegionId
-        ? districts.filter((d) => String(d.state_region_id) === selectedStateRegionId)
+        ? districts.filter(
+            (d) => String(d.state_region_id) === selectedStateRegionId,
+          )
         : [],
     [districts, selectedStateRegionId],
   );
@@ -774,7 +863,8 @@ export function ListingEditor({
     [filteredDistricts],
   );
   const districtIdByName = useMemo(
-    () => new Map(filteredDistricts.map((d) => [d.name, String(d.district_id)])),
+    () =>
+      new Map(filteredDistricts.map((d) => [d.name, String(d.district_id)])),
     [filteredDistricts],
   );
   const districtNameById = useMemo(
@@ -794,7 +884,8 @@ export function ListingEditor({
     [filteredTownships],
   );
   const townshipIdByName = useMemo(
-    () => new Map(filteredTownships.map((t) => [t.name, String(t.township_id)])),
+    () =>
+      new Map(filteredTownships.map((t) => [t.name, String(t.township_id)])),
     [filteredTownships],
   );
 
@@ -806,7 +897,12 @@ export function ListingEditor({
     if (savedState?.customFieldValues) return savedState.customFieldValues;
     if (!sourceData?.custom_fields) return [];
     try {
-      return JSON.parse(sourceData.custom_fields) as CustomFieldValue[];
+      const parsed = JSON.parse(sourceData.custom_fields) as CustomFieldValue[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (field) =>
+          field.key !== DRAFT_FOR_SALE_KEY && field.key !== DRAFT_FOR_RENT_KEY,
+      );
     } catch {
       return [];
     }
@@ -815,12 +911,14 @@ export function ListingEditor({
   const saleDefaults =
     listing && "condition_type_id" in listing ? listing : null;
   const [conditionId, setConditionId] = useState<string>(
-    savedState?.conditionId ?? (saleDefaults?.condition_type_id?.toString() ?? ""),
+    savedState?.conditionId ??
+      saleDefaults?.condition_type_id?.toString() ??
+      "",
   );
 
   // ── Description state (tracked for auto-save) ─────────────────────────
   const [description, setDescription] = useState<string>(
-    savedState?.description ?? (sourceData?.description ?? ""),
+    savedState?.description ?? sourceData?.description ?? "",
   );
 
   // ── Auto-save: persist form state to sessionStorage on every change ───
@@ -856,13 +954,32 @@ export function ListingEditor({
     };
     sessionStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshot));
   }, [
-    isCreateMode, currentStep, productType, forSale, forRent,
-    selectedModel, selectedPartner,
-    selectedStateRegionId, selectedDistrictId, selectedTownshipId,
-    saleUsdPrice, saleMmkPrice, rentUsdPrice, rentMmkPrice,
-    saleUseSystemRate, saleCustomRate, rentUseSystemRate, rentCustomRate,
-    hidePartner, saleHidePrice, rentHidePrice, saleDisplayCurrency, rentDisplayCurrency,
-    conditionId, customFieldValues, thumbnailUrl,
+    isCreateMode,
+    currentStep,
+    productType,
+    forSale,
+    forRent,
+    selectedModel,
+    selectedPartner,
+    selectedStateRegionId,
+    selectedDistrictId,
+    selectedTownshipId,
+    saleUsdPrice,
+    saleMmkPrice,
+    rentUsdPrice,
+    rentMmkPrice,
+    saleUseSystemRate,
+    saleCustomRate,
+    rentUseSystemRate,
+    rentCustomRate,
+    hidePartner,
+    saleHidePrice,
+    rentHidePrice,
+    saleDisplayCurrency,
+    rentDisplayCurrency,
+    conditionId,
+    customFieldValues,
+    thumbnailUrl,
     description,
   ]);
 
@@ -879,14 +996,17 @@ export function ListingEditor({
   const conditionRequired = forSale && conditionTypes.length > 0;
   const step0Valid =
     !!modelMap.get(selectedModel) &&
-    (isEditing || isDraftMode || forSale || forRent) &&
+    (isEditing || forSale || forRent) &&
     (!conditionRequired || !!conditionId);
-  const salePriceValid = !forSale || (!!saleUsdPrice && parseFloat(saleUsdPrice) > 0);
-  const rentPriceValid = !forRent || (!!rentUsdPrice && parseFloat(rentUsdPrice) > 0);
-  const step1Valid = !!partnerMap.get(selectedPartner) && salePriceValid && rentPriceValid;
+  const salePriceValid =
+    !forSale || (!!saleUsdPrice && parseFloat(saleUsdPrice) > 0);
+  const rentPriceValid =
+    !forRent || (!!rentUsdPrice && parseFloat(rentUsdPrice) > 0);
+  const step1Valid =
+    !!partnerMap.get(selectedPartner) && salePriceValid && rentPriceValid;
 
-  // In edit/draft mode, all steps are "done" (data pre-populated)
-  const stepDone = isEditing || isDraftMode
+  // Edit mode is fully populated; drafts should still reflect actual progress.
+  const stepDone = isEditing
     ? [true, true, true]
     : [step0Valid, step1Valid, true];
 
@@ -895,15 +1015,18 @@ export function ListingEditor({
       setStep0Attempted(true);
       if (!step0Valid) {
         if (!modelMap.get(selectedModel)) toast.error("Please select a model");
-        else if (!forSale && !forRent) toast.error("Select at least one listing type");
-        else if (conditionRequired && !conditionId) toast.error("Please select a condition");
+        else if (!forSale && !forRent)
+          toast.error("Select at least one listing type");
+        else if (conditionRequired && !conditionId)
+          toast.error("Please select a condition");
         return;
       }
     }
     if (currentStep === 1) {
       setStep1Attempted(true);
       if (!step1Valid) {
-        if (!partnerMap.get(selectedPartner)) toast.error("Please select a partner");
+        if (!partnerMap.get(selectedPartner))
+          toast.error("Please select a partner");
         else if (!salePriceValid) toast.error("Please enter a sale price");
         else if (!rentPriceValid) toast.error("Please enter a rental price");
         return;
@@ -933,7 +1056,8 @@ export function ListingEditor({
   // ── Rework dialog handler ────────────────────────────────────────────
   function handleRequestRework(formData: FormData) {
     const reason = formData.get("rework_reason") as string;
-    const reworkFn = pageType === "sale" ? requestReworkSale : requestReworkRent;
+    const reworkFn =
+      pageType === "sale" ? requestReworkSale : requestReworkRent;
     startTransition(async () => {
       const result = await reworkFn(listing!.id, reason);
       if (result.success) {
@@ -1054,23 +1178,26 @@ export function ListingEditor({
           break;
 
         case "resubmit":
-          result = pageType === "sale"
-            ? await resubmitSaleListing(listing!.id)
-            : await resubmitRentListing(listing!.id);
+          result =
+            pageType === "sale"
+              ? await resubmitSaleListing(listing!.id)
+              : await resubmitRentListing(listing!.id);
           break;
 
         case "approve": {
           // Save first, then approve
-          const saveResult = pageType === "sale"
-            ? await updateSaleListing(listing!.id, formData)
-            : await updateRentListing(listing!.id, formData);
+          const saveResult =
+            pageType === "sale"
+              ? await updateSaleListing(listing!.id, formData)
+              : await updateRentListing(listing!.id, formData);
           if (!saveResult.success) {
             result = saveResult;
             break;
           }
-          result = pageType === "sale"
-            ? await approveListingSale(listing!.id)
-            : await approveListingRent(listing!.id);
+          result =
+            pageType === "sale"
+              ? await approveListingSale(listing!.id)
+              : await approveListingRent(listing!.id);
           break;
         }
 
@@ -1128,12 +1255,20 @@ export function ListingEditor({
                 href={backUrl}
                 className="hover:text-foreground transition-colors"
               >
-                {isDraftMode ? "Drafts" : pageType === "sale" ? "For Sale" : "For Rent"}
+                {isDraftMode
+                  ? "Drafts"
+                  : pageType === "sale"
+                    ? "For Sale"
+                    : "For Rent"}
               </Link>
             )}
             <ChevronRight className="size-3 opacity-40" />
             <span className="text-foreground font-medium">
-              {isDraftMode ? "Draft" : isEditing ? (listing?.custom_id ?? "Edit") : "New"}
+              {isDraftMode
+                ? "Draft"
+                : isEditing
+                  ? (listing?.custom_id ?? "Edit")
+                  : "New"}
             </span>
           </nav>
           <div className="flex items-center justify-between">
@@ -1206,11 +1341,17 @@ export function ListingEditor({
                       variant="outline"
                       size="sm"
                       disabled={isPending}
-                      onClick={() => { submitActionRef.current = "save-draft"; }}
+                      onClick={() => {
+                        submitActionRef.current = "save-draft";
+                      }}
                     >
                       {isPending && submitActionRef.current === "save-draft" ? (
-                        <><Spinner className="mr-1" /> Saving{"\u2026"}</>
-                      ) : "Save as Draft"}
+                        <>
+                          <Spinner className="mr-1" /> Saving{"\u2026"}
+                        </>
+                      ) : (
+                        "Save as Draft"
+                      )}
                     </Button>
                   );
                 }
@@ -1224,7 +1365,9 @@ export function ListingEditor({
                         variant="outline"
                         size="sm"
                         disabled={isPending}
-                        onClick={() => { submitActionRef.current = "save"; }}
+                        onClick={() => {
+                          submitActionRef.current = "save";
+                        }}
                       >
                         Save
                       </Button>
@@ -1232,11 +1375,17 @@ export function ListingEditor({
                         type="submit"
                         size="sm"
                         disabled={isPending}
-                        onClick={() => { submitActionRef.current = "resubmit"; }}
+                        onClick={() => {
+                          submitActionRef.current = "resubmit";
+                        }}
                       >
                         {isPending && submitActionRef.current === "resubmit" ? (
-                          <><Spinner className="mr-1" /> Resubmitting{"\u2026"}</>
-                        ) : "Resubmit"}
+                          <>
+                            <Spinner className="mr-1" /> Resubmitting{"\u2026"}
+                          </>
+                        ) : (
+                          "Resubmit"
+                        )}
                       </Button>
                     </>
                   );
@@ -1272,11 +1421,16 @@ export function ListingEditor({
                           type="submit"
                           size="sm"
                           disabled={isPending}
-                          onClick={() => { submitActionRef.current = "approve"; }}
+                          onClick={() => {
+                            submitActionRef.current = "approve";
+                          }}
                           className="gap-1.5"
                         >
-                          {isPending && submitActionRef.current === "approve" ? (
-                            <><Spinner className="mr-1" /> Approving{"\u2026"}</>
+                          {isPending &&
+                          submitActionRef.current === "approve" ? (
+                            <>
+                              <Spinner className="mr-1" /> Approving{"\u2026"}
+                            </>
                           ) : (
                             <>
                               <CheckCircle className="size-4" />
@@ -1295,7 +1449,9 @@ export function ListingEditor({
                         variant="outline"
                         size="sm"
                         disabled={isPending}
-                        onClick={() => { submitActionRef.current = "save"; }}
+                        onClick={() => {
+                          submitActionRef.current = "save";
+                        }}
                       >
                         Save
                       </Button>
@@ -1303,11 +1459,15 @@ export function ListingEditor({
                         type="submit"
                         size="sm"
                         disabled={isPending}
-                        onClick={() => { submitActionRef.current = "approve"; }}
+                        onClick={() => {
+                          submitActionRef.current = "approve";
+                        }}
                         className="gap-1.5"
                       >
                         {isPending && submitActionRef.current === "approve" ? (
-                          <><Spinner className="mr-1" /> Approving{"\u2026"}</>
+                          <>
+                            <Spinner className="mr-1" /> Approving{"\u2026"}
+                          </>
                         ) : (
                           <>
                             <CheckCircle className="size-4" />
@@ -1325,11 +1485,17 @@ export function ListingEditor({
                     type="submit"
                     size="sm"
                     disabled={isPending}
-                    onClick={() => { submitActionRef.current = "save"; }}
+                    onClick={() => {
+                      submitActionRef.current = "save";
+                    }}
                   >
                     {isPending ? (
-                      <><Spinner className="mr-1" /> Saving{"\u2026"}</>
-                    ) : "Save"}
+                      <>
+                        <Spinner className="mr-1" /> Saving{"\u2026"}
+                      </>
+                    ) : (
+                      "Save"
+                    )}
                   </Button>
                 );
               })()}
@@ -1341,7 +1507,9 @@ export function ListingEditor({
             <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-800">Returned for Rework</p>
+                <p className="text-sm font-medium text-amber-800">
+                  Returned for Rework
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {listing.rejection_reason}
                 </p>
@@ -1354,10 +1522,15 @@ export function ListingEditor({
             <ol className="flex items-center">
               {STEP_META.map((meta, idx) => {
                 const Icon = meta.icon;
-                const isCompleted =
-                  (isEditing || isDraftMode) ? idx !== currentStep : stepDone[idx] && idx < currentStep;
+                const isCompleted = isEditing
+                  ? idx !== currentStep
+                  : stepDone[idx] && idx < currentStep;
                 const isCurrent = idx === currentStep;
-                const isClickable = isEditing || isDraftMode || idx < currentStep || stepDone[idx];
+                const isClickable =
+                  isEditing ||
+                  isDraftMode ||
+                  idx < currentStep ||
+                  stepDone[idx];
 
                 return (
                   <li
@@ -1412,7 +1585,11 @@ export function ListingEditor({
                         <div
                           className={cn(
                             "h-full rounded-full bg-primary transition-all duration-500",
-                            ((isEditing || isDraftMode) ? idx < currentStep : stepDone[idx] && idx < currentStep)
+                            (
+                              isEditing
+                                ? idx < currentStep
+                                : stepDone[idx] && idx < currentStep
+                            )
                               ? "w-full"
                               : "w-0",
                           )}
@@ -1505,14 +1682,18 @@ export function ListingEditor({
                 onSelect={(name) => setSelectedModel(name)}
               />
               {step0Attempted && !selectedModel && (
-                <p className="text-destructive text-xs">Please select a model.</p>
+                <p className="text-destructive text-xs">
+                  Please select a model.
+                </p>
               )}
             </div>
 
             {/* Listing Type — create/draft mode only */}
             {(!isEditing || isDraftMode) && (
               <div className="flex flex-col gap-3">
-                <SubSectionLabel icon={ShoppingCart}>Listing Type</SubSectionLabel>
+                <SubSectionLabel icon={ShoppingCart}>
+                  Listing Type
+                </SubSectionLabel>
                 <div className="grid grid-cols-2 gap-3">
                   <OptionCard
                     selected={forSale}
@@ -1603,7 +1784,9 @@ export function ListingEditor({
               <label className="flex items-center gap-1.5 text-sm font-medium">
                 <ClipboardList className="size-4 text-muted-foreground" />
                 Specifications{" "}
-                <span className="text-muted-foreground font-normal">(optional)</span>
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
               </label>
               <CustomFieldsSection
                 templates={templates}
@@ -1654,7 +1837,9 @@ export function ListingEditor({
               <div className="flex flex-col gap-3">
                 <Combobox
                   value={selectedPartner}
-                  defaultInputValue={savedState?.selectedPartner ?? initPartnerLabel}
+                  defaultInputValue={
+                    savedState?.selectedPartner ?? initPartnerLabel
+                  }
                   onValueChange={(val) => setSelectedPartner(val ?? "")}
                   items={partnerNames}
                 >
@@ -1683,7 +1868,9 @@ export function ListingEditor({
                 <label className="flex items-center justify-between rounded-lg border px-4 py-3">
                   <div className="flex items-center gap-2">
                     <EyeOff className="size-4 text-muted-foreground" />
-                    <span className="text-sm">Hide seller info from buyers</span>
+                    <span className="text-sm">
+                      Hide seller info from buyers
+                    </span>
                   </div>
                   <Switch
                     checked={hidePartner}
@@ -1714,10 +1901,15 @@ export function ListingEditor({
                   <Combobox
                     value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
                     defaultInputValue={
-                      stateRegionNameById.get(savedState?.selectedStateRegionId ?? initLocation.stateRegionId) ?? ""
+                      stateRegionNameById.get(
+                        savedState?.selectedStateRegionId ??
+                          initLocation.stateRegionId,
+                      ) ?? ""
                     }
                     onValueChange={(val) => {
-                      const id = val ? (stateRegionIdByName.get(val) ?? "") : "";
+                      const id = val
+                        ? (stateRegionIdByName.get(val) ?? "")
+                        : "";
                       setSelectedStateRegionId(id);
                       setSelectedDistrictId("");
                       setSelectedTownshipId("");
@@ -1753,7 +1945,10 @@ export function ListingEditor({
                     <Combobox
                       value={districtNameById.get(selectedDistrictId) ?? ""}
                       defaultInputValue={
-                        districtNameById.get(savedState?.selectedDistrictId ?? initLocation.districtId) ?? ""
+                        districtNameById.get(
+                          savedState?.selectedDistrictId ??
+                            initLocation.districtId,
+                        ) ?? ""
                       }
                       onValueChange={(val) => {
                         const id = val ? (districtIdByName.get(val) ?? "") : "";
@@ -1797,7 +1992,11 @@ export function ListingEditor({
                       }
                       defaultInputValue={
                         savedState
-                          ? (filteredTownships.find((t) => String(t.township_id) === savedState.selectedTownshipId)?.name ?? "")
+                          ? (filteredTownships.find(
+                              (t) =>
+                                String(t.township_id) ===
+                                savedState.selectedTownshipId,
+                            )?.name ?? "")
                           : selectedTownshipId === initLocation.townshipId
                             ? (sourceData?.township_name ?? "")
                             : ""
@@ -1916,7 +2115,11 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setSaleDisplayCurrency}
                       hidePrice={saleHidePrice}
                       onHidePriceChange={setSaleHidePrice}
-                      error={step1Attempted && !salePriceValid ? "Please enter a sale price" : undefined}
+                      error={
+                        step1Attempted && !salePriceValid
+                          ? "Please enter a sale price"
+                          : undefined
+                      }
                     />
                   )}
                   {forRent && (
@@ -1943,7 +2146,11 @@ export function ListingEditor({
                       onDisplayCurrencyChange={setRentDisplayCurrency}
                       hidePrice={rentHidePrice}
                       onHidePriceChange={setRentHidePrice}
-                      error={step1Attempted && !rentPriceValid ? "Please enter a rental price" : undefined}
+                      error={
+                        step1Attempted && !rentPriceValid
+                          ? "Please enter a rental price"
+                          : undefined
+                      }
                     />
                   )}
                   {!forSale && !forRent && (
@@ -1987,7 +2194,9 @@ export function ListingEditor({
                 <ImageIcon className="size-4 text-muted-foreground" />
                 Thumbnail
                 {isCreateMode && (
-                  <span className="text-destructive text-xs font-normal">*</span>
+                  <span className="text-destructive text-xs font-normal">
+                    *
+                  </span>
                 )}
               </label>
               <ImageInput
@@ -1998,7 +2207,9 @@ export function ListingEditor({
                 aspectClassName="aspect-video w-full max-w-xs"
               />
               {submitted && isCreateMode && !thumbnailUrl && (
-                <p className="text-destructive text-xs">Thumbnail is required.</p>
+                <p className="text-destructive text-xs">
+                  Thumbnail is required.
+                </p>
               )}
             </div>
 
@@ -2008,7 +2219,9 @@ export function ListingEditor({
                 <Camera className="size-4 text-muted-foreground" />
                 Product Photos
                 {isCreateMode && (
-                  <span className="text-destructive text-xs font-normal">*</span>
+                  <span className="text-destructive text-xs font-normal">
+                    *
+                  </span>
                 )}
               </label>
               <Suspense
@@ -2024,7 +2237,9 @@ export function ListingEditor({
                 />
               </Suspense>
               {submitted && isCreateMode && galleryItems.length === 0 && (
-                <p className="text-destructive text-xs">At least one photo is required.</p>
+                <p className="text-destructive text-xs">
+                  At least one photo is required.
+                </p>
               )}
             </div>
 
@@ -2043,11 +2258,17 @@ export function ListingEditor({
                 size="sm"
                 disabled={isPending}
                 onClick={() => {
-                  submitActionRef.current = isRework ? "resubmit" : isEditing ? "save" : "submit";
+                  submitActionRef.current = isRework
+                    ? "resubmit"
+                    : isEditing
+                      ? "save"
+                      : "submit";
                 }}
               >
                 {isPending ? (
-                  <><Spinner className="mr-1" /> Saving{"\u2026"}</>
+                  <>
+                    <Spinner className="mr-1" /> Saving{"\u2026"}
+                  </>
                 ) : isRework ? (
                   "Resubmit"
                 ) : isEditing ? (

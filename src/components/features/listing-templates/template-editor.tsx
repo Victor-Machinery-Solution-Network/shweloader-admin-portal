@@ -22,7 +22,10 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { RequiredInput, FormSubmittedContext } from "@/components/ui/required-input";
+import {
+  RequiredInput,
+  FormSubmittedContext,
+} from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { TemplateFieldCard } from "./template-field-card";
 import {
@@ -149,9 +152,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     // Re-key fields based on final labels before saving
     const existingKeys: string[] = [];
     const finalFields = fields.map((f, i) => {
-      const key = f.label.trim()
-        ? generateKey(f.label, existingKeys)
-        : f.key;
+      const key = f.label.trim() ? generateKey(f.label, existingKeys) : f.key;
       existingKeys.push(key);
       return { ...f, key, order: i };
     });
@@ -183,7 +184,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     >
       <FormSubmittedContext value={submitted}>
         {/* ── Header ──────────────────────────────────────────────── */}
-        <div className="border-b px-6 py-4">
+        <div className="bg-background/95 sticky top-0 z-10 border-b px-6 py-4 backdrop-blur-sm">
           <Link
             href={ROUTES.LISTING_TEMPLATES}
             className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1.5 text-sm transition-colors"

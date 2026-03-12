@@ -1,14 +1,25 @@
 "use server";
 
-import { requirePermission, assertBulkLimit, getErrorMessage } from "@/lib/actions/utils";
+import {
+  requirePermission,
+  assertBulkLimit,
+  getErrorMessage,
+} from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getBulkUploadConfig } from "@/lib/bulk-upload/config";
 import { generateTemplate } from "@/lib/bulk-upload/excel-template";
 import { parseExcelFile } from "@/lib/bulk-upload/excel-parser";
 import { validateCell, resolveValue } from "@/lib/bulk-upload/validators";
-import { fetchLookupData, fetchAssociationData } from "@/lib/bulk-upload/lookups";
+import {
+  fetchLookupData,
+  fetchAssociationData,
+} from "@/lib/bulk-upload/lookups";
 import { brandService } from "@/lib/services/brand";
-import { stateRegionService, districtService, townshipService } from "@/lib/services/location";
+import {
+  stateRegionService,
+  districtService,
+  townshipService,
+} from "@/lib/services/location";
 import {
   mainCategoryService,
   subCategoryService,
@@ -36,25 +47,32 @@ import type {
 // ─── Entity Key → Feature Name Mapping ────────────────────────────────────────
 
 const ENTITY_FEATURE_MAP: Record<string, string> = {
-  "brands": "brands",
+  brands: "brands",
   "article-categories": "article_categories",
   "business-types": "business_types",
-  "announcements": "announcements",
+  announcements: "announcements",
   "state-regions": "locations",
-  "districts": "locations",
-  "locations": "locations",
+  districts: "locations",
+  locations: "locations",
   "equipment-main-categories": "equipment_main_categories",
   "equipment-sub-categories": "equipment_sub_categories",
   "attachment-categories": "attachment_categories",
   "attachment-models": "attachment_models",
   "equipment-models": "equipment_models",
-  "listings": "sale_listings",
+  listings: "sale_listings",
 };
 
 function getFeatureForEntity(entityKey: string): string {
   const feature = ENTITY_FEATURE_MAP[entityKey];
   if (!feature) throw new Error(`Unknown entity key: ${entityKey}`);
   return feature;
+}
+
+function getBulkImportErrorMessage(error: unknown): string {
+  const mapped = getErrorMessage(error, "");
+  if (mapped) return mapped;
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return "Import failed";
 }
 
 // ─── Template Download ────────────────────────────────────────────────────────
@@ -173,9 +191,7 @@ export async function parseAndValidateExcel(
     return {
       success: false,
       error:
-        error instanceof Error
-          ? error.message
-          : "Failed to parse Excel file",
+        error instanceof Error ? error.message : "Failed to parse Excel file",
     };
   }
 }
@@ -186,11 +202,23 @@ export async function processBulkImport(
   entityKey: string,
   rows: ParsedRow[],
 ): Promise<ImportResult> {
-  const userId = await requirePermission(getFeatureForEntity(entityKey), "create");
+  const userId = await requirePermission(
+    getFeatureForEntity(entityKey),
+    "create",
+  );
   const config = getBulkUploadConfig(entityKey);
 
   // Only process valid rows
   const validRows = rows.filter((r) => r.status === "valid");
+  if (validRows.length === 0) {
+    return {
+      total: rows.length,
+      succeeded: 0,
+      failed: 0,
+      skipped: rows.length,
+      rows: [],
+    };
+  }
   assertBulkLimit(validRows);
 
   const lookups = await fetchLookupData(config.lookupKeys);
@@ -216,9 +244,7 @@ export async function processBulkImport(
   for (let i = 0; i < validRows.length; i += batchSize) {
     const batch = validRows.slice(i, i + batchSize);
     const batchResults = await Promise.allSettled(
-      batch.map((row) =>
-        processRow(entityKey, row, lookups, userId),
-      ),
+      batch.map((row) => processRow(entityKey, row, lookups, userId)),
     );
 
     for (let j = 0; j < batchResults.length; j++) {
@@ -228,10 +254,9 @@ export async function processBulkImport(
         status: result.status === "fulfilled" ? "success" : "error",
         error:
           result.status === "rejected"
-            ? getErrorMessage(result.reason, "Import failed")
+            ? getBulkImportErrorMessage(result.reason)
             : undefined,
-        createdId:
-          result.status === "fulfilled" ? result.value : undefined,
+        createdId: result.status === "fulfilled" ? result.value : undefined,
       };
       results.push(rowResult);
       if (rowResult.status === "success") succeeded++;
@@ -267,7 +292,10 @@ export async function processBulkImportWithImages(
   entityKey: string,
   formData: FormData,
 ): Promise<ImportResult> {
-  const userId = await requirePermission(getFeatureForEntity(entityKey), "create");
+  const userId = await requirePermission(
+    getFeatureForEntity(entityKey),
+    "create",
+  );
   const config = getBulkUploadConfig(entityKey);
 
   // Parse rows from FormData
@@ -275,6 +303,15 @@ export async function processBulkImportWithImages(
   const rows: ParsedRow[] = JSON.parse(rowsJson);
 
   const validRows = rows.filter((r) => r.status === "valid");
+  if (validRows.length === 0) {
+    return {
+      total: rows.length,
+      succeeded: 0,
+      failed: 0,
+      skipped: rows.length,
+      rows: [],
+    };
+  }
   assertBulkLimit(validRows);
 
   const lookups = await fetchLookupData(config.lookupKeys);
@@ -349,10 +386,9 @@ export async function processBulkImportWithImages(
         status: result.status === "fulfilled" ? "success" : "error",
         error:
           result.status === "rejected"
-            ? getErrorMessage(result.reason, "Import failed")
+            ? getBulkImportErrorMessage(result.reason)
             : undefined,
-        createdId:
-          result.status === "fulfilled" ? result.value : undefined,
+        createdId: result.status === "fulfilled" ? result.value : undefined,
       };
       results.push(rowResult);
       if (rowResult.status === "success") succeeded++;
@@ -408,11 +444,17 @@ async function uploadBulkFile(
     const entityName = textCol
       ? String(row.data[textCol.field] ?? `row-${row.rowIndex}`)
       : `row-${row.rowIndex}`;
-    const filename = `${slugify(entityName)}${ext}`;
+    const entityBase = slugify(entityName) || `row-${row.rowIndex}`;
+    const originalBase = slugify(file.name.replace(/\.[^.]+$/, "")) || "file";
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const filename = `${entityBase}-${originalBase}-${uniqueSuffix}${ext}`;
     const result = await uploadToR2(blob, r2Path, filename);
     return result.key;
-  } catch {
-    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload failed";
+    throw new Error(
+      `Failed uploading file "${file.name}" for row ${row.rowIndex}: ${message}`,
+    );
   }
 }
 
@@ -740,19 +782,22 @@ async function createListingRow(
   const thumbnailUrl = data.thumbnail_url as string | null;
 
   // Build custom_fields JSON from name-value column pairs
-  const customFieldEntries: { key: string; label: string; value: string }[] = [];
+  const customFieldEntries: { key: string; label: string; value: string }[] =
+    [];
   for (let i = 1; i <= 5; i++) {
     const name = data[`cf_${i}_name`] as string | null;
     const value = data[`cf_${i}_value`] as string | null;
     if (name?.trim() && value?.trim()) {
       const label = name.trim();
-      const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      const key = label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
       customFieldEntries.push({ key, label, value: value.trim() });
     }
   }
-  const customFields = customFieldEntries.length > 0
-    ? JSON.stringify(customFieldEntries)
-    : null;
+  const customFields =
+    customFieldEntries.length > 0 ? JSON.stringify(customFieldEntries) : null;
   const productImages = data.product_images as string | string[] | null;
 
   // Separate sale/rent prices and display currency

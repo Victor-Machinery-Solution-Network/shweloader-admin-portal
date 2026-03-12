@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { RequiredInput } from "@/components/ui/required-input";
+import { FieldError, RequiredInput } from "@/components/ui/required-input";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -101,152 +101,162 @@ export function UserForm({
       className="sm:max-w-2xl"
     >
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-          {/* Row 1: Identity (required) */}
-          <Field orientation="vertical">
-            <FieldLabel>Username</FieldLabel>
-            <FieldContent>
-              <RequiredInput
-                name="username"
-                placeholder="e.g. john_doe"
-                errorMessage="Username is required"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field orientation="vertical">
-            <FieldLabel>Full Name</FieldLabel>
-            <FieldContent>
-              <RequiredInput
-                name="full_name"
-                placeholder="e.g. Aung Kyaw"
-                errorMessage="Full name is required"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          {/* Row 2: Contact (phone required, email optional) */}
-          <Field orientation="vertical">
-            <FieldLabel>Phone</FieldLabel>
-            <FieldContent>
-              <RequiredInput
-                name="phone"
-                placeholder="e.g. 09xxxxxxxxx"
-                errorMessage="Phone number is required"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field orientation="vertical">
-            <FieldLabel>
-              Email{" "}
-              <span className="font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="email"
-                type="email"
-                placeholder="e.g. user@example.com"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          {/* Row 3: Business type + specify (if Other) */}
-          <Field orientation="vertical" className={isOther ? undefined : "sm:col-span-2 sm:max-w-[calc(50%-0.75rem)]"}>
-            <FieldLabel>Business Type</FieldLabel>
-            <FieldContent>
-              <Combobox
-                value={selectedBT}
-                onValueChange={(val) => setSelectedBT(val ?? "")}
-                items={btNames}
-              >
-                <ComboboxInput
-                  placeholder="Select business type..."
-                  showClear={!!selectedBT}
-                />
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No business type found</ComboboxEmpty>
-                    <ComboboxCollection>
-                      {(name) => (
-                        <ComboboxItem key={name} value={name}>
-                          {name}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxCollection>
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </FieldContent>
-          </Field>
-
-          {isOther && (
-            <Field orientation="vertical">
-              <FieldLabel>Specify Business Type</FieldLabel>
-              <FieldContent>
-                <Input
-                  name="business_type_other"
-                  placeholder="e.g. Consulting Firm"
-                  autoComplete="off"
-                  autoFocus
-                />
-              </FieldContent>
-            </Field>
-          )}
-
-          {/* Row 4: Company + Address */}
-          <Field orientation="vertical">
-            <FieldLabel>
-              Company Name{" "}
-              <span className="font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="company_name"
-                placeholder="e.g. ABC Construction Co."
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          <Field orientation="vertical">
-            <FieldLabel>
-              Address{" "}
-              <span className="font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                name="address"
-                placeholder="e.g. No. 123, Main Street, Yangon"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-
-          {/* Partner toggle */}
-          <div className="sm:col-span-2 flex items-center justify-between rounded-lg border px-4 py-3">
-            <Label htmlFor="partner-switch" className="cursor-pointer">
-              <div className="font-medium">Approved Partner</div>
-              <p className="text-muted-foreground text-sm font-normal">
-                Grant partner status to this user
-              </p>
-            </Label>
-            <Switch
-              id="partner-switch"
-              checked={isPartner}
-              onCheckedChange={setIsPartner}
+        {/* Row 1: Identity (required) */}
+        <Field orientation="vertical">
+          <FieldLabel>Username</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="username"
+              placeholder="e.g. john_doe"
+              errorMessage="Username is required"
+              autoComplete="off"
             />
-          </div>
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>Full Name</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="full_name"
+              placeholder="e.g. Aung Kyaw"
+              errorMessage="Full name is required"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        {/* Row 2: Contact (phone required, email optional) */}
+        <Field orientation="vertical">
+          <FieldLabel>Phone</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="phone"
+              placeholder="e.g. 09xxxxxxxxx"
+              errorMessage="Phone number is required"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>
+            Email{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="email"
+              type="email"
+              placeholder="e.g. user@example.com"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        {/* Row 3: Business type + specify (if Other) */}
+        <Field
+          orientation="vertical"
+          className={
+            isOther ? undefined : "sm:col-span-2 sm:max-w-[calc(50%-0.75rem)]"
+          }
+        >
+          <FieldLabel>Business Type</FieldLabel>
+          <FieldContent>
+            <Combobox
+              value={selectedBT}
+              onValueChange={(val) => setSelectedBT(val ?? "")}
+              items={btNames}
+            >
+              <ComboboxInput
+                placeholder="Select business type..."
+                showClear={!!selectedBT}
+              />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No business type found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(name) => (
+                      <ComboboxItem key={name} value={name}>
+                        {name}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FieldError
+              show={!selectedBT}
+              message="Business type is required"
+            />
+          </FieldContent>
+        </Field>
+
+        {isOther && (
+          <Field orientation="vertical">
+            <FieldLabel>Specify Business Type</FieldLabel>
+            <FieldContent>
+              <RequiredInput
+                name="business_type_other"
+                placeholder="e.g. Consulting Firm"
+                errorMessage="Please specify the business type"
+                autoComplete="off"
+                autoFocus
+              />
+            </FieldContent>
+          </Field>
+        )}
+
+        {/* Row 4: Company + Address */}
+        <Field orientation="vertical">
+          <FieldLabel>
+            Company Name{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="company_name"
+              placeholder="e.g. ABC Construction Co."
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>
+            Address{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </FieldLabel>
+          <FieldContent>
+            <Input
+              name="address"
+              placeholder="e.g. No. 123, Main Street, Yangon"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        {/* Partner toggle */}
+        <div className="sm:col-span-2 flex items-center justify-between rounded-lg border px-4 py-3">
+          <Label htmlFor="partner-switch" className="cursor-pointer">
+            <div className="font-medium">Approved Partner</div>
+            <p className="text-muted-foreground text-sm font-normal">
+              Grant partner status to this user
+            </p>
+          </Label>
+          <Switch
+            id="partner-switch"
+            checked={isPartner}
+            onCheckedChange={setIsPartner}
+          />
         </div>
-      </FormDialog>
+      </div>
+    </FormDialog>
   );
 }
