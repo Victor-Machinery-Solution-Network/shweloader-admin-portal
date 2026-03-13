@@ -31,6 +31,7 @@ import {
 import { Field, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field";
 import { ImageInput } from "@/components/ui/image-input";
 import { CarouselImageCard } from "./carousel-image-card";
+import { FocalPointModal } from "@/components/shared/focal-point-modal";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
@@ -60,6 +61,10 @@ export function CarouselImageGrid({
   const [linkUrl, setLinkUrl] = useState("");
   const [hasFile, setHasFile] = useState(false);
   const [isAdding, startAddTransition] = useTransition();
+  const [focalPointImage, setFocalPointImage] = useState<{
+    imageId: number;
+    imageUrl: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -98,6 +103,9 @@ export function CarouselImageGrid({
       if (result.success) {
         toast.success("Image added");
         setShowAddDialog(false);
+        if (result.imageId && result.imageUrl) {
+          setFocalPointImage({ imageId: result.imageId, imageUrl: result.imageUrl });
+        }
       } else {
         toast.error(result.error ?? "Failed to add image");
       }
@@ -126,6 +134,12 @@ export function CarouselImageGrid({
                     key={image.image_id}
                     image={image}
                     index={index + 1}
+                    onAdjustPosition={() =>
+                      setFocalPointImage({
+                        imageId: image.image_id,
+                        imageUrl: image.image_url,
+                      })
+                    }
                   />
                 ))}
 
@@ -178,6 +192,20 @@ export function CarouselImageGrid({
           )}
         </div>
       )}
+
+      {/* ── Focal Point Modal ────────────────────────────────────── */}
+      <FocalPointModal
+        open={focalPointImage !== null}
+        imageUrl={focalPointImage?.imageUrl ?? ""}
+        aspectRatio={16 / 9}
+        onSave={async (point) => {
+          if (!focalPointImage) return;
+          const { updateImageFocalPoint } = await import("@/lib/actions/carousel");
+          await updateImageFocalPoint(focalPointImage.imageId, point.x, point.y);
+          setFocalPointImage(null);
+        }}
+        onSkip={() => setFocalPointImage(null)}
+      />
 
       {/* ── Add Image Dialog ─────────────────────────────────────── */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

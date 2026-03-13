@@ -9,6 +9,7 @@ import {
   EyeOff,
   Link,
   ExternalLink,
+  Move,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
@@ -34,9 +35,10 @@ import type { CarouselImageWithDetails } from "@/types/carousel";
 interface CarouselImageCardProps {
   image: CarouselImageWithDetails;
   index: number;
+  onAdjustPosition?: () => void;
 }
 
-export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
+export function CarouselImageCard({ image, index, onAdjustPosition }: CarouselImageCardProps) {
   const canEdit = useHasPermission("carousels", "edit");
   const canDelete = useHasPermission("carousels", "delete");
   const [showDelete, setShowDelete] = useState(false);
@@ -195,6 +197,22 @@ export function CarouselImageCard({ image, index }: CarouselImageCardProps) {
                     <TooltipContent>
                       {image.link_url ? "Edit link" : "Add link"}
                     </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {canEdit && onAdjustPosition && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Adjust image position"
+                        className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-black/70"
+                        onClick={onAdjustPosition}
+                      >
+                        <Move aria-hidden="true" className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Adjust position</TooltipContent>
                   </Tooltip>
                 )}
 

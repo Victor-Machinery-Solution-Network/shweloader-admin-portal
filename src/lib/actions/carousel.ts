@@ -57,7 +57,7 @@ export async function addCarouselImage(
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true };
+    return { success: true, imageId, imageUrl: imageKey };
   } catch (error) {
     return {
       success: false,
@@ -136,6 +136,24 @@ export async function toggleCarouselImageActive(
       success: false,
       error: getErrorMessage(error, "Failed to toggle active state"),
     };
+  }
+}
+
+export async function updateImageFocalPoint(
+  imageId: number,
+  focalX: number,
+  focalY: number,
+) {
+  try {
+    await requirePermission("carousels", "edit");
+    await d1.query(
+      "UPDATE image SET focal_x = ?, focal_y = ? WHERE image_id = ?",
+      [focalX, focalY, imageId],
+    );
+    invalidateTag(CACHE_TAGS.CAROUSELS);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: getErrorMessage(error, "Failed to update focal point") };
   }
 }
 
