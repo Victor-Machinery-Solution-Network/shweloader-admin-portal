@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -39,13 +40,16 @@ export function FocalPointModal({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const hasInitialized = useRef(false);
 
   const initializePosition = useCallback(() => {
+    if (hasInitialized.current) return;
     const img = imageRef.current;
     const container = containerRef.current;
     if (!img || !container || !img.naturalWidth) return;
 
     const containerWidth = container.clientWidth;
+    if (containerWidth === 0) return;
     const containerHeight = containerWidth / aspectRatio;
 
     const scaleX = containerWidth / img.naturalWidth;
@@ -64,26 +68,42 @@ export function FocalPointModal({
       x: -(initialFocalPoint.x * maxOffsetX),
       y: -(initialFocalPoint.y * maxOffsetY),
     });
-  }, [aspectRatio, initialFocalPoint]);
+    hasInitialized.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aspectRatio, initialFocalPoint.x, initialFocalPoint.y]);
 
   useEffect(() => {
     if (open) {
+      hasInitialized.current = false;
       const timer = setTimeout(initializePosition, 100);
       return () => clearTimeout(timer);
     }
   }, [open, initializePosition]);
 
-  const clampPosition = useCallback(
-    (x: number, y: number) => {
+  // Window-level mouse tracking for reliable drag behavior
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
       const maxOffsetX = imageSize.width - containerSize.width;
       const maxOffsetY = imageSize.height - containerSize.height;
-      return {
-        x: Math.min(0, Math.max(-maxOffsetX, x)),
-        y: Math.min(0, Math.max(-maxOffsetY, y)),
-      };
-    },
-    [imageSize, containerSize]
-  );
+      setPosition({
+        x: Math.min(0, Math.max(-maxOffsetX, dragStart.current.posX + dx)),
+        y: Math.min(0, Math.max(-maxOffsetY, dragStart.current.posY + dy)),
+      });
+    };
+
+    const onMouseUp = () => setIsDragging(false);
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isDragging, imageSize, containerSize]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -98,22 +118,6 @@ export function FocalPointModal({
     },
     [position]
   );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isDragging) return;
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      setPosition(
-        clampPosition(dragStart.current.posX + dx, dragStart.current.posY + dy)
-      );
-    },
-    [isDragging, clampPosition]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
 
   const getFocalPoint = useCallback((): FocalPoint => {
     const maxOffsetX = imageSize.width - containerSize.width;
@@ -130,10 +134,10 @@ export function FocalPointModal({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Adjust Image Position</DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             Drag the image to set the focal point. This controls how the image
             is cropped in different display contexts.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div
@@ -141,9 +145,6 @@ export function FocalPointModal({
           className="relative overflow-hidden rounded-lg border bg-muted cursor-grab active:cursor-grabbing select-none"
           style={{ aspectRatio }}
           onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
         >
           <img
             ref={imageRef}
