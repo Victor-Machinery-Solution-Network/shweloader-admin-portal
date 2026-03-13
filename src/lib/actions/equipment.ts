@@ -29,9 +29,13 @@ export async function createMainCategory(formData: FormData) {
       requirePermission("equipment_main_categories", "create"),
       getNextDisplayOrder("equipment_main_category"),
     ]);
+    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
     await mainCategoryService.create({
       name: name.trim(),
       image_url,
+      focal_x,
+      focal_y,
       created_by,
       display_order,
     });
@@ -58,7 +62,9 @@ export async function updateMainCategory(id: number, formData: FormData) {
     const image_url = await processFileField(
       formData, "image_url", "categories/equipments/main/", name.trim(), existing?.image_url,
     );
-    await mainCategoryService.update(id, { name: name.trim(), image_url });
+    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
+    await mainCategoryService.update(id, { name: name.trim(), image_url, focal_x, focal_y });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     return { success: true };
@@ -154,10 +160,14 @@ export async function createSubCategory(formData: FormData) {
       requirePermission("equipment_sub_categories", "create"),
       getNextDisplayOrder("equipment_sub_category"),
     ]);
+    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
     await subCategoryService.create({
       name: name.trim(),
       category_id,
       image_url,
+      focal_x,
+      focal_y,
       created_by,
       display_order,
     });
@@ -188,10 +198,14 @@ export async function updateSubCategory(id: number, formData: FormData) {
     const image_url = await processFileField(
       formData, "image_url", "categories/equipments/sub/", name.trim(), existing?.image_url,
     );
+    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
     await subCategoryService.update(id, {
       name: name.trim(),
       category_id,
       image_url,
+      focal_x,
+      focal_y,
     });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
@@ -374,6 +388,8 @@ interface SubCategoryRow {
   category_id: number;
   name: string;
   image_url: string | null;
+  focal_x: number | null;
+  focal_y: number | null;
   display_order: string;
   created_by: number | null;
   created_at: string;
@@ -418,6 +434,8 @@ export async function getSubCategoriesPageData() {
     category_id: sc.category_id,
     name: sc.name,
     image_url: sc.image_url,
+    focal_x: sc.focal_x ?? null,
+    focal_y: sc.focal_y ?? null,
     display_order: sc.display_order,
     created_by: sc.created_by,
     created_at: sc.created_at,

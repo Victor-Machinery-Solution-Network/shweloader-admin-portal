@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, MoveHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { assetUrl } from '@/lib/r2-url';
+import { FocalPointModal } from '@/components/shared/focal-point-modal';
 
 interface FileInfo {
   name: string;
@@ -21,12 +22,23 @@ interface ImageInputProps {
   disabled?: boolean;
   /** CSS class for the aspect ratio container. Defaults to "aspect-video". */
   aspectClassName?: string;
+  /** Aspect ratio for the focal point preview (e.g. 3/2, 16/9, 1). */
+  aspectRatio?: number;
+  /** Called with the selected focal point when a file is chosen or adjusted. */
+  onFocalPointChange?: (point: { x: number; y: number }) => void;
+  /** Current focal point for existing images (used to pre-position the modal). */
+  focalPoint?: { x: number; y: number };
 }
 
 /**
  * Image input with drag-and-drop, click-to-upload, and preview.
  * Submits the File directly via FormData for R2 upload.
  * The file input uses the given `name` for form submission.
+ *
+ * When `onFocalPointChange` is provided a FocalPointModal opens after each
+ * file selection so the user can set the crop anchor before the file is
+ * committed. An "Adjust Position" overlay button also appears on hover for
+ * existing images.
  */
 export function ImageInput({
   name,
@@ -38,6 +50,9 @@ export function ImageInput({
   className,
   disabled = false,
   aspectClassName = 'aspect-video',
+  aspectRatio,
+  onFocalPointChange,
+  focalPoint,
 }: ImageInputProps) {
   // previewUrl: object URL for newly selected file, or existing R2 URL
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -47,6 +62,11 @@ export function ImageInput({
   const [removed, setRemoved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Focal point modal state
+  const [showFocalPoint, setShowFocalPoint] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingObjectUrl, setPendingObjectUrl] = useState<string | null>(null);
+
   // Display: new file preview (blob:), or R2 key → full URL from prop
   const displayUrl = previewUrl || (!removed ? assetUrl(controlledValue) : null) || null;
 
@@ -54,6 +74,25 @@ export function ImageInput({
   const urlFileName = controlledValue
     ? decodeURIComponent(controlledValue.split('/').pop() || 'image')
     : null;
+
+  /** Commit a chosen File to the form input and call onChange. */
+  const commitFile = useCallback(
+    (file: File, objectUrl: string) => {
+      setFileInfo({ name: file.name, size: file.size });
+      setRemoved(false);
+      setPreviewUrl(objectUrl);
+
+      // Set file on the input so FormData includes it
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dt.files;
+      }
+
+      onChange?.(objectUrl);
+    },
+    [onChange]
+  );
 
   const processFile = useCallback(
     (file: File) => {
@@ -69,23 +108,19 @@ export function ImageInput({
         return;
       }
 
-      setFileInfo({ name: file.name, size: file.size });
-      setRemoved(false);
-
-      // Create object URL for preview (no base64 needed)
       const objectUrl = URL.createObjectURL(file);
-      setPreviewUrl(objectUrl);
 
-      // Set file on the input so FormData includes it
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      if (fileInputRef.current) {
-        fileInputRef.current.files = dt.files;
+      if (onFocalPointChange) {
+        // Store file and open focal point modal — commit after user chooses
+        setPendingFile(file);
+        setPendingObjectUrl(objectUrl);
+        setShowFocalPoint(true);
+      } else {
+        // Original behavior: commit immediately
+        commitFile(file, objectUrl);
       }
-
-      onChange?.(objectUrl);
     },
-    [maxSizeMB, onChange]
+    [maxSizeMB, onFocalPointChange, commitFile]
   );
 
   const handleDragOver = useCallback(
@@ -145,6 +180,61 @@ export function ImageInput({
     [previewUrl, onChange]
   );
 
+  // ── Focal point modal handlers ─────────────────────────────────────────────
+
+  const handleFocalPointSave = useCallback(
+    (point: { x: number; y: number }) => {
+      if (pendingFile && pendingObjectUrl) {
+        commitFile(pendingFile, pendingObjectUrl);
+        onFocalPointChange?.(point);
+      }
+      setPendingFile(null);
+      setPendingObjectUrl(null);
+      setShowFocalPoint(false);
+    },
+    [pendingFile, pendingObjectUrl, commitFile, onFocalPointChange]
+  );
+
+  const handleFocalPointSkip = useCallback(() => {
+    if (pendingFile && pendingObjectUrl) {
+      commitFile(pendingFile, pendingObjectUrl);
+      onFocalPointChange?.({ x: 0.5, y: 0.5 });
+    }
+    setPendingFile(null);
+    setPendingObjectUrl(null);
+    setShowFocalPoint(false);
+  }, [pendingFile, pendingObjectUrl, commitFile, onFocalPointChange]);
+
+  /** Open the focal point modal for an existing (already committed) image. */
+  const handleAdjustPosition = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (displayUrl) {
+        // For existing images use the resolved URL (blob: or full R2 URL)
+        setPendingFile(null);
+        setPendingObjectUrl(displayUrl);
+        setShowFocalPoint(true);
+      }
+    },
+    [displayUrl]
+  );
+
+  /** When adjusting an existing image (no pending file), just update focal point. */
+  const handleExistingFocalPointSave = useCallback(
+    (point: { x: number; y: number }) => {
+      onFocalPointChange?.(point);
+      setPendingObjectUrl(null);
+      setShowFocalPoint(false);
+    },
+    [onFocalPointChange]
+  );
+
+  const handleExistingFocalPointSkip = useCallback(() => {
+    onFocalPointChange?.({ x: 0.5, y: 0.5 });
+    setPendingObjectUrl(null);
+    setShowFocalPoint(false);
+  }, [onFocalPointChange]);
+
   function formatSize(bytes: number) {
     return bytes < 1024 * 1024
       ? `${(bytes / 1024).toFixed(0)} KB`
@@ -160,6 +250,11 @@ export function ImageInput({
     const back = Math.floor(keep / 2);
     return name.slice(0, front) + '...' + name.slice(name.length - back - ext.length);
   }
+
+  // Which URL to pass to the focal point modal
+  const focalModalUrl = pendingObjectUrl ?? '';
+  // Is this the "adjust existing" flow (no pending file to commit)?
+  const isAdjustingExisting = showFocalPoint && !pendingFile;
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -182,7 +277,7 @@ export function ImageInput({
         {displayUrl ? (
           /* Preview state */
           <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border">
-            <div className="relative min-h-0 flex-1">
+            <div className="group relative min-h-0 flex-1">
               <img
                 src={displayUrl}
                 alt="Selected image preview"
@@ -197,6 +292,18 @@ export function ImageInput({
               >
                 <X className="size-4" />
               </button>
+              {onFocalPointChange && aspectRatio && (
+                <button
+                  type="button"
+                  onClick={handleAdjustPosition}
+                  disabled={disabled}
+                  className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-sm opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80 disabled:opacity-50"
+                  aria-label="Adjust image position"
+                >
+                  <MoveHorizontal className="size-3" />
+                  Adjust Position
+                </button>
+              )}
             </div>
             <div className="shrink-0 truncate border-t bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
               {fileInfo ? (
@@ -240,6 +347,18 @@ export function ImageInput({
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* Focal point modal — shown after file selection or when adjusting existing */}
+      {showFocalPoint && focalModalUrl && aspectRatio && (
+        <FocalPointModal
+          open={showFocalPoint}
+          imageUrl={focalModalUrl}
+          aspectRatio={aspectRatio}
+          initialFocalPoint={isAdjustingExisting ? (focalPoint ?? { x: 0.5, y: 0.5 }) : { x: 0.5, y: 0.5 }}
+          onSave={isAdjustingExisting ? handleExistingFocalPointSave : handleFocalPointSave}
+          onSkip={isAdjustingExisting ? handleExistingFocalPointSkip : handleFocalPointSkip}
+        />
+      )}
     </div>
   );
 }

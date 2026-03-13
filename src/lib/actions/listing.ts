@@ -280,16 +280,26 @@ async function generateListingId(
 
 // ─── Helper: create product_list and get its ID ─────────────────────────────
 
+function parseThumbnailFocal(formData: FormData) {
+  const fx = parseFloat(formData.get("thumbnail_focal_x") as string);
+  const fy = parseFloat(formData.get("thumbnail_focal_y") as string);
+  return {
+    thumbnail_focal_x: isNaN(fx) ? 0.5 : fx,
+    thumbnail_focal_y: isNaN(fy) ? 0.5 : fy,
+  };
+}
+
 async function createProductAndGetId(
   productFields: ReturnType<typeof extractProductFields> & {
     thumbnail_url?: string | null;
   },
   created_by: number | null,
+  focalPoint?: { thumbnail_focal_x: number; thumbnail_focal_y: number },
 ) {
   const product = await productListService.create({
     ...productFields,
-    thumbnail_focal_x: 0.5,
-    thumbnail_focal_y: 0.5,
+    thumbnail_focal_x: focalPoint?.thumbnail_focal_x ?? 0.5,
+    thumbnail_focal_y: focalPoint?.thumbnail_focal_y ?? 0.5,
     created_by,
   });
   let productId = (product as unknown as Record<string, unknown>)?.id as number;
@@ -367,9 +377,11 @@ export async function createListing(formData: FormData) {
       forRent && (await hasApprovePermission("rent_listings"));
 
     // 1. Create product_list first (need ID for unique R2 paths)
+    const thumbFocal = parseThumbnailFocal(formData);
     const productId = await createProductAndGetId(
       { ...productFields, thumbnail_url: null },
       created_by,
+      thumbFocal,
     );
 
     // 2. Upload thumbnail using product_list_id for unique path
@@ -383,8 +395,7 @@ export async function createListing(formData: FormData) {
       uploadedKeys.push(thumbnail_url);
       await productListService.update(productId, {
         thumbnail_url,
-        thumbnail_focal_x: 0.5,
-        thumbnail_focal_y: 0.5,
+        ...thumbFocal,
       });
     }
 
@@ -553,6 +564,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     }
 
     const productFields = extractProductFields(formData);
+    const thumbFocal = parseThumbnailFocal(formData);
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
     const thumbnail_url = await processFileField(
@@ -567,8 +579,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
-      thumbnail_focal_x: 0.5,
-      thumbnail_focal_y: 0.5,
+      ...thumbFocal,
     });
 
     // 3. Update sale_listing
@@ -673,6 +684,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     }
 
     const productFields = extractProductFields(formData);
+    const thumbFocal = parseThumbnailFocal(formData);
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
     const thumbnail_url = await processFileField(
@@ -687,8 +699,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
-      thumbnail_focal_x: 0.5,
-      thumbnail_focal_y: 0.5,
+      ...thumbFocal,
     });
 
     // 3. Update rent_listing
@@ -1399,6 +1410,7 @@ export async function saveDraft(formData: FormData) {
       forRent,
     );
 
+    const thumbFocal = parseThumbnailFocal(formData);
     const product = await productListService.create({
       partner_id: partnerId,
       equipment_model_id: productType === "equipment" ? modelId : null,
@@ -1407,8 +1419,7 @@ export async function saveDraft(formData: FormData) {
       township_id: townshipId,
       hide_partner: hidePartner,
       custom_fields: customFields,
-      thumbnail_focal_x: 0.5,
-      thumbnail_focal_y: 0.5,
+      ...thumbFocal,
       is_draft: 1,
       created_by: userId,
     });
@@ -1433,8 +1444,7 @@ export async function saveDraft(formData: FormData) {
       uploadedKeys.push(thumbnail_url);
       await productListService.update(productId, {
         thumbnail_url,
-        thumbnail_focal_x: 0.5,
-        thumbnail_focal_y: 0.5,
+        ...thumbFocal,
       });
     }
 
@@ -1508,6 +1518,7 @@ export async function updateDraft(productListId: number, formData: FormData) {
       row.thumbnail_url,
     );
 
+    const thumbFocal = parseThumbnailFocal(formData);
     await productListService.update(productListId, {
       partner_id: partnerId,
       equipment_model_id: productType === "equipment" ? modelId : null,
@@ -1517,8 +1528,7 @@ export async function updateDraft(productListId: number, formData: FormData) {
       hide_partner: hidePartner,
       custom_fields: customFields,
       thumbnail_url,
-      thumbnail_focal_x: 0.5,
-      thumbnail_focal_y: 0.5,
+      ...thumbFocal,
     });
 
     // Sync photos
@@ -1607,11 +1617,11 @@ export async function submitDraft(productListId: number, formData: FormData) {
     }
 
     // Update product_list: set is_draft=0 and update all fields
+    const thumbFocal = parseThumbnailFocal(formData);
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
-      thumbnail_focal_x: 0.5,
-      thumbnail_focal_y: 0.5,
+      ...thumbFocal,
       is_draft: 0,
     });
 

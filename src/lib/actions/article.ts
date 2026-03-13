@@ -53,6 +53,8 @@ export async function createArticle(formData: FormData) {
       }
     }
 
+    const cover_focal_x = parseFloat(formData.get("cover_focal_x") as string) || 0.5;
+    const cover_focal_y = parseFloat(formData.get("cover_focal_y") as string) || 0.5;
     await articleService.create({
       title: title.trim(),
       content: content?.trim() || null,
@@ -62,6 +64,8 @@ export async function createArticle(formData: FormData) {
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
       cover_image_url,
+      cover_focal_x,
+      cover_focal_y,
       estimated_read_time,
     });
     invalidateTag(CACHE_TAGS.ARTICLES);
@@ -109,6 +113,8 @@ export async function updateArticle(id: number, formData: FormData) {
     );
     const estimated_read_time = calculateReadTime(content);
 
+    const cover_focal_x = parseFloat(formData.get("cover_focal_x") as string) || 0.5;
+    const cover_focal_y = parseFloat(formData.get("cover_focal_y") as string) || 0.5;
     await articleService.update(id, {
       title: title.trim(),
       content: content?.trim() || null,
@@ -119,6 +125,8 @@ export async function updateArticle(id: number, formData: FormData) {
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
       cover_image_url,
+      cover_focal_x,
+      cover_focal_y,
       estimated_read_time,
     });
     await cleanupOldFile(existing?.cover_image_url, cover_image_url);
@@ -352,6 +360,8 @@ export async function createAndSubmitForReview(formData: FormData) {
       return { success: false, error: "Pending Review status not found" };
     }
 
+    const cover_focal_x = parseFloat(formData.get("cover_focal_x") as string) || 0.5;
+    const cover_focal_y = parseFloat(formData.get("cover_focal_y") as string) || 0.5;
     const created = await articleService.create({
       title: title.trim(),
       content: content?.trim() || null,
@@ -361,6 +371,8 @@ export async function createAndSubmitForReview(formData: FormData) {
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
       cover_image_url,
+      cover_focal_x,
+      cover_focal_y,
       estimated_read_time,
     });
     invalidateTag(CACHE_TAGS.ARTICLES);

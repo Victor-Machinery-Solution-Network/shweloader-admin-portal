@@ -43,6 +43,11 @@ export function SubCategoryForm({
   const [isPending, startTransition] = useTransition();
   const isEditing = !!subCategory;
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [focalPoint, setFocalPoint] = useState<{ x: number; y: number } | null>(
+    subCategory?.focal_x != null && subCategory?.focal_y != null
+      ? { x: subCategory.focal_x, y: subCategory.focal_y }
+      : null,
+  );
 
   // Build a name→id lookup map
   const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
@@ -66,6 +71,10 @@ export function SubCategoryForm({
       return;
     }
     formData.set("category_id", categoryId.toString());
+    if (focalPoint) {
+      formData.set("focal_x", String(focalPoint.x));
+      formData.set("focal_y", String(focalPoint.y));
+    }
 
     startTransition(async () => {
       const result = isEditing
@@ -159,7 +168,13 @@ export function SubCategoryForm({
         <Field orientation="vertical">
           <FieldLabel>Image</FieldLabel>
           <FieldContent>
-            <ImageInput name="image_url" value={subCategory?.image_url} />
+            <ImageInput
+              name="image_url"
+              value={subCategory?.image_url}
+              aspectRatio={3 / 2}
+              focalPoint={focalPoint ?? undefined}
+              onFocalPointChange={setFocalPoint}
+            />
           </FieldContent>
         </Field>
       </div>

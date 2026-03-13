@@ -119,6 +119,11 @@ export function ArticleEditor({
   const [coverImage, setCoverImage] = useState<string | null>(
     article?.cover_image_url ?? null,
   );
+  const [coverFocalPoint, setCoverFocalPoint] = useState<{ x: number; y: number } | null>(
+    article?.cover_focal_x != null && article?.cover_focal_y != null
+      ? { x: article.cover_focal_x, y: article.cover_focal_y }
+      : null,
+  );
   const [contentValue, setContentValue] = useState(article?.content ?? "");
 
   const categoryNames = categories.map((c) => c.name);
@@ -150,6 +155,11 @@ export function ArticleEditor({
         toast.error(`Required: ${missing.join(", ")}`);
         return;
       }
+    }
+
+    if (coverFocalPoint) {
+      formData.set("cover_focal_x", String(coverFocalPoint.x));
+      formData.set("cover_focal_y", String(coverFocalPoint.y));
     }
 
     const categoryMap = new Map(categories.map((c) => [c.name, c.category_id]));
@@ -686,6 +696,9 @@ export function ArticleEditor({
                     onChange={setCoverImage}
                     placeholder="Upload cover image"
                     maxSizeMB={50}
+                    aspectRatio={16 / 9}
+                    focalPoint={coverFocalPoint ?? undefined}
+                    onFocalPointChange={setCoverFocalPoint}
                   />
                   {strictValidation && !coverImage && (
                     <p className="text-destructive text-xs">Cover image is required</p>

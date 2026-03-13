@@ -700,6 +700,7 @@ export function ListingEditor({
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
     savedState?.thumbnailUrl ?? sourceData?.thumbnail_url ?? null,
   );
+  const [thumbnailFocalPoint, setThumbnailFocalPoint] = useState<{ x: number; y: number } | null>(null);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
     existingImages.map((img, i) => ({
       id: `img-${i}`,
@@ -1153,6 +1154,12 @@ export function ListingEditor({
     }
     if (customFieldValues.length > 0) {
       formData.set("custom_fields", JSON.stringify(customFieldValues));
+    }
+
+    // Append thumbnail focal point
+    if (thumbnailFocalPoint) {
+      formData.set("thumbnail_focal_x", String(thumbnailFocalPoint.x));
+      formData.set("thumbnail_focal_y", String(thumbnailFocalPoint.y));
     }
 
     // Append product photos
@@ -2209,6 +2216,9 @@ export function ListingEditor({
                 onChange={setThumbnailUrl}
                 placeholder="Upload cover"
                 aspectClassName="aspect-video w-full max-w-xs"
+                aspectRatio={1}
+                focalPoint={thumbnailFocalPoint ?? undefined}
+                onFocalPointChange={setThumbnailFocalPoint}
               />
               {submitted && isCreateMode && !thumbnailUrl && (
                 <p className="text-destructive text-xs">
