@@ -288,6 +288,8 @@ async function createProductAndGetId(
 ) {
   const product = await productListService.create({
     ...productFields,
+    thumbnail_focal_x: 0.5,
+    thumbnail_focal_y: 0.5,
     created_by,
   });
   let productId = (product as unknown as Record<string, unknown>)?.id as number;
@@ -379,7 +381,11 @@ export async function createListing(formData: FormData) {
     );
     if (thumbnail_url) {
       uploadedKeys.push(thumbnail_url);
-      await productListService.update(productId, { thumbnail_url });
+      await productListService.update(productId, {
+        thumbnail_url,
+        thumbnail_focal_x: 0.5,
+        thumbnail_focal_y: 0.5,
+      });
     }
 
     // 3. Create sale_listing if selected
@@ -561,6 +567,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
+      thumbnail_focal_x: 0.5,
+      thumbnail_focal_y: 0.5,
     });
 
     // 3. Update sale_listing
@@ -679,6 +687,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
+      thumbnail_focal_x: 0.5,
+      thumbnail_focal_y: 0.5,
     });
 
     // 3. Update rent_listing
@@ -1397,6 +1407,8 @@ export async function saveDraft(formData: FormData) {
       township_id: townshipId,
       hide_partner: hidePartner,
       custom_fields: customFields,
+      thumbnail_focal_x: 0.5,
+      thumbnail_focal_y: 0.5,
       is_draft: 1,
       created_by: userId,
     });
@@ -1419,7 +1431,11 @@ export async function saveDraft(formData: FormData) {
     );
     if (thumbnail_url) {
       uploadedKeys.push(thumbnail_url);
-      await productListService.update(productId, { thumbnail_url });
+      await productListService.update(productId, {
+        thumbnail_url,
+        thumbnail_focal_x: 0.5,
+        thumbnail_focal_y: 0.5,
+      });
     }
 
     // Upload photos if provided
@@ -1501,6 +1517,8 @@ export async function updateDraft(productListId: number, formData: FormData) {
       hide_partner: hidePartner,
       custom_fields: customFields,
       thumbnail_url,
+      thumbnail_focal_x: 0.5,
+      thumbnail_focal_y: 0.5,
     });
 
     // Sync photos
@@ -1592,6 +1610,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
     await productListService.update(productListId, {
       ...productFields,
       thumbnail_url,
+      thumbnail_focal_x: 0.5,
+      thumbnail_focal_y: 0.5,
       is_draft: 0,
     });
 
