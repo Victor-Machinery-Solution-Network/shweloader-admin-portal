@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useTransition } from "react";
+import { assetUrl } from "@/lib/r2-url";
 import { ImagePlus, Plus, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -64,6 +65,8 @@ export function CarouselImageGrid({
   const [focalPointImage, setFocalPointImage] = useState<{
     imageId: number;
     imageUrl: string;
+    focalX: number;
+    focalY: number;
   } | null>(null);
 
   const sensors = useSensors(
@@ -104,7 +107,7 @@ export function CarouselImageGrid({
         toast.success("Image added");
         setShowAddDialog(false);
         if (result.imageId && result.imageUrl) {
-          setFocalPointImage({ imageId: result.imageId, imageUrl: result.imageUrl });
+          setFocalPointImage({ imageId: result.imageId, imageUrl: result.imageUrl, focalX: 0.5, focalY: 0.5 });
         }
       } else {
         toast.error(result.error ?? "Failed to add image");
@@ -138,6 +141,8 @@ export function CarouselImageGrid({
                       setFocalPointImage({
                         imageId: image.image_id,
                         imageUrl: image.image_url,
+                        focalX: image.focal_x ?? 0.5,
+                        focalY: image.focal_y ?? 0.5,
                       })
                     }
                   />
@@ -196,13 +201,22 @@ export function CarouselImageGrid({
       {/* ── Focal Point Modal ────────────────────────────────────── */}
       <FocalPointModal
         open={focalPointImage !== null}
-        imageUrl={focalPointImage?.imageUrl ?? ""}
+        imageUrl={assetUrl(focalPointImage?.imageUrl ?? "") ?? ""}
         aspectRatio={16 / 9}
+        initialFocalPoint={
+          focalPointImage
+            ? { x: focalPointImage.focalX, y: focalPointImage.focalY }
+            : undefined
+        }
         onSave={async (point) => {
           if (!focalPointImage) return;
           const { updateImageFocalPoint } = await import("@/lib/actions/carousel");
-          await updateImageFocalPoint(focalPointImage.imageId, point.x, point.y);
-          setFocalPointImage(null);
+          const result = await updateImageFocalPoint(focalPointImage.imageId, point.x, point.y);
+          if (result.success) {
+            setFocalPointImage(null);
+          } else {
+            toast.error(result.error ?? "Failed to save focal point");
+          }
         }}
         onSkip={() => setFocalPointImage(null)}
       />

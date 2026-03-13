@@ -20,4 +20,6 @@ export interface CarouselImage {
 /** Carousel image with resolved image URL for display */
 export interface CarouselImageWithDetails extends CarouselImage {
   image_url: string;
+  focal_x: number;
+  focal_y: number;
 }

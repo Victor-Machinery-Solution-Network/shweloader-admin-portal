@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
@@ -12,7 +13,7 @@ import type { CarouselImageWithDetails } from "@/types/carousel";
 
 export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]> {
   const { results } = await d1.query<CarouselImageWithDetails>(
-    `SELECT ci.*, i.image_url
+    `SELECT ci.*, i.image_url, i.focal_x, i.focal_y
      FROM carousel_image ci
      JOIN image i ON ci.image_id = i.image_id
      ORDER BY ci.carousel_id ASC, ci.display_order ASC, ci.added_at ASC`,
@@ -144,6 +145,10 @@ export async function updateImageFocalPoint(
   focalX: number,
   focalY: number,
 ) {
+  if (focalX < 0 || focalX > 1 || focalY < 0 || focalY > 1) {
+    return { success: false, error: "Invalid focal point values" };
+  }
+
   try {
     await requirePermission("carousels", "edit");
     await d1.query(
@@ -151,6 +156,7 @@ export async function updateImageFocalPoint(
       [focalX, focalY, imageId],
     );
     invalidateTag(CACHE_TAGS.CAROUSELS);
+    revalidatePath("/carousel");
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to update focal point") };
