@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function ChatPage() {
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       <PageHeader
         title="Chat"
         description="Real-time conversations with users"
@@ -24,7 +24,7 @@ export default function ChatPage() {
           <ChatContent />
         </PermissionGate>
       </Suspense>
-    </>
+    </div>
   );
 }
 

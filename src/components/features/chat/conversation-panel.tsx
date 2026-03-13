@@ -20,7 +20,37 @@ import { useChatMessages } from "@/hooks/use-chat";
 import { sendMessage, closeSession } from "@/lib/actions/chat";
 import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
-import type { ChatSessionWithDetails } from "@/types/chat";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import type { ChatSessionWithDetails, ChatMessageWithDetails } from "@/types/chat";
+
+function parseDate(dateStr: string): Date {
+  return new Date(dateStr + "Z");
+}
+
+function formatDateLabel(date: Date): string {
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "MMMM d, yyyy");
+}
+
+function DateSeparator({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="flex-1 h-px bg-border" />
+      <span className="text-xs text-muted-foreground font-medium">{label}</span>
+      <div className="flex-1 h-px bg-border" />
+    </div>
+  );
+}
+
+/** Returns true if the next message is from the same sender */
+function isSameGroup(
+  current: ChatMessageWithDetails,
+  next: ChatMessageWithDetails | undefined,
+): boolean {
+  if (!next) return false;
+  return current.sender_type === next.sender_type;
+}
 
 interface ConversationPanelProps {
   session: ChatSessionWithDetails | null;
@@ -184,7 +214,7 @@ export function ConversationPanel({
 
       {/* Messages area */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="flex flex-col gap-4 px-4 py-4">
+        <div className="flex flex-col px-4 py-4">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <span className="text-sm text-muted-foreground">
@@ -199,12 +229,34 @@ export function ConversationPanel({
               fullPage={false}
             />
           ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-              />
-            ))
+            messages.map((msg, idx) => {
+              const prev = messages[idx - 1];
+              const next = messages[idx + 1];
+              const msgDate = parseDate(msg.created_at);
+
+              // Date separator: show when date changes between messages
+              const showDateSep =
+                !prev || !isSameDay(parseDate(prev.created_at), msgDate);
+
+              // Grouping: consecutive messages from same sender
+              const isLastInGroup = !isSameGroup(msg, next);
+              const isFirstInGroup = !prev || prev.sender_type !== msg.sender_type;
+
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(isFirstInGroup ? "mt-4" : "mt-1")}
+                >
+                  {showDateSep && <DateSeparator label={formatDateLabel(msgDate)} />}
+                  <MessageBubble
+                    message={msg}
+                    showAvatar={isLastInGroup}
+                    showTimestamp={isLastInGroup}
+                    isGrouped={!isFirstInGroup}
+                  />
+                </div>
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>

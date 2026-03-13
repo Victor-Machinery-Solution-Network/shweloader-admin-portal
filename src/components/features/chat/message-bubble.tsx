@@ -9,6 +9,9 @@ import type { ChatMessageWithDetails } from "@/types/chat";
 
 interface MessageBubbleProps {
   message: ChatMessageWithDetails;
+  showAvatar?: boolean;
+  showTimestamp?: boolean;
+  isGrouped?: boolean; // true if this message continues a group from the same sender
 }
 
 function getInitials(name: string): string {
@@ -30,7 +33,12 @@ function formatTimestamp(dateStr: string): string {
   }
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  showAvatar = true,
+  showTimestamp = true,
+  isGrouped = false,
+}: MessageBubbleProps) {
   const isAdminMessage = message.sender_type === "admin";
   const initials = getInitials(message.sender_name);
   const timestamp = formatTimestamp(message.created_at);
@@ -49,19 +57,24 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         isAdminMessage ? "flex-row-reverse" : "flex-row",
       )}
     >
-      {/* Avatar */}
-      <Avatar size="sm" className="shrink-0 mb-0.5">
-        <AvatarFallback
-          className={cn(
-            "text-xs font-medium",
-            isAdminMessage
-              ? "bg-primary text-primary-foreground"
-              : "bg-secondary text-secondary-foreground",
-          )}
-        >
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      {/* Avatar — only on last message in a consecutive group */}
+      {showAvatar ? (
+        <Avatar size="sm" className="shrink-0 mb-0.5">
+          <AvatarFallback
+            className={cn(
+              "text-xs font-medium",
+              isAdminMessage
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground",
+            )}
+          >
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+      ) : (
+        /* Invisible spacer to keep alignment */
+        <div className="size-8 shrink-0" />
+      )}
 
       {/* Bubble */}
       <div
@@ -120,7 +133,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {message.message && (
           <div
             className={cn(
-              "rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+              "rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words min-w-[3rem]",
               isAdminMessage
                 ? "bg-primary text-primary-foreground rounded-br-sm"
                 : "bg-muted text-foreground rounded-bl-sm",
@@ -130,8 +143,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        {/* Timestamp */}
-        {timestamp && (
+        {/* Timestamp — only on last message in a consecutive group */}
+        {showTimestamp && timestamp && (
           <span className="text-xs text-muted-foreground px-1">{timestamp}</span>
         )}
       </div>

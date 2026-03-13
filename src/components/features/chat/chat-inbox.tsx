@@ -27,7 +27,7 @@ export function ChatInbox({ sessions }: ChatInboxProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 border border-border rounded-xl overflow-hidden bg-background">
+    <div className="flex flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-background">
       {/* Left panel: session list */}
       <div className="w-80 shrink-0 border-r border-border flex flex-col min-h-0">
         <SessionList

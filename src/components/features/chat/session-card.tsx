@@ -23,7 +23,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
       className={cn(
         "w-full text-left px-4 py-3 flex flex-col gap-1 border-l-2 transition-colors hover:bg-muted/50",
         isSelected
-          ? "border-l-primary bg-primary/5"
+          ? "border-l-primary bg-primary/10"
           : "border-l-transparent",
         isClosed && "opacity-50",
       )}
