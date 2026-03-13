@@ -43,31 +43,43 @@ import { saveTrashMetadata } from "@/lib/actions/trash";
  * Process product photos from FormData.
  * - `photo_url_N`: existing R2 keys to keep
  * - `photo_file_N`: new File objects to upload
- * Returns array of R2 keys (existing + newly uploaded) in order.
+ * - `photo_focal_x_N` / `photo_focal_y_N`: optional focal point (0–1)
+ * Returns array of { key, focalX, focalY } in order.
  */
 async function processProductPhotos(
   formData: FormData,
   productListId: number,
-): Promise<string[]> {
+): Promise<Array<{ key: string; focalX: number | null; focalY: number | null }>> {
   const r2Path = `products/photos/${productListId}/`;
 
   // 1. Collect all entries (preserving order)
-  type PhotoEntry = { type: "url"; url: string } | { type: "file"; file: File };
+  type PhotoEntry = {
+    type: "url" | "file";
+    url?: string;
+    file?: File;
+    focalX: number | null;
+    focalY: number | null;
+  };
   const entries: PhotoEntry[] = [];
   let i = 0;
 
   while (formData.has(`photo_url_${i}`) || formData.has(`photo_file_${i}`)) {
+    const fxRaw = formData.get(`photo_focal_x_${i}`);
+    const fyRaw = formData.get(`photo_focal_y_${i}`);
+    const focalX = fxRaw != null ? parseFloat(fxRaw as string) : null;
+    const focalY = fyRaw != null ? parseFloat(fyRaw as string) : null;
+
     const existingKey = formData.get(`photo_url_${i}`) as string | null;
     if (existingKey?.trim()) {
       // Reject keys that look like URLs or contain path traversal
       if (!isR2Key(existingKey.trim())) {
         throw new Error("Invalid photo key detected");
       }
-      entries.push({ type: "url", url: existingKey.trim() });
+      entries.push({ type: "url", url: existingKey.trim(), focalX, focalY });
     } else {
       const file = formData.get(`photo_file_${i}`);
       if (file && file instanceof File && file.size > 0) {
-        entries.push({ type: "file", file });
+        entries.push({ type: "file", file, focalX, focalY });
       }
     }
     i++;
@@ -77,23 +89,32 @@ async function processProductPhotos(
   //    e.g. two "front.jpg" files become "front-0.webp" and "front-1.webp"
   const results = await Promise.all(
     entries.map(async (entry, idx) => {
-      if (entry.type === "url") return entry.url;
-      const nameWithoutExt = entry.file.name.replace(/\.[^.]+$/, "");
-      const uniqueName = `${slugify(nameWithoutExt)}-${idx}`;
-      const tempFormData = new FormData();
-      tempFormData.set("photo", entry.file);
-      return processFileField(tempFormData, "photo", r2Path, uniqueName);
+      let key: string | null;
+      if (entry.type === "url") {
+        key = entry.url!;
+      } else {
+        const nameWithoutExt = entry.file!.name.replace(/\.[^.]+$/, "");
+        const uniqueName = `${slugify(nameWithoutExt)}-${idx}`;
+        const tempFormData = new FormData();
+        tempFormData.set("photo", entry.file!);
+        key = await processFileField(tempFormData, "photo", r2Path, uniqueName);
+      }
+      if (!key) return null;
+      return { key, focalX: entry.focalX, focalY: entry.focalY };
     }),
   );
 
-  return results.filter((key): key is string => key !== null);
+  return results.filter(
+    (r): r is { key: string; focalX: number | null; focalY: number | null } =>
+      r !== null,
+  );
 }
 
 // ─── Helper: sync product images (with R2 cleanup) ─────────────────────────
 
 async function syncProductImages(
   productListId: number,
-  newKeys: string[],
+  newPhotos: Array<{ key: string; focalX: number | null; focalY: number | null }>,
   uploadedBy: number | null,
 ) {
   // Get existing images
@@ -102,8 +123,9 @@ async function syncProductImages(
     [productListId],
   );
 
+  const newKeySet = new Set(newPhotos.map((p) => p.key));
+
   // Find keys that are no longer referenced
-  const newKeySet = new Set(newKeys);
   const removedKeys = existing.results
     .map((img) => img.url)
     .filter((key) => !newKeySet.has(key));
@@ -116,16 +138,18 @@ async function syncProductImages(
   }
 
   // 2. Create new image records (DB must be consistent before R2 cleanup)
-  if (newKeys.length > 0) {
-    const orderKeys = nKeysBetween(null, null, newKeys.length);
+  if (newPhotos.length > 0) {
+    const orderKeys = nKeysBetween(null, null, newPhotos.length);
     await Promise.all(
-      newKeys.map((key, i) =>
+      newPhotos.map((photo, i) =>
         productImageService.create({
           product_list_id: productListId,
-          url: key,
+          url: photo.key,
           display_order: orderKeys[i],
           uploaded_by: uploadedBy,
           active: 1,
+          focal_x: photo.focalX,
+          focal_y: photo.focalY,
         }),
       ),
     );
@@ -442,10 +466,10 @@ export async function createListing(formData: FormData) {
     }
 
     // 5. Upload and create product photos (using productId for unique R2 path)
-    const photoKeys = await processProductPhotos(formData, productId);
-    uploadedKeys.push(...photoKeys);
-    if (photoKeys.length > 0) {
-      await syncProductImages(productId, photoKeys, created_by);
+    const photos = await processProductPhotos(formData, productId);
+    uploadedKeys.push(...photos.map((p) => p.key));
+    if (photos.length > 0) {
+      await syncProductImages(productId, photos, created_by);
     }
 
     // 6. Add to featured if requested (only for auto-approved listings)
@@ -557,8 +581,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     });
 
     // 4. Sync product photos
-    const photoKeys = await processProductPhotos(formData, productListId);
-    await syncProductImages(productListId, photoKeys, null);
+    const photos = await processProductPhotos(formData, productListId);
+    await syncProductImages(productListId, photos, null);
 
     // 5. Clean up old thumbnail from R2 (after D1 is consistent)
     await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
@@ -672,8 +696,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     });
 
     // 4. Sync product photos
-    const photoKeys = await processProductPhotos(formData, productListId);
-    await syncProductImages(productListId, photoKeys, null);
+    const photos = await processProductPhotos(formData, productListId);
+    await syncProductImages(productListId, photos, null);
 
     // 5. Clean up old thumbnail from R2 (after D1 is consistent)
     await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
@@ -1399,10 +1423,10 @@ export async function saveDraft(formData: FormData) {
     }
 
     // Upload photos if provided
-    const photoKeys = await processProductPhotos(formData, productId);
-    uploadedKeys.push(...photoKeys);
-    if (photoKeys.length > 0) {
-      await syncProductImages(productId, photoKeys, userId);
+    const photos = await processProductPhotos(formData, productId);
+    uploadedKeys.push(...photos.map((p) => p.key));
+    if (photos.length > 0) {
+      await syncProductImages(productId, photos, userId);
     }
 
     return { success: true, draftId: productId };
@@ -1480,8 +1504,8 @@ export async function updateDraft(productListId: number, formData: FormData) {
     });
 
     // Sync photos
-    const photoKeys = await processProductPhotos(formData, productListId);
-    await syncProductImages(productListId, photoKeys, userId);
+    const photos = await processProductPhotos(formData, productListId);
+    await syncProductImages(productListId, photos, userId);
 
     // Clean up old thumbnail
     await cleanupOldFile(row.thumbnail_url, thumbnail_url);
@@ -1572,9 +1596,9 @@ export async function submitDraft(productListId: number, formData: FormData) {
     });
 
     // Sync photos
-    const photoKeys = await processProductPhotos(formData, productListId);
-    if (photoKeys.length > 0) {
-      await syncProductImages(productListId, photoKeys, userId);
+    const photos = await processProductPhotos(formData, productListId);
+    if (photos.length > 0) {
+      await syncProductImages(productListId, photos, userId);
     }
 
     // Clean up old thumbnail

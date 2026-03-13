@@ -7,6 +7,8 @@ export interface ProductList {
   custom_fields: string | null;
   description: string | null;
   thumbnail_url: string | null;
+  thumbnail_focal_x: number | null;
+  thumbnail_focal_y: number | null;
   township_id: number | null;
   hide_partner: number;
   is_draft: number;
@@ -25,6 +27,8 @@ export interface ProductImage {
   display_order: string;
   uploaded_by: number | null;
   active: number;
+  focal_x: number | null;
+  focal_y: number | null;
   created_at: string;
 }
 

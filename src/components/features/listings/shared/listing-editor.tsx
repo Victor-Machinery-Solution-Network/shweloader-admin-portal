@@ -705,6 +705,8 @@ export function ListingEditor({
       id: `img-${i}`,
       url: img.url,
       preview: assetUrl(img.url) ?? "",
+      focalX: img.focal_x ?? undefined,
+      focalY: img.focal_y ?? undefined,
     })),
   );
 
@@ -1157,6 +1159,8 @@ export function ListingEditor({
     galleryItems.forEach((item, i) => {
       if (item.url) formData.set(`photo_url_${i}`, item.url);
       if (item.file) formData.set(`photo_file_${i}`, item.file);
+      if (item.focalX != null) formData.set(`photo_focal_x_${i}`, String(item.focalX));
+      if (item.focalY != null) formData.set(`photo_focal_y_${i}`, String(item.focalY));
     });
 
     startTransition(async () => {
@@ -2234,6 +2238,7 @@ export function ListingEditor({
                 <LazySortableImageGallery
                   items={galleryItems}
                   onChange={setGalleryItems}
+                  aspectRatio={4 / 3}
                 />
               </Suspense>
               {submitted && isCreateMode && galleryItems.length === 0 && (

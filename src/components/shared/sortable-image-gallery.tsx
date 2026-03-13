@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Plus, Trash2, GripVertical, ImagePlus } from "lucide-react";
+import { Plus, Trash2, GripVertical, ImagePlus, Move } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -19,18 +19,22 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { FocalPointModal } from "@/components/shared/focal-point-modal";
 
 export interface GalleryItem {
   id: string;
   url?: string;    // existing R2 URL (edit mode)
   file?: File;     // new file to upload
   preview: string; // display source (R2 URL or object URL)
+  focalX?: number;
+  focalY?: number;
 }
 
 interface SortableImageGalleryProps {
   items: GalleryItem[];
   onChange: (items: GalleryItem[]) => void;
   maxImages?: number;
+  aspectRatio?: number;
 }
 
 // ─── Individual Sortable Image Card ─────────────────────────────────────────
@@ -39,10 +43,12 @@ function SortableImageCard({
   id,
   preview,
   onRemove,
+  onAdjust,
 }: {
   id: string;
   preview: string;
   onRemove: () => void;
+  onAdjust: () => void;
 }) {
   const {
     attributes,
@@ -95,14 +101,24 @@ function SortableImageCard({
         >
           <GripVertical className="size-3.5" aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          aria-label="Remove image"
-          className="rounded bg-black/50 p-1 text-white hover:bg-red-600"
-          onClick={onRemove}
-        >
-          <Trash2 className="size-3.5" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Adjust image position"
+            className="rounded bg-black/50 p-1 text-white hover:bg-black/70"
+            onClick={onAdjust}
+          >
+            <Move className="size-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="Remove image"
+            className="rounded bg-black/50 p-1 text-white hover:bg-red-600"
+            onClick={onRemove}
+          >
+            <Trash2 className="size-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -114,6 +130,7 @@ export function SortableImageGallery({
   items,
   onChange,
   maxImages,
+  aspectRatio = 4 / 3,
 }: SortableImageGalleryProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -123,6 +140,7 @@ export function SortableImageGallery({
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const [nextId, setNextId] = useState(() => items.length);
+  const [adjustingItem, setAdjustingItem] = useState<string | null>(null);
 
   // Revoke all file-based object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -166,8 +184,12 @@ export function SortableImageGallery({
         id++;
       }
 
-      setNextId(id);
-      onChange([...items, ...newItems]);
+      if (newItems.length > 0) {
+        setNextId(id);
+        onChange([...items, ...newItems]);
+        // Auto-open focal point modal for the first newly added image
+        setAdjustingItem(newItems[0].id);
+      }
     },
     [items, nextId, maxImages, onChange],
   );
@@ -180,6 +202,10 @@ export function SortableImageGallery({
     },
     [items, onChange],
   );
+
+  const adjustingItemData = adjustingItem
+    ? items.find((item) => item.id === adjustingItem) ?? null
+    : null;
 
   return (
     <div className="space-y-3">
@@ -199,6 +225,7 @@ export function SortableImageGallery({
                 id={item.id}
                 preview={item.preview}
                 onRemove={() => handleRemove(index)}
+                onAdjust={() => setAdjustingItem(item.id)}
               />
             ))}
 
@@ -238,6 +265,29 @@ export function SortableImageGallery({
           Drag to reorder. {items.length}
           {maxImages != null ? ` / ${maxImages}` : ""} photos. Max 10MB each.
         </p>
+      )}
+
+      {adjustingItemData && (
+        <FocalPointModal
+          open={adjustingItem !== null}
+          imageUrl={adjustingItemData.preview}
+          aspectRatio={aspectRatio}
+          initialFocalPoint={{
+            x: adjustingItemData.focalX ?? 0.5,
+            y: adjustingItemData.focalY ?? 0.5,
+          }}
+          onSave={(point) => {
+            onChange(
+              items.map((item) =>
+                item.id === adjustingItem
+                  ? { ...item, focalX: point.x, focalY: point.y }
+                  : item,
+              ),
+            );
+            setAdjustingItem(null);
+          }}
+          onSkip={() => setAdjustingItem(null)}
+        />
       )}
     </div>
   );
