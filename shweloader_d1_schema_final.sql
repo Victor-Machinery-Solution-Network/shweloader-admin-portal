@@ -4,6 +4,11 @@ PRAGMA foreign_keys = OFF;
 -- DROP ALL TABLES (reverse dependency order)
 -- =============================================
 
+DROP TABLE IF EXISTS chat_attachment;
+DROP TABLE IF EXISTS chat_message;
+DROP TABLE IF EXISTS chat_session;
+DROP TABLE IF EXISTS enquiry;
+DROP TABLE IF EXISTS enquiry_status_type;
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
 DROP TABLE IF EXISTS notification;
