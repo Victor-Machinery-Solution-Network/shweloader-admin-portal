@@ -7,6 +7,7 @@ import {
   getChatMessages,
   markSessionRead,
   getTotalUnreadCount,
+  sendTypingEvent,
 } from "@/lib/actions/chat";
 import type { ChatMessageWithDetails } from "@/types/chat";
 
@@ -15,6 +16,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   const [messages, setMessages] = useState<ChatMessageWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionClosed, setSessionClosed] = useState(false);
+  const [userLastReadAt, setUserLastReadAt] = useState<string | null>(null);
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
 
@@ -22,6 +24,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   useEffect(() => {
     mountedRef.current = true;
     setSessionClosed(false);
+    setUserLastReadAt(null);
     if (!sessionId) {
       setMessages([]);
       return;
@@ -61,25 +64,139 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
         message: raw.message as string | null,
         created_at: raw.createdAt as string,
         attachments: (raw.attachments ?? []) as ChatMessageWithDetails["attachments"],
+        sale_listing_id: (raw.saleListingId as number | null) ?? null,
+        rent_listing_id: (raw.rentListingId as number | null) ?? null,
+        product_name: (raw.productName as string | null) ?? null,
+        product_thumbnail: (raw.productThumbnail as string | null) ?? null,
+        listing_type: (raw.listingType as "sale" | "rent" | null) ?? null,
+        brand_name: (raw.brandName as string | null) ?? null,
+        mmk_price: (raw.mmkPrice as number | null) ?? null,
+        usd_price: (raw.usdPrice as number | null) ?? null,
+        display_currency: (raw.displayCurrency as string | null) ?? null,
+        partner_name: (raw.partnerName as string | null) ?? null,
       };
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
       );
     });
 
-    // Listen for session-closed to update UI in real-time
-    const unsubClosed = handle.subscribe("session-closed", () => {
+    // Listen for session-resolved to update UI in real-time
+    const unsubResolved = handle.subscribe("session-resolved", () => {
       setSessionClosed(true);
+    });
+
+    // Listen for session-reopened to allow messaging again
+    const unsubReopened = handle.subscribe("session-reopened", () => {
+      setSessionClosed(false);
+    });
+
+    // Listen for messages-read to update read receipts
+    const unsubRead = handle.subscribe("messages-read", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      if (raw.user_last_read_at) {
+        setUserLastReadAt(raw.user_last_read_at as string);
+      }
     });
 
     return () => {
       unsubMessage();
-      unsubClosed();
+      unsubResolved();
+      unsubReopened();
+      unsubRead();
       handle.unsubscribe();
     };
   }, [sessionId, subscribeToChannel]);
 
-  return { messages, isLoading, setMessages, sessionClosed };
+  return { messages, isLoading, setMessages, sessionClosed, userLastReadAt };
+}
+
+/** Hook for typing indicator — tracks when a user is typing */
+export function useTypingIndicator(sessionId: number | null) {
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const { subscribeToChannel } = usePusher();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setIsTyping(false);
+      setTypingUser(null);
+      return;
+    }
+
+    const handle = subscribeToChannel(`private-chat-${sessionId}`);
+
+    const unsubTyping = handle.subscribe("typing-start", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      if (raw.sender_type !== "user") return;
+
+      setIsTyping(true);
+      setTypingUser((raw.sender_name as string) ?? null);
+
+      // Clear any existing timeout
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      // Auto-clear after 3 seconds
+      timeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        setTypingUser(null);
+      }, 3000);
+    });
+
+    // Reset when user sends a message (they stopped typing)
+    const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      if (raw.senderType === "user") {
+        setIsTyping(false);
+        setTypingUser(null);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      }
+    });
+
+    return () => {
+      unsubTyping();
+      unsubMessage();
+      handle.unsubscribe();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [sessionId, subscribeToChannel]);
+
+  return { isTyping, typingUser };
+}
+
+/** Hook to emit typing events — debounced to at most once per 2 seconds */
+export function useSendTypingEvent(sessionId: number | null) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentRef = useRef(0);
+
+  const sendTyping = useCallback(() => {
+    if (!sessionId) return;
+
+    const now = Date.now();
+    const elapsed = now - lastSentRef.current;
+
+    if (elapsed >= 2000) {
+      // Send immediately
+      lastSentRef.current = now;
+      sendTypingEvent(sessionId).catch(() => {});
+    } else if (!timerRef.current) {
+      // Schedule for later
+      timerRef.current = setTimeout(() => {
+        lastSentRef.current = Date.now();
+        sendTypingEvent(sessionId).catch(() => {});
+        timerRef.current = null;
+      }, 2000 - elapsed);
+    }
+  }, [sessionId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return { sendTyping };
 }
 
 /** Hook for inbox-level real-time updates */
@@ -129,9 +246,15 @@ export function useChatInbox(
       );
     });
 
+    // Listen for session-reopened to refresh inbox
+    const unsubReopened = handle.subscribe("session-reopened", () => {
+      router.refresh();
+    });
+
     return () => {
       unsubSession();
       unsubMessage();
+      unsubReopened();
       handle.unsubscribe();
     };
   }, [subscribeToChannel, router]);
