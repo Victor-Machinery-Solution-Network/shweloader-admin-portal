@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS chat_session (
     last_message_preview TEXT,
     unread_admin_count INTEGER NOT NULL DEFAULT 0,
     unread_user_count INTEGER NOT NULL DEFAULT 0,
+    -- Read cursors for sent/seen status (WhatsApp-style)
+    admin_last_read_at TIMESTAMP,
+    user_last_read_at TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
     FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id)
@@ -117,6 +120,78 @@ Every `chat_message` row is one of three types, determined by its content:
 | **Product** | optional | set | none | Text bubble + product card |
 
 A message can have text + product ref, or text + attachments, but not product ref + attachments (a product card IS the rich content). This is an **application-level invariant** enforced in the `sendMessage` action and worker API — not a DB constraint, since the CHECK would be complex and fragile across two FKs + attachment table.
+
+---
+
+## Message Delivery Status (Sent / Seen)
+
+WhatsApp-style read receipts using **session-level read cursors** — no per-message status column needed.
+
+### Schema
+
+Two timestamp columns on `chat_session`:
+
+- `admin_last_read_at` — updated when admin opens/views a session
+- `user_last_read_at` — updated when user opens/views a session on mobile
+
+### How It Works
+
+**For admin messages** (shown in admin UI):
+- `message.created_at <= user_last_read_at` → **Seen** (double blue tick ✓✓)
+- `message.created_at > user_last_read_at` (or `user_last_read_at` is NULL) → **Sent** (single gray tick ✓)
+
+**For user messages** (shown in mobile app):
+- `message.created_at <= admin_last_read_at` → **Seen**
+- `message.created_at > admin_last_read_at` → **Sent**
+
+### Update Triggers
+
+| Action | Update | Side Effect |
+|---|---|---|
+| Admin opens/views a session | `admin_last_read_at = NOW()`, `unread_admin_count = 0` | Pusher event `messages-read` on `private-chat-{sessionId}` so mobile app updates ticks in real-time |
+| User opens/views a session | `user_last_read_at = NOW()`, `unread_user_count = 0` | Pusher event `messages-read` on `private-chat-{sessionId}` so admin UI updates ticks in real-time |
+
+The existing `markSessionRead` action is extended to also set the read cursor and fire the Pusher event. The mobile app needs a corresponding endpoint/action.
+
+### UI Display
+
+On the admin's message bubbles (right-aligned, sent by admin):
+- Below the timestamp: single gray ✓ (sent) or double blue ✓✓ (seen)
+- Only shown on the **last message** in a consecutive admin group (to avoid visual noise)
+
+---
+
+## Typing Indicator
+
+Real-time only — no database persistence.
+
+### Pusher Events
+
+Channel: `private-chat-{sessionId}`
+
+| Event | Payload | Trigger |
+|---|---|---|
+| `typing-start` | `{ sender_type, sender_name }` | User or admin starts typing (debounced, fires once per ~2s while typing continues) |
+
+### Client Behavior
+
+**Sending side (admin UI):**
+- On `input` event in ChatInputBar, debounce and send `typing-start` via Pusher
+- Debounce interval: 2 seconds (don't spam events on every keystroke)
+
+**Receiving side (admin UI):**
+- Listen for `typing-start` events where `sender_type = 'user'`
+- Show "{user_name} is typing..." below the last message
+- Auto-clear after 3 seconds of no `typing-start` events (use a timeout reset pattern)
+
+**Mobile app:**
+- Same pattern in reverse — listen for `sender_type = 'admin'` events
+
+### UI Display
+
+- Typing indicator appears at the bottom of the messages area, just above the input bar
+- Shows as a subtle animated indicator: "{Name} is typing..." with a pulsing dot animation
+- Disappears when: a new message arrives from the typer, or 3 seconds of inactivity
 
 ---
 
@@ -290,6 +365,8 @@ Existing Pusher channels remain, with adjustments:
   - `new-message` — new message (text, media, or product)
   - `session-resolved` — session was resolved (replaces `session-closed`)
   - `session-reopened` — session was reopened (NEW)
+  - `messages-read` — read cursor updated, with `{ reader_type: 'admin' | 'user', read_at }` (NEW — for live sent/seen tick updates)
+  - `typing-start` — someone is typing, with `{ sender_type, sender_name }` (NEW)
   - `admin-viewing` — presence indicator (DEFERRED — implement in a separate iteration to keep scope tight)
 - `private-admin-chat` — inbox-level events:
   - `new-message` — for updating session list previews
@@ -325,7 +402,7 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
 
 ### Database
 1. Add `sale_listing_id` and `rent_listing_id` columns to `chat_message`
-2. Add `deleted_at` and `deleted_by` columns to `chat_session`
+2. Add `deleted_at`, `deleted_by`, `admin_last_read_at`, and `user_last_read_at` columns to `chat_session`
 3. Change `chat_session.status` CHECK constraint: `('pending', 'active', 'resolved')` replacing `('active', 'closed')`
 4. Rename `closed_at` to `resolved_at` on `chat_session`
 5. Remove `enquiry_id` column from `chat_session`
@@ -348,11 +425,13 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
    - Update `session-list.tsx` — new tabs (All | Unread | Active | Resolved), remove enquiry-specific logic
    - Update `session-card.tsx` — simpler card (no enquiry indicator needed)
    - Update `conversation-panel.tsx` — remove ProductRefCard from header, add context panel
-   - Update `message-bubble.tsx` — add product card rendering for product messages
+   - Update `message-bubble.tsx` — add product card rendering for product messages, add sent/seen tick indicators on admin messages
    - New: `context-panel.tsx` — right sidebar with user info + products discussed
    - New: `product-picker.tsx` — popover for admin to search and share products
    - Update `chat-inbox.tsx` — three-panel layout
-   - Update `chat-input-bar.tsx` — add product share button
+   - Update `chat-input-bar.tsx` — add product share button, add typing indicator emission (debounced Pusher event)
+   - Update `conversation-panel.tsx` — add typing indicator display ("User is typing...") and listen for `messages-read` events to update sent/seen ticks
+   - Extend `markSessionRead` action — also set `admin_last_read_at` and fire `messages-read` Pusher event
 6. Delete `/enquiries` page and components
 7. Update sidebar navigation:
    - Remove Enquiries link from `app-sidebar.tsx`
@@ -379,7 +458,9 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
 2. Update session creation to handle deduplication (one active session per user)
 3. Change default session status from `'active'` to `'pending'` for user-initiated sessions
 4. Change message-to-resolved-session behavior: reopen instead of reject
-5. Remove enquiry routes
+5. Add `markSessionRead` endpoint that sets `user_last_read_at` and fires `messages-read` Pusher event
+6. Add typing event relay (client sends typing via Pusher client events or via API)
+7. Remove enquiry routes
 6. Add product data JOINs to message queries
 
 ---
