@@ -1,14 +1,28 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { Paperclip, Send, X, FileText } from "lucide-react";
+import { Paperclip, Send, X, FileText, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, formatFileSize } from "@/lib/utils";
+import { assetUrl } from "@/lib/r2-url";
+import { useSendTypingEvent } from "@/hooks/use-chat";
+import { ProductPicker } from "./product-picker";
+
+interface SelectedListing {
+  id: number;
+  type: "sale" | "rent";
+  name: string | null;
+  thumbnail: string | null;
+  brandName: string | null;
+  price: number | null;
+  displayCurrency: string | null;
+}
 
 interface ChatInputBarProps {
-  onSend: (message: string, files: File[]) => void;
+  onSend: (message: string, files: File[], listing?: { id: number; type: "sale" | "rent" }) => void;
   disabled?: boolean;
+  sessionId: number | null;
 }
 
 const ACCEPTED_FILE_TYPES =
@@ -19,14 +33,17 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
-export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {
+export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputBarProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<Map<string, string>>(
     new Map(),
   );
+  const [selectedProduct, setSelectedProduct] = useState<SelectedListing | null>(null);
+  const [showProductPicker, setShowProductPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { sendTyping } = useSendTypingEvent(sessionId);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? []);
@@ -69,13 +86,18 @@ export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {
 
   function handleSend() {
     const trimmed = message.trim();
-    if (!trimmed && files.length === 0) return;
+    if (!trimmed && files.length === 0 && !selectedProduct) return;
     if (disabled) return;
 
-    onSend(trimmed, files);
+    onSend(
+      trimmed,
+      files,
+      selectedProduct ? { id: selectedProduct.id, type: selectedProduct.type } : undefined,
+    );
     setMessage("");
     setFiles([]);
     setFilePreviews(new Map());
+    setSelectedProduct(null);
 
     // Refocus textarea
     setTimeout(() => textareaRef.current?.focus(), 0);
@@ -88,10 +110,54 @@ export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {
     }
   }
 
-  const canSend = (message.trim().length > 0 || files.length > 0) && !disabled;
+  function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setMessage(e.target.value);
+    sendTyping();
+  }
+
+  const canSend =
+    (message.trim().length > 0 || files.length > 0 || selectedProduct != null) && !disabled;
+
+  const hasFiles = files.length > 0;
+  const hasProduct = selectedProduct != null;
 
   return (
     <div className="border-t border-border bg-background">
+      {/* Product preview */}
+      {selectedProduct && (
+        <div className="flex items-center gap-2 px-3 pt-3">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2 py-1.5 pr-7 text-sm relative">
+            <div className="size-8 rounded overflow-hidden bg-muted shrink-0">
+              {selectedProduct.thumbnail ? (
+                <img
+                  src={assetUrl(selectedProduct.thumbnail) ?? undefined}
+                  alt={selectedProduct.name ?? "Product"}
+                  className="object-cover size-full"
+                />
+              ) : (
+                <div className="size-full bg-muted" />
+              )}
+            </div>
+            <div className="min-w-0 max-w-[200px]">
+              {selectedProduct.brandName && (
+                <p className="text-[10px] uppercase text-muted-foreground truncate">
+                  {selectedProduct.brandName}
+                </p>
+              )}
+              <p className="truncate text-xs font-medium">{selectedProduct.name ?? "Unnamed"}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              className="absolute right-1 top-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+              aria-label="Remove product"
+            >
+              <X className="size-3 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Attachment preview bar */}
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2 px-3 pt-3">
@@ -143,7 +209,7 @@ export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {
           multiple
           className="hidden"
           onChange={handleFileChange}
-          disabled={disabled || files.length >= MAX_FILES}
+          disabled={disabled || files.length >= MAX_FILES || hasProduct}
         />
         <Button
           type="button"
@@ -151,22 +217,54 @@ export function ChatInputBar({ onSend, disabled = false }: ChatInputBarProps) {
           size="icon"
           className="shrink-0 mb-0.5"
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || files.length >= MAX_FILES}
+          disabled={disabled || files.length >= MAX_FILES || hasProduct}
           title={
-            files.length >= MAX_FILES
-              ? `Maximum ${MAX_FILES} files`
-              : "Attach files"
+            hasProduct
+              ? "Remove product to attach files"
+              : files.length >= MAX_FILES
+                ? `Maximum ${MAX_FILES} files`
+                : "Attach files"
           }
         >
           <Paperclip className="size-4" />
           <span className="sr-only">Attach files</span>
         </Button>
 
+        {/* Product share button */}
+        <div className="relative shrink-0 mb-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowProductPicker(!showProductPicker)}
+            disabled={disabled || hasFiles}
+            title={
+              hasFiles
+                ? "Remove files to share a product"
+                : "Share a product"
+            }
+          >
+            <Package className="size-4" />
+            <span className="sr-only">Share product</span>
+          </Button>
+          {showProductPicker && (
+            <div className="absolute bottom-full left-0 mb-2 z-50">
+              <ProductPicker
+                onSelect={(listing) => {
+                  setSelectedProduct(listing);
+                  setShowProductPicker(false);
+                }}
+                onCancel={() => setShowProductPicker(false)}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Textarea */}
         <Textarea
           ref={textareaRef}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleTextChange}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           disabled={disabled}
