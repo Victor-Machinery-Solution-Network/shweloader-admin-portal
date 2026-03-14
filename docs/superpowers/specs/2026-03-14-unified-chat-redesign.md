@@ -401,6 +401,7 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
 ## Migration Strategy
 
 ### Database
+0. Update `shweloader_d1_schema_final.sql` — the main schema file must reflect ALL changes below (new columns, dropped tables, new indexes, updated CHECK constraints). This is the source of truth for the DB schema.
 1. Add `sale_listing_id` and `rent_listing_id` columns to `chat_message`
 2. Add `deleted_at`, `deleted_by`, `admin_last_read_at`, and `user_last_read_at` columns to `chat_session`
 3. Change `chat_session.status` CHECK constraint: `('pending', 'active', 'resolved')` replacing `('active', 'closed')`
