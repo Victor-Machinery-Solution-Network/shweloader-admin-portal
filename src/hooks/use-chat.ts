@@ -12,11 +12,11 @@ import {
 import type { ChatMessageWithDetails } from "@/types/chat";
 
 /** Hook for real-time messages in an active chat session */
-export function useChatMessages(sessionId: number | null, initialUnreadCount = 0) {
+export function useChatMessages(sessionId: number | null, initialUnreadCount = 0, initialUserLastReadAt: string | null = null) {
   const [messages, setMessages] = useState<ChatMessageWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionClosed, setSessionClosed] = useState(false);
-  const [userLastReadAt, setUserLastReadAt] = useState<string | null>(null);
+  const [userLastReadAt, setUserLastReadAt] = useState<string | null>(initialUserLastReadAt);
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
 
@@ -24,7 +24,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   useEffect(() => {
     mountedRef.current = true;
     setSessionClosed(false);
-    setUserLastReadAt(null);
+    setUserLastReadAt(initialUserLastReadAt);
     if (!sessionId) {
       setMessages([]);
       return;
@@ -55,6 +55,17 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
       const raw = data as Record<string, unknown>;
+      // Normalize attachments: Pusher events use camelCase, but our types use snake_case
+      const rawAttachments = (raw.attachments ?? []) as Array<Record<string, unknown>>;
+      const attachments = rawAttachments.map((a) => ({
+        id: (a.id as number) ?? 0,
+        chat_message_id: raw.messageId as number,
+        file_url: (a.file_url as string) ?? (a.fileUrl as string) ?? "",
+        file_name: (a.file_name as string) ?? (a.fileName as string) ?? "",
+        file_size: (a.file_size as number) ?? (a.fileSize as number) ?? 0,
+        file_type: (a.file_type as string) ?? (a.fileType as string) ?? "",
+        created_at: (a.created_at as string) ?? (raw.createdAt as string) ?? "",
+      }));
       const msg: ChatMessageWithDetails = {
         id: raw.messageId as number,
         chat_session_id: sessionId,
@@ -63,7 +74,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
         sender_name: (raw.senderName as string) ?? "",
         message: raw.message as string | null,
         created_at: raw.createdAt as string,
-        attachments: (raw.attachments ?? []) as ChatMessageWithDetails["attachments"],
+        attachments,
         sale_listing_id: (raw.saleListingId as number | null) ?? null,
         rent_listing_id: (raw.rentListingId as number | null) ?? null,
         product_name: (raw.productName as string | null) ?? null,

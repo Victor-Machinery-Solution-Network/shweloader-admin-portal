@@ -71,6 +71,7 @@ export function ConversationPanel({
   const { messages, isLoading, sessionClosed, userLastReadAt } = useChatMessages(
     session?.id ?? null,
     session?.unread_admin_count ?? 0,
+    session?.user_last_read_at ?? null,
   );
 
   const { isTyping, typingUser } = useTypingIndicator(session?.id ?? null);
