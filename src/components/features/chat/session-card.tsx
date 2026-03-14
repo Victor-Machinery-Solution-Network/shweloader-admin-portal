@@ -12,6 +12,7 @@ interface SessionCardProps {
 
 export function SessionCard({ session, isSelected, onClick }: SessionCardProps) {
   const isResolved = session.status === "resolved";
+  const isPending = session.status === "pending";
   const hasProductRef = session.product_name != null;
   const unreadCount = session.unread_admin_count;
   const relativeTime = session.last_message_at ? timeAgo(session.last_message_at) : "";
@@ -24,7 +25,9 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         "w-full text-left px-4 py-3 flex flex-col gap-1 border-l-2 transition-colors hover:bg-muted/50",
         isSelected
           ? "border-l-primary bg-primary/10"
-          : "border-l-transparent",
+          : isPending
+            ? "border-l-amber-500"
+            : "border-l-transparent",
         isResolved && "opacity-50",
       )}
     >
@@ -75,6 +78,11 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         {unreadCount > 0 && (
           <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs">
             {unreadCount > 99 ? "99+" : unreadCount}
+          </Badge>
+        )}
+        {isPending && (
+          <Badge variant="warning" className="shrink-0 text-xs">
+            NEW
           </Badge>
         )}
         {isResolved && (
