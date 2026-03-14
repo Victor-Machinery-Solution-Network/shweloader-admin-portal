@@ -25,6 +25,9 @@ interface FocalPointModalProps {
   onSkip: () => void;
 }
 
+// Minimum scale factor beyond cover-fit to ensure there's always room to drag
+const MIN_OVERFLOW_RATIO = 1.3;
+
 export function FocalPointModal({
   open,
   imageUrl,
@@ -52,9 +55,23 @@ export function FocalPointModal({
     if (containerWidth === 0) return;
     const containerHeight = containerWidth / aspectRatio;
 
+    // Scale image to cover the container
     const scaleX = containerWidth / img.naturalWidth;
     const scaleY = containerHeight / img.naturalHeight;
-    const scale = Math.max(scaleX, scaleY);
+    const coverScale = Math.max(scaleX, scaleY);
+
+    // Ensure minimum overflow so there's always meaningful drag room
+    const coverWidth = img.naturalWidth * coverScale;
+    const coverHeight = img.naturalHeight * coverScale;
+    const overflowX = coverWidth / containerWidth;
+    const overflowY = coverHeight / containerHeight;
+    const maxOverflow = Math.max(overflowX, overflowY);
+
+    // If the image barely overflows, scale it up to guarantee drag room
+    let scale = coverScale;
+    if (maxOverflow < MIN_OVERFLOW_RATIO) {
+      scale = coverScale * (MIN_OVERFLOW_RATIO / maxOverflow);
+    }
 
     const scaledWidth = img.naturalWidth * scale;
     const scaledHeight = img.naturalHeight * scale;
@@ -84,11 +101,20 @@ export function FocalPointModal({
   useEffect(() => {
     if (!isDragging) return;
 
+    const maxOffsetX = imageSize.width - containerSize.width;
+    const maxOffsetY = imageSize.height - containerSize.height;
+
+    // Lock to the axis with more overflow (like LinkedIn for wide banners)
+    const lockAxis =
+      maxOffsetX > 5 && maxOffsetY > 5
+        ? null // both directions have room — free drag
+        : maxOffsetX > maxOffsetY
+          ? "x"
+          : "y";
+
     const onMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      const maxOffsetX = imageSize.width - containerSize.width;
-      const maxOffsetY = imageSize.height - containerSize.height;
+      const dx = lockAxis === "y" ? 0 : e.clientX - dragStart.current.x;
+      const dy = lockAxis === "x" ? 0 : e.clientY - dragStart.current.y;
       setPosition({
         x: Math.min(0, Math.max(-maxOffsetX, dragStart.current.posX + dx)),
         y: Math.min(0, Math.max(-maxOffsetY, dragStart.current.posY + dy)),
@@ -124,10 +150,19 @@ export function FocalPointModal({
     const maxOffsetY = imageSize.height - containerSize.height;
     if (maxOffsetX === 0 && maxOffsetY === 0) return { x: 0.5, y: 0.5 };
     return {
-      x: maxOffsetX > 0 ? Math.round((-position.x / maxOffsetX) * 100) / 100 : 0.5,
-      y: maxOffsetY > 0 ? Math.round((-position.y / maxOffsetY) * 100) / 100 : 0.5,
+      x:
+        maxOffsetX > 0
+          ? Math.round((-position.x / maxOffsetX) * 100) / 100
+          : 0.5,
+      y:
+        maxOffsetY > 0
+          ? Math.round((-position.y / maxOffsetY) * 100) / 100
+          : 0.5,
     };
   }, [position, imageSize, containerSize]);
+
+  // Compute the visible "window" rect over the full image for the overlay
+  const overlayStyle = containerSize.width > 0 && imageSize.width > 0;
 
   return (
     <Dialog open={open} onOpenChange={() => onSkip()}>
@@ -135,8 +170,8 @@ export function FocalPointModal({
         <DialogHeader>
           <DialogTitle>Adjust Image Position</DialogTitle>
           <DialogDescription>
-            Drag the image to set the focal point. This controls how the image
-            is cropped in different display contexts.
+            Drag to reposition. The visible area shows how this image will
+            appear.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,6 +181,7 @@ export function FocalPointModal({
           style={{ aspectRatio }}
           onMouseDown={handleMouseDown}
         >
+          {/* The draggable image */}
           <img
             ref={imageRef}
             src={imageUrl}
@@ -157,17 +193,54 @@ export function FocalPointModal({
               width: imageSize.width || "auto",
               height: imageSize.height || "auto",
               transform: `translate(${position.x}px, ${position.y}px)`,
-              transition: isDragging ? "none" : "transform 0.1s ease-out",
+              transition: isDragging ? "none" : "transform 0.15s ease-out",
             }}
           />
 
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white rounded-full shadow-md opacity-60" />
-          </div>
+          {/* Dark overlay on edges showing what gets cropped — LinkedIn style */}
+          {overlayStyle && (
+            <>
+              {/* Top crop zone */}
+              {position.y < 0 && (
+                <div
+                  className="absolute left-0 right-0 top-0 bg-black/40 pointer-events-none"
+                  style={{ height: 0 }}
+                />
+              )}
+            </>
+          )}
 
+          {/* Subtle vignette border to show crop edges */}
+          <div
+            className="absolute inset-0 pointer-events-none rounded-lg"
+            style={{
+              boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.3)",
+            }}
+          />
+
+          {/* Drag hint — LinkedIn/Facebook style: just text, no crosshair */}
           {!isDragging && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full pointer-events-none">
-              Drag to reposition
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="bg-black/60 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="5 9 2 12 5 15" />
+                  <polyline points="9 5 12 2 15 5" />
+                  <polyline points="15 19 12 22 9 19" />
+                  <polyline points="19 9 22 12 19 15" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <line x1="12" y1="2" x2="12" y2="22" />
+                </svg>
+                Drag to reposition
+              </div>
             </div>
           )}
         </div>
