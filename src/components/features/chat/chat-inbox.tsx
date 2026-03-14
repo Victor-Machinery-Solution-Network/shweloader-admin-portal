@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
 import { ContextPanel } from "./context-panel";
@@ -17,17 +17,25 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const [selectedId, setSelectedId] = useState<number | null>(
     initialSessions[0]?.id ?? null,
   );
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
   const [messageCount, setMessageCount] = useState(0);
 
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string) => {
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId
-            ? { ...s, last_message_preview: preview, last_message_at: at }
-            : s,
-        ),
+        prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          // If admin is currently viewing this session, don't increment unread
+          const isViewing = sessionId === selectedIdRef.current;
+          return {
+            ...s,
+            last_message_preview: preview,
+            last_message_at: at,
+            unread_admin_count: isViewing ? 0 : s.unread_admin_count + 1,
+          };
+        }),
       );
     },
     [],
@@ -64,6 +72,12 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
 
   function handleSelect(id: number) {
     setSelectedId(id);
+    // Clear unread badge locally when selecting a session
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, unread_admin_count: 0 } : s,
+      ),
+    );
   }
 
   function handleSessionClosed() {
