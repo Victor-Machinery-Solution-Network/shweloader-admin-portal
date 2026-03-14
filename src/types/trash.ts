@@ -19,8 +19,7 @@ export type TrashEntityType =
   | "role"
   | "product_list"
   | "sale_listing"
-  | "rent_listing"
-  | "enquiry";
+  | "rent_listing";
 
 /** Matches the trash_metadata table in D1 */
 export interface TrashMetadata {

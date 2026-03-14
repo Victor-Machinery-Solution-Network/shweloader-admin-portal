@@ -26,6 +26,5 @@ export interface BlacklistImpactPreview {
   listing_count: number;
   sale_listing_count: number;
   rent_listing_count: number;
-  enquiry_count: number;
   partner_count: number;
 }

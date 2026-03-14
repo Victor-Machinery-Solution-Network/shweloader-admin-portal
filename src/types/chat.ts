@@ -2,15 +2,18 @@
 export interface ChatSession {
   id: number;
   app_user_id: number;
-  enquiry_id: number | null;
-  status: "active" | "closed";
+  status: "pending" | "active" | "resolved";
   created_at: string;
   updated_at: string;
-  closed_at: string | null;
+  resolved_at: string | null;
   last_message_at: string;
   last_message_preview: string;
   unread_admin_count: number;
   unread_user_count: number;
+  admin_last_read_at: string | null;
+  user_last_read_at: string | null;
+  deleted_at: string | null;
+  deleted_by: number | null;
 }
 
 /** Chat session with JOINed details for display */
@@ -19,7 +22,6 @@ export interface ChatSessionWithDetails extends ChatSession {
   user_email: string | null;
   user_phone: string;
   user_company: string | null;
-  /** Enquiry-linked fields (null for general support sessions) */
   product_name: string | null;
   product_thumbnail: string | null;
   /** "sale" or "rent" — use with listing_id to build URL */
@@ -32,6 +34,17 @@ export interface ChatSessionWithDetails extends ChatSession {
   partner_name: string | null;
 }
 
+export interface ProductDiscussed {
+  listingId: number;
+  listingType: "sale" | "rent";
+  productName: string | null;
+  productThumbnail: string | null;
+  brandName: string | null;
+  mmkPrice: number | null;
+  usdPrice: number | null;
+  displayCurrency: string | null;
+}
+
 /** Matches the chat_message table in D1 */
 export interface ChatMessage {
   id: number;
@@ -39,6 +52,8 @@ export interface ChatMessage {
   sender_type: "user" | "admin";
   sender_id: number;
   message: string | null;
+  sale_listing_id: number | null;
+  rent_listing_id: number | null;
   created_at: string;
 }
 
@@ -46,6 +61,14 @@ export interface ChatMessage {
 export interface ChatMessageWithDetails extends ChatMessage {
   sender_name: string;
   attachments: ChatAttachment[];
+  product_name: string | null;
+  product_thumbnail: string | null;
+  listing_type: "sale" | "rent" | null;
+  brand_name: string | null;
+  mmk_price: number | null;
+  usd_price: number | null;
+  display_currency: string | null;
+  partner_name: string | null;
 }
 
 /** Matches the chat_attachment table in D1 */
