@@ -2,22 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Phone,
-  Mail,
-  Building2,
   Headset,
   MessageSquare,
   X,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { ProductRefCard } from "./product-ref-card";
 import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
-import { useChatMessages } from "@/hooks/use-chat";
-import { sendMessage, resolveSession } from "@/lib/actions/chat";
+import { TypingIndicator } from "./typing-indicator";
+import { useChatMessages, useTypingIndicator } from "@/hooks/use-chat";
+import { sendMessage, resolveSession, reopenSession } from "@/lib/actions/chat";
 import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -65,17 +63,23 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   const [isSending, setIsSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, isLoading, sessionClosed } = useChatMessages(
+  const { messages, isLoading, sessionClosed, userLastReadAt } = useChatMessages(
     session?.id ?? null,
     session?.unread_admin_count ?? 0,
   );
 
+  const { isTyping, typingUser } = useTypingIndicator(session?.id ?? null);
+
+  // Derive resolved state from both session prop and real-time event
+  const isResolved = session?.status === "resolved" || sessionClosed;
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   // Handle real-time session closed event
   useEffect(() => {
@@ -83,6 +87,9 @@ export function ConversationPanel({
       onSessionClosed();
     }
   }, [sessionClosed, onSessionClosed]);
+
+  // Combine session's user_last_read_at with real-time updates
+  const effectiveUserLastReadAt = userLastReadAt ?? session?.user_last_read_at ?? null;
 
   async function handleSend(message: string, files: File[], listing?: { id: number; type: "sale" | "rent" }) {
     if (!session || isSending) return;
@@ -102,7 +109,15 @@ export function ConversationPanel({
         attachmentData = uploadResult.attachments;
       }
 
-      const result = await sendMessage(session.id, message || null, attachmentData);
+      // Build listing reference if provided
+      const listingRef = listing
+        ? {
+            saleListingId: listing.type === "sale" ? listing.id : undefined,
+            rentListingId: listing.type === "rent" ? listing.id : undefined,
+          }
+        : undefined;
+
+      const result = await sendMessage(session.id, message || null, attachmentData, listingRef);
       if (!result.success) {
         console.error("Failed to send message:", result.error);
       }
@@ -126,6 +141,20 @@ export function ConversationPanel({
     }
   }
 
+  async function handleReopen() {
+    if (!session || isReopening) return;
+    setIsReopening(true);
+    try {
+      const result = await reopenSession(session.id);
+      if (!result.success) {
+        console.error("Failed to reopen session:", result.error);
+      }
+      // Success: Pusher event will update UI via sessionClosed state
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   // No session selected
   if (!session) {
     return (
@@ -138,9 +167,6 @@ export function ConversationPanel({
       </div>
     );
   }
-
-  const isResolved = session.status === "resolved";
-  const hasProductRef = session.product_name != null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -157,59 +183,33 @@ export function ConversationPanel({
               <Badge variant="success">Active</Badge>
             )}
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {session.user_phone && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Phone className="size-3" />
-                {session.user_phone}
-              </span>
-            )}
-            {session.user_email && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Mail className="size-3" />
-                {session.user_email}
-              </span>
-            )}
-            {session.user_company && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Building2 className="size-3" />
-                {session.user_company}
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Resolve session button */}
-        {!isResolved && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClose}
-            disabled={isClosing}
-            className="shrink-0"
-          >
-            <X className="size-4" />
-            {isClosing ? "Resolving..." : "Resolve Session"}
-          </Button>
-        )}
+        {/* Header actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {isResolved ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReopen}
+              disabled={isReopening}
+            >
+              <RotateCcw className="size-4" />
+              {isReopening ? "Reopening..." : "Reopen"}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClose}
+              disabled={isClosing}
+            >
+              <X className="size-4" />
+              {isClosing ? "Resolving..." : "Resolve Session"}
+            </Button>
+          )}
+        </div>
       </div>
-
-      {/* Product ref card (sessions with a product discussion) */}
-      {hasProductRef && session.product_name && (
-        <div className="px-4 py-3 border-b border-border bg-muted/20 shrink-0">
-          <ProductRefCard
-            productName={session.product_name}
-            productThumbnail={session.product_thumbnail}
-            listingType={session.listing_type}
-            listingId={session.listing_id}
-            brandName={session.brand_name}
-            mmkPrice={session.mmk_price}
-            usdPrice={session.usd_price}
-            displayCurrency={session.display_currency}
-            partnerName={session.partner_name}
-          />
-        </div>
-      )}
 
       {/* Messages area */}
       {isLoading ? (
@@ -251,25 +251,40 @@ export function ConversationPanel({
                     showAvatar={isLastInGroup}
                     showTimestamp={isLastInGroup}
                     isGrouped={!isFirstInGroup}
+                    userLastReadAt={effectiveUserLastReadAt}
                   />
                 </div>
               );
             })}
+
+            {/* Typing indicator */}
+            {isTyping && typingUser && (
+              <div className="mt-2">
+                <TypingIndicator userName={typingUser} />
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
       )}
 
-      {/* Input bar */}
-      <div
-        className={cn(
-          "shrink-0",
-          isResolved && "opacity-50 pointer-events-none",
-        )}
-      >
+      {/* Input bar / resolved footer */}
+      <div className="shrink-0">
         {isResolved ? (
-          <div className="px-4 py-3 border-t border-border text-xs text-center text-muted-foreground">
-            This session has been resolved. No further messages can be sent.
+          <div className="px-4 py-3 border-t border-border flex items-center justify-center gap-3 bg-muted/30">
+            <span className="text-xs text-muted-foreground">
+              This session has been resolved.
+            </span>
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={handleReopen}
+              disabled={isReopening}
+            >
+              <RotateCcw className="size-3" />
+              {isReopening ? "Reopening..." : "Reopen"}
+            </Button>
           </div>
         ) : (
           <ChatInputBar onSend={handleSend} disabled={isSending} sessionId={session?.id ?? null} />

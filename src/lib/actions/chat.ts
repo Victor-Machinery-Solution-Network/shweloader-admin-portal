@@ -161,22 +161,26 @@ export async function sendMessage(
   sessionId: number,
   message: string | null,
   attachmentData?: { fileUrl: string; fileName: string; fileSize: number; fileType: string }[],
+  listingRef?: { saleListingId?: number; rentListingId?: number },
 ) {
   try {
     const adminId = await requirePermission("chat", "edit");
 
-    // Validate: at least message or attachments
+    // Validate: at least message, attachments, or listing ref
     const hasMessage = message && message.trim().length > 0;
     const hasAttachments = attachmentData && attachmentData.length > 0;
-    if (!hasMessage && !hasAttachments) {
+    const hasListing = listingRef?.saleListingId || listingRef?.rentListingId;
+    if (!hasMessage && !hasAttachments && !hasListing) {
       return { success: false, error: "Message or attachments required" };
     }
 
-    // Insert message
+    // Insert message (with optional listing reference)
+    const saleId = listingRef?.saleListingId ?? null;
+    const rentId = listingRef?.rentListingId ?? null;
     await d1.query(
-      `INSERT INTO chat_message (chat_session_id, sender_type, sender_id, message)
-       VALUES (?, 'admin', ?, ?)`,
-      [sessionId, adminId, hasMessage ? message!.trim() : null],
+      `INSERT INTO chat_message (chat_session_id, sender_type, sender_id, message, sale_listing_id, rent_listing_id)
+       VALUES (?, 'admin', ?, ?, ?, ?)`,
+      [sessionId, adminId, hasMessage ? message!.trim() : null, saleId, rentId],
     );
 
     // Get the inserted message ID
@@ -218,6 +222,42 @@ export async function sendMessage(
     );
     const senderName = adminResult.results[0]?.username ?? "Admin";
 
+    // Look up product details if a listing reference is included
+    let productPayload: Record<string, unknown> = {};
+    if (saleId || rentId) {
+      const table = saleId ? "sale_listing" : "rent_listing";
+      const id = saleId ?? rentId;
+      const prodResult = await d1.query<{
+        product_name: string | null;
+        product_thumbnail: string | null;
+        brand_name: string | null;
+        mmk_price: number | null;
+        usd_price: number | null;
+        display_currency: string | null;
+      }>(
+        `SELECT pl.product_name, pl.thumbnail AS product_thumbnail,
+                b.name AS brand_name, pl.mmk_price, pl.usd_price, pl.display_currency
+         FROM ${table} pl
+         LEFT JOIN brand b ON b.id = pl.brand_id
+         WHERE pl.id = ?`,
+        [id],
+      );
+      const prod = prodResult.results[0];
+      if (prod) {
+        productPayload = {
+          saleListingId: saleId,
+          rentListingId: rentId,
+          productName: prod.product_name,
+          productThumbnail: prod.product_thumbnail,
+          listingType: saleId ? "sale" : "rent",
+          brandName: prod.brand_name,
+          mmkPrice: prod.mmk_price,
+          usdPrice: prod.usd_price,
+          displayCurrency: prod.display_currency,
+        };
+      }
+    }
+
     // Trigger Pusher events
     const now = new Date().toISOString();
     triggerChatEvent(sessionId, "new-message", {
@@ -228,6 +268,7 @@ export async function sendMessage(
       message: hasMessage ? message!.trim() : null,
       attachments: attachmentData ?? [],
       createdAt: now,
+      ...productPayload,
     }).catch(() => {}); // Fire and forget
 
     // Notify other admins' inboxes about the new message
