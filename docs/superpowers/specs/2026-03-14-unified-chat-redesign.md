@@ -116,7 +116,7 @@ Every `chat_message` row is one of three types, determined by its content:
 | **Media** | optional | NULL | 1+ attachments | Text bubble + image/file previews |
 | **Product** | optional | set | none | Text bubble + product card |
 
-A message can have text + product ref, or text + attachments, but not product ref + attachments (a product card IS the rich content).
+A message can have text + product ref, or text + attachments, but not product ref + attachments (a product card IS the rich content). This is an **application-level invariant** enforced in the `sendMessage` action and worker API — not a DB constraint, since the CHECK would be complex and fragile across two FKs + attachment table.
 
 ---
 
@@ -187,7 +187,7 @@ Enforced by partial unique index: `idx_session_active_per_user` on `app_user_id 
 | # | Scenario | Behavior |
 |---|---|---|
 | 10 | Admin resolves → user sends new message | Session reopens (`resolved → active`). Appears in "Unread." |
-| 11 | Admin soft-deletes a session | Hidden from admin view. User's mobile app shows session as ended. |
+| 11 | Admin soft-deletes a session | Hidden from admin view. User's mobile app shows session as ended. Soft-delete is admin-only visibility (not added to trash entity system — no restore from trash page). |
 | 12 | Admin wants to reopen resolved session | "Reopen" button. `resolved → active`, `resolved_at` cleared. |
 | 13 | Two admins open same pending session | Pusher presence: "Admin X is viewing this" indicator. No blocking. First reply transitions `pending → active`. |
 
@@ -290,7 +290,7 @@ Existing Pusher channels remain, with adjustments:
   - `new-message` — new message (text, media, or product)
   - `session-resolved` — session was resolved (replaces `session-closed`)
   - `session-reopened` — session was reopened (NEW)
-  - `admin-viewing` — presence indicator (NEW, lightweight)
+  - `admin-viewing` — presence indicator (DEFERRED — implement in a separate iteration to keep scope tight)
 - `private-admin-chat` — inbox-level events:
   - `new-message` — for updating session list previews
   - `new-session` — new session created
@@ -310,7 +310,9 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
   - If `sale_listing_id` or `rent_listing_id` provided: checks for existing active session, creates product message
   - If neither provided: general support session
   - Deduplication: if active session exists, returns existing session and adds product message to it
+  - **Status change**: new user-initiated sessions created as `'pending'` (not `'active'` as before). `'active'` only after admin replies.
 - `POST /chat/sessions/:id/messages` — add support for `sale_listing_id`/`rent_listing_id` on message body
+  - **Behavioral change for resolved sessions**: Previously rejected messages to `'closed'` sessions with 400. Now, user messages to `'resolved'` sessions **reopen** them (`resolved → active`, `resolved_at` cleared, `unread_admin_count` incremented).
 - `GET /chat/sessions` — include product message data for session previews
 - `GET /chat/sessions/:id/messages` — include product reference data (JOIN to listings) in message responses
 
@@ -327,18 +329,22 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
 3. Change `chat_session.status` CHECK constraint: `('pending', 'active', 'resolved')` replacing `('active', 'closed')`
 4. Rename `closed_at` to `resolved_at` on `chat_session`
 5. Remove `enquiry_id` column from `chat_session`
-6. Migrate existing enquiry data:
-   - For enquiries WITH a chat session: create a `chat_message` (sender_type='user') from `enquiry.message` with the listing ref, backdated to `enquiry.created_at`
+6. Drop `idx_chat_session_enquiry` unique index (references removed `enquiry_id` column)
+7. Migrate existing enquiry data:
+   - **Note:** All existing enquiries have exactly one listing ref (enforced by CHECK constraint on `enquiry` table). No null-listing-ref enquiries exist.
+   - For enquiries WITH a chat session: create a `chat_message` (sender_type='user') from `enquiry.message` with the listing ref, backdated to `enquiry.created_at`. Insert as the first message (lowest `id`) in the session.
    - For enquiries WITHOUT a chat session: create a `chat_session` (status='pending') + first `chat_message` with listing ref
    - Map enquiry statuses: Pending/Sent → pending, Replied → active, Resolved → resolved
-7. Create partial unique index `idx_session_active_per_user`
-8. Drop `enquiry` and `enquiry_status_type` tables
+   - Handle existing `trash_metadata` rows where `entity_type = 'enquiry'`: delete these rows (the enquiry data is being migrated, not trashed)
+8. Create partial unique index `idx_session_active_per_user`
+9. Drop `enquiry` and `enquiry_status_type` tables
 
 ### Admin Portal
 1. Update TypeScript types (`src/types/chat.ts`, remove `src/types/enquiry.ts`)
 2. Update services (`src/lib/services/chat.ts`, remove `src/lib/services/enquiry.ts`)
 3. Update server actions (`src/lib/actions/chat.ts`, remove `src/lib/actions/enquiry.ts`)
-4. Redesign chat components:
+4. Update `getTotalUnreadCount()` query: change `WHERE status = 'active'` to `WHERE status IN ('active', 'pending')` — pending sessions with unread messages must be counted for the sidebar badge
+5. Redesign chat components:
    - Update `session-list.tsx` — new tabs (All | Unread | Active | Resolved), remove enquiry-specific logic
    - Update `session-card.tsx` — simpler card (no enquiry indicator needed)
    - Update `conversation-panel.tsx` — remove ProductRefCard from header, add context panel
@@ -346,17 +352,35 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
    - New: `context-panel.tsx` — right sidebar with user info + products discussed
    - New: `product-picker.tsx` — popover for admin to search and share products
    - Update `chat-inbox.tsx` — three-panel layout
-   - Update `chat-input-bar.tsx` — add 📦 product share button
-5. Delete `/enquiries` page and components
-6. Update sidebar navigation — remove Enquiries link
-7. Update permissions — merge enquiry permissions into chat permissions
-8. Update cache tags — remove `CACHE_TAGS.ENQUIRIES`
+   - Update `chat-input-bar.tsx` — add product share button
+6. Delete `/enquiries` page and components
+7. Update sidebar navigation:
+   - Remove Enquiries link from `app-sidebar.tsx`
+   - Remove `canRead("enquiries")` from `showMarketplace` conditional
+8. Update permissions — merge enquiry permissions into chat permissions
+9. Update auth config:
+   - Remove `/enquiries` → `"enquiries"` feature mapping in `src/lib/auth.ts`
+   - Remove `/enquiries` → `"enquiries:read"` permission mapping
+10. Update trash system:
+    - Remove `"enquiry"` from `TrashEntityType` in `src/types/trash.ts`
+    - Remove `enquiry` entry from `ENTITY_REGISTRY` in `src/lib/trash/entity-registry.ts`
+    - Remove `"enquiry"` case from `getNameColumn()` in the same file
+11. Update blacklist actions in `src/lib/actions/blacklist.ts`:
+    - Remove enquiry count query when blacklisting users
+    - Remove enquiry soft-delete when blacklisting
+    - Remove enquiry restore when unblacklisting
+    - Replace with chat session equivalents if needed (e.g., resolve active sessions when blacklisting)
+    - Remove `enquiry_count` field from `BlacklistImpactPreview` type in `src/types/blacklist.ts`
+12. Update cache tags — remove `CACHE_TAGS.ENQUIRIES` from `src/lib/constants.ts`
+13. Clean up any notification references: handle existing `notification` rows where `reference_type = 'enquiry'` (leave as-is, they're historical records — just ensure notification display code doesn't break on orphaned refs)
 
 ### Cloudflare Worker
 1. Update chat routes to handle product references on messages
 2. Update session creation to handle deduplication (one active session per user)
-3. Remove enquiry routes
-4. Add product data JOINs to message queries
+3. Change default session status from `'active'` to `'pending'` for user-initiated sessions
+4. Change message-to-resolved-session behavior: reopen instead of reject
+5. Remove enquiry routes
+6. Add product data JOINs to message queries
 
 ---
 
@@ -372,3 +396,7 @@ The mobile app's Cloudflare Worker API needs corresponding changes:
 - Sidebar "Enquiries" navigation item
 - `CACHE_TAGS.ENQUIRIES`
 - Enquiry-related permissions (`enquiries:view`, `enquiries:delete`)
+- `"enquiry"` trash entity type and registry entries
+- Enquiry references in blacklist actions (`src/lib/actions/blacklist.ts`)
+- Enquiry route-permission mappings in `src/lib/auth.ts`
+- `idx_chat_session_enquiry` unique index
