@@ -84,7 +84,7 @@ export function ConversationPanel({
     }
   }, [sessionClosed, onSessionClosed]);
 
-  async function handleSend(message: string, files: File[]) {
+  async function handleSend(message: string, files: File[], listing?: { id: number; type: "sale" | "rent" }) {
     if (!session || isSending) return;
 
     setIsSending(true);
@@ -272,7 +272,7 @@ export function ConversationPanel({
             This session has been resolved. No further messages can be sent.
           </div>
         ) : (
-          <ChatInputBar onSend={handleSend} disabled={isSending} />
+          <ChatInputBar onSend={handleSend} disabled={isSending} sessionId={session?.id ?? null} />
         )}
       </div>
     </div>
