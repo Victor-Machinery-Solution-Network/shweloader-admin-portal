@@ -75,7 +75,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         >
           {session.last_message_preview || "No messages yet"}
         </p>
-        {unreadCount > 0 && (
+        {unreadCount > 0 && !isSelected && (
           <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs">
             {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>
