@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
+import { ContextPanel } from "./context-panel";
 import { useChatInbox } from "@/hooks/use-chat";
-import type { ChatSessionWithDetails } from "@/types/chat";
+import { getSessionProducts } from "@/lib/actions/chat";
+import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
 
 interface ChatInboxProps {
   sessions: ChatSessionWithDetails[];
@@ -15,6 +17,8 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const [selectedId, setSelectedId] = useState<number | null>(
     initialSessions[0]?.id ?? null,
   );
+  const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
+  const [messageCount, setMessageCount] = useState(0);
 
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string) => {
@@ -34,6 +38,30 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;
 
+  // Fetch products discussed for the selected session
+  useEffect(() => {
+    if (!selectedId) {
+      setSessionProducts([]);
+      setMessageCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    getSessionProducts(selectedId).then((products) => {
+      if (!cancelled) {
+        setSessionProducts(products);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const handleMessageCountChange = useCallback((count: number) => {
+    setMessageCount(count);
+  }, []);
+
   function handleSelect(id: number) {
     setSelectedId(id);
   }
@@ -46,7 +74,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   return (
     <div className="flex flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-background">
       {/* Left panel: session list */}
-      <div className="w-80 shrink-0 border-r border-border flex flex-col min-h-0">
+      <div className="w-[260px] shrink-0 border-r border-border flex flex-col min-h-0">
         <SessionList
           sessions={sessions}
           selectedId={selectedId}
@@ -54,13 +82,23 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
         />
       </div>
 
-      {/* Right panel: conversation */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* Center panel: conversation */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <ConversationPanel
           session={selectedSession}
           onSessionClosed={handleSessionClosed}
+          onMessageCountChange={handleMessageCountChange}
         />
       </div>
+
+      {/* Right panel: context */}
+      {selectedSession && (
+        <ContextPanel
+          session={selectedSession}
+          products={sessionProducts}
+          messageCount={messageCount}
+        />
+      )}
     </div>
   );
 }

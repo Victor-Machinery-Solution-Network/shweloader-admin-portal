@@ -55,11 +55,13 @@ function isSameGroup(
 interface ConversationPanelProps {
   session: ChatSessionWithDetails | null;
   onSessionClosed: () => void;
+  onMessageCountChange?: (count: number) => void;
 }
 
 export function ConversationPanel({
   session,
   onSessionClosed,
+  onMessageCountChange,
 }: ConversationPanelProps) {
   const [isSending, setIsSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -72,6 +74,11 @@ export function ConversationPanel({
   );
 
   const { isTyping, typingUser } = useTypingIndicator(session?.id ?? null);
+
+  // Report message count to parent
+  useEffect(() => {
+    onMessageCountChange?.(messages.length);
+  }, [messages.length, onMessageCountChange]);
 
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
