@@ -71,6 +71,7 @@ export function ConversationPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const justSentRef = useRef(false);
 
   const { messages, isLoading, sessionClosed, userLastReadAt } = useChatMessages(
     session?.id ?? null,
@@ -88,17 +89,17 @@ export function ConversationPanel({
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
 
-  // Auto-scroll only if already near bottom — and mark as read
+  // Auto-scroll only when admin sends a message (not on incoming messages)
   useEffect(() => {
-    if (isNearBottomRef.current) {
+    if (justSentRef.current) {
+      justSentRef.current = false;
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      // If auto-scrolled to bottom with new messages, mark as read
-      if (messages.length > 0 && session?.id) {
+      if (session?.id) {
         onMessagesRead?.();
         markSessionRead(session.id).catch(() => {});
       }
     }
-  }, [messages, isTyping]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // IntersectionObserver on the bottom sentinel — when visible, user has seen latest messages
   const onMessagesReadRef = useRef(onMessagesRead);
@@ -106,7 +107,12 @@ export function ConversationPanel({
 
   useEffect(() => {
     const sentinel = messagesEndRef.current;
-    if (!sentinel) return;
+    const scrollRoot = scrollAreaRef.current;
+    if (!sentinel || !scrollRoot) return;
+
+    // Find the actual Radix scroll viewport (the element that scrolls)
+    const viewport = scrollRoot.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | null;
+    if (!viewport) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -116,7 +122,7 @@ export function ConversationPanel({
           markSessionRead(session.id).catch(() => {});
         }
       },
-      { threshold: 0.1 },
+      { root: viewport, threshold: 0.1 },
     );
 
     observer.observe(sentinel);
@@ -167,6 +173,7 @@ export function ConversationPanel({
           }
         : undefined;
 
+      justSentRef.current = true;
       const result = await sendMessage(session.id, message || null, attachmentData, listingRef);
       if (!result.success) {
         console.error("Failed to send message:", result.error);
@@ -275,7 +282,7 @@ export function ConversationPanel({
           description="Send a message to start the conversation."
         />
       ) : (
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
           <div className="flex flex-col px-4 py-4">
             {messages.map((msg, idx) => {
               const prev = messages[idx - 1];
