@@ -15,7 +15,7 @@ import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
 import { TypingIndicator } from "./typing-indicator";
 import { useChatMessages, useTypingIndicator } from "@/hooks/use-chat";
-import { sendMessage, resolveSession, reopenSession } from "@/lib/actions/chat";
+import { sendMessage, resolveSession, reopenSession, markSessionRead } from "@/lib/actions/chat";
 import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -56,17 +56,21 @@ interface ConversationPanelProps {
   session: ChatSessionWithDetails | null;
   onSessionClosed: () => void;
   onMessageCountChange?: (count: number) => void;
+  onMessagesRead?: () => void;
 }
 
 export function ConversationPanel({
   session,
   onSessionClosed,
   onMessageCountChange,
+  onMessagesRead,
 }: ConversationPanelProps) {
   const [isSending, setIsSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
   const { messages, isLoading, sessionClosed, userLastReadAt } = useChatMessages(
     session?.id ?? null,
@@ -84,10 +88,28 @@ export function ConversationPanel({
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll only if already near bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, isTyping]);
+
+  // Track scroll position + clear badge when scrolled to bottom
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    const wasNearBottom = isNearBottomRef.current;
+    isNearBottomRef.current = nearBottom;
+
+    // User just scrolled to bottom — mark as read
+    if (nearBottom && !wasNearBottom) {
+      onMessagesRead?.();
+      if (session?.id) {
+        markSessionRead(session.id).catch(() => {});
+      }
+    }
+  }
 
   // Handle real-time session closed event
   useEffect(() => {
@@ -233,7 +255,7 @@ export function ConversationPanel({
           description="Send a message to start the conversation."
         />
       ) : (
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
           <div className="flex flex-col px-4 py-4">
             {messages.map((msg, idx) => {
               const prev = messages[idx - 1];

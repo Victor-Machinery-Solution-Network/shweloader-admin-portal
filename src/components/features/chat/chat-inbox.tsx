@@ -25,21 +25,30 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string) => {
       setSessions((prev) =>
-        prev.map((s) => {
-          if (s.id !== sessionId) return s;
-          // If admin is currently viewing this session, don't increment unread
-          const isViewing = sessionId === selectedIdRef.current;
-          return {
-            ...s,
-            last_message_preview: preview,
-            last_message_at: at,
-            unread_admin_count: isViewing ? 0 : s.unread_admin_count + 1,
-          };
-        }),
+        prev.map((s) =>
+          s.id === sessionId
+            ? {
+                ...s,
+                last_message_preview: preview,
+                last_message_at: at,
+                unread_admin_count: s.unread_admin_count + 1,
+              }
+            : s,
+        ),
       );
     },
     [],
   );
+
+  // Clear unread badge for the currently viewed session
+  const handleMessagesRead = useCallback(() => {
+    if (!selectedId) return;
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === selectedId ? { ...s, unread_admin_count: 0 } : s,
+      ),
+    );
+  }, [selectedId]);
 
   useChatInbox(handleSessionUpdate);
 
@@ -102,6 +111,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
           session={selectedSession}
           onSessionClosed={handleSessionClosed}
           onMessageCountChange={handleMessageCountChange}
+          onMessagesRead={handleMessagesRead}
         />
       </div>
 
