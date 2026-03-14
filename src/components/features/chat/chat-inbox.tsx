@@ -42,16 +42,11 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
 
   // Clear unread badge for the currently viewed session
   const handleMessagesRead = useCallback(() => {
-    console.log("[chat-inbox] handleMessagesRead called, selectedId:", selectedId);
     if (!selectedId) return;
     setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id === selectedId) {
-          console.log("[chat-inbox] clearing unread for session", selectedId, "was:", s.unread_admin_count);
-          return { ...s, unread_admin_count: 0 };
-        }
-        return s;
-      }),
+      prev.map((s) =>
+        s.id === selectedId ? { ...s, unread_admin_count: 0 } : s,
+      ),
     );
   }, [selectedId]);
 
