@@ -42,11 +42,16 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
 
   // Clear unread badge for the currently viewed session
   const handleMessagesRead = useCallback(() => {
+    console.log("[chat-inbox] handleMessagesRead called, selectedId:", selectedId);
     if (!selectedId) return;
     setSessions((prev) =>
-      prev.map((s) =>
-        s.id === selectedId ? { ...s, unread_admin_count: 0 } : s,
-      ),
+      prev.map((s) => {
+        if (s.id === selectedId) {
+          console.log("[chat-inbox] clearing unread for session", selectedId, "was:", s.unread_admin_count);
+          return { ...s, unread_admin_count: 0 };
+        }
+        return s;
+      }),
     );
   }, [selectedId]);
 
@@ -97,7 +102,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   return (
     <div className="flex flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-background">
       {/* Left panel: session list */}
-      <div className="w-[260px] shrink-0 border-r border-border flex flex-col min-h-0">
+      <div className="w-[340px] shrink-0 border-r border-border flex flex-col min-h-0">
         <SessionList
           sessions={sessions}
           selectedId={selectedId}

@@ -108,16 +108,20 @@ export function ConversationPanel({
   useEffect(() => {
     const sentinel = messagesEndRef.current;
     const scrollRoot = scrollAreaRef.current;
+    console.log("[chat-read] setup:", { sentinel: !!sentinel, scrollRoot: !!scrollRoot, sessionId: session?.id });
     if (!sentinel || !scrollRoot) return;
 
     // Find the actual Radix scroll viewport (the element that scrolls)
     const viewport = scrollRoot.querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement | null;
+    console.log("[chat-read] viewport found:", !!viewport);
     if (!viewport) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        console.log("[chat-read] intersection:", { isIntersecting: entry.isIntersecting, sessionId: session?.id });
         isNearBottomRef.current = entry.isIntersecting;
         if (entry.isIntersecting && session?.id) {
+          console.log("[chat-read] CLEARING BADGE — calling onMessagesRead + markSessionRead");
           onMessagesReadRef.current?.();
           markSessionRead(session.id).catch(() => {});
         }
