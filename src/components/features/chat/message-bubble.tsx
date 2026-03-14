@@ -1,10 +1,11 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { FileText, Check, CheckCheck } from "lucide-react";
 import { assetUrl } from "@/lib/r2-url";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, formatFileSize } from "@/lib/utils";
 import { format } from "date-fns";
+import { ProductMessageCard } from "./product-message-card";
 import type { ChatMessageWithDetails } from "@/types/chat";
 
 interface MessageBubbleProps {
@@ -12,6 +13,7 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   showTimestamp?: boolean;
   isGrouped?: boolean; // true if this message continues a group from the same sender
+  userLastReadAt?: string | null;
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -33,11 +35,22 @@ function formatTimestamp(dateStr: string): string {
   }
 }
 
+function isSeen(messageCreatedAt: string, userLastReadAt: string): boolean {
+  const msgDate = messageCreatedAt.endsWith("Z")
+    ? new Date(messageCreatedAt)
+    : new Date(messageCreatedAt + "Z");
+  const readDate = userLastReadAt.endsWith("Z")
+    ? new Date(userLastReadAt)
+    : new Date(userLastReadAt + "Z");
+  return msgDate <= readDate;
+}
+
 export function MessageBubble({
   message,
   showAvatar = true,
   showTimestamp = true,
   isGrouped = false,
+  userLastReadAt = null,
 }: MessageBubbleProps) {
   const isAdminMessage = message.sender_type === "admin";
   const initials = getInitials(message.sender_name);
@@ -49,6 +62,8 @@ export function MessageBubble({
   const fileAttachments = message.attachments.filter(
     (a) => !a.file_type.startsWith("image/"),
   );
+
+  const hasProductRef = message.sale_listing_id || message.rent_listing_id;
 
   return (
     <div
@@ -89,13 +104,13 @@ export function MessageBubble({
             {imageAttachments.map((att) => (
               <a
                 key={att.id}
-                href={assetUrl(att.file_url)}
+                href={assetUrl(att.file_url) ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block rounded-lg overflow-hidden border border-border hover:opacity-90 transition-opacity"
               >
                 <img
-                  src={assetUrl(att.file_url)}
+                  src={assetUrl(att.file_url) ?? undefined}
                   alt={att.file_name}
                   className="object-cover max-h-37.5 w-auto"
                 />
@@ -108,7 +123,7 @@ export function MessageBubble({
         {fileAttachments.map((att) => (
           <a
             key={att.id}
-            href={assetUrl(att.file_url)}
+            href={assetUrl(att.file_url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -140,9 +155,32 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Timestamp — only on last message in a consecutive group */}
+        {/* Product reference card */}
+        {hasProductRef && (
+          <ProductMessageCard
+            productName={message.product_name}
+            productThumbnail={message.product_thumbnail}
+            listingType={message.listing_type}
+            listingId={message.sale_listing_id ?? message.rent_listing_id}
+            brandName={message.brand_name}
+            mmkPrice={message.mmk_price}
+            usdPrice={message.usd_price}
+            displayCurrency={message.display_currency}
+          />
+        )}
+
+        {/* Timestamp + sent/seen ticks — only on last message in a consecutive group */}
         {showTimestamp && timestamp && (
-          <span className="text-xs text-muted-foreground px-1">{timestamp}</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground px-1">
+            {timestamp}
+            {isAdminMessage && (
+              userLastReadAt && isSeen(message.created_at, userLastReadAt) ? (
+                <CheckCheck className="size-3.5 text-blue-500" />
+              ) : (
+                <Check className="size-3.5 text-muted-foreground" />
+              )
+            )}
+          </span>
         )}
       </div>
     </div>
