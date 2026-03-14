@@ -90,11 +90,11 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
       setSessionClosed(false);
     });
 
-    // Listen for messages-read to update read receipts
+    // Listen for messages-read to update read receipts (user read → admin sees blue ticks)
     const unsubRead = handle.subscribe("messages-read", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      if (raw.user_last_read_at) {
-        setUserLastReadAt(raw.user_last_read_at as string);
+      if (raw.reader_type === "user" && raw.read_at) {
+        setUserLastReadAt(raw.read_at as string);
       }
     });
 
@@ -225,7 +225,7 @@ export function useChatInbox(
   useEffect(() => {
     const handle = subscribeToChannel("private-admin-chat");
 
-    const unsubSession = handle.subscribe("new-chat-session", () => {
+    const unsubSession = handle.subscribe("new-session", () => {
       // Refetch unread count and refresh server components
       getTotalUnreadCount().then((count) => {
         if (mountedRef.current) setTotalUnread(count);

@@ -330,10 +330,18 @@ export async function markSessionRead(sessionId: number) {
       return { success: true };
     }
 
+    const readAt = new Date().toISOString();
+
     await d1.query(
       "UPDATE chat_session SET unread_admin_count = 0, admin_last_read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [sessionId],
     );
+
+    // Notify mobile app that admin has read messages (for seen ticks)
+    triggerChatEvent(sessionId, "messages-read", {
+      reader_type: "admin",
+      read_at: readAt,
+    }).catch(() => {});
 
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true };
