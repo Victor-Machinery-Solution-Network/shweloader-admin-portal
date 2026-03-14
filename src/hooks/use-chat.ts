@@ -89,6 +89,11 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
       );
+
+      // Auto-mark as read when a user message arrives while admin is viewing this session
+      if (msg.sender_type === "user" && sessionId) {
+        markSessionRead(sessionId).catch(() => {});
+      }
     });
 
     // Listen for session-resolved to update UI in real-time
