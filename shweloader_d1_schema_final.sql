@@ -7,7 +7,6 @@ PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
 DROP TABLE IF EXISTS notification;
-DROP TABLE IF EXISTS enquiry;
 DROP TABLE IF EXISTS featured_listing;
 DROP TABLE IF EXISTS rent_listing;
 DROP TABLE IF EXISTS sale_listing;
@@ -46,7 +45,6 @@ DROP TABLE IF EXISTS feature;
 DROP TABLE IF EXISTS condition_type;
 DROP TABLE IF EXISTS article_status_type;
 DROP TABLE IF EXISTS approval_status_type;
-DROP TABLE IF EXISTS enquiry_status_type;
 DROP TABLE IF EXISTS partner_status_type;
 DROP TABLE IF EXISTS partner_type;
 
@@ -71,13 +69,6 @@ CREATE TABLE IF NOT EXISTS partner_status_type (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_partner_status_type_name ON partner_status_type(status_name);
-
-CREATE TABLE IF NOT EXISTS enquiry_status_type (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    status_name TEXT NOT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_enquiry_status_type_name ON enquiry_status_type(status_name);
 
 CREATE TABLE IF NOT EXISTS approval_status_type (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -289,73 +280,52 @@ CREATE INDEX IF NOT EXISTS idx_partner_status ON partner(status_id);
 CREATE INDEX IF NOT EXISTS idx_partner_reviewed_by ON partner(reviewed_by);
 CREATE INDEX IF NOT EXISTS idx_partner_deleted_at ON partner(deleted_at);
 
--- =============================================
--- ENQUIRY
--- =============================================
-
-CREATE TABLE IF NOT EXISTS enquiry (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sale_listing_id INTEGER,
-    rent_listing_id INTEGER,
-    app_user_id INTEGER,
-    message TEXT,
-    enquiry_status_id INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_by INTEGER,
-    deleted_at TIMESTAMP DEFAULT NULL,
-    deleted_by INTEGER,
-    FOREIGN KEY (sale_listing_id) REFERENCES sale_listing(id) ON DELETE CASCADE,
-    FOREIGN KEY (rent_listing_id) REFERENCES rent_listing(id) ON DELETE CASCADE,
-    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE CASCADE,
-    FOREIGN KEY (enquiry_status_id) REFERENCES enquiry_status_type(id) ON DELETE RESTRICT,
-    FOREIGN KEY (updated_by) REFERENCES admin_user(user_id) ON DELETE SET NULL,
-    CHECK (
-        (sale_listing_id IS NOT NULL AND rent_listing_id IS NULL) OR
-        (sale_listing_id IS NULL AND rent_listing_id IS NOT NULL)
-    )
-);
-
-CREATE INDEX IF NOT EXISTS idx_enquiry_sale_listing ON enquiry(sale_listing_id);
-CREATE INDEX IF NOT EXISTS idx_enquiry_rent_listing ON enquiry(rent_listing_id);
-CREATE INDEX IF NOT EXISTS idx_enquiry_app_user ON enquiry(app_user_id);
-CREATE INDEX IF NOT EXISTS idx_enquiry_status ON enquiry(enquiry_status_id);
-CREATE INDEX IF NOT EXISTS idx_enquiry_updated_by ON enquiry(updated_by);
-CREATE INDEX IF NOT EXISTS idx_enquiry_created_at ON enquiry(created_at);
-CREATE INDEX IF NOT EXISTS idx_enquiry_deleted_at ON enquiry(deleted_at);
-
 -- ─── Chat System ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS chat_session (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  app_user_id INTEGER NOT NULL,
-  enquiry_id INTEGER,
-  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'closed')),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  closed_at TIMESTAMP,
-  last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_message_preview TEXT,
-  unread_admin_count INTEGER NOT NULL DEFAULT 0,
-  unread_user_count INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id),
-  FOREIGN KEY (enquiry_id) REFERENCES enquiry(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_user_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'active', 'resolved')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_message_preview TEXT,
+    unread_admin_count INTEGER NOT NULL DEFAULT 0,
+    unread_user_count INTEGER NOT NULL DEFAULT 0,
+    admin_last_read_at TIMESTAMP,
+    user_last_read_at TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
+    deleted_by INTEGER,
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_session_enquiry ON chat_session(enquiry_id) WHERE enquiry_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_session_active_per_user
+ON chat_session(app_user_id)
+WHERE status != 'resolved' AND deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_chat_session_app_user ON chat_session(app_user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_session_status ON chat_session(status);
 CREATE INDEX IF NOT EXISTS idx_chat_session_last_message ON chat_session(last_message_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_session_created ON chat_session(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS chat_message (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  chat_session_id INTEGER NOT NULL,
-  sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'admin')),
-  sender_id INTEGER NOT NULL,
-  message TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (chat_session_id) REFERENCES chat_session(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_session_id INTEGER NOT NULL,
+    sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'admin')),
+    sender_id INTEGER NOT NULL,
+    message TEXT,
+    sale_listing_id INTEGER,
+    rent_listing_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_session_id) REFERENCES chat_session(id),
+    FOREIGN KEY (sale_listing_id) REFERENCES sale_listing(id),
+    FOREIGN KEY (rent_listing_id) REFERENCES rent_listing(id),
+    CHECK (
+        (sale_listing_id IS NULL AND rent_listing_id IS NULL)
+        OR (sale_listing_id IS NOT NULL AND rent_listing_id IS NULL)
+        OR (sale_listing_id IS NULL AND rent_listing_id IS NOT NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_message_session ON chat_message(chat_session_id);
