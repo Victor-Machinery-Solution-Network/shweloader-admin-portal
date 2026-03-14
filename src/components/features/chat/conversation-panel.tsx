@@ -88,28 +88,45 @@ export function ConversationPanel({
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
 
-  // Auto-scroll only if already near bottom
+  // Auto-scroll only if already near bottom — and mark as read
   useEffect(() => {
     if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isTyping]);
-
-  // Track scroll position + clear badge when scrolled to bottom
-  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
-    const el = e.currentTarget;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-    const wasNearBottom = isNearBottomRef.current;
-    isNearBottomRef.current = nearBottom;
-
-    // User just scrolled to bottom — mark as read
-    if (nearBottom && !wasNearBottom) {
-      onMessagesRead?.();
-      if (session?.id) {
+      // If auto-scrolled to bottom with new messages, mark as read
+      if (messages.length > 0 && session?.id) {
+        onMessagesRead?.();
         markSessionRead(session.id).catch(() => {});
       }
     }
-  }
+  }, [messages, isTyping]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Attach scroll listener to the ScrollArea viewport (Radix renders a [data-slot="scroll-area-viewport"] div)
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const onMessagesReadRef = useRef(onMessagesRead);
+  onMessagesReadRef.current = onMessagesRead;
+
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    if (!root) return;
+    const viewport = root.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null;
+    if (!viewport) return;
+
+    function onScroll() {
+      const nearBottom = viewport!.scrollHeight - viewport!.scrollTop - viewport!.clientHeight < 50;
+      const wasNearBottom = isNearBottomRef.current;
+      isNearBottomRef.current = nearBottom;
+
+      if (nearBottom && !wasNearBottom) {
+        onMessagesReadRef.current?.();
+        if (session?.id) {
+          markSessionRead(session.id).catch(() => {});
+        }
+      }
+    }
+
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [session?.id]);
 
   // Handle real-time session closed event
   useEffect(() => {
@@ -263,7 +280,7 @@ export function ConversationPanel({
           description="Send a message to start the conversation."
         />
       ) : (
-        <ScrollArea className="flex-1 min-h-0" onScrollCapture={handleScroll}>
+        <ScrollArea ref={scrollContainerRef} className="flex-1 min-h-0">
           <div className="flex flex-col px-4 py-4">
             {messages.map((msg, idx) => {
               const prev = messages[idx - 1];
