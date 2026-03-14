@@ -17,7 +17,7 @@ import { ProductRefCard } from "./product-ref-card";
 import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
 import { useChatMessages } from "@/hooks/use-chat";
-import { sendMessage, closeSession } from "@/lib/actions/chat";
+import { sendMessage, resolveSession } from "@/lib/actions/chat";
 import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -115,7 +115,7 @@ export function ConversationPanel({
     if (!session || isClosing) return;
     setIsClosing(true);
     try {
-      const result = await closeSession(session.id);
+      const result = await resolveSession(session.id);
       if (result.success) {
         onSessionClosed();
       } else {
@@ -139,8 +139,8 @@ export function ConversationPanel({
     );
   }
 
-  const isClosed = session.status === "closed";
-  const isEnquiry = session.enquiry_id != null;
+  const isResolved = session.status === "resolved";
+  const hasProductRef = session.product_name != null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -149,15 +149,12 @@ export function ConversationPanel({
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold">{session.user_name}</span>
-            {isClosed ? (
-              <Badge variant="secondary">Closed</Badge>
+            {isResolved ? (
+              <Badge variant="secondary">Resolved</Badge>
+            ) : session.status === "pending" ? (
+              <Badge variant="warning">Pending</Badge>
             ) : (
               <Badge variant="success">Active</Badge>
-            )}
-            {isEnquiry ? (
-              <Badge variant="warning">Enquiry</Badge>
-            ) : (
-              <Badge variant="outline">General Support</Badge>
             )}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -182,8 +179,8 @@ export function ConversationPanel({
           </div>
         </div>
 
-        {/* Close session button */}
-        {!isClosed && (
+        {/* Resolve session button */}
+        {!isResolved && (
           <Button
             variant="outline"
             size="sm"
@@ -192,13 +189,13 @@ export function ConversationPanel({
             className="shrink-0"
           >
             <X className="size-4" />
-            {isClosing ? "Closing..." : "Close Session"}
+            {isClosing ? "Resolving..." : "Resolve Session"}
           </Button>
         )}
       </div>
 
-      {/* Product ref card (enquiry sessions only) */}
-      {isEnquiry && session.product_name && (
+      {/* Product ref card (sessions with a product discussion) */}
+      {hasProductRef && session.product_name && (
         <div className="px-4 py-3 border-b border-border bg-muted/20 shrink-0">
           <ProductRefCard
             productName={session.product_name}
@@ -215,23 +212,22 @@ export function ConversationPanel({
       )}
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="flex flex-col px-4 py-4">
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <span className="text-sm text-muted-foreground">
-                Loading messages...
-              </span>
-            </div>
-          ) : messages.length === 0 ? (
-            <EmptyState
-              icon={Headset}
-              title="No messages yet"
-              description="Send a message to start the conversation."
-              fullPage={false}
-            />
-          ) : (
-            messages.map((msg, idx) => {
+      {isLoading ? (
+        <div className="flex-1 flex justify-center items-center">
+          <span className="text-sm text-muted-foreground">
+            Loading messages...
+          </span>
+        </div>
+      ) : messages.length === 0 ? (
+        <EmptyState
+          icon={Headset}
+          title="No messages yet"
+          description="Send a message to start the conversation."
+        />
+      ) : (
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="flex flex-col px-4 py-4">
+            {messages.map((msg, idx) => {
               const prev = messages[idx - 1];
               const next = messages[idx + 1];
               const msgDate = parseDate(msg.created_at);
@@ -258,22 +254,22 @@ export function ConversationPanel({
                   />
                 </div>
               );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+      )}
 
       {/* Input bar */}
       <div
         className={cn(
           "shrink-0",
-          isClosed && "opacity-50 pointer-events-none",
+          isResolved && "opacity-50 pointer-events-none",
         )}
       >
-        {isClosed ? (
+        {isResolved ? (
           <div className="px-4 py-3 border-t border-border text-xs text-center text-muted-foreground">
-            This session has been closed. No further messages can be sent.
+            This session has been resolved. No further messages can be sent.
           </div>
         ) : (
           <ChatInputBar onSend={handleSend} disabled={isSending} />

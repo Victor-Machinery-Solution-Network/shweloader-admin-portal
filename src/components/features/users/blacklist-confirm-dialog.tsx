@@ -80,7 +80,6 @@ export function BlacklistConfirmDialog({
   const impacts = [
     { label: "Sale listings", count: preview?.sale_listing_count ?? 0 },
     { label: "Rent listings", count: preview?.rent_listing_count ?? 0 },
-    { label: "Enquiries", count: preview?.enquiry_count ?? 0 },
     { label: "Partners", count: preview?.partner_count ?? 0 },
   ].filter((item) => item.count > 0);
 

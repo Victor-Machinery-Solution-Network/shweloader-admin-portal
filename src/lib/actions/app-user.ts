@@ -127,7 +127,6 @@ export async function createAppUser(formData: FormData) {
 
 export interface UserDeleteImpact {
   partnerCount: number;
-  enquiryCount: number;
   chatSessionCount: number;
   saleListingCount: number;
   rentListingCount: number;
@@ -138,18 +137,14 @@ export async function getUserDeleteImpact(
 ): Promise<UserDeleteImpact> {
   await requirePermission("users", "delete");
 
-  const [partners, enquiries, chatSessions, saleListings, rentListings] =
+  const [partners, chatSessions, saleListings, rentListings] =
     await Promise.all([
       d1.query<{ cnt: number }>(
         "SELECT COUNT(*) as cnt FROM partner WHERE app_user_id = ? AND deleted_at IS NULL",
         [userId],
       ),
       d1.query<{ cnt: number }>(
-        "SELECT COUNT(*) as cnt FROM enquiry WHERE app_user_id = ? AND deleted_at IS NULL",
-        [userId],
-      ),
-      d1.query<{ cnt: number }>(
-        "SELECT COUNT(*) as cnt FROM chat_session WHERE app_user_id = ?",
+        "SELECT COUNT(*) as cnt FROM chat_session WHERE app_user_id = ? AND deleted_at IS NULL",
         [userId],
       ),
       d1.query<{ cnt: number }>(
@@ -164,7 +159,6 @@ export async function getUserDeleteImpact(
 
   return {
     partnerCount: partners.results[0]?.cnt ?? 0,
-    enquiryCount: enquiries.results[0]?.cnt ?? 0,
     chatSessionCount: chatSessions.results[0]?.cnt ?? 0,
     saleListingCount: saleListings.results[0]?.cnt ?? 0,
     rentListingCount: rentListings.results[0]?.cnt ?? 0,

@@ -211,7 +211,7 @@ export function UserDetailDialog({
                 You are about to delete <strong>{user.username}</strong>. This is a critical action
                 that affects real user data.
               </p>
-              {impact && (impact.partnerCount > 0 || impact.enquiryCount > 0 || impact.chatSessionCount > 0 || impact.saleListingCount > 0 || impact.rentListingCount > 0) && (
+              {impact && (impact.partnerCount > 0 || impact.chatSessionCount > 0 || impact.saleListingCount > 0 || impact.rentListingCount > 0) && (
                 <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 space-y-1.5">
                   <p className="text-sm font-medium text-destructive">This user has associated data:</p>
                   <ul className="text-sm text-muted-foreground space-y-0.5 list-disc list-inside">
@@ -223,9 +223,6 @@ export function UserDetailDialog({
                     )}
                     {impact.rentListingCount > 0 && (
                       <li>{impact.rentListingCount} rental {impact.rentListingCount === 1 ? "listing" : "listings"}</li>
-                    )}
-                    {impact.enquiryCount > 0 && (
-                      <li>{impact.enquiryCount} {impact.enquiryCount === 1 ? "enquiry" : "enquiries"}</li>
                     )}
                     {impact.chatSessionCount > 0 && (
                       <li>{impact.chatSessionCount} chat {impact.chatSessionCount === 1 ? "session" : "sessions"}</li>

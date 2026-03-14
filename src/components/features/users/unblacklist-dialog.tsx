@@ -43,7 +43,7 @@ export function UnblacklistDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             This will restore the affected user(s) and their data (listings,
-            enquiries, etc.).
+            partners, etc.).
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

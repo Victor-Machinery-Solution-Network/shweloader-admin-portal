@@ -116,7 +116,7 @@ export function AppSidebar() {
     canRead("brands") ||
     canRead("locations");
   const showMarketplace =
-    showListings || canRead("enquiries") || canRead("chat");
+    showListings || canRead("chat");
   const showUsers = canRead("users") || canRead("partners");
   const showContent =
     showArticles || canRead("carousels") || canRead("announcements");
@@ -522,20 +522,6 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   )}
 
-                  {/* Enquiries */}
-                  {canRead("enquiries") && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === ROUTES.ENQUIRIES}
-                      >
-                        <Link href={ROUTES.ENQUIRIES}>
-                          <MessageSquare aria-hidden="true" />
-                          <span>Enquiries</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
                   {canRead("chat") && (
                     <SidebarMenuItem>
                       <SidebarMenuButton

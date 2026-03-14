@@ -15,7 +15,7 @@ interface SessionListProps {
   onSelect: (id: number) => void;
 }
 
-type FilterTab = "all" | "unread" | "enquiries" | "closed";
+type FilterTab = "all" | "unread" | "pending" | "resolved";
 
 export function SessionList({ sessions, selectedId, onSelect }: SessionListProps) {
   const [search, setSearch] = useState("");
@@ -37,8 +37,8 @@ export function SessionList({ sessions, selectedId, onSelect }: SessionListProps
     () => ({
       all: sorted.length,
       unread: sorted.filter((s) => s.unread_admin_count > 0).length,
-      enquiries: sorted.filter((s) => s.enquiry_id != null).length,
-      closed: sorted.filter((s) => s.status === "closed").length,
+      pending: sorted.filter((s) => s.status === "pending").length,
+      resolved: sorted.filter((s) => s.status === "resolved").length,
     }),
     [sorted],
   );
@@ -51,11 +51,11 @@ export function SessionList({ sessions, selectedId, onSelect }: SessionListProps
       case "unread":
         list = list.filter((s) => s.unread_admin_count > 0);
         break;
-      case "enquiries":
-        list = list.filter((s) => s.enquiry_id != null);
+      case "pending":
+        list = list.filter((s) => s.status === "pending");
         break;
-      case "closed":
-        list = list.filter((s) => s.status === "closed");
+      case "resolved":
+        list = list.filter((s) => s.status === "resolved");
         break;
       default:
         break;
@@ -103,22 +103,22 @@ export function SessionList({ sessions, selectedId, onSelect }: SessionListProps
               Unread
               {counts.unread > 0 && <TabCount>{counts.unread}</TabCount>}
             </TabsTrigger>
-            <TabsTrigger value="enquiries" className="text-xs gap-1">
-              Enquiries
-              {counts.enquiries > 0 && <TabCount>{counts.enquiries}</TabCount>}
+            <TabsTrigger value="pending" className="text-xs gap-1">
+              Pending
+              {counts.pending > 0 && <TabCount>{counts.pending}</TabCount>}
             </TabsTrigger>
-            <TabsTrigger value="closed" className="text-xs gap-1">
-              Closed
-              {counts.closed > 0 && <TabCount>{counts.closed}</TabCount>}
+            <TabsTrigger value="resolved" className="text-xs gap-1">
+              Resolved
+              {counts.resolved > 0 && <TabCount>{counts.resolved}</TabCount>}
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {(["all", "unread", "enquiries", "closed"] as FilterTab[]).map(
+        {(["all", "unread", "pending", "resolved"] as FilterTab[]).map(
           (tab) => (
             <TabsContent key={tab} value={tab} className="flex-1 min-h-0 mt-0">
-              <ScrollArea className="h-full">
-                {filtered.length > 0 ? (
+              {filtered.length > 0 ? (
+                <ScrollArea className="h-full">
                   <div className="py-1">
                     {filtered.map((session) => (
                       <SessionCard
@@ -129,29 +129,28 @@ export function SessionList({ sessions, selectedId, onSelect }: SessionListProps
                       />
                     ))}
                   </div>
-                ) : (
-                  <EmptyState
-                    icon={MessageSquare}
-                    title={
-                      search
-                        ? "No results found"
-                        : tab === "unread"
-                          ? "No unread messages"
-                          : tab === "enquiries"
-                            ? "No enquiry sessions"
-                            : tab === "closed"
-                              ? "No closed sessions"
-                              : "No conversations yet"
-                    }
-                    description={
-                      search
-                        ? "Try a different search term."
-                        : undefined
-                    }
-                    fullPage={false}
-                  />
-                )}
-              </ScrollArea>
+                </ScrollArea>
+              ) : (
+                <EmptyState
+                  icon={MessageSquare}
+                  title={
+                    search
+                      ? "No results found"
+                      : tab === "unread"
+                        ? "No unread messages"
+                        : tab === "pending"
+                          ? "No pending sessions"
+                          : tab === "resolved"
+                            ? "No resolved sessions"
+                            : "No conversations yet"
+                  }
+                  description={
+                    search
+                      ? "Try a different search term."
+                      : undefined
+                  }
+                />
+              )}
             </TabsContent>
           ),
         )}

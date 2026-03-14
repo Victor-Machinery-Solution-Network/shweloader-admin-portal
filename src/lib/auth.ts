@@ -73,7 +73,6 @@ const ROUTE_FEATURE_MAP: [prefix: string, feature: string][] = [
   ["/listings/for-sale", "sale_listings"],
   ["/listings/for-rent", "rent_listings"],
   ["/listing-templates", "listing_templates"],
-  ["/enquiries", "enquiries"],
   ["/chat", "chat"],
   // Users
   ["/users", "users"],
@@ -104,7 +103,6 @@ const LANDING_PRIORITY: [route: string, permission: string][] = [
   // Marketplace
   ["/listings/for-sale", "sale_listings:read"],
   ["/listings/for-rent", "rent_listings:read"],
-  ["/enquiries", "enquiries:read"],
   ["/chat", "chat:read"],
   // Users
   ["/users", "users:read"],

@@ -11,8 +11,8 @@ interface SessionCardProps {
 }
 
 export function SessionCard({ session, isSelected, onClick }: SessionCardProps) {
-  const isClosed = session.status === "closed";
-  const isEnquiry = session.enquiry_id != null && session.product_name != null;
+  const isResolved = session.status === "resolved";
+  const hasProductRef = session.product_name != null;
   const unreadCount = session.unread_admin_count;
   const relativeTime = session.last_message_at ? timeAgo(session.last_message_at) : "";
 
@@ -25,7 +25,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         isSelected
           ? "border-l-primary bg-primary/10"
           : "border-l-transparent",
-        isClosed && "opacity-50",
+        isResolved && "opacity-50",
       )}
     >
       {/* Top row: name + time */}
@@ -45,14 +45,14 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
 
       {/* Session type label */}
       <div className="flex items-center gap-1.5">
-        {isEnquiry ? (
+        {hasProductRef ? (
           <>
             <span
               className="size-1.5 rounded-full bg-amber-500 shrink-0"
               aria-hidden="true"
             />
             <span className="text-xs text-muted-foreground truncate">
-              Enquiry &middot; {session.product_name}
+              Product &middot; {session.product_name}
             </span>
           </>
         ) : (
@@ -77,9 +77,9 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
             {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>
         )}
-        {isClosed && (
+        {isResolved && (
           <Badge variant="secondary" className="shrink-0 text-xs">
-            Closed
+            Resolved
           </Badge>
         )}
       </div>

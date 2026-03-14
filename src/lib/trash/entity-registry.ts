@@ -183,14 +183,6 @@ export const ENTITY_REGISTRY: Record<TrashEntityType, EntityConfig> = {
     fileColumns: [],
     group: "listings",
   },
-  enquiry: {
-    table: "enquiry",
-    primaryKey: "id",
-    displayName: "Enquiry",
-    cacheTags: [CACHE_TAGS.ENQUIRIES],
-    fileColumns: [],
-    group: "listings",
-  },
 };
 
 /** Display-name map for trash group tabs */
@@ -218,8 +210,6 @@ export function getNameColumn(entityType: TrashEntityType): string {
       return "username";
     case "admin_user":
       return "username";
-    case "enquiry":
-      return "message";
     case "sale_listing":
     case "rent_listing":
       return "custom_id";

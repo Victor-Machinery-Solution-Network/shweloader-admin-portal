@@ -24,7 +24,7 @@ function invalidateBlacklistCaches() {
     CACHE_TAGS.SALE_LISTINGS,
     CACHE_TAGS.RENT_LISTINGS,
     CACHE_TAGS.FEATURED_LISTINGS,
-    CACHE_TAGS.ENQUIRIES,
+    CACHE_TAGS.CHAT_SESSIONS,
   );
 }
 
@@ -50,7 +50,7 @@ export async function getBlacklistImpactPreview(
   if (!targetUser) throw new Error("User not found");
 
   // 2. Count related entities for this user only
-  const [sales, rents, enquiries, partners] = await Promise.all([
+  const [sales, rents, partners] = await Promise.all([
     d1.query<{ count: number }>(
       `SELECT COUNT(*) as count FROM sale_listing sl
        JOIN product_list pl ON sl.product_list_id = pl.id
@@ -65,11 +65,6 @@ export async function getBlacklistImpactPreview(
        JOIN partner p ON pl.partner_id = p.id
        WHERE p.app_user_id = ?
        AND rl.deleted_at IS NULL`,
-      [appUserId],
-    ),
-    d1.query<{ count: number }>(
-      `SELECT COUNT(*) as count FROM enquiry
-       WHERE app_user_id = ? AND deleted_at IS NULL`,
       [appUserId],
     ),
     d1.query<{ count: number }>(
@@ -94,7 +89,6 @@ export async function getBlacklistImpactPreview(
     listing_count: saleCount + rentCount,
     sale_listing_count: saleCount,
     rent_listing_count: rentCount,
-    enquiry_count: enquiries.results[0]?.count ?? 0,
     partner_count: partners.results[0]?.count ?? 0,
   };
 }
@@ -182,9 +176,9 @@ export async function blacklistUser(appUserId: number, reason: string) {
     );
 
     await d1.query(
-      `UPDATE enquiry SET deleted_at = ?
-       WHERE app_user_id = ? AND deleted_at IS NULL`,
-      [now, appUserId],
+      `UPDATE chat_session SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE app_user_id = ? AND status IN ('pending', 'active') AND deleted_at IS NULL`,
+      [appUserId],
     );
 
     // 5. Audit log
@@ -328,13 +322,6 @@ export async function unblacklistUsers(blacklistIds: number[]) {
            JOIN partner p ON pl.partner_id = p.id
            WHERE p.app_user_id = ?
          ) AND deleted_at IN (${tsPlaceholders})`,
-        [userId, ...timestamps],
-      );
-
-      // 4f. Restore enquiry
-      await d1.query(
-        `UPDATE enquiry SET deleted_at = NULL
-         WHERE app_user_id = ? AND deleted_at IN (${tsPlaceholders})`,
         [userId, ...timestamps],
       );
     }

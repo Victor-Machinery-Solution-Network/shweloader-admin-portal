@@ -83,12 +83,5 @@ export type { AdminUser, AdminWithRole } from "./admin";
 export type { AppSetting, SettingKey } from "./setting";
 export { SETTING_KEYS } from "./setting";
 
-// Re-export enquiry types
-export type {
-  Enquiry,
-  EnquiryWithDetails,
-  EnquiryStatusType,
-} from "./enquiry";
-
 // Re-export notification types
 export type { Notification, NotificationType } from "./notification";

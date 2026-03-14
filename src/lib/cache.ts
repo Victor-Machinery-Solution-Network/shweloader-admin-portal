@@ -53,10 +53,6 @@ import {
 } from "@/lib/actions/admin";
 import { getAllSettings } from "@/lib/actions/setting";
 import {
-  getEnquiriesWithDetails,
-  getEnquiryStatusTypes as fetchEnquiryStatusTypes,
-} from "@/lib/actions/enquiry";
-import {
   getCustomFieldTemplates as fetchCustomFieldTemplates,
   getCustomFieldTemplateById as fetchCustomFieldTemplateById,
 } from "@/lib/actions/custom-field-template";
@@ -337,16 +333,6 @@ export function getRolesForAssignment() {
 
 export function getSettings() {
   return getAllSettings();
-}
-
-// Enquiries
-
-export function getEnquiries() {
-  return getEnquiriesWithDetails();
-}
-
-export function getEnquiryStatusTypes() {
-  return fetchEnquiryStatusTypes();
 }
 
 // Custom field templates
