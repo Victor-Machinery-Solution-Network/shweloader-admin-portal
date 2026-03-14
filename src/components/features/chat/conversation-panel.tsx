@@ -100,32 +100,27 @@ export function ConversationPanel({
     }
   }, [messages, isTyping]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Attach scroll listener to the ScrollArea viewport (Radix renders a [data-slot="scroll-area-viewport"] div)
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // IntersectionObserver on the bottom sentinel — when visible, user has seen latest messages
   const onMessagesReadRef = useRef(onMessagesRead);
   onMessagesReadRef.current = onMessagesRead;
 
   useEffect(() => {
-    const root = scrollContainerRef.current;
-    if (!root) return;
-    const viewport = root.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null;
-    if (!viewport) return;
+    const sentinel = messagesEndRef.current;
+    if (!sentinel) return;
 
-    function onScroll() {
-      const nearBottom = viewport!.scrollHeight - viewport!.scrollTop - viewport!.clientHeight < 50;
-      const wasNearBottom = isNearBottomRef.current;
-      isNearBottomRef.current = nearBottom;
-
-      if (nearBottom && !wasNearBottom) {
-        onMessagesReadRef.current?.();
-        if (session?.id) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isNearBottomRef.current = entry.isIntersecting;
+        if (entry.isIntersecting && session?.id) {
+          onMessagesReadRef.current?.();
           markSessionRead(session.id).catch(() => {});
         }
-      }
-    }
+      },
+      { threshold: 0.1 },
+    );
 
-    viewport.addEventListener("scroll", onScroll, { passive: true });
-    return () => viewport.removeEventListener("scroll", onScroll);
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, [session?.id]);
 
   // Handle real-time session closed event
@@ -280,7 +275,7 @@ export function ConversationPanel({
           description="Send a message to start the conversation."
         />
       ) : (
-        <ScrollArea ref={scrollContainerRef} className="flex-1 min-h-0">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="flex flex-col px-4 py-4">
             {messages.map((msg, idx) => {
               const prev = messages[idx - 1];
