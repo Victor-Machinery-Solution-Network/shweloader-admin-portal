@@ -14,6 +14,7 @@ interface MessageBubbleProps {
   showTimestamp?: boolean;
   isGrouped?: boolean; // true if this message continues a group from the same sender
   userLastReadAt?: string | null;
+  isLastAdminMessage?: boolean; // only show sent/seen on the very last admin message
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -51,6 +52,7 @@ export function MessageBubble({
   showTimestamp = true,
   isGrouped = false,
   userLastReadAt = null,
+  isLastAdminMessage = false,
 }: MessageBubbleProps) {
   const isAdminMessage = message.sender_type === "admin";
   const initials = getInitials(message.sender_name);
@@ -173,7 +175,7 @@ export function MessageBubble({
         {showTimestamp && timestamp && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground px-1">
             {timestamp}
-            {isAdminMessage && (
+            {isAdminMessage && isLastAdminMessage && (
               userLastReadAt && isSeen(message.created_at, userLastReadAt) ? (
                 <CheckCheck className="size-3.5 text-blue-500" />
               ) : (

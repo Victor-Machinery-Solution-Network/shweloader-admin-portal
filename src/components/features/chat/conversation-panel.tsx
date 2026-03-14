@@ -121,6 +121,14 @@ export function ConversationPanel({
   // Combine session's user_last_read_at with real-time updates
   const effectiveUserLastReadAt = userLastReadAt ?? session?.user_last_read_at ?? null;
 
+  // Find the last admin message index — only show sent/seen tick on that one
+  const lastAdminMessageId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender_type === "admin") return messages[i].id;
+    }
+    return -1;
+  })();
+
   async function handleSend(message: string, files: File[], listing?: { id: number; type: "sale" | "rent" }) {
     if (!session || isSending) return;
 
@@ -282,6 +290,7 @@ export function ConversationPanel({
                     showTimestamp={isLastInGroup}
                     isGrouped={!isFirstInGroup}
                     userLastReadAt={effectiveUserLastReadAt}
+                    isLastAdminMessage={msg.id === lastAdminMessageId}
                   />
                 </div>
               );
