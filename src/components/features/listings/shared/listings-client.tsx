@@ -19,6 +19,8 @@ import { SESSION_KEYS } from "@/lib/constants";
 import type { FilterConfig } from "@/types/data-table-filters";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
+import { deleteSaleListings, deleteRentListings } from "@/lib/actions/listing";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { createSaleColumns, createRentColumns } from "./listing-columns";
@@ -86,6 +88,7 @@ export function ListingsClient({
   const Icon = config.icon;
   const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
   const canCreate = useHasPermission(feature, "create");
+  const canDelete = useHasPermission(feature, "delete");
 
   const columns = useMemo(() => {
     const factory = pageType === "sale" ? createSaleColumns : createRentColumns;
@@ -301,26 +304,59 @@ export function ListingsClient({
     window.location.href = "/listings/new";
   }, [pageType]);
 
-  const addListingToolbar = canCreate ? (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="ml-auto">
-          <Plus aria-hidden="true" /> Add Listing{" "}
-          <ChevronDown className="ml-1 size-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleAddListing}>
-          <FileText /> Fill Form
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/bulk-upload/listings">
-            <FileSpreadsheet /> Excel Upload
-          </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ) : undefined;
+  const handleBulkDelete = useCallback(
+    async (selected: ListingRow[]) => {
+      const ids = selected.map((l) => l.id);
+      const deleteFn = pageType === "sale" ? deleteSaleListings : deleteRentListings;
+      return deleteFn(ids);
+    },
+    [pageType],
+  );
+
+  const buildDeleteDescription = useCallback(
+    async (selected: ListingRow[]) => {
+      const count = selected.length;
+      const plural = count === 1 ? "listing" : "listings";
+      return `${count} ${plural} will be moved to the trash. You can restore them within 30 days.`;
+    },
+    [],
+  );
+
+  const renderToolbar = useCallback(
+    (selected: ListingRow[]) => (
+      <>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDeleteDescription}
+            itemLabel="listing"
+          />
+        )}
+        {canCreate && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="ml-auto">
+                <Plus aria-hidden="true" /> Add Listing{" "}
+                <ChevronDown className="ml-1 size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleAddListing}>
+                <FileText /> Fill Form
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bulk-upload/listings">
+                  <FileSpreadsheet /> Excel Upload
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </>
+    ),
+    [handleBulkDelete, buildDeleteDescription, canCreate, canDelete, handleAddListing],
+  );
 
   const tableName = pageType === "sale" ? "sale_listing" : "rent_listing";
 
@@ -389,9 +425,10 @@ export function ListingsClient({
               filterConfig={mainFilterConfig}
               filterStorageKey={`listings-${pageType}-filters`}
               initialColumnVisibility={HIDDEN_FILTER_COLUMNS}
+              enableSelection
               enablePagination
               pageSize={10}
-              toolbar={addListingToolbar}
+              toolbar={renderToolbar}
               enableDragSort
               getRowId={(row) => row.id}
               onReorder={handleApprovedReorder}

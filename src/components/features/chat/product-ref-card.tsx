@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { assetUrl } from "@/lib/r2-url";
 
 interface ProductRefCardProps {
   productName: string | null;
@@ -61,11 +61,9 @@ export function ProductRefCard({
       {/* Thumbnail */}
       <div className="size-14 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
         {productThumbnail ? (
-          <Image
-            src={productThumbnail}
+          <img
+            src={assetUrl(productThumbnail)}
             alt={productName ?? "Product"}
-            width={56}
-            height={56}
             className="object-cover size-full"
           />
         ) : (

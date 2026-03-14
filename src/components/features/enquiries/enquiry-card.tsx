@@ -2,8 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { MessageSquare, ArrowRight, MoreVertical, Trash2, Clock } from "lucide-react";
+import { assetUrl } from "@/lib/r2-url";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,11 +81,9 @@ export function EnquiryCard({ enquiry, canDelete, canChat }: EnquiryCardProps) {
       {/* Thumbnail */}
       <div className="size-12 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
         {enquiry.thumbnail_url ? (
-          <Image
-            src={enquiry.thumbnail_url}
+          <img
+            src={assetUrl(enquiry.thumbnail_url)}
             alt={enquiry.model_name ?? "Product"}
-            width={48}
-            height={48}
             className="object-cover size-full"
           />
         ) : (

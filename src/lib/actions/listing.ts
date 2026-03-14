@@ -9,7 +9,7 @@ import {
 } from "@/lib/services/listing";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
-import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
+import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getLastDisplayOrder } from "@/lib/actions/reorder";
 import { nKeysBetween } from "@/lib/utils/display-order";
@@ -778,6 +778,65 @@ export async function deleteRentListing(rentId: number) {
       error: getErrorMessage(error, "Failed to delete rent listing"),
     };
   }
+}
+
+async function deleteListings(
+  type: "sale" | "rent",
+  ids: number[],
+) {
+  const feature = type === "sale" ? "sale_listings" : "rent_listings";
+  const table = type === "sale" ? "sale_listing" : "rent_listing";
+  const service = type === "sale" ? saleListingService : rentListingService;
+  const cacheTag = type === "sale" ? CACHE_TAGS.SALE_LISTINGS : CACHE_TAGS.RENT_LISTINGS;
+
+  const deletedBy = await requirePermission(feature, "delete");
+  assertBulkLimit(ids);
+
+  const results = await Promise.allSettled(
+    ids.map(async (id) => {
+      const existing = await d1.query<{ product_list_id: number }>(
+        `SELECT product_list_id FROM ${table} WHERE id = ? AND deleted_at IS NULL`,
+        [id],
+      );
+      if (existing.results.length === 0) return;
+      const productListId = existing.results[0]?.product_list_id;
+
+      await service.softDelete(id, deletedBy);
+      const batchId = crypto.randomUUID();
+      saveTrashMetadata(table, id, deletedBy, { batchId }).catch(() => {});
+
+      // Cascade: delete orphaned product_list if no other listings reference it
+      if (productListId) {
+        const siblings = await d1.query<{ cnt: number }>(
+          "SELECT (SELECT COUNT(*) FROM sale_listing WHERE product_list_id = ? AND deleted_at IS NULL) + (SELECT COUNT(*) FROM rent_listing WHERE product_list_id = ? AND deleted_at IS NULL) AS cnt",
+          [productListId, productListId],
+        );
+        if ((siblings.results[0]?.cnt ?? 0) === 0) {
+          await productListService.softDelete(productListId, deletedBy);
+          saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
+        }
+      }
+    }),
+  );
+
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) => getErrorMessage(r.reason, `Failed to delete listing ${ids[i]}`));
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
+  invalidateTag(cacheTag);
+
+  if (errors.length > 0) {
+    return { success: false, error: `Deleted ${deleted} of ${ids.length}. ${errors[0]}` };
+  }
+  return { success: true };
+}
+
+export async function deleteSaleListings(ids: number[]) {
+  return deleteListings("sale", ids);
+}
+
+export async function deleteRentListings(ids: number[]) {
+  return deleteListings("rent", ids);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

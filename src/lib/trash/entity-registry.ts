@@ -135,6 +135,14 @@ export const ENTITY_REGISTRY: Record<TrashEntityType, EntityConfig> = {
     fileColumns: [],
     group: "system",
   },
+  app_user: {
+    table: "app_user",
+    primaryKey: "app_user_id",
+    displayName: "User",
+    cacheTags: [CACHE_TAGS.USERS],
+    fileColumns: [],
+    group: "users",
+  },
   admin_user: {
     table: "admin_user",
     primaryKey: "user_id",
@@ -206,6 +214,8 @@ export function getNameColumn(entityType: TrashEntityType): string {
       return "title";
     case "announcement":
       return "text";
+    case "app_user":
+      return "username";
     case "admin_user":
       return "username";
     case "enquiry":

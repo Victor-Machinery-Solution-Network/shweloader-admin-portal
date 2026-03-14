@@ -23,8 +23,10 @@ import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import type { ChatSessionWithDetails, ChatMessageWithDetails } from "@/types/chat";
 
-function parseDate(dateStr: string): Date {
-  return new Date(dateStr + "Z");
+function parseDate(dateStr: string | null | undefined): Date {
+  if (!dateStr) return new Date();
+  // D1 stores UTC without "Z", but Pusher messages already include it
+  return dateStr.endsWith("Z") ? new Date(dateStr) : new Date(dateStr + "Z");
 }
 
 function formatDateLabel(date: Date): string {

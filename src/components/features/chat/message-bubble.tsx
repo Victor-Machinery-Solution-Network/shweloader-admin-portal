@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { FileText } from "lucide-react";
+import { assetUrl } from "@/lib/r2-url";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, formatFileSize } from "@/lib/utils";
 import { format } from "date-fns";
@@ -14,7 +14,8 @@ interface MessageBubbleProps {
   isGrouped?: boolean; // true if this message continues a group from the same sender
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "?";
   return name
     .split(" ")
     .slice(0, 2)
@@ -25,8 +26,7 @@ function getInitials(name: string): string {
 
 function formatTimestamp(dateStr: string): string {
   try {
-    // D1 stores UTC without Z
-    const date = new Date(dateStr + "Z");
+    const date = dateStr.endsWith("Z") ? new Date(dateStr) : new Date(dateStr + "Z");
     return format(date, "h:mm a");
   } catch {
     return "";
@@ -89,18 +89,15 @@ export function MessageBubble({
             {imageAttachments.map((att) => (
               <a
                 key={att.id}
-                href={att.file_url}
+                href={assetUrl(att.file_url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block rounded-lg overflow-hidden border border-border hover:opacity-90 transition-opacity"
               >
-                <Image
-                  src={att.file_url}
+                <img
+                  src={assetUrl(att.file_url)}
                   alt={att.file_name}
-                  width={200}
-                  height={150}
-                  className="object-cover max-h-[150px] w-auto"
-                  unoptimized
+                  className="object-cover max-h-37.5 w-auto"
                 />
               </a>
             ))}
@@ -111,7 +108,7 @@ export function MessageBubble({
         {fileAttachments.map((att) => (
           <a
             key={att.id}
-            href={att.file_url}
+            href={assetUrl(att.file_url)}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

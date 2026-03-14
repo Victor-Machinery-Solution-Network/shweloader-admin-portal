@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import { assetUrl } from "@/lib/r2-url";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
@@ -38,7 +38,7 @@ function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
         <div className="flex items-center gap-3">
           {src ? (
             <div className="size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
-              <Image src={src} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+              <img src={src} alt="" className="size-full object-cover" />
             </div>
           ) : (
             <div className="size-10 shrink-0 rounded-lg border bg-muted" />

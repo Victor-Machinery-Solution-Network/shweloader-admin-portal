@@ -1,12 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { businessTypeService } from "@/lib/services/app-user";
+import { appUserService, businessTypeService } from "@/lib/services/app-user";
 import { partnerService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 
 const BCRYPT_ROUNDS = 12;
 const PASSWORD_LENGTH = 12;
@@ -118,6 +119,81 @@ export async function createAppUser(formData: FormData) {
     return {
       success: false,
       error: getErrorMessage(error, "Failed to create user"),
+    };
+  }
+}
+
+// ─── Get User Delete Impact ─────────────────────────────────────────────────
+
+export interface UserDeleteImpact {
+  partnerCount: number;
+  enquiryCount: number;
+  chatSessionCount: number;
+  saleListingCount: number;
+  rentListingCount: number;
+}
+
+export async function getUserDeleteImpact(
+  userId: number,
+): Promise<UserDeleteImpact> {
+  await requirePermission("users", "delete");
+
+  const [partners, enquiries, chatSessions, saleListings, rentListings] =
+    await Promise.all([
+      d1.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM partner WHERE app_user_id = ? AND deleted_at IS NULL",
+        [userId],
+      ),
+      d1.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM enquiry WHERE app_user_id = ? AND deleted_at IS NULL",
+        [userId],
+      ),
+      d1.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM chat_session WHERE app_user_id = ?",
+        [userId],
+      ),
+      d1.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM sale_listing sl JOIN product_list pl ON sl.product_list_id = pl.id JOIN partner p ON pl.partner_id = p.id WHERE p.app_user_id = ? AND sl.deleted_at IS NULL",
+        [userId],
+      ),
+      d1.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM rent_listing rl JOIN product_list pl ON rl.product_list_id = pl.id JOIN partner p ON pl.partner_id = p.id WHERE p.app_user_id = ? AND rl.deleted_at IS NULL",
+        [userId],
+      ),
+    ]);
+
+  return {
+    partnerCount: partners.results[0]?.cnt ?? 0,
+    enquiryCount: enquiries.results[0]?.cnt ?? 0,
+    chatSessionCount: chatSessions.results[0]?.cnt ?? 0,
+    saleListingCount: saleListings.results[0]?.cnt ?? 0,
+    rentListingCount: rentListings.results[0]?.cnt ?? 0,
+  };
+}
+
+// ─── Delete App User ────────────────────────────────────────────────────────
+
+export async function deleteAppUser(userId: number) {
+  try {
+    const deletedBy = await requirePermission("users", "delete");
+
+    const existing = await d1.query<{ app_user_id: number }>(
+      "SELECT app_user_id FROM app_user WHERE app_user_id = ? AND deleted_at IS NULL",
+      [userId],
+    );
+    if (existing.results.length === 0) {
+      return { success: false, error: "User not found or already deleted" };
+    }
+
+    await appUserService.softDelete(userId, deletedBy);
+    saveTrashMetadata("app_user", userId, deletedBy).catch(() => {});
+
+    invalidateTag(CACHE_TAGS.USERS);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to delete user"),
     };
   }
 }

@@ -14,7 +14,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
   const isClosed = session.status === "closed";
   const isEnquiry = session.enquiry_id != null && session.product_name != null;
   const unreadCount = session.unread_admin_count;
-  const relativeTime = timeAgo(session.last_message_at);
+  const relativeTime = session.last_message_at ? timeAgo(session.last_message_at) : "";
 
   return (
     <button

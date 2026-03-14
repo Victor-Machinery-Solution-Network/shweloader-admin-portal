@@ -51,14 +51,20 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
     const handle = subscribeToChannel(`private-chat-${sessionId}`);
 
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
-      const msg = data as ChatMessageWithDetails & { attachments?: unknown[] };
-      setMessages((prev) => [
-        ...prev,
-        {
-          ...msg,
-          attachments: (msg.attachments ?? []) as ChatMessageWithDetails["attachments"],
-        },
-      ]);
+      const raw = data as Record<string, unknown>;
+      const msg: ChatMessageWithDetails = {
+        id: raw.messageId as number,
+        chat_session_id: sessionId,
+        sender_type: raw.senderType as "user" | "admin",
+        sender_id: raw.senderId as number,
+        sender_name: (raw.senderName as string) ?? "",
+        message: raw.message as string | null,
+        created_at: raw.createdAt as string,
+        attachments: (raw.attachments ?? []) as ChatMessageWithDetails["attachments"],
+      };
+      setMessages((prev) =>
+        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
+      );
     });
 
     // Listen for session-closed to update UI in real-time
@@ -77,11 +83,15 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 }
 
 /** Hook for inbox-level real-time updates */
-export function useChatInbox() {
+export function useChatInbox(
+  onSessionUpdate?: (sessionId: number, preview: string, at: string) => void,
+) {
   const [totalUnread, setTotalUnread] = useState(0);
   const router = useRouter();
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
+  const onSessionUpdateRef = useRef(onSessionUpdate);
+  onSessionUpdateRef.current = onSessionUpdate;
 
   // Initial fetch
   useEffect(() => {
@@ -107,11 +117,16 @@ export function useChatInbox() {
     });
 
     // Listen for messages on existing sessions to update inbox (unread counts, preview)
-    const unsubMessage = handle.subscribe("new-message", () => {
+    const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
       getTotalUnreadCount().then((count) => {
         if (mountedRef.current) setTotalUnread(count);
       });
-      router.refresh();
+      const raw = data as Record<string, unknown>;
+      onSessionUpdateRef.current?.(
+        raw.sessionId as number,
+        raw.lastMessagePreview as string,
+        raw.lastMessageAt as string,
+      );
     });
 
     return () => {

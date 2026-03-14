@@ -1,18 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
+import { useChatInbox } from "@/hooks/use-chat";
 import type { ChatSessionWithDetails } from "@/types/chat";
 
 interface ChatInboxProps {
   sessions: ChatSessionWithDetails[];
 }
 
-export function ChatInbox({ sessions }: ChatInboxProps) {
+export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
+  const [sessions, setSessions] = useState(initialSessions);
   const [selectedId, setSelectedId] = useState<number | null>(
-    sessions[0]?.id ?? null,
+    initialSessions[0]?.id ?? null,
   );
+
+  const handleSessionUpdate = useCallback(
+    (sessionId: number, preview: string, at: string) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId
+            ? { ...s, last_message_preview: preview, last_message_at: at }
+            : s,
+        ),
+      );
+    },
+    [],
+  );
+
+  useChatInbox(handleSessionUpdate);
 
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;
