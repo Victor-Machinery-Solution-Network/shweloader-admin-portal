@@ -9,7 +9,19 @@ import type {
   ChatSessionWithDetails,
   ChatMessageWithDetails,
   ChatAttachment,
+  ProductDiscussed,
 } from "@/types/chat";
+
+interface SearchListingResult {
+  listingId: number;
+  listingType: "sale" | "rent";
+  productName: string | null;
+  brandName: string | null;
+  thumbnailUrl: string | null;
+  mmkPrice: number | null;
+  usdPrice: number | null;
+  displayCurrency: string | null;
+}
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
 
@@ -290,4 +302,150 @@ export async function markSessionRead(sessionId: number) {
       error: getErrorMessage(error, "Failed to mark session as read"),
     };
   }
+}
+
+/** Reopen a resolved chat session */
+export async function reopenSession(sessionId: number) {
+  try {
+    await requirePermission("chat", "edit");
+
+    await d1.query(
+      `UPDATE chat_session
+       SET status = 'active', resolved_at = NULL, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [sessionId],
+    );
+
+    triggerChatEvent(sessionId, "session-reopened", { sessionId }).catch(
+      () => {},
+    );
+
+    invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to reopen session"),
+    };
+  }
+}
+
+/** Get all distinct products discussed in a session */
+export async function getSessionProducts(
+  sessionId: number,
+): Promise<ProductDiscussed[]> {
+  await requirePermission("chat", "read");
+
+  const result = await d1.query<{
+    sale_id: number;
+    rent_id: number;
+    product_name: string | null;
+    product_thumbnail: string | null;
+    brand_name: string | null;
+    mmk_price: number | null;
+    usd_price: number | null;
+    display_currency: string | null;
+  }>(
+    `SELECT DISTINCT
+      COALESCE(cm.sale_listing_id, 0) AS sale_id,
+      COALESCE(cm.rent_listing_id, 0) AS rent_id,
+      COALESCE(em.name, am.name) AS product_name,
+      pl.thumbnail_url AS product_thumbnail,
+      pb.name AS brand_name,
+      pl.mmk_price,
+      pl.usd_price,
+      pl.display_currency
+    FROM chat_message cm
+    LEFT JOIN sale_listing sl ON sl.id = cm.sale_listing_id
+    LEFT JOIN rent_listing rl ON rl.id = cm.rent_listing_id
+    LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
+    LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+    LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    WHERE cm.chat_session_id = ?
+      AND (cm.sale_listing_id IS NOT NULL OR cm.rent_listing_id IS NOT NULL)`,
+    [sessionId],
+  );
+
+  return result.results.map((row) => ({
+    listingId: row.sale_id || row.rent_id,
+    listingType: row.sale_id ? "sale" : "rent",
+    productName: row.product_name,
+    productThumbnail: row.product_thumbnail,
+    brandName: row.brand_name,
+    mmkPrice: row.mmk_price,
+    usdPrice: row.usd_price,
+    displayCurrency: row.display_currency,
+  }));
+}
+
+/** Search listings by model or brand name for admin product picker */
+export async function searchListings(
+  query: string,
+): Promise<SearchListingResult[]> {
+  await requirePermission("chat", "read");
+
+  const searchTerm = `%${query.trim()}%`;
+
+  const result = await d1.query<{
+    listing_id: number;
+    listing_type: "sale" | "rent";
+    product_name: string | null;
+    brand_name: string | null;
+    thumbnail_url: string | null;
+    mmk_price: number | null;
+    usd_price: number | null;
+    display_currency: string | null;
+  }>(
+    `SELECT
+      sl.id AS listing_id, 'sale' AS listing_type,
+      COALESCE(em.name, am.name) AS product_name,
+      pb.name AS brand_name,
+      pl.thumbnail_url,
+      pl.mmk_price, pl.usd_price, pl.display_currency
+    FROM sale_listing sl
+    JOIN product_list pl ON pl.sale_listing_id = sl.id
+    LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+    LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    WHERE sl.deleted_at IS NULL
+      AND (em.name LIKE ? OR am.name LIKE ? OR pb.name LIKE ?)
+    UNION ALL
+    SELECT
+      rl.id AS listing_id, 'rent' AS listing_type,
+      COALESCE(em.name, am.name) AS product_name,
+      pb.name AS brand_name,
+      pl.thumbnail_url,
+      pl.mmk_price, pl.usd_price, pl.display_currency
+    FROM rent_listing rl
+    JOIN product_list pl ON pl.rent_listing_id = rl.id
+    LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+    LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    WHERE rl.deleted_at IS NULL
+      AND (em.name LIKE ? OR am.name LIKE ? OR pb.name LIKE ?)
+    LIMIT 10`,
+    [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm],
+  );
+
+  return result.results.map((row) => ({
+    listingId: row.listing_id,
+    listingType: row.listing_type,
+    productName: row.product_name,
+    brandName: row.brand_name,
+    thumbnailUrl: row.thumbnail_url,
+    mmkPrice: row.mmk_price,
+    usdPrice: row.usd_price,
+    displayCurrency: row.display_currency,
+  }));
+}
+
+/** Fire a typing indicator event to the chat session */
+export async function sendTypingEvent(sessionId: number) {
+  triggerChatEvent(sessionId, "typing-start", {
+    sender_type: "admin",
+    sender_name: "Admin",
+  }).catch(() => {});
+
+  return { success: true };
 }
