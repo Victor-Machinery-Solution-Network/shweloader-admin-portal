@@ -69,7 +69,7 @@ async function d1Execute(query: string, params: unknown[] = []) {
 
 const PARTNER_TYPES = ["Dealer", "Rental Company", "Individual Seller"];
 const PARTNER_STATUS_TYPES = ["Pending", "Approved", "Rejected"];
-const ENQUIRY_STATUS_TYPES = ["Pending", "Resolved", "Replied"];
+
 const APPROVAL_STATUS_TYPES = ["Pending", "Approved", "Rework"];
 const ARTICLE_STATUS_TYPES = [
   "Draft",
@@ -270,8 +270,7 @@ const FEATURES = [
   { name: "sale_listings", group_name: "Marketplace", display_order: 10 },
   { name: "rent_listings", group_name: "Marketplace", display_order: 11 },
   { name: "featured_listings", group_name: "Marketplace", display_order: 12 },
-  { name: "enquiries", group_name: "Marketplace", display_order: 13 },
-  { name: "chat", group_name: "Marketplace", display_order: 14 },
+  { name: "chat", group_name: "Marketplace", display_order: 13 },
   { name: "listing_templates", group_name: "Marketplace", display_order: 15 },
   { name: "condition_types", group_name: "Marketplace", display_order: 16 },
   // Users (17–20)
@@ -298,8 +297,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   rent_listings: ["create", "read", "edit", "delete", "approve"],
   featured_listings: ["create", "read", "delete"],
   condition_types: ["create", "read", "edit", "delete"],
-  enquiries: ["read", "edit", "delete"],
-  chat: ["read", "edit"],
+  chat: ["read", "edit", "delete"],
   users: ["read", "create"],
   partners: ["read", "approve"],
   blacklist: ["read", "create", "delete"],
@@ -332,7 +330,6 @@ async function seedAdmin() {
   const lookupTables: { table: string; column: string; values: string[] }[] = [
     { table: "partner_type", column: "name", values: PARTNER_TYPES },
     { table: "partner_status_type", column: "status_name", values: PARTNER_STATUS_TYPES },
-    { table: "enquiry_status_type", column: "status_name", values: ENQUIRY_STATUS_TYPES },
     { table: "approval_status_type", column: "status_name", values: APPROVAL_STATUS_TYPES },
     { table: "article_status_type", column: "status_name", values: ARTICLE_STATUS_TYPES },
   ];
