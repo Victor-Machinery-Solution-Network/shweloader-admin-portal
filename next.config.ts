@@ -33,8 +33,9 @@ const nextConfig: NextConfig = {
       dynamic: 30,
     },
     serverActions: {
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "100mb",
     },
+    proxyClientMaxBodySize: "100mb",
     optimizePackageImports: [
       "lucide-react",
       "@hugeicons/core-free-icons",
