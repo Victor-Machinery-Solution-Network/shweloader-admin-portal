@@ -1,0 +1,229 @@
+<h2>Unified Chat Page — Proposed Layout</h2>
+<p class="subtitle">Single page replacing both /enquiries and /chat</p>
+
+<div class="mockup" style="margin-top: 24px;">
+  <div class="mockup-header">Chat — Admin Portal</div>
+  <div class="mockup-body" style="padding: 0; display: flex; height: 560px; font-size: 13px; background: #fff;">
+
+    <!-- LEFT: Session List -->
+    <div style="width: 300px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-shrink: 0;">
+
+      <!-- Search -->
+      <div style="padding: 12px; border-bottom: 1px solid #f3f4f6;">
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; padding: 8px 14px; color: #9ca3af; font-size: 12px;">
+          Search conversations...
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display: flex; gap: 0; border-bottom: 1px solid #e5e7eb; padding: 0 12px;">
+        <div style="padding: 8px 10px; font-size: 11px; color: #6b7280; font-weight: 500;">All <span style="background: #e5e7eb; border-radius: 10px; padding: 1px 6px; font-size: 10px;">12</span></div>
+        <div style="padding: 8px 10px; font-size: 11px; color: #111; font-weight: 600; border-bottom: 2px solid #111;">Unread <span style="background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 10px;">3</span></div>
+        <div style="padding: 8px 10px; font-size: 11px; color: #6b7280; font-weight: 500;">Active <span style="background: #e5e7eb; border-radius: 10px; padding: 1px 6px; font-size: 10px;">5</span></div>
+        <div style="padding: 8px 10px; font-size: 11px; color: #6b7280; font-weight: 500;">Resolved <span style="background: #e5e7eb; border-radius: 10px; padding: 1px 6px; font-size: 10px;">4</span></div>
+      </div>
+
+      <!-- Session Cards -->
+      <div style="flex: 1; overflow-y: auto;">
+
+        <!-- Pending + Unread session (NEW badge) -->
+        <div style="padding: 10px 12px; border-left: 3px solid #f59e0b; background: #fffbeb; cursor: pointer;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 13px;">Aung Ko</span>
+            <span style="font-size: 10px; color: #9ca3af;">5m ago</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+            <span style="font-size: 11px; color: #6b7280;">CAT 320D · For Sale</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+            <span style="font-size: 11px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">I'd like to ask about the price...</span>
+            <span style="background: #f59e0b; color: white; border-radius: 4px; padding: 1px 6px; font-size: 9px; font-weight: 600;">NEW</span>
+          </div>
+        </div>
+
+        <!-- Unread session (active, has new messages) -->
+        <div style="padding: 10px 12px; border-left: 3px solid transparent; background: #fff; cursor: pointer; border-bottom: 1px solid #f3f4f6;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 13px;">Zaw Min</span>
+            <span style="font-size: 10px; color: #9ca3af;">12m ago</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+            <span style="font-size: 11px; color: #6b7280;">Komatsu PC200 · For Rent</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+            <span style="font-size: 11px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">Is the machine available next week?</span>
+            <span style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">2</span>
+          </div>
+        </div>
+
+        <!-- Active session (no unread, selected) -->
+        <div style="padding: 10px 12px; border-left: 3px solid #2563eb; background: #eff6ff; cursor: pointer; border-bottom: 1px solid #f3f4f6;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 13px;">Mya Thida</span>
+            <span style="font-size: 10px; color: #9ca3af;">1h ago</span>
+          </div>
+          <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">General Support</div>
+          <div style="font-size: 11px; color: #6b7280; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">How do I list my equipment?</div>
+        </div>
+
+        <!-- Active session (enquiry, no unread) -->
+        <div style="padding: 10px 12px; border-left: 3px solid transparent; background: #fff; cursor: pointer; border-bottom: 1px solid #f3f4f6;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 500; font-size: 13px;">Lin Htet</span>
+            <span style="font-size: 10px; color: #9ca3af;">3h ago</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+            <span style="font-size: 11px; color: #6b7280;">Volvo EC210 · For Sale</span>
+          </div>
+          <div style="font-size: 11px; color: #6b7280; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">We can offer $42,000. Let me...</div>
+        </div>
+
+        <!-- Resolved session -->
+        <div style="padding: 10px 12px; border-left: 3px solid transparent; background: #fff; cursor: pointer; border-bottom: 1px solid #f3f4f6; opacity: 0.6;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 500; font-size: 13px;">Kyaw Soe</span>
+            <span style="font-size: 10px; color: #9ca3af;">2d ago</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+            <span style="font-size: 11px; color: #6b7280;">CAT 966H · For Sale</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+            <span style="font-size: 11px; color: #6b7280;">Thank you, I'll proceed with...</span>
+            <span style="background: #d1fae5; color: #065f46; border-radius: 4px; padding: 1px 6px; font-size: 9px; font-weight: 500;">Resolved</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: Conversation Panel -->
+    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+
+      <!-- Header -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 600; font-size: 15px;">Mya Thida</span>
+            <span style="background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 1px 8px; font-size: 10px; font-weight: 500;">Active</span>
+          </div>
+          <div style="font-size: 11px; color: #6b7280; margin-top: 4px; display: flex; gap: 12px;">
+            <span>📞 09855441</span>
+            <span>✉️ mya@email.com</span>
+            <span>🏢 ABC Co.</span>
+          </div>
+        </div>
+        <button style="background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 14px; font-size: 11px; color: #6b7280; cursor: pointer;">Resolve</button>
+      </div>
+
+      <!-- Product Ref Card (for enquiry sessions) -->
+      <div style="margin: 12px 16px; padding: 10px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+        <div style="width: 48px; height: 48px; background: #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 18px; flex-shrink: 0;">🏗️</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px;">Komatsu</div>
+          <div style="font-size: 13px; font-weight: 600;">PC200-8 Hydraulic Excavator</div>
+          <div style="font-size: 11px; color: #6b7280;">Partner: Heavy Machinery Co.</div>
+        </div>
+        <div style="text-align: right; flex-shrink: 0;">
+          <div style="background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 1px 8px; font-size: 10px; font-weight: 500;">For Sale</div>
+          <div style="font-size: 13px; font-weight: 600; margin-top: 4px;">$45,000</div>
+          <a style="font-size: 10px; color: #2563eb; text-decoration: none;">View Listing →</a>
+        </div>
+      </div>
+
+      <!-- Messages Area -->
+      <div style="flex: 1; overflow-y: auto; padding: 16px;">
+
+        <!-- Date separator -->
+        <div style="text-align: center; margin: 8px 0 16px;">
+          <span style="background: #f3f4f6; padding: 2px 12px; border-radius: 10px; font-size: 10px; color: #9ca3af;">March 13, 2026</span>
+        </div>
+
+        <!-- User message -->
+        <div style="display: flex; gap: 8px; margin-bottom: 4px; max-width: 75%;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #6b7280; flex-shrink: 0;">M</div>
+          <div>
+            <div style="background: #f3f4f6; border-radius: 16px 16px 16px 4px; padding: 8px 14px; font-size: 13px;">
+              Hi, I'd like to know more about this excavator. Is it still available?
+            </div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px; padding-left: 4px;">2:30 PM</div>
+          </div>
+        </div>
+
+        <!-- Admin message -->
+        <div style="display: flex; gap: 8px; margin-bottom: 4px; max-width: 75%; margin-left: auto; flex-direction: row-reverse;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; flex-shrink: 0;">A</div>
+          <div>
+            <div style="background: #2563eb; color: white; border-radius: 16px 16px 4px 16px; padding: 8px 14px; font-size: 13px;">
+              Yes, it's available! The PC200-8 is in excellent condition. Would you like to schedule a viewing?
+            </div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px; text-align: right; padding-right: 4px;">2:35 PM</div>
+          </div>
+        </div>
+
+        <!-- User message -->
+        <div style="display: flex; gap: 8px; margin-bottom: 4px; max-width: 75%;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #6b7280; flex-shrink: 0;">M</div>
+          <div>
+            <div style="background: #f3f4f6; border-radius: 16px 16px 16px 4px; padding: 8px 14px; font-size: 13px;">
+              That would be great. I'm free this Saturday. Can you also share the service history?
+            </div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px; padding-left: 4px;">2:42 PM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div style="padding: 12px 16px; border-top: 1px solid #e5e7eb;">
+        <div style="display: flex; align-items: flex-end; gap: 8px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 20px; padding: 6px 6px 6px 14px;">
+          <button style="background: none; border: none; color: #9ca3af; font-size: 18px; cursor: pointer; padding: 4px;">📎</button>
+          <div style="flex: 1; padding: 4px 0; font-size: 13px; color: #9ca3af;">Type a message...</div>
+          <button style="background: #2563eb; border: none; color: white; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 14px;">↑</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 32px;">
+  <h3>Key Design Decisions</h3>
+
+  <div class="section" style="margin-top: 16px;">
+    <div class="label">Session List (Left Panel)</div>
+    <ul style="font-size: 14px; line-height: 1.8; color: #444;">
+      <li><strong>Tabs:</strong> All | Unread | Active | Resolved (with counts)</li>
+      <li><strong>Pending sessions:</strong> Amber left border + "NEW" badge for visual distinction</li>
+      <li><strong>Enquiry indicator:</strong> Amber dot + listing info (model · For Sale/Rent)</li>
+      <li><strong>General support:</strong> No dot, shows "General Support"</li>
+      <li><strong>Selected:</strong> Blue left border + light blue background</li>
+      <li><strong>Resolved:</strong> Reduced opacity + green "Resolved" badge</li>
+      <li><strong>Unread count:</strong> Red circle badge (same as current)</li>
+    </ul>
+  </div>
+
+  <div class="section" style="margin-top: 16px;">
+    <div class="label">Conversation Panel (Right Panel)</div>
+    <ul style="font-size: 14px; line-height: 1.8; color: #444;">
+      <li><strong>Header:</strong> User name, status badge, contact info, "Resolve" button</li>
+      <li><strong>Product card:</strong> Shows below header for enquiry sessions (listing context)</li>
+      <li><strong>Messages:</strong> Grouped by sender, date separators, same bubble style as current</li>
+      <li><strong>Input:</strong> Attachment + text + send — same as current ChatInputBar</li>
+    </ul>
+  </div>
+
+  <div class="section" style="margin-top: 16px;">
+    <div class="label">What's New vs Current</div>
+    <ul style="font-size: 14px; line-height: 1.8; color: #444;">
+      <li>❌ No more separate /enquiries page</li>
+      <li>❌ No more "Reply" → create session step (sessions exist from creation)</li>
+      <li>✅ Pending sessions have "NEW" badge for visual distinction</li>
+      <li>✅ Status: pending → active → resolved (single source of truth)</li>
+      <li>✅ "Resolve" replaces "Close Session" (better language)</li>
+      <li>✅ Tabs: All | Unread | Active | Resolved</li>
+    </ul>
+  </div>
+</div>

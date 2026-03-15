@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focal Point Modal — Interactive Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e5e5e5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal {
+    position: relative;
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  /* Header */
+  .modal-header {
+    padding: 20px 24px 0;
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #fafafa;
+    letter-spacing: -0.01em;
+  }
+  .modal-desc {
+    font-size: 13px;
+    color: #71717a;
+    margin-top: 4px;
+  }
+  .close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: #27272a;
+    color: #a1a1aa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.15s;
+  }
+  .close-btn:hover { background: #3f3f46; color: #e5e5e5; }
+
+  /* Drag area */
+  .drag-area {
+    margin: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: #09090b;
+    cursor: grab;
+    user-select: none;
+    height: 340px;
+  }
+  .drag-area:active { cursor: grabbing; }
+
+  /* The image (draggable) */
+  .drag-image {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transition: top 0.05s ease-out;
+  }
+
+  /* Dark overlay above and below crop zone */
+  .overlay-top, .overlay-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .overlay-top { top: 0; }
+  .overlay-bottom { bottom: 0; }
+
+  /* Crop rectangle border */
+  .crop-rect {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1.5px solid rgba(255,255,255,0.45);
+    border-bottom: 1.5px solid rgba(255,255,255,0.45);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* Grid lines (rule of thirds) */
+  .grid-line {
+    position: absolute;
+    background: rgba(255,255,255,0.12);
+    pointer-events: none;
+    z-index: 3;
+  }
+  .grid-h { left: 0; right: 0; height: 1px; }
+  .grid-v { top: 0; bottom: 0; width: 1px; }
+
+  /* Drag hint pill */
+  .drag-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.3s;
+  }
+  .drag-hint svg { opacity: 0.5; }
+  .drag-area:active .drag-hint { opacity: 0; }
+
+  /* Preview section */
+  .preview-section {
+    padding: 0 24px;
+    margin-bottom: 16px;
+  }
+  .preview-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #52525b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .preview-frame {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #27272a;
+    background: #09090b;
+  }
+  .preview-img {
+    width: 100%;
+    display: block;
+  }
+
+  /* Footer */
+  .modal-footer {
+    padding: 0 24px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: #a1a1aa;
+    border: 1px solid #3f3f46;
+  }
+  .btn-ghost:hover { background: #27272a; color: #e5e5e5; }
+  .btn-primary {
+    background: #f59e0b;
+    color: #000;
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: #fbbf24; }
+
+  /* Aspect ratio badge */
+  .aspect-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    z-index: 10;
+    letter-spacing: 0.03em;
+  }
+
+  /* Info panel below the mockup */
+  .info-panel {
+    margin-top: 24px;
+    max-width: 560px;
+    width: 100%;
+  }
+  .info-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fafafa;
+    margin-bottom: 12px;
+  }
+  .features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .feature {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .feature-icon {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+  .feature-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e5e5e5;
+  }
+  .feature-desc {
+    font-size: 11px;
+    color: #71717a;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
+
+    <!-- The Modal -->
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div class="modal-title">Adjust Image Position</div>
+        <div class="modal-desc">Drag to reposition. The highlighted area is what will be shown.</div>
+        <button class="close-btn">&times;</button>
+      </div>
+
+      <!-- Drag area -->
+      <div class="drag-area" id="dragArea">
+        <div class="aspect-badge" id="aspectBadge">16 : 9</div>
+
+        <!-- Image (a sample gradient since we can't load external) -->
+        <div class="drag-image" id="dragImage" style="height: 500px; background: linear-gradient(180deg, #92400e 0%, #f59e0b 20%, #fbbf24 40%, #78716c 60%, #44403c 80%, #1c1917 100%);">
+          <!-- Simulate a photo with some visual elements -->
+          <div style="position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: 120px; height: 70px; background: rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 24px; opacity: 0.4;">&#x1f4f7;</span>
+          </div>
+          <div style="position: absolute; top: 180px; left: 50%; transform: translateX(-50%); text-align: center;">
+            <div style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.5);">Sample Image</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 4px;">Drag up or down to reposition</div>
+          </div>
+          <div style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 80px; height: 50px; background: rgba(255,255,255,0.08); border-radius: 6px;"></div>
+        </div>
+
+        <!-- Overlays -->
+        <div class="overlay-top" id="overlayTop"></div>
+        <div class="overlay-bottom" id="overlayBottom"></div>
+
+        <!-- Crop rectangle -->
+        <div class="crop-rect" id="cropRect">
+          <!-- Rule of thirds grid -->
+          <div class="grid-line grid-h" style="top: 33.33%;"></div>
+          <div class="grid-line grid-h" style="top: 66.66%;"></div>
+          <div class="grid-line grid-v" style="left: 33.33%;"></div>
+          <div class="grid-line grid-v" style="left: 66.66%;"></div>
+        </div>
+
+        <!-- Drag hint -->
+        <div class="drag-hint" id="dragHint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="12,2 12,22"></polyline>
+            <polyline points="8,6 12,2 16,6"></polyline>
+            <polyline points="8,18 12,22 16,18"></polyline>
+          </svg>
+          Drag to reposition
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div class="preview-section">
+        <div class="preview-label">Preview</div>
+        <div class="preview-frame" id="previewFrame" style="aspect-ratio: 16/9;">
+          <div id="previewContent" style="width: 100%; height: 100%; background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 50%, #78716c 100%); transition: background-position 0.05s;"></div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="resetBtn">Reset</button>
+        <button class="btn btn-primary">Save Position</button>
+      </div>
+    </div>
+
+    <!-- Feature callouts -->
+    <div class="info-panel">
+      <div class="info-title">Design Details</div>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-name">Single-axis drag</div>
+          <div class="feature-desc">Only drags along the axis that overflows. Landscape image in 1:1 crop = horizontal drag only.</div>
+        </div>
+        <div class="feature">
+          <div class="feature-name">Live preview</div>
+          <div class="feature-desc">Small preview at exact target aspect ratio updates in real-time as you drag.</div>
+        </div>
+        <div class="feature">
+          <div class="feature-name">Aspect badge</div>
+          <div class="feature-desc">Shows the target ratio (16:9, 1:1, 4:3) so admin knows what they're framing for.</div>
+        </div>
+        <div class="feature">
+          <div class="feature-name">No zoom</div>
+          <div class="feature-desc">Image auto-scales to fill crop width/height. No slider, no confusion. Just drag.</div>
+        </div>
+        <div class="feature">
+          <div class="feature-name">Rule of thirds</div>
+          <div class="feature-desc">Subtle grid lines help compose the image within the crop area.</div>
+        </div>
+        <div class="feature">
+          <div class="feature-name">Same data format</div>
+          <div class="feature-desc">Outputs identical 0-1 focal point coordinates. Zero changes to DB, API, or RN app.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Interactive drag demo
+    const dragArea = document.getElementById('dragArea');
+    const dragImage = document.getElementById('dragImage');
+    const overlayTop = document.getElementById('overlayTop');
+    const overlayBottom = document.getElementById('overlayBottom');
+    const cropRect = document.getElementById('cropRect');
+    const dragHint = document.getElementById('dragHint');
+
+    // Simulate 16:9 crop in a 340px tall container with a 500px tall image
+    const containerH = 340;
+    const imageH = 500;
+    const cropH = containerH * 0.56; // roughly 16:9 within the container width
+    const cropTop = (containerH - cropH) / 2;
+
+    // Set crop rectangle and overlays
+    cropRect.style.top = cropTop + 'px';
+    cropRect.style.height = cropH + 'px';
+    overlayTop.style.height = cropTop + 'px';
+    overlayBottom.style.height = cropTop + 'px';
+
+    // Image position
+    let imgTop = -(imageH - containerH) / 2; // centered initially
+    const minTop = -(imageH - containerH);
+    const maxTop = 0;
+    dragImage.style.top = imgTop + 'px';
+
+    let dragging = false;
+    let startY = 0;
+    let startTop = 0;
+
+    dragArea.addEventListener('mousedown', (e) => {
+      dragging = true;
+      startY = e.clientY;
+      startTop = imgTop;
+      dragHint.style.opacity = '0';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dy = e.clientY - startY;
+      imgTop = Math.max(minTop, Math.min(maxTop, startTop + dy));
+      dragImage.style.top = imgTop + 'px';
+
+      // Update preview gradient position
+      const progress = -imgTop / (imageH - containerH);
+      const previewContent = document.getElementById('previewContent');
+      const gradientOffset = progress * 100;
+      previewContent.style.background = `linear-gradient(180deg,
+        #92400e ${-20 + gradientOffset * 0.5}%,
+        #f59e0b ${10 + gradientOffset * 0.3}%,
+        #fbbf24 ${30 + gradientOffset * 0.3}%,
+        #78716c ${60 + gradientOffset * 0.2}%,
+        #44403c ${80 + gradientOffset * 0.1}%,
+        #1c1917 ${100}%)`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      imgTop = -(imageH - containerH) / 2;
+      dragImage.style.top = imgTop + 'px';
+      dragHint.style.opacity = '1';
+    });
+  </script>
+</body>
+</html>

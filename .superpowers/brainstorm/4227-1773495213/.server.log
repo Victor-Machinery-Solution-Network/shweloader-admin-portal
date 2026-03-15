@@ -1,0 +1,5 @@
+{"type":"server-started","port":61705,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:61705","screen_dir":"/Users/peter/Desktop/shweloader-admin-portal/.superpowers/brainstorm/4227-1773495213"}
+{"type":"screen-added","file":"/Users/peter/Desktop/shweloader-admin-portal/.superpowers/brainstorm/4227-1773495213/focal-point-design.html"}
+{"type":"screen-added","file":"/Users/peter/Desktop/shweloader-admin-portal/.superpowers/brainstorm/4227-1773495213/focal-point-mockup.html"}
+{"type":"screen-added","file":"/Users/peter/Desktop/shweloader-admin-portal/.superpowers/brainstorm/4227-1773495213/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}
