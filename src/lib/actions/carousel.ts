@@ -36,14 +36,16 @@ export async function addCarouselImage(
     }
 
     const linkUrl = (formData.get("link_url") as string) || null;
+    const focalX = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const focalY = parseFloat(formData.get("focal_y") as string) || 0.5;
 
     // Parallel: get user, create image record, and get next display_order
     const [added_by, { results: imageRows }, nextOrder] =
       await Promise.all([
         requirePermission("carousels", "create"),
         d1.query<{ image_id: number }>(
-          "INSERT INTO image (image_url, uploaded_by) VALUES (?, ?) RETURNING image_id",
-          [imageKey, null],
+          "INSERT INTO image (image_url, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?) RETURNING image_id",
+          [imageKey, focalX, focalY, null],
         ),
         getLastDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
@@ -58,7 +60,7 @@ export async function addCarouselImage(
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
-    return { success: true, imageId, imageUrl: imageKey };
+    return { success: true };
   } catch (error) {
     return {
       success: false,

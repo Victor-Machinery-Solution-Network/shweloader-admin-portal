@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Loader2, Move } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +26,20 @@ interface FocalPointModalProps {
   onSkip: () => void;
 }
 
-// Minimum scale factor beyond cover-fit to ensure there's always room to drag
-const MIN_OVERFLOW_RATIO = 1.3;
+const CONTAINER_HEIGHT = 340;
+
+function formatAspectLabel(ratio: number): string {
+  if (ratio === 1) return "1 : 1";
+  if (Math.abs(ratio - 16 / 9) < 0.01) return "16 : 9";
+  if (Math.abs(ratio - 4 / 3) < 0.01) return "4 : 3";
+  if (Math.abs(ratio - 16 / 10) < 0.01) return "16 : 10";
+  if (Math.abs(ratio - 3 / 2) < 0.01) return "3 : 2";
+  return `${ratio.toFixed(2)} : 1`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 export function FocalPointModal({
   open,
@@ -37,219 +50,312 @@ export function FocalPointModal({
   onSkip,
 }: FocalPointModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
-  const hasInitialized = useRef(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-  const initializePosition = useCallback(() => {
-    if (hasInitialized.current) return;
-    const img = imageRef.current;
+  const [error, setError] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [showHint, setShowHint] = useState(true);
+
+  // Layout as state so render always has correct values
+  const [layout, setLayout] = useState({
+    cropWidth: 0,
+    cropHeight: 0,
+    cropTop: 0,
+    cropLeft: 0,
+    displayWidth: 0,
+    displayHeight: 0,
+    overflowX: 0,
+    overflowY: 0,
+  });
+  const loaded = layout.cropWidth > 0;
+
+  // Drag offset in pixels (how far the image is shifted from its "start" position)
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ pointerX: 0, pointerY: 0, offsetX: 0, offsetY: 0 });
+
+  // Calculate layout synchronously when image loads
+  const handleImageLoad = useCallback(() => {
+    const img = imgRef.current;
     const container = containerRef.current;
     if (!img || !container || !img.naturalWidth) return;
 
+    setError(false);
+
     const containerWidth = container.clientWidth;
-    if (containerWidth === 0) return;
-    const containerHeight = containerWidth / aspectRatio;
+    const imageAspect = img.naturalWidth / img.naturalHeight;
 
-    // Scale image to cover the container
-    const scaleX = containerWidth / img.naturalWidth;
-    const scaleY = containerHeight / img.naturalHeight;
-    const coverScale = Math.max(scaleX, scaleY);
+    // Crop rectangle: fit the target aspect ratio centered in the container
+    // Inset so the crop never touches the edges
+    const PAD = 16;
+    const usableWidth = containerWidth - PAD * 2;
+    let cropWidth: number;
+    let cropHeight: number;
+    if (usableWidth / CONTAINER_HEIGHT > aspectRatio) {
+      cropHeight = CONTAINER_HEIGHT;
+      cropWidth = cropHeight * aspectRatio;
+    } else {
+      cropWidth = usableWidth;
+      cropHeight = cropWidth / aspectRatio;
+    }
+    const cropTop = (CONTAINER_HEIGHT - cropHeight) / 2;
+    const cropLeft = (containerWidth - cropWidth) / 2;
 
-    // Ensure minimum overflow so there's always meaningful drag room
-    const coverWidth = img.naturalWidth * coverScale;
-    const coverHeight = img.naturalHeight * coverScale;
-    const overflowX = coverWidth / containerWidth;
-    const overflowY = coverHeight / containerHeight;
-    const maxOverflow = Math.max(overflowX, overflowY);
-
-    // If the image barely overflows, scale it up to guarantee drag room
-    let scale = coverScale;
-    if (maxOverflow < MIN_OVERFLOW_RATIO) {
-      scale = coverScale * (MIN_OVERFLOW_RATIO / maxOverflow);
+    // Image display size: scale to FILL crop along one axis, overflow along the other
+    let displayWidth: number;
+    let displayHeight: number;
+    if (imageAspect > aspectRatio) {
+      // Image wider than crop → match heights, overflow horizontally
+      displayHeight = cropHeight;
+      displayWidth = displayHeight * imageAspect;
+    } else {
+      // Image taller than crop → match widths, overflow vertically
+      displayWidth = cropWidth;
+      displayHeight = displayWidth / imageAspect;
     }
 
-    const scaledWidth = img.naturalWidth * scale;
-    const scaledHeight = img.naturalHeight * scale;
+    const overflowX = displayWidth - cropWidth;
+    const overflowY = displayHeight - cropHeight;
 
-    setImageSize({ width: scaledWidth, height: scaledHeight });
-    setContainerSize({ width: containerWidth, height: containerHeight });
-
-    const maxOffsetX = scaledWidth - containerWidth;
-    const maxOffsetY = scaledHeight - containerHeight;
-    setPosition({
-      x: -(initialFocalPoint.x * maxOffsetX),
-      y: -(initialFocalPoint.y * maxOffsetY),
+    setLayout({
+      cropWidth, cropHeight, cropTop, cropLeft,
+      displayWidth, displayHeight, overflowX, overflowY,
     });
-    hasInitialized.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aspectRatio, initialFocalPoint.x, initialFocalPoint.y]);
 
+    // Set initial offset from initialFocalPoint
+    setOffset({
+      x: initialFocalPoint.x * overflowX,
+      y: initialFocalPoint.y * overflowY,
+    });
+  }, [aspectRatio, initialFocalPoint]);
+
+  const handleImageError = useCallback(() => {
+    setError(true);
+  }, []);
+
+  // Reset state when modal opens with new image
   useEffect(() => {
     if (open) {
-      hasInitialized.current = false;
-      const timer = setTimeout(initializePosition, 100);
-      return () => clearTimeout(timer);
+      setLayout({ cropWidth: 0, cropHeight: 0, cropTop: 0, cropLeft: 0, displayWidth: 0, displayHeight: 0, overflowX: 0, overflowY: 0 });
+      setError(false);
+      setShowHint(true);
+      setDragging(false);
+      setOffset({ x: 0, y: 0 });
     }
-  }, [open, initializePosition]);
+  }, [open, imageUrl]);
 
-  // Window-level mouse tracking for reliable drag behavior
-  useEffect(() => {
-    if (!isDragging) return;
+  // ── Pointer drag handlers ──────────────────────────────
 
-    const maxOffsetX = imageSize.width - containerSize.width;
-    const maxOffsetY = imageSize.height - containerSize.height;
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      const { overflowX, overflowY } = layout;
+      if (overflowX === 0 && overflowY === 0) return; // nothing to drag
 
-    // Lock to the axis with more overflow (like LinkedIn for wide banners)
-    const lockAxis =
-      maxOffsetX > 5 && maxOffsetY > 5
-        ? null // both directions have room — free drag
-        : maxOffsetX > maxOffsetY
-          ? "x"
-          : "y";
-
-    const onMouseMove = (e: MouseEvent) => {
-      const dx = lockAxis === "y" ? 0 : e.clientX - dragStart.current.x;
-      const dy = lockAxis === "x" ? 0 : e.clientY - dragStart.current.y;
-      setPosition({
-        x: Math.min(0, Math.max(-maxOffsetX, dragStart.current.posX + dx)),
-        y: Math.min(0, Math.max(-maxOffsetY, dragStart.current.posY + dy)),
-      });
-    };
-
-    const onMouseUp = () => setIsDragging(false);
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [isDragging, imageSize, containerSize]);
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsDragging(true);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      setDragging(true);
+      setShowHint(false);
       dragStart.current = {
-        x: e.clientX,
-        y: e.clientY,
-        posX: position.x,
-        posY: position.y,
+        pointerX: e.clientX,
+        pointerY: e.clientY,
+        offsetX: offset.x,
+        offsetY: offset.y,
       };
     },
-    [position]
+    [offset]
   );
 
-  const getFocalPoint = useCallback((): FocalPoint => {
-    const maxOffsetX = imageSize.width - containerSize.width;
-    const maxOffsetY = imageSize.height - containerSize.height;
-    if (maxOffsetX === 0 && maxOffsetY === 0) return { x: 0.5, y: 0.5 };
-    return {
-      x:
-        maxOffsetX > 0
-          ? Math.round((-position.x / maxOffsetX) * 100) / 100
-          : 0.5,
-      y:
-        maxOffsetY > 0
-          ? Math.round((-position.y / maxOffsetY) * 100) / 100
-          : 0.5,
-    };
-  }, [position, imageSize, containerSize]);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging) return;
+      const { overflowX, overflowY } = layout;
+      const dx = e.clientX - dragStart.current.pointerX;
+      const dy = e.clientY - dragStart.current.pointerY;
 
-  // Compute the visible "window" rect over the full image for the overlay
-  const overlayStyle = containerSize.width > 0 && imageSize.width > 0;
+      setOffset({
+        x: clamp(dragStart.current.offsetX - dx, 0, overflowX),
+        y: clamp(dragStart.current.offsetY - dy, 0, overflowY),
+      });
+    },
+    [dragging]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setDragging(false);
+  }, []);
+
+  // ── Focal point from current offset ────────────────────
+
+  const getFocalPoint = useCallback((): FocalPoint => {
+    const { overflowX, overflowY } = layout;
+    return {
+      x: overflowX > 0 ? Math.round((offset.x / overflowX) * 100) / 100 : 0.5,
+      y: overflowY > 0 ? Math.round((offset.y / overflowY) * 100) / 100 : 0.5,
+    };
+  }, [offset]);
+
+  const handleReset = useCallback(() => {
+    const { overflowX, overflowY } = layout;
+    setOffset({ x: overflowX / 2, y: overflowY / 2 });
+    setShowHint(true);
+  }, []);
+
+  // ── Derived values for rendering ───────────────────────
+
+  const canDrag = layout.overflowX > 0 || layout.overflowY > 0;
+  const focal = getFocalPoint();
+
+  // Image position: offset from crop top-left
+  // maxWidth/maxHeight "none" overrides Tailwind's img reset (max-width:100%, height:auto)
+  const imgStyle: React.CSSProperties = loaded
+    ? {
+        position: "absolute" as const,
+        width: layout.displayWidth || "100%",
+        height: layout.displayHeight || "auto",
+        maxWidth: "none",
+        maxHeight: "none",
+        left: layout.cropLeft - offset.x,
+        top: layout.cropTop - offset.y,
+        pointerEvents: "none" as const,
+      }
+    : { display: "none" };
 
   return (
-    <Dialog open={open} onOpenChange={() => onSkip()}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Adjust Image Position</DialogTitle>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onSkip(); }}>
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-0">
+          <DialogTitle className="text-[17px]">Adjust Image Position</DialogTitle>
           <DialogDescription>
-            Drag to reposition. The visible area shows how this image will
-            appear.
+            Drag to reposition. The highlighted area is what will be shown.
           </DialogDescription>
         </DialogHeader>
 
+        {/* ── Drag Area ─────────────────────────────────── */}
         <div
           ref={containerRef}
-          className="relative overflow-hidden rounded-lg border bg-muted cursor-grab active:cursor-grabbing select-none"
-          style={{ aspectRatio }}
-          onMouseDown={handleMouseDown}
+          className="relative mx-4 mt-3 overflow-hidden rounded-xl bg-[#09090b]"
+          style={{ height: CONTAINER_HEIGHT, touchAction: "none", cursor: canDrag ? (dragging ? "grabbing" : "grab") : "default" }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         >
-          {/* The draggable image */}
+          {/* Image — positioned absolutely based on drag offset */}
           <img
-            ref={imageRef}
+            ref={imgRef}
             src={imageUrl}
-            alt="Adjust position"
+            alt=""
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            style={imgStyle}
             draggable={false}
-            onLoad={initializePosition}
-            className="absolute"
-            style={{
-              width: imageSize.width || "auto",
-              height: imageSize.height || "auto",
-              transform: `translate(${position.x}px, ${position.y}px)`,
-              transition: isDragging ? "none" : "transform 0.15s ease-out",
-            }}
           />
 
-          {/* Dark overlay on edges showing what gets cropped — LinkedIn style */}
-          {overlayStyle && (
+          {/* Loading state */}
+          {!loaded && !error && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-white/40" />
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-sm text-white/40">Failed to load image</p>
+            </div>
+          )}
+
+          {/* Overlays + crop rectangle (only when loaded) */}
+          {loaded && (
             <>
-              {/* Top crop zone */}
-              {position.y < 0 && (
-                <div
-                  className="absolute left-0 right-0 top-0 bg-black/40 pointer-events-none"
-                  style={{ height: 0 }}
-                />
+              {/* Dimmed overlays — use box-shadow on crop rect for clean edges */}
+              <div
+                className="absolute pointer-events-none z-10"
+                style={{
+                  top: layout.cropTop,
+                  left: layout.cropLeft,
+                  width: layout.cropWidth,
+                  height: layout.cropHeight,
+                  boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)",
+                }}
+              />
+
+              {/* Crop frame with corner brackets */}
+              <div
+                className="absolute pointer-events-none z-20"
+                style={{
+                  top: layout.cropTop,
+                  left: layout.cropLeft,
+                  width: layout.cropWidth,
+                  height: layout.cropHeight,
+                }}
+              >
+                {/* Outer border — subtle */}
+                <div className="absolute inset-0 border border-white/20 rounded-[2px]" />
+
+                {/* Corner brackets — 20px arms, 2px thick */}
+                {/* Top-left */}
+                <div className="absolute -top-px -left-px w-5 h-0.5 bg-white rounded-full" />
+                <div className="absolute -top-px -left-px h-5 w-0.5 bg-white rounded-full" />
+                {/* Top-right */}
+                <div className="absolute -top-px -right-px w-5 h-0.5 bg-white rounded-full" />
+                <div className="absolute -top-px -right-px h-5 w-0.5 bg-white rounded-full" />
+                {/* Bottom-left */}
+                <div className="absolute -bottom-px -left-px w-5 h-0.5 bg-white rounded-full" />
+                <div className="absolute -bottom-px -left-px h-5 w-0.5 bg-white rounded-full" />
+                {/* Bottom-right */}
+                <div className="absolute -bottom-px -right-px w-5 h-0.5 bg-white rounded-full" />
+                <div className="absolute -bottom-px -right-px h-5 w-0.5 bg-white rounded-full" />
+
+                {/* Rule of thirds — very subtle */}
+                <div className="absolute left-0 right-0 top-1/3 h-px bg-white/[0.08]" />
+                <div className="absolute left-0 right-0 top-2/3 h-px bg-white/[0.08]" />
+                <div className="absolute top-0 bottom-0 left-1/3 w-px bg-white/[0.08]" />
+                <div className="absolute top-0 bottom-0 left-2/3 w-px bg-white/[0.08]" />
+              </div>
+
+              {/* Aspect badge */}
+              <div className="absolute top-2.5 right-2.5 z-30 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white backdrop-blur-md pointer-events-none">
+                {formatAspectLabel(aspectRatio)}
+              </div>
+
+              {/* Drag hint */}
+              {showHint && canDrag && (
+                <div className="absolute bottom-3.5 left-1/2 z-30 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/70 px-4 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-md pointer-events-none shadow-lg">
+                  <Move className="size-3.5" />
+                  Drag to reposition
+                </div>
               )}
             </>
           )}
-
-          {/* Subtle vignette border to show crop edges */}
-          <div
-            className="absolute inset-0 pointer-events-none rounded-lg"
-            style={{
-              boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.3)",
-            }}
-          />
-
-          {/* Drag hint — LinkedIn/Facebook style: just text, no crosshair */}
-          {!isDragging && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="bg-black/60 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="5 9 2 12 5 15" />
-                  <polyline points="9 5 12 2 15 5" />
-                  <polyline points="15 19 12 22 9 19" />
-                  <polyline points="19 9 22 12 19 15" />
-                  <line x1="2" y1="12" x2="22" y2="12" />
-                  <line x1="12" y1="2" x2="12" y2="22" />
-                </svg>
-                Drag to reposition
-              </div>
-            </div>
-          )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onSkip}>
-            Skip (use center)
+        {/* ── Live Preview ──────────────────────────────── */}
+        {loaded && (
+          <div className="px-5 pt-3">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              Preview
+            </p>
+            <div
+              className="overflow-hidden rounded-lg border border-border/50"
+              style={{ aspectRatio: String(aspectRatio), maxHeight: 120 }}
+            >
+              <img
+                src={imageUrl}
+                alt=""
+                className="size-full object-cover"
+                style={{
+                  objectPosition: `${focal.x * 100}% ${focal.y * 100}%`,
+                }}
+                draggable={false}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ── Footer ────────────────────────────────────── */}
+        <DialogFooter className="px-5 pb-5 pt-3 gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleReset} disabled={!loaded}>
+            Reset
           </Button>
-          <Button onClick={() => onSave(getFocalPoint())}>
+          <Button onClick={() => onSave(getFocalPoint())} disabled={error}>
             Save Position
           </Button>
         </DialogFooter>

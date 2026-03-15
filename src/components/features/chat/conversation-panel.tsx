@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
@@ -55,14 +54,12 @@ function isSameGroup(
 interface ConversationPanelProps {
   session: ChatSessionWithDetails | null;
   onSessionClosed: () => void;
-  onMessageCountChange?: (count: number) => void;
   onMessagesRead?: () => void;
 }
 
 export function ConversationPanel({
   session,
   onSessionClosed,
-  onMessageCountChange,
   onMessagesRead,
 }: ConversationPanelProps) {
   const [isSending, setIsSending] = useState(false);
@@ -80,11 +77,6 @@ export function ConversationPanel({
   );
 
   const { isTyping, typingUser } = useTypingIndicator(session?.id ?? null);
-
-  // Report message count to parent
-  useEffect(() => {
-    onMessageCountChange?.(messages.length);
-  }, [messages.length, onMessageCountChange]);
 
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
@@ -128,6 +120,21 @@ export function ConversationPanel({
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [session?.id]);
+
+  // Auto-scroll when typing indicator appears and user was already at the bottom
+  useEffect(() => {
+    if (!isTyping) return;
+    const viewport = scrollAreaRef.current?.querySelector(
+      '[data-slot="scroll-area-viewport"]',
+    ) as HTMLElement | null;
+    if (!viewport) return;
+    // After the typing indicator renders, if user was near the bottom
+    // the gap is roughly the indicator's height (~30-40px)
+    const gap = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    if (gap < 100) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isTyping]);
 
   // Handle real-time session closed event
   useEffect(() => {
@@ -228,17 +235,32 @@ export function ConversationPanel({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border bg-background shrink-0">
-        <div className="flex flex-col gap-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold">{session.user_name}</span>
-            {isResolved ? (
-              <Badge variant="secondary">Resolved</Badge>
-            ) : session.status === "pending" ? (
-              <Badge variant="warning">Pending</Badge>
-            ) : (
-              <Badge variant="success">Active</Badge>
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-background shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="size-9 rounded-full bg-secondary flex items-center justify-center">
+              <span className="text-sm font-semibold text-secondary-foreground">
+                {session.user_name
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((w) => w[0] ?? "")
+                  .join("")
+                  .toUpperCase()}
+              </span>
+            </div>
+            {session.status === "active" && (
+              <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
             )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{session.user_name}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {isResolved
+                ? "Resolved"
+                : session.status === "pending"
+                  ? "Pending"
+                  : "Active now"}
+            </p>
           </div>
         </div>
 

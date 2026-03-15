@@ -19,9 +19,14 @@ export interface ChatSession {
 /** Chat session with JOINed details for display */
 export interface ChatSessionWithDetails extends ChatSession {
   user_name: string;
+  user_username: string;
   user_email: string | null;
   user_phone: string;
   user_company: string | null;
+  user_address: string | null;
+  user_is_verified: number;
+  user_business_type: string | null;
+  user_joined: string;
   product_name: string | null;
   product_thumbnail: string | null;
   /** "sale" or "rent" — use with listing_id to build URL */

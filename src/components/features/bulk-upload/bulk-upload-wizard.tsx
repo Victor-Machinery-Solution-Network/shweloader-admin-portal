@@ -94,7 +94,7 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
   return (
     <div className="-m-6 flex min-h-0 flex-1 flex-col">
       {/* ── Sticky Header ─────────────────────────────────────── */}
-      <header className="bg-background/80 sticky top-0 z-10 border-b px-6 py-3 backdrop-blur-sm">
+      <header className="bg-background sticky top-0 z-10 border-b px-6 py-3 backdrop-blur-sm">
         <nav className="text-muted-foreground mb-1 flex items-center gap-1 text-xs">
           {config.entityKey === "listings" ? (
             <span>{config.displayNamePlural}</span>

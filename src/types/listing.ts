@@ -7,8 +7,8 @@ export interface ProductList {
   custom_fields: string | null;
   description: string | null;
   thumbnail_url: string | null;
-  thumbnail_focal_x: number | null;
-  thumbnail_focal_y: number | null;
+  focal_x: number;
+  focal_y: number;
   township_id: number | null;
   hide_partner: number;
   is_draft: number;
@@ -50,6 +50,7 @@ export interface SaleListing {
   is_hidden: number;
   is_sold_out: number;
   display_currency: string;
+  use_system_rate: number;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -72,6 +73,7 @@ export interface RentListing {
   is_hidden: number;
   is_rented: number;
   display_currency: string;
+  use_system_rate: number;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -107,6 +109,7 @@ export interface SaleListingWithDetails {
   is_hidden: number;
   is_sold_out: number;
   display_currency: string;
+  use_system_rate: number;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
@@ -156,6 +159,7 @@ export interface RentListingWithDetails {
   is_hidden: number;
   is_rented: number;
   display_currency: string;
+  use_system_rate: number;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;

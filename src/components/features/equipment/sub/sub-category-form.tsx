@@ -171,7 +171,7 @@ export function SubCategoryForm({
             <ImageInput
               name="image_url"
               value={subCategory?.image_url}
-              aspectRatio={3 / 2}
+              aspectRatio={1}
               focalPoint={focalPoint ?? undefined}
               onFocalPointChange={setFocalPoint}
             />

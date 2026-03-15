@@ -5,6 +5,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import type { AppSetting } from "@/types/setting";
+import { SETTING_KEYS } from "@/types/setting";
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
 
@@ -42,6 +43,36 @@ export async function updateSettings(
         ),
       ),
     );
+
+    // If exchange rate changed, batch-recalculate MMK prices for system-rate listings
+    if (SETTING_KEYS.EXCHANGE_RATE in settings) {
+      const newRate = Number(settings[SETTING_KEYS.EXCHANGE_RATE]);
+      if (newRate > 0) {
+        await Promise.all([
+          d1.query(
+            `UPDATE sale_listing
+             SET mmk_price = CAST(usd_price * ? AS INTEGER),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE use_system_rate = 1
+               AND usd_price IS NOT NULL
+               AND deleted_at IS NULL`,
+            [newRate],
+          ),
+          d1.query(
+            `UPDATE rent_listing
+             SET mmk_price = CAST(usd_price * ? AS INTEGER),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE use_system_rate = 1
+               AND usd_price IS NOT NULL
+               AND deleted_at IS NULL`,
+            [newRate],
+          ),
+        ]);
+        invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+        invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+        invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
+      }
+    }
 
     invalidateTag(CACHE_TAGS.SETTINGS);
     return { success: true };

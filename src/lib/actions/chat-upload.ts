@@ -35,16 +35,41 @@ export async function uploadChatAttachments(
       return { success: false as const, error: `File too large: ${file.name} (max 10MB)` };
     }
 
-    // Generate unique filename: chat/{sessionId}/{timestamp}-{randomId}.{ext}
-    const ext = file.name.split(".").pop() ?? "bin";
+    // Convert images to webp via sharp before uploading
+    let uploadFile: File | Blob = file;
+    let ext = file.name.split(".").pop() ?? "bin";
+    let fileType = file.type;
+
+    if (file.type.startsWith("image/") && file.type !== "image/webp") {
+      try {
+        const sharp = (await import("sharp")).default;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const webpBuffer = await sharp(buffer, {
+          limitInputPixels: 100_000_000,
+          sequentialRead: true,
+        })
+          .webp({ quality: 80 })
+          .toBuffer();
+
+        // Create a File (not Blob) so FormData includes proper metadata
+        uploadFile = new File([new Uint8Array(webpBuffer)], file.name.replace(/\.[^.]+$/, ".webp"), {
+          type: "image/webp",
+        });
+        ext = "webp";
+        fileType = "image/webp";
+      } catch {
+        // Fallback to original file if conversion fails
+      }
+    }
+
     const uniqueName = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
     const r2Path = `chat/${sessionId}/`;
-    const result = await uploadToR2(file, r2Path, uniqueName);
+    const result = await uploadToR2(uploadFile, r2Path, uniqueName);
     results.push({
-      fileUrl: result.url,
+      fileUrl: result.key,
       fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
+      fileSize: uploadFile.size,
+      fileType,
     });
   }
 

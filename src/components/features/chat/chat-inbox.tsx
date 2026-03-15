@@ -20,8 +20,6 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
-  const [messageCount, setMessageCount] = useState(0);
-
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string) => {
       setSessions((prev) =>
@@ -59,7 +57,6 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   useEffect(() => {
     if (!selectedId) {
       setSessionProducts([]);
-      setMessageCount(0);
       return;
     }
 
@@ -74,10 +71,6 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
       cancelled = true;
     };
   }, [selectedId]);
-
-  const handleMessageCountChange = useCallback((count: number) => {
-    setMessageCount(count);
-  }, []);
 
   function handleSelect(id: number) {
     setSelectedId(id);
@@ -110,7 +103,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
         <ConversationPanel
           session={selectedSession}
           onSessionClosed={handleSessionClosed}
-          onMessageCountChange={handleMessageCountChange}
+
           onMessagesRead={handleMessagesRead}
         />
       </div>
@@ -120,7 +113,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
         <ContextPanel
           session={selectedSession}
           products={sessionProducts}
-          messageCount={messageCount}
+
         />
       )}
     </div>

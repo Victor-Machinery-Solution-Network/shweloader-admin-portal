@@ -34,6 +34,8 @@ export function getColumns(
         <ImageCell
           name={row.getValue("name") as string}
           imageUrl={row.original.image_url}
+          focalX={row.original.focal_x}
+          focalY={row.original.focal_y}
         />
       ),
     },

@@ -19,8 +19,10 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   const [userLastReadAt, setUserLastReadAt] = useState<string | null>(initialUserLastReadAt);
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
+  const initialUnreadRef = useRef(initialUnreadCount);
+  initialUnreadRef.current = initialUnreadCount;
 
-  // Fetch messages on session change
+  // Fetch messages on session change (only when sessionId changes)
   useEffect(() => {
     mountedRef.current = true;
     setSessionClosed(false);
@@ -38,14 +40,14 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
     });
 
     // Mark as read only if there are unread messages
-    if (initialUnreadCount > 0) {
+    if (initialUnreadRef.current > 0) {
       markSessionRead(sessionId).catch(() => {});
     }
 
     return () => {
       mountedRef.current = false;
     };
-  }, [sessionId, initialUnreadCount]);
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pusher subscription for new messages
   useEffect(() => {

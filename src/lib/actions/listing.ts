@@ -284,8 +284,8 @@ function parseThumbnailFocal(formData: FormData) {
   const fx = parseFloat(formData.get("thumbnail_focal_x") as string);
   const fy = parseFloat(formData.get("thumbnail_focal_y") as string);
   return {
-    thumbnail_focal_x: isNaN(fx) ? 0.5 : fx,
-    thumbnail_focal_y: isNaN(fy) ? 0.5 : fy,
+    focal_x: isNaN(fx) ? 0.5 : fx,
+    focal_y: isNaN(fy) ? 0.5 : fy,
   };
 }
 
@@ -294,12 +294,12 @@ async function createProductAndGetId(
     thumbnail_url?: string | null;
   },
   created_by: number | null,
-  focalPoint?: { thumbnail_focal_x: number; thumbnail_focal_y: number },
+  focalPoint?: { focal_x: number; focal_y: number },
 ) {
   const product = await productListService.create({
     ...productFields,
-    thumbnail_focal_x: focalPoint?.thumbnail_focal_x ?? 0.5,
-    thumbnail_focal_y: focalPoint?.thumbnail_focal_y ?? 0.5,
+    focal_x: focalPoint?.focal_x ?? 0.5,
+    focal_y: focalPoint?.focal_y ?? 0.5,
     created_by,
   });
   let productId = (product as unknown as Record<string, unknown>)?.id as number;
@@ -428,6 +428,8 @@ export async function createListing(formData: FormData) {
         is_sold_out: 0,
         display_currency:
           (formData.get("sale_display_currency") as string) || "MMK",
+        use_system_rate:
+          formData.get("sale_use_system_rate") === "0" ? 0 : 1,
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? created_by : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -468,6 +470,8 @@ export async function createListing(formData: FormData) {
         is_rented: 0,
         display_currency:
           (formData.get("rent_display_currency") as string) || "MMK",
+        use_system_rate:
+          formData.get("rent_use_system_rate") === "0" ? 0 : 1,
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? created_by : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
@@ -597,6 +601,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
       display_currency:
         (formData.get("sale_display_currency") as string) || "MMK",
+      use_system_rate:
+        formData.get("sale_use_system_rate") === "0" ? 0 : 1,
     });
 
     // 4. Sync product photos
@@ -714,6 +720,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
       display_currency:
         (formData.get("rent_display_currency") as string) || "MMK",
+      use_system_rate:
+        formData.get("rent_use_system_rate") === "0" ? 0 : 1,
     });
 
     // 4. Sync product photos
@@ -1010,7 +1018,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, pl.hide_partner,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at, sl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1052,7 +1060,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, pl.hide_partner,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at, rl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1161,7 +1169,7 @@ export async function getSaleListingWithDetailsById(
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, pl.hide_partner,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1194,7 +1202,7 @@ export async function getRentListingWithDetailsById(
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, pl.hide_partner,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, pl.hide_partner,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1721,6 +1729,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         is_sold_out: 0,
         display_currency:
           (formData.get("sale_display_currency") as string) || "MMK",
+        use_system_rate:
+          formData.get("sale_use_system_rate") === "0" ? 0 : 1,
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? userId : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -1760,6 +1770,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         is_rented: 0,
         display_currency:
           (formData.get("rent_display_currency") as string) || "MMK",
+        use_system_rate:
+          formData.get("rent_use_system_rate") === "0" ? 0 : 1,
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? userId : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,

@@ -12,16 +12,6 @@ import type {
   ProductDiscussed,
 } from "@/types/chat";
 
-interface SearchListingResult {
-  listingId: number;
-  listingType: "sale" | "rent";
-  productName: string | null;
-  brandName: string | null;
-  thumbnailUrl: string | null;
-  mmkPrice: number | null;
-  usdPrice: number | null;
-  displayCurrency: string | null;
-}
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
 
@@ -38,9 +28,14 @@ export async function getChatSessionsWithDetails(): Promise<
       cs.admin_last_read_at, cs.user_last_read_at,
       cs.deleted_at, cs.deleted_by,
       au.full_name AS user_name,
+      au.username AS user_username,
       au.email AS user_email,
       au.phone AS user_phone,
       au.company_name AS user_company,
+      au.address AS user_address,
+      au.is_verified AS user_is_verified,
+      bt.name AS user_business_type,
+      au.created_at AS user_joined,
       COALESCE(em.name, am.name) AS product_name,
       pl.thumbnail_url AS product_thumbnail,
       CASE
@@ -56,6 +51,7 @@ export async function getChatSessionsWithDetails(): Promise<
       pau.company_name AS partner_name
     FROM chat_session cs
     JOIN app_user au ON au.app_user_id = cs.app_user_id
+    LEFT JOIN business_type bt ON bt.business_type_id = au.business_type_id
     -- Latest product reference message in the session
     LEFT JOIN chat_message cm_ref ON cm_ref.id = (
       SELECT id FROM chat_message
@@ -125,17 +121,23 @@ export async function getChatMessages(
   const messages = messagesResult.results;
   if (messages.length === 0) return [];
 
-  // Fetch attachments for all message IDs
+  // Fetch attachments for all message IDs (batch to avoid D1's SQL variable limit)
   const messageIds = messages.map((m) => m.id);
-  const placeholders = messageIds.map(() => "?").join(",");
-  const attachmentsResult = await d1.query<ChatAttachment>(
-    `SELECT * FROM chat_attachment WHERE chat_message_id IN (${placeholders}) ORDER BY id ASC`,
-    messageIds,
-  );
+  const BATCH_SIZE = 50;
+  const allAttachments: ChatAttachment[] = [];
+  for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+    const batch = messageIds.slice(i, i + BATCH_SIZE);
+    const placeholders = batch.map(() => "?").join(",");
+    const batchResult = await d1.query<ChatAttachment>(
+      `SELECT * FROM chat_attachment WHERE chat_message_id IN (${placeholders}) ORDER BY id ASC`,
+      batch,
+    );
+    allAttachments.push(...batchResult.results);
+  }
 
   // Group attachments by message ID
   const attachmentsByMessage = Map.groupBy(
-    attachmentsResult.results,
+    allAttachments,
     (a) => a.chat_message_id,
   );
 
@@ -201,9 +203,15 @@ export async function sendMessage(
     }
 
     // Update session metadata — also transition pending → active on first admin reply
-    const preview = hasMessage
-      ? message!.trim().slice(0, 100)
-      : `[Attachment] ${attachmentData![0].fileName}`;
+    let preview: string;
+    if (hasMessage) {
+      preview = message!.trim().slice(0, 100);
+    } else if (hasListing) {
+      preview = "Shared a listing";
+    } else {
+      const type = attachmentData![0].fileType;
+      preview = type === "application/pdf" ? "Sent a file" : "Sent a photo";
+    }
     await d1.query(
       `UPDATE chat_session
        SET last_message_at = CURRENT_TIMESTAMP,
@@ -235,11 +243,16 @@ export async function sendMessage(
         usd_price: number | null;
         display_currency: string | null;
       }>(
-        `SELECT pl.product_name, pl.thumbnail AS product_thumbnail,
-                b.name AS brand_name, pl.mmk_price, pl.usd_price, pl.display_currency
-         FROM ${table} pl
-         LEFT JOIN brand b ON b.id = pl.brand_id
-         WHERE pl.id = ?`,
+        `SELECT COALESCE(em.name, am.name) AS product_name,
+                pl.thumbnail_url AS product_thumbnail,
+                pb.name AS brand_name,
+                lst.mmk_price, lst.usd_price, lst.display_currency
+         FROM ${table} lst
+         JOIN product_list pl ON pl.id = lst.product_list_id
+         LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+         LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+         LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+         WHERE lst.id = ?`,
         [id],
       );
       const prod = prodResult.results[0];
@@ -401,9 +414,9 @@ export async function getSessionProducts(
       COALESCE(em.name, am.name) AS product_name,
       pl.thumbnail_url AS product_thumbnail,
       pb.name AS brand_name,
-      pl.mmk_price,
-      pl.usd_price,
-      pl.display_currency
+      COALESCE(sl.mmk_price, rl.mmk_price) AS mmk_price,
+      COALESCE(sl.usd_price, rl.usd_price) AS usd_price,
+      COALESCE(sl.display_currency, rl.display_currency) AS display_currency
     FROM chat_message cm
     LEFT JOIN sale_listing sl ON sl.id = cm.sale_listing_id
     LEFT JOIN rent_listing rl ON rl.id = cm.rent_listing_id
@@ -428,13 +441,19 @@ export async function getSessionProducts(
   }));
 }
 
-/** Search listings by model or brand name for admin product picker */
-export async function searchListings(
-  query: string,
-): Promise<SearchListingResult[]> {
+/** Fetch all approved, visible listings for the product picker modal */
+export async function getPickableListings(): Promise<
+  {
+    id: number;
+    type: "sale" | "rent";
+    name: string | null;
+    brandName: string | null;
+    thumbnail: string | null;
+    price: number | null;
+    displayCurrency: string | null;
+  }[]
+> {
   await requirePermission("chat", "read");
-
-  const searchTerm = `%${query.trim()}%`;
 
   const result = await d1.query<{
     listing_id: number;
@@ -451,40 +470,47 @@ export async function searchListings(
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
-      pl.mmk_price, pl.usd_price, pl.display_currency
+      sl.mmk_price, sl.usd_price, sl.display_currency
     FROM sale_listing sl
-    JOIN product_list pl ON pl.sale_listing_id = sl.id
+    JOIN product_list pl ON sl.product_list_id = pl.id
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     WHERE sl.deleted_at IS NULL
-      AND (em.name LIKE ? OR am.name LIKE ? OR pb.name LIKE ?)
+      AND sl.is_hidden = 0
+      AND pl.deleted_at IS NULL
+      AND pl.is_draft = 0
+      AND ast.status_name = 'Approved'
     UNION ALL
     SELECT
       rl.id AS listing_id, 'rent' AS listing_type,
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
-      pl.mmk_price, pl.usd_price, pl.display_currency
+      rl.mmk_price, rl.usd_price, rl.display_currency
     FROM rent_listing rl
-    JOIN product_list pl ON pl.rent_listing_id = rl.id
+    JOIN product_list pl ON rl.product_list_id = pl.id
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     WHERE rl.deleted_at IS NULL
-      AND (em.name LIKE ? OR am.name LIKE ? OR pb.name LIKE ?)
-    LIMIT 10`,
-    [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm],
+      AND rl.is_hidden = 0
+      AND pl.deleted_at IS NULL
+      AND pl.is_draft = 0
+      AND ast.status_name = 'Approved'
+    ORDER BY listing_id DESC
+    LIMIT 200`,
   );
 
   return result.results.map((row) => ({
-    listingId: row.listing_id,
-    listingType: row.listing_type,
-    productName: row.product_name,
+    id: row.listing_id,
+    type: row.listing_type,
+    name: row.product_name,
     brandName: row.brand_name,
-    thumbnailUrl: row.thumbnail_url,
-    mmkPrice: row.mmk_price,
-    usdPrice: row.usd_price,
+    thumbnail: row.thumbnail_url,
+    price: row.display_currency === "USD" ? row.usd_price : row.mmk_price,
     displayCurrency: row.display_currency,
   }));
 }

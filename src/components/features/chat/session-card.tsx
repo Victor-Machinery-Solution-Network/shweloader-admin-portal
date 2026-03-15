@@ -10,6 +10,13 @@ interface SessionCardProps {
   onClick: () => void;
 }
 
+function formatPreview(preview: string | null): string {
+  if (!preview) return "No messages yet";
+  if (preview.startsWith("[Attachment]")) return "Sent a photo";
+  if (preview === "[Product Reference]") return "Shared a listing";
+  return preview;
+}
+
 export function SessionCard({ session, isSelected, onClick }: SessionCardProps) {
   const isResolved = session.status === "resolved";
   const isPending = session.status === "pending";
@@ -46,22 +53,18 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         </span>
       </div>
 
-      {/* Session type label */}
-      <div className="flex items-center gap-1.5">
-        {hasProductRef ? (
-          <>
-            <span
-              className="size-1.5 rounded-full bg-amber-500 shrink-0"
-              aria-hidden="true"
-            />
-            <span className="text-xs text-muted-foreground truncate">
-              Product &middot; {session.product_name}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs text-muted-foreground">General Support</span>
-        )}
-      </div>
+      {/* Product reference */}
+      {hasProductRef && (
+        <div className="flex items-center gap-1.5">
+          <span
+            className="size-1.5 rounded-full bg-amber-500 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="text-xs text-muted-foreground truncate">
+            Product &middot; {session.product_name}
+          </span>
+        </div>
+      )}
 
       {/* Bottom row: preview + unread badge */}
       <div className="flex items-center justify-between gap-2">
@@ -73,15 +76,15 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
               : "text-muted-foreground",
           )}
         >
-          {session.last_message_preview || "No messages yet"}
+          {formatPreview(session.last_message_preview)}
         </p>
         {unreadCount > 0 && (
-          <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs">
+          <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs bg-red-500 text-white">
             {unreadCount > 99 ? "99+" : unreadCount}
           </Badge>
         )}
         {isPending && (
-          <Badge variant="warning" className="shrink-0 text-xs">
+          <Badge variant="equipment" className="shrink-0 text-xs">
             NEW
           </Badge>
         )}

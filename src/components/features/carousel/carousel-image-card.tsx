@@ -124,6 +124,7 @@ export function CarouselImageCard({ image, index, onAdjustPosition }: CarouselIm
             src={assetUrl(image.image_url) ?? ""}
             alt=""
             className="size-full object-cover"
+            style={image.focal_x != null && image.focal_y != null ? { objectPosition: `${image.focal_x * 100}% ${image.focal_y * 100}%` } : undefined}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}

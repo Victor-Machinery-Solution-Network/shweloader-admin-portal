@@ -739,13 +739,19 @@ export function ListingEditor({
   );
   // Independent rate controls per listing type
   const [saleUseSystemRate, setSaleUseSystemRate] = useState(
-    savedState?.saleUseSystemRate ?? true,
+    savedState?.saleUseSystemRate ??
+      (isEditing && pageType === "sale"
+        ? listing?.use_system_rate !== 0
+        : true),
   );
   const [saleCustomRate, setSaleCustomRate] = useState<string>(
     savedState?.saleCustomRate ?? String(exchangeRate),
   );
   const [rentUseSystemRate, setRentUseSystemRate] = useState(
-    savedState?.rentUseSystemRate ?? true,
+    savedState?.rentUseSystemRate ??
+      (isEditing && pageType === "rent"
+        ? listing?.use_system_rate !== 0
+        : true),
   );
   const [rentCustomRate, setRentCustomRate] = useState<string>(
     savedState?.rentCustomRate ?? String(exchangeRate),
@@ -1148,6 +1154,8 @@ export function ListingEditor({
     formData.set("hide_partner", hidePartner ? "1" : "0");
     formData.set("sale_display_currency", saleDisplayCurrency);
     formData.set("rent_display_currency", rentDisplayCurrency);
+    formData.set("sale_use_system_rate", saleUseSystemRate ? "1" : "0");
+    formData.set("rent_use_system_rate", rentUseSystemRate ? "1" : "0");
     formData.set("add_to_featured", "0");
     if (forSale && conditionId) {
       formData.set("condition_type_id", conditionId);

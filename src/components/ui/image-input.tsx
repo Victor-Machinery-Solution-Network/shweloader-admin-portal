@@ -44,7 +44,7 @@ export function ImageInput({
   name,
   value: controlledValue,
   onChange,
-  accept = 'image/*',
+  accept = 'image/png,image/jpeg,image/gif,image/webp',
   maxSizeMB = 50,
   placeholder = 'Drop an image here or click to browse',
   className,
@@ -196,14 +196,14 @@ export function ImageInput({
   );
 
   const handleFocalPointSkip = useCallback(() => {
-    if (pendingFile && pendingObjectUrl) {
-      commitFile(pendingFile, pendingObjectUrl);
-      onFocalPointChange?.({ x: 0.5, y: 0.5 });
+    // Discard the pending file — user cancelled the upload
+    if (pendingObjectUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(pendingObjectUrl);
     }
     setPendingFile(null);
     setPendingObjectUrl(null);
     setShowFocalPoint(false);
-  }, [pendingFile, pendingObjectUrl, commitFile, onFocalPointChange]);
+  }, [pendingObjectUrl]);
 
   /** Open the focal point modal for an existing (already committed) image. */
   const handleAdjustPosition = useCallback(
@@ -230,10 +230,10 @@ export function ImageInput({
   );
 
   const handleExistingFocalPointSkip = useCallback(() => {
-    onFocalPointChange?.({ x: 0.5, y: 0.5 });
+    // Close without changing anything — preserve existing focal point
     setPendingObjectUrl(null);
     setShowFocalPoint(false);
-  }, [onFocalPointChange]);
+  }, []);
 
   function formatSize(bytes: number) {
     return bytes < 1024 * 1024
@@ -282,6 +282,7 @@ export function ImageInput({
                 src={displayUrl}
                 alt="Selected image preview"
                 className="size-full object-cover"
+                style={focalPoint ? { objectPosition: `${focalPoint.x * 100}% ${focalPoint.y * 100}%` } : undefined}
               />
               <button
                 type="button"

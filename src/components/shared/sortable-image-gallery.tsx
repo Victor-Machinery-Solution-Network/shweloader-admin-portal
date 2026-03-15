@@ -42,11 +42,15 @@ interface SortableImageGalleryProps {
 function SortableImageCard({
   id,
   preview,
+  focalX,
+  focalY,
   onRemove,
   onAdjust,
 }: {
   id: string;
   preview: string;
+  focalX?: number;
+  focalY?: number;
   onRemove: () => void;
   onAdjust: () => void;
 }) {
@@ -78,6 +82,7 @@ function SortableImageCard({
           src={preview}
           alt=""
           className="size-full object-cover"
+          style={focalX != null && focalY != null ? { objectPosition: `${focalX * 100}% ${focalY * 100}%` } : undefined}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
             (
@@ -224,6 +229,8 @@ export function SortableImageGallery({
                 key={item.id}
                 id={item.id}
                 preview={item.preview}
+                focalX={item.focalX}
+                focalY={item.focalY}
                 onRemove={() => handleRemove(index)}
                 onAdjust={() => setAdjustingItem(item.id)}
               />
@@ -251,7 +258,7 @@ export function SortableImageGallery({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/gif,image/webp"
         multiple
         className="hidden"
         onChange={(e) => {

@@ -1,4 +1,4 @@
-import { Phone, Mail, Building2 } from "lucide-react";
+import { Phone, Mail, Building2, MapPin, AtSign, Briefcase, Calendar, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { assetUrl } from "@/lib/r2-url";
 import { format } from "date-fns";
@@ -7,13 +7,12 @@ import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
 interface ContextPanelProps {
   session: ChatSessionWithDetails | null;
   products: ProductDiscussed[];
-  messageCount: number;
 }
 
 const STATUS_VARIANT = {
-  pending: "warning",
-  active: "equipment",
-  resolved: "success",
+  pending: "equipment",
+  active: "success",
+  resolved: "secondary",
 } as const;
 
 const STATUS_LABEL = {
@@ -57,7 +56,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function ContextPanel({ session, products, messageCount }: ContextPanelProps) {
+export function ContextPanel({ session, products }: ContextPanelProps) {
   if (!session) {
     return (
       <div className="w-[260px] shrink-0 border-l bg-muted/10 flex items-center justify-center">
@@ -75,7 +74,13 @@ export function ContextPanel({ session, products, messageCount }: ContextPanelPr
             {getInitials(session.user_name)}
           </span>
         </div>
-        <p className="font-semibold text-sm text-center">{session.user_name}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-semibold text-sm text-center">{session.user_name}</p>
+          {session.user_is_verified === 1 && (
+            <BadgeCheck className="size-3.5 text-emerald-500 shrink-0" />
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">@{session.user_username}</p>
         <div className="flex flex-col gap-1.5 w-full mt-1">
           {session.user_phone && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -95,6 +100,22 @@ export function ContextPanel({ session, products, messageCount }: ContextPanelPr
               <span className="truncate">{session.user_company}</span>
             </div>
           )}
+          {session.user_address && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{session.user_address}</span>
+            </div>
+          )}
+          {session.user_business_type && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Briefcase className="size-3 shrink-0" />
+              <span className="truncate">{session.user_business_type}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="size-3 shrink-0" />
+            <span className="truncate">Joined {formatDate(session.user_joined)}</span>
+          </div>
         </div>
       </div>
 
@@ -171,10 +192,6 @@ export function ContextPanel({ session, products, messageCount }: ContextPanelPr
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Started</span>
             <span className="text-xs">{formatDate(session.created_at)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Messages</span>
-            <span className="text-xs">{messageCount}</span>
           </div>
         </div>
       </div>

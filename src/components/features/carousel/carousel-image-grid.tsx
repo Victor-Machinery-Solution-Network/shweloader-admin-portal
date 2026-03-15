@@ -62,6 +62,7 @@ export function CarouselImageGrid({
   const [linkUrl, setLinkUrl] = useState("");
   const [hasFile, setHasFile] = useState(false);
   const [isAdding, startAddTransition] = useTransition();
+  const [newFocalPoint, setNewFocalPoint] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
   const [focalPointImage, setFocalPointImage] = useState<{
     imageId: number;
     imageUrl: string;
@@ -92,6 +93,7 @@ export function CarouselImageGrid({
   function openAddDialog() {
     setHasFile(false);
     setLinkUrl("");
+    setNewFocalPoint({ x: 0.5, y: 0.5 });
     setShowAddDialog(true);
   }
 
@@ -106,9 +108,6 @@ export function CarouselImageGrid({
       if (result.success) {
         toast.success("Image added");
         setShowAddDialog(false);
-        if (result.imageId && result.imageUrl) {
-          setFocalPointImage({ imageId: result.imageId, imageUrl: result.imageUrl, focalX: 0.5, focalY: 0.5 });
-        }
       } else {
         toast.error(result.error ?? "Failed to add image");
       }
@@ -191,7 +190,7 @@ export function CarouselImageGrid({
             Add your first image to the &ldquo;{carouselName}&rdquo; carousel
           </p>
           {canCreate && (
-            <Button variant="outline" size="sm" onClick={openAddDialog}>
+            <Button size="sm" onClick={openAddDialog}>
               <Plus /> Add Image
             </Button>
           )}
@@ -238,7 +237,12 @@ export function CarouselImageGrid({
               accept="image/jpeg,image/png,image/webp"
               placeholder="Drag & drop an image here, or click to browse"
               disabled={isAdding}
+              aspectRatio={16 / 9}
+              onFocalPointChange={setNewFocalPoint}
+              focalPoint={newFocalPoint}
             />
+            <input type="hidden" name="focal_x" value={newFocalPoint.x} />
+            <input type="hidden" name="focal_y" value={newFocalPoint.y} />
 
             <Field orientation="vertical">
               <FieldLabel>

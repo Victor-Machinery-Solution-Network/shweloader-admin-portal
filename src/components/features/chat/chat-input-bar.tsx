@@ -7,17 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, formatFileSize } from "@/lib/utils";
 import { assetUrl } from "@/lib/r2-url";
 import { useSendTypingEvent } from "@/hooks/use-chat";
-import { ProductPicker } from "./product-picker";
-
-interface SelectedListing {
-  id: number;
-  type: "sale" | "rent";
-  name: string | null;
-  thumbnail: string | null;
-  brandName: string | null;
-  price: number | null;
-  displayCurrency: string | null;
-}
+import { ProductPickerModal, type SelectedListing } from "./product-picker-modal";
 
 interface ChatInputBarProps {
   onSend: (message: string, files: File[], listing?: { id: number; type: "sale" | "rent" }) => void;
@@ -29,8 +19,10 @@ const ACCEPTED_FILE_TYPES =
   "image/jpeg,image/png,image/webp,image/gif,application/pdf";
 const MAX_FILES = 5;
 
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
 function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/");
+  return IMAGE_TYPES.has(file.type);
 }
 
 export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputBarProps) {
@@ -40,7 +32,7 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
     new Map(),
   );
   const [selectedProduct, setSelectedProduct] = useState<SelectedListing | null>(null);
-  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { sendTyping } = useSendTypingEvent(sessionId);
@@ -231,34 +223,27 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
         </Button>
 
         {/* Product share button */}
-        <div className="relative shrink-0 mb-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowProductPicker(!showProductPicker)}
-            disabled={disabled || hasFiles}
-            title={
-              hasFiles
-                ? "Remove files to share a product"
-                : "Share a product"
-            }
-          >
-            <Package className="size-4" />
-            <span className="sr-only">Share product</span>
-          </Button>
-          {showProductPicker && (
-            <div className="absolute bottom-full left-0 mb-2 z-50">
-              <ProductPicker
-                onSelect={(listing) => {
-                  setSelectedProduct(listing);
-                  setShowProductPicker(false);
-                }}
-                onCancel={() => setShowProductPicker(false)}
-              />
-            </div>
-          )}
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 mb-0.5"
+          onClick={() => setProductPickerOpen(true)}
+          disabled={disabled || hasFiles}
+          title={
+            hasFiles
+              ? "Remove files to share a product"
+              : "Share a product"
+          }
+        >
+          <Package className="size-4" />
+          <span className="sr-only">Share product</span>
+        </Button>
+        <ProductPickerModal
+          open={productPickerOpen}
+          onOpenChange={setProductPickerOpen}
+          onSelect={setSelectedProduct}
+        />
 
         {/* Textarea */}
         <Textarea

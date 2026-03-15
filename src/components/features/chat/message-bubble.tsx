@@ -89,8 +89,8 @@ export function MessageBubble({
           </AvatarFallback>
         </Avatar>
       ) : (
-        /* Invisible spacer to keep alignment */
-        <div className="size-8 shrink-0" />
+        /* Invisible spacer to keep alignment (must match Avatar size="sm" = size-6) */
+        <div className="size-6 shrink-0" />
       )}
 
       {/* Bubble */}
