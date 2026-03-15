@@ -298,7 +298,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   featured_listings: ["create", "read", "delete"],
   condition_types: ["create", "read", "edit", "delete"],
   chat: ["read", "edit", "delete"],
-  users: ["read", "create"],
+  users: ["read", "create", "edit", "delete"],
   partners: ["read", "approve"],
   blacklist: ["read", "create", "delete"],
   articles: ["create", "read", "edit", "delete", "approve"],
