@@ -236,16 +236,20 @@ export async function sendMessage(
       const table = saleId ? "sale_listing" : "rent_listing";
       const id = saleId ?? rentId;
       const prodResult = await d1.query<{
+        product_list_id: number;
         product_name: string | null;
         product_thumbnail: string | null;
         brand_name: string | null;
+        custom_id: string | null;
         mmk_price: number | null;
         usd_price: number | null;
         display_currency: string | null;
       }>(
-        `SELECT COALESCE(em.name, am.name) AS product_name,
+        `SELECT pl.id AS product_list_id,
+                COALESCE(em.name, am.name) AS product_name,
                 pl.thumbnail_url AS product_thumbnail,
                 pb.name AS brand_name,
+                lst.custom_id,
                 lst.mmk_price, lst.usd_price, lst.display_currency
          FROM ${table} lst
          JOIN product_list pl ON pl.id = lst.product_list_id
@@ -260,8 +264,10 @@ export async function sendMessage(
         productPayload = {
           saleListingId: saleId,
           rentListingId: rentId,
+          productListId: prod.product_list_id,
           productName: prod.product_name,
           productThumbnail: prod.product_thumbnail,
+          productCode: prod.custom_id,
           listingType: saleId ? "sale" : "rent",
           brandName: prod.brand_name,
           mmkPrice: prod.mmk_price,
