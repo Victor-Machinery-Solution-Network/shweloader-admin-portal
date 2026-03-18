@@ -119,6 +119,8 @@ export function BusinessTypesClient({
           pageSize={10}
           getRowId={(row) => row.business_type_id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="business-types"
         />
       ) : (
         <EmptyState

@@ -4,6 +4,7 @@ import { customFieldTemplateService } from "@/lib/services/custom-field-template
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 import { CACHE_TAGS } from "@/lib/constants";
 import type {
   CustomFieldDefinition,
@@ -60,6 +61,7 @@ export async function createCustomFieldTemplate(formData: FormData) {
     });
 
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
+    auditLog(created_by, "created listing template | name=" + name);
     return { success: true };
   } catch (error) {
     return {
@@ -83,7 +85,7 @@ export async function updateCustomFieldTemplate(
   }
 
   try {
-    await requirePermission("listing_templates", "edit");
+    const userId = await requirePermission("listing_templates", "edit");
     const fields: CustomFieldDefinition[] = JSON.parse(fieldsJson || "[]");
     if (fields.length === 0) {
       return { success: false, error: "At least one field is required" };
@@ -95,6 +97,7 @@ export async function updateCustomFieldTemplate(
     });
 
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
+    auditLog(userId, "updated listing template | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -112,6 +115,7 @@ export async function deleteCustomFieldTemplate(id: number) {
     await customFieldTemplateService.softDelete(id, deletedBy);
     saveTrashMetadata("custom_field_template", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
+    auditLog(deletedBy, "deleted listing template | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -140,6 +144,7 @@ export async function deleteCustomFieldTemplates(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
+  auditLog(deletedBy, "bulk deleted listing templates | count=" + deleted);
 
   if (errors.length > 0) {
     return {

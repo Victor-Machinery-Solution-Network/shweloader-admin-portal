@@ -65,6 +65,10 @@ export function getColumns(
           </span>
         );
       },
+      meta: {
+        exportValue: (row: { original: SubCategoryRow }) =>
+          categoryMap.get(row.original.category_id) ?? "",
+      },
     },
     {
       id: "models",

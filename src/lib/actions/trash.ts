@@ -8,6 +8,7 @@ import {
   assertBulkLimit,
 } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { auditLog } from "@/lib/actions/audit";
 import { deleteFile } from "@/lib/actions/upload-helpers";
 import { ENTITY_REGISTRY, getNameColumn } from "@/lib/trash/entity-registry";
 import type {
@@ -263,8 +264,9 @@ async function doRestore(entityType: TrashEntityType, entityId: number) {
 
 export async function restoreItem(entityType: TrashEntityType, entityId: number) {
   try {
-    await requirePermission("trash", "restore");
+    const userId = await requirePermission("trash", "restore");
     await doRestore(entityType, entityId);
+    auditLog(userId, "restored trash item | type=" + entityType + " | id=" + entityId);
     return { success: true };
   } catch (error) {
     return {
@@ -278,7 +280,7 @@ export async function restoreItems(
   items: { entityType: TrashEntityType; entityId: number }[],
 ) {
   try {
-    await requirePermission("trash", "restore");
+    const userId = await requirePermission("trash", "restore");
     assertBulkLimit(items);
 
     const results = await Promise.allSettled(
@@ -289,6 +291,8 @@ export async function restoreItems(
       .filter((r): r is PromiseRejectedResult => r.status === "rejected")
       .map((r) => getErrorMessage(r.reason, "Failed to restore item"));
     const restored = results.filter((r) => r.status === "fulfilled").length;
+
+    auditLog(userId, "bulk restored trash items | count=" + restored);
 
     if (errors.length > 0) {
       return {
@@ -392,8 +396,9 @@ export async function permanentDeleteItem(
   entityId: number,
 ) {
   try {
-    await requirePermission("trash", "delete");
+    const userId = await requirePermission("trash", "delete");
     await doPermanentDelete(entityType, entityId);
+    auditLog(userId, "permanently deleted item | type=" + entityType + " | id=" + entityId);
     return { success: true };
   } catch (error) {
     return {
@@ -407,7 +412,7 @@ export async function permanentDeleteItems(
   items: { entityType: TrashEntityType; entityId: number }[],
 ) {
   try {
-    await requirePermission("trash", "delete");
+    const userId = await requirePermission("trash", "delete");
     assertBulkLimit(items);
 
     const results = await Promise.allSettled(
@@ -418,6 +423,8 @@ export async function permanentDeleteItems(
       .filter((r): r is PromiseRejectedResult => r.status === "rejected")
       .map((r) => getErrorMessage(r.reason, "Failed to delete"));
     const deleted = results.filter((r) => r.status === "fulfilled").length;
+
+    auditLog(userId, "bulk permanently deleted items | count=" + deleted);
 
     if (errors.length > 0) {
       return {
@@ -438,7 +445,7 @@ export async function permanentDeleteItems(
 
 export async function emptyTrash(group?: TrashGroup) {
   try {
-    await requirePermission("trash", "delete");
+    const userId = await requirePermission("trash", "delete");
 
     // Get all items to delete
     let sql = `SELECT entity_type, entity_id FROM trash_metadata`;
@@ -477,6 +484,8 @@ export async function emptyTrash(group?: TrashGroup) {
 
     const deleted = [...plResults, ...restResults].filter((r) => r.status === "fulfilled").length;
     const failed = allItems.results.length - deleted;
+
+    auditLog(userId, "emptied trash" + (group && group !== "all" ? " | group=" + group : ""));
 
     if (failed > 0) {
       return {

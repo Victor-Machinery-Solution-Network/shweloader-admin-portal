@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Condition Type Actions ──────────────────────────────────────────────────
 
@@ -16,9 +17,10 @@ export async function createConditionType(formData: FormData) {
   }
 
   try {
-    await requirePermission("condition_types", "create");
+    const userId = await requirePermission("condition_types", "create");
     await conditionTypeService.create({ name: name.trim() });
     invalidateTag(CACHE_TAGS.CONDITION_TYPES);
+    auditLog(userId, "created condition type | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -36,9 +38,10 @@ export async function updateConditionType(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("condition_types", "edit");
+    const userId = await requirePermission("condition_types", "edit");
     await conditionTypeService.update(id, { name: name.trim() });
     invalidateTag(CACHE_TAGS.CONDITION_TYPES);
+    auditLog(userId, "updated condition type | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -50,9 +53,10 @@ export async function updateConditionType(id: number, formData: FormData) {
 
 export async function deleteConditionType(id: number) {
   try {
-    await requirePermission("condition_types", "delete");
+    const userId = await requirePermission("condition_types", "delete");
     await conditionTypeService.delete(id);
     invalidateTag(CACHE_TAGS.CONDITION_TYPES);
+    auditLog(userId, "deleted condition type | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -86,7 +90,7 @@ export async function getListingCountByCondition(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteConditionTypes(ids: number[]) {
-  await requirePermission("condition_types", "delete");
+  const userId = await requirePermission("condition_types", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
     ids.map((id) => conditionTypeService.delete(id)),
@@ -100,6 +104,7 @@ export async function deleteConditionTypes(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.CONDITION_TYPES);
+  auditLog(userId, "bulk deleted condition types | count=" + deleted);
 
   if (errors.length > 0) {
     return {

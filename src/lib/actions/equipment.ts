@@ -11,6 +11,7 @@ import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Main Category Actions ───────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export async function createMainCategory(formData: FormData) {
       display_order,
     });
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
+    auditLog(created_by, "created equipment main category | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -57,7 +59,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("equipment_main_categories", "edit");
+    const userId = await requirePermission("equipment_main_categories", "edit");
     const existing = await mainCategoryService.getById(id);
     const image_url = await processFileField(
       formData, "image_url", "categories/equipments/main/", name.trim(), existing?.image_url,
@@ -67,6 +69,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
     await mainCategoryService.update(id, { name: name.trim(), image_url, focal_x, focal_y });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
+    auditLog(userId, "updated equipment main category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -82,6 +85,7 @@ export async function deleteMainCategory(id: number) {
     await mainCategoryService.softDelete(id, deletedBy);
     saveTrashMetadata("equipment_main_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
+    auditLog(deletedBy, "deleted equipment main category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -110,6 +114,7 @@ export async function deleteMainCategories(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
+  auditLog(deletedBy, "bulk deleted equipment main categories | count=" + deleted);
 
   if (errors.length > 0) {
     return {
@@ -172,6 +177,7 @@ export async function createSubCategory(formData: FormData) {
       display_order,
     });
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+    auditLog(created_by, "created equipment sub category | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -193,7 +199,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("equipment_sub_categories", "edit");
+    const userId = await requirePermission("equipment_sub_categories", "edit");
     const existing = await subCategoryService.getById(id);
     const image_url = await processFileField(
       formData, "image_url", "categories/equipments/sub/", name.trim(), existing?.image_url,
@@ -209,6 +215,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
     });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+    auditLog(userId, "updated equipment sub category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -224,6 +231,7 @@ export async function deleteSubCategory(id: number) {
     await subCategoryService.softDelete(id, deletedBy);
     saveTrashMetadata("equipment_sub_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+    auditLog(deletedBy, "deleted equipment sub category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -252,6 +260,7 @@ export async function deleteSubCategories(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
+  auditLog(deletedBy, "bulk deleted equipment sub categories | count=" + deleted);
 
   if (errors.length > 0) {
     return {

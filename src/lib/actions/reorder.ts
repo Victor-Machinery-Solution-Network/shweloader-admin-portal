@@ -4,6 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
+import { auditLog } from "@/lib/actions/audit";
 import { keyBetween, nKeysBetween } from "@/lib/utils/display-order";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -74,7 +75,7 @@ export async function updateDisplayOrder(
   }
 
   try {
-    await requirePermission(feature, "edit");
+    const userId = await requirePermission(feature, "edit");
     if (!newKey || !/^[0-9A-Za-z]+$/.test(newKey)) {
       return { success: false, error: "Invalid display order key" };
     }
@@ -94,6 +95,7 @@ export async function updateDisplayOrder(
     }
 
     invalidateTag(config.tag);
+    auditLog(userId, "reordered " + table + " | id=" + id);
     return { success: true };
   } catch (error) {
     return {

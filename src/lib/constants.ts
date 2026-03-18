@@ -57,6 +57,7 @@ export const ROUTES = {
   ADMINS: "/admins",
   ROLES_PERMISSIONS: "/roles-permissions",
   SETTINGS: "/settings",
+  ACTIVITY_LOGS: "/activity-logs",
 
   // Bulk Upload
   BULK_UPLOAD: "/bulk-upload",
@@ -113,4 +114,5 @@ export const CACHE_TAGS = {
   PERMISSIONS: "permissions",
   NOTIFICATIONS: "notifications",
   TRASH: "trash",
+  ACTIVITY_LOGS: "activity-logs",
 } as const;

@@ -8,6 +8,7 @@ import { invalidateTag } from "@/lib/cache-invalidation";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ export async function createAttachmentCategory(formData: FormData) {
       display_order,
     });
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
+    auditLog(created_by, "created attachment category | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -54,7 +56,7 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("attachment_categories", "edit");
+    const userId = await requirePermission("attachment_categories", "edit");
     const existing = await attachmentCategoryService.getById(id);
     const image_url = await processFileField(
       formData, "image_url", "categories/attachments/", name.trim(), existing?.image_url,
@@ -69,6 +71,7 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
     });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
+    auditLog(userId, "updated attachment category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -84,6 +87,7 @@ export async function deleteAttachmentCategory(id: number) {
     await attachmentCategoryService.softDelete(id, deletedBy);
     saveTrashMetadata("attachment_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
+    auditLog(deletedBy, "deleted attachment category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -119,6 +123,7 @@ export async function deleteAttachmentCategories(ids: number[]) {
       error: `Deleted ${deleted} of ${ids.length}. ${errors[0]}`,
     };
   }
+  auditLog(deletedBy, "bulk deleted attachment categories | count=" + deleted);
   return { success: true };
 }
 

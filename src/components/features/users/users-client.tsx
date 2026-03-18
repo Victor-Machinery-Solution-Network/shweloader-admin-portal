@@ -255,6 +255,8 @@ export function UsersClient({
               enablePagination
               pageSize={10}
               toolbar={renderUserToolbar}
+              enableExport
+              exportFileName="users"
             />
           ) : (
             <EmptyState
@@ -285,6 +287,8 @@ export function UsersClient({
               pageSize={10}
               getRowId={(row) => row.business_type_id}
               toolbar={renderBTToolbar}
+              enableExport
+              exportFileName="business-types"
             />
           ) : (
             <EmptyState
@@ -315,6 +319,8 @@ export function UsersClient({
               pageSize={10}
               getRowId={(row) => row.blacklist_id}
               toolbar={renderBlacklistToolbar}
+              enableExport
+              exportFileName="blacklist"
             />
           ) : (
             <EmptyState

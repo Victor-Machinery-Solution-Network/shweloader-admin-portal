@@ -157,6 +157,8 @@ export function SubCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="equipment-sub-categories"
         />
       ) : (
         <EmptyState

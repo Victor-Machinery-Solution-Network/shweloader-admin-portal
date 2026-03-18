@@ -8,6 +8,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 const BCRYPT_ROUNDS = 12;
 const PASSWORD_LENGTH = 12;
@@ -114,6 +115,7 @@ export async function createAppUser(formData: FormData) {
     }
 
     invalidateTag(CACHE_TAGS.USERS);
+    auditLog(actorId, "created app user | username=" + trimmedUsername);
     return { success: true, password };
   } catch (error) {
     return {
@@ -183,6 +185,7 @@ export async function deleteAppUser(userId: number) {
     saveTrashMetadata("app_user", userId, deletedBy).catch(() => {});
 
     invalidateTag(CACHE_TAGS.USERS);
+    auditLog(deletedBy, "deleted app user | id=" + userId);
     return { success: true };
   } catch (error) {
     return {

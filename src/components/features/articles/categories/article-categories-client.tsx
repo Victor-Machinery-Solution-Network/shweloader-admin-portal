@@ -100,6 +100,8 @@ export function ArticleCategoriesClient({
           pageSize={10}
           getRowId={(row) => row.category_id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="article-categories"
         />
       ) : (
         <EmptyState

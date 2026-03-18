@@ -13,6 +13,7 @@ import {
   notifyArticleApproved,
   notifyArticleRework,
 } from "@/lib/actions/notification";
+import { auditLog } from "@/lib/actions/audit";
 import type { ArticleWithDetails } from "@/types/article";
 
 // ─── Article Actions ─────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ export async function createArticle(formData: FormData) {
       estimated_read_time,
     });
     invalidateTag(CACHE_TAGS.ARTICLES);
+    auditLog(created_by, "created article | title=" + title.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -93,7 +95,7 @@ export async function updateArticle(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("articles", "edit");
+    const userId = await requirePermission("articles", "edit");
 
     // Prevent non-approvers from changing status to Published
     const newStatusId = article_status_type_id ? Number(article_status_type_id) : null;
@@ -131,6 +133,7 @@ export async function updateArticle(id: number, formData: FormData) {
     });
     await cleanupOldFile(existing?.cover_image_url, cover_image_url);
     invalidateTag(CACHE_TAGS.ARTICLES);
+    auditLog(userId, "updated article | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -146,6 +149,7 @@ export async function deleteArticle(id: number) {
     await articleService.softDelete(id, deletedBy);
     saveTrashMetadata("article", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ARTICLES);
+    auditLog(deletedBy, "deleted article | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -207,6 +211,7 @@ export async function updateArticleStatus(id: number, statusId: number) {
     }
 
     invalidateTag(CACHE_TAGS.ARTICLES);
+    auditLog(userId, "updated article status | id=" + id + " | status=" + (statusName ?? "unknown"));
     return { success: true };
   } catch (error) {
     return {
@@ -249,6 +254,7 @@ export async function publishArticle(id: number) {
       notifyArticleApproved(id, existing.title, existing.created_by, userId).catch(() => {});
     }
 
+    auditLog(userId, "published article | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -287,6 +293,7 @@ export async function requestArticleRework(id: number, reason?: string) {
       notifyArticleRework(id, existing.title, existing.created_by, userId, reason).catch(() => {});
     }
 
+    auditLog(userId, "requested article rework | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -324,6 +331,7 @@ export async function submitForReview(id: number) {
       notifyArticleSubmitted(id, (article as ArticleWithDetails).title, userId).catch(() => {});
     }
 
+    auditLog(userId, "submitted article for review | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -389,6 +397,7 @@ export async function createAndSubmitForReview(formData: FormData) {
       notifyArticleSubmitted(articleId, title.trim(), created_by).catch(() => {});
     }
 
+    auditLog(created_by, "created and submitted article for review | title=" + title.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -453,6 +462,7 @@ export async function deleteArticles(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(CACHE_TAGS.ARTICLES);
+  auditLog(deletedBy, "bulk deleted articles | count=" + deleted);
 
   if (errors.length > 0) {
     return {

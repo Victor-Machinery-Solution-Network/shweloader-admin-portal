@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { saveTrashMetadata } from "@/lib/actions/trash";
 import { CACHE_TAGS } from "@/lib/constants";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Business Type Actions ───────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export async function createBusinessType(formData: FormData) {
       created_by,
     });
     invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
+    auditLog(created_by, "created business type | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -41,9 +43,10 @@ export async function updateBusinessType(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("business_types", "edit");
+    const userId = await requirePermission("business_types", "edit");
     await businessTypeService.update(id, { name: name.trim() });
     invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
+    auditLog(userId, "updated business type | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -59,6 +62,7 @@ export async function deleteBusinessType(id: number) {
     await businessTypeService.softDelete(id, deletedBy);
     saveTrashMetadata("business_type", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
+    auditLog(deletedBy, "deleted business type | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -109,6 +113,7 @@ export async function deleteBusinessTypes(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
+  auditLog(deletedBy, "bulk deleted business types | count=" + deleted);
 
   if (errors.length > 0) {
     return {

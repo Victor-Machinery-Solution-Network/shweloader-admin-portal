@@ -358,6 +358,7 @@ export function getChatUnreadCount() {
 // Permissions (cached at function level — called from server actions)
 
 import { getPermissionsForRole } from "@/lib/actions/permission";
+import { getActivityLogs as fetchActivityLogs } from "@/lib/actions/activity-log";
 
 export async function getCachedPermissionsForRole(
   roleId: number,
@@ -366,4 +367,10 @@ export async function getCachedPermissionsForRole(
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag(CACHE_TAGS.PERMISSIONS);
   return getPermissionsForRole(roleId);
+}
+
+// Activity Logs
+
+export function getActivityLogsData() {
+  return fetchActivityLogs();
 }

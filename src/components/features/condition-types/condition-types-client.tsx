@@ -86,6 +86,8 @@ export function ConditionTypesClient({
           pageSize={10}
           getRowId={(row) => row.id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="condition-types"
         />
       ) : (
         <EmptyState

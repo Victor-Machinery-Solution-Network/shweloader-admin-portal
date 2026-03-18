@@ -130,6 +130,8 @@ export function MainCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="equipment-categories"
         />
       ) : (
         <EmptyState

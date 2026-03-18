@@ -6,6 +6,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Attachment Category-Brand Link Helpers ─────────────────────────────────
 
@@ -203,6 +204,7 @@ export async function createBrand(formData: FormData) {
     }
 
     invalidateTag(CACHE_TAGS.BRANDS);
+    auditLog(created_by, "created brand | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -238,6 +240,7 @@ export async function updateBrand(id: number, formData: FormData) {
     }
 
     invalidateTag(CACHE_TAGS.BRANDS);
+    auditLog(userId, "updated brand | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -253,6 +256,7 @@ export async function deleteBrand(id: number) {
     await brandService.softDelete(id, deletedBy);
     saveTrashMetadata("brand", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.BRANDS);
+    auditLog(deletedBy, "deleted brand | id=" + id);
     return { success: true };
   } catch (error) {
     return {

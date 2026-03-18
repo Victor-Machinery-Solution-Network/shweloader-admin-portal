@@ -7,6 +7,7 @@ import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Announcement Text Actions ──────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export async function createAnnouncement(formData: FormData) {
       display_order,
     });
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
+    auditLog(created_by, "created announcement");
     return { success: true };
   } catch (error) {
     return {
@@ -47,9 +49,10 @@ export async function updateAnnouncement(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("announcements", "edit");
+    const userId = await requirePermission("announcements", "edit");
     await announcementTextService.update(id, { text: text.trim() });
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
+    auditLog(userId, "updated announcement | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -65,6 +68,7 @@ export async function deleteAnnouncement(id: number) {
     await announcementTextService.softDelete(id, deletedBy);
     saveTrashMetadata("announcement", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
+    auditLog(deletedBy, "deleted announcement | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -91,6 +95,7 @@ export async function deleteAnnouncements(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
+  auditLog(deletedBy, "bulk deleted announcements | count=" + deleted);
 
   if (errors.length > 0) {
     return {
@@ -103,12 +108,13 @@ export async function deleteAnnouncements(ids: number[]) {
 
 export async function toggleAnnouncementActive(id: number) {
   try {
-    await requirePermission("announcements", "edit");
+    const userId = await requirePermission("announcements", "edit");
     await d1.query(
       "UPDATE announcement_text SET is_active = 1 - is_active WHERE announcement_id = ?",
       [id],
     );
     invalidateTag(CACHE_TAGS.ANNOUNCEMENTS);
+    auditLog(userId, "toggled announcement active | id=" + id);
     return { success: true };
   } catch (error) {
     return {

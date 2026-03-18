@@ -124,6 +124,8 @@ export function AttachmentModelsClient({
           pageSize={10}
           getRowId={(row) => row.model_id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="attachment-models"
         />
       ) : (
         <EmptyState

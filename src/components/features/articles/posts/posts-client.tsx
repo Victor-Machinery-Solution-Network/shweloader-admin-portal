@@ -193,6 +193,8 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
+            enableExport
+            exportFileName="articles-draft"
           />
         ) : (
           <EmptyState
@@ -227,6 +229,8 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
+            enableExport
+            exportFileName="articles-published"
           />
         ) : (
           <EmptyState
@@ -249,6 +253,8 @@ export function PostsClient({
             filterStorageKey="articles-pending-filters"
             enablePagination
             pageSize={10}
+            enableExport
+            exportFileName="articles-pending"
           />
         ) : (
           <EmptyState
@@ -274,6 +280,8 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
+            enableExport
+            exportFileName="articles-rework"
           />
         ) : (
           <EmptyState

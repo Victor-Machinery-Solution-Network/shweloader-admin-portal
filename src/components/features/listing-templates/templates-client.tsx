@@ -93,6 +93,8 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
       pageSize={10}
       getRowId={(row) => row.template_id}
       toolbar={renderToolbar}
+      enableExport
+      exportFileName="listing-templates"
     />
   ) : (
     <EmptyState

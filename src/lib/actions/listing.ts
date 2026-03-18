@@ -36,6 +36,7 @@ import {
   notifyListingRework,
 } from "@/lib/actions/notification";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Helper: process product photos from form data ──────────────────────────
 
@@ -536,6 +537,7 @@ export async function createListing(formData: FormData) {
       ).catch(() => {});
     }
 
+    auditLog(created_by, "created listing | product=" + productId + " | type=" + (forSale && forRent ? "sale+rent" : forSale ? "sale" : "rent"));
     return { success: true };
   } catch (error) {
     // Clean up any R2 files that were uploaded before the failure
@@ -553,7 +555,7 @@ export async function createListing(formData: FormData) {
 
 export async function updateSaleListing(saleId: number, formData: FormData) {
   try {
-    await requirePermission("sale_listings", "edit");
+    const userId = await requirePermission("sale_listings", "edit");
     // Get existing sale listing to find product_list_id and thumbnail
     const existing = await d1.query<{
       product_list_id: number;
@@ -613,6 +615,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
 
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "updated sale listing | id=" + saleId);
     return { success: true };
   } catch (error) {
     return {
@@ -660,6 +663,7 @@ export async function deleteSaleListing(saleId: number) {
     }
 
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(deletedBy, "deleted sale listing | id=" + saleId);
     return { success: true };
   } catch (error) {
     return {
@@ -675,7 +679,7 @@ export async function deleteSaleListing(saleId: number) {
 
 export async function updateRentListing(rentId: number, formData: FormData) {
   try {
-    await requirePermission("rent_listings", "edit");
+    const userId = await requirePermission("rent_listings", "edit");
     // Get existing rent listing to find product_list_id and thumbnail
     const existing = await d1.query<{
       product_list_id: number;
@@ -732,6 +736,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
 
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "updated rent listing | id=" + rentId);
     return { success: true };
   } catch (error) {
     return {
@@ -779,6 +784,7 @@ export async function deleteRentListing(rentId: number) {
     }
 
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(deletedBy, "deleted rent listing | id=" + rentId);
     return { success: true };
   } catch (error) {
     return {
@@ -832,6 +838,7 @@ async function deleteListings(
     .map((r, i) => getErrorMessage(r.reason, `Failed to delete listing ${ids[i]}`));
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(cacheTag);
+  auditLog(deletedBy, "bulk deleted " + type + " listings | count=" + deleted);
 
   if (errors.length > 0) {
     return { success: false, error: `Deleted ${deleted} of ${ids.length}. ${errors[0]}` };
@@ -853,7 +860,7 @@ export async function deleteRentListings(ids: number[]) {
 
 export async function toggleSaleHidden(id: number) {
   try {
-    await requirePermission("sale_listings", "edit");
+    const userId = await requirePermission("sale_listings", "edit");
     const current = await d1.query<{ is_hidden: number }>(
       "SELECT is_hidden FROM sale_listing WHERE id = ?",
       [id],
@@ -861,6 +868,7 @@ export async function toggleSaleHidden(id: number) {
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await saleListingService.update(id, { is_hidden: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "toggled sale listing hidden | id=" + id);
     return { success: true, is_hidden: newVal };
   } catch (error) {
     return {
@@ -872,7 +880,7 @@ export async function toggleSaleHidden(id: number) {
 
 export async function toggleRentHidden(id: number) {
   try {
-    await requirePermission("rent_listings", "edit");
+    const userId = await requirePermission("rent_listings", "edit");
     const current = await d1.query<{ is_hidden: number }>(
       "SELECT is_hidden FROM rent_listing WHERE id = ?",
       [id],
@@ -880,6 +888,7 @@ export async function toggleRentHidden(id: number) {
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await rentListingService.update(id, { is_hidden: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "toggled rent listing hidden | id=" + id);
     return { success: true, is_hidden: newVal };
   } catch (error) {
     return {
@@ -891,7 +900,7 @@ export async function toggleRentHidden(id: number) {
 
 export async function toggleSoldOut(id: number) {
   try {
-    await requirePermission("sale_listings", "edit");
+    const userId = await requirePermission("sale_listings", "edit");
     const current = await d1.query<{ is_sold_out: number }>(
       "SELECT is_sold_out FROM sale_listing WHERE id = ?",
       [id],
@@ -899,6 +908,7 @@ export async function toggleSoldOut(id: number) {
     const newVal = current.results[0]?.is_sold_out === 1 ? 0 : 1;
     await saleListingService.update(id, { is_sold_out: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "toggled sale listing sold out | id=" + id);
     return { success: true, is_sold_out: newVal };
   } catch (error) {
     return {
@@ -910,7 +920,7 @@ export async function toggleSoldOut(id: number) {
 
 export async function toggleSaleHidePrice(id: number) {
   try {
-    await requirePermission("sale_listings", "edit");
+    const userId = await requirePermission("sale_listings", "edit");
     const current = await d1.query<{ hide_price: number }>(
       "SELECT hide_price FROM sale_listing WHERE id = ?",
       [id],
@@ -918,6 +928,7 @@ export async function toggleSaleHidePrice(id: number) {
     const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
     await saleListingService.update(id, { hide_price: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "toggled sale listing hide price | id=" + id);
     return { success: true, hide_price: newVal };
   } catch (error) {
     return {
@@ -929,7 +940,7 @@ export async function toggleSaleHidePrice(id: number) {
 
 export async function toggleIsRented(id: number) {
   try {
-    await requirePermission("rent_listings", "edit");
+    const userId = await requirePermission("rent_listings", "edit");
     const current = await d1.query<{ is_rented: number }>(
       "SELECT is_rented FROM rent_listing WHERE id = ?",
       [id],
@@ -937,6 +948,7 @@ export async function toggleIsRented(id: number) {
     const newVal = current.results[0]?.is_rented === 1 ? 0 : 1;
     await rentListingService.update(id, { is_rented: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "toggled rent listing rented | id=" + id);
     return { success: true, is_rented: newVal };
   } catch (error) {
     return {
@@ -948,7 +960,7 @@ export async function toggleIsRented(id: number) {
 
 export async function toggleRentHidePrice(id: number) {
   try {
-    await requirePermission("rent_listings", "edit");
+    const userId = await requirePermission("rent_listings", "edit");
     const current = await d1.query<{ hide_price: number }>(
       "SELECT hide_price FROM rent_listing WHERE id = ?",
       [id],
@@ -956,6 +968,7 @@ export async function toggleRentHidePrice(id: number) {
     const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
     await rentListingService.update(id, { hide_price: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "toggled rent listing hide price | id=" + id);
     return { success: true, hide_price: newVal };
   } catch (error) {
     return {
@@ -984,6 +997,7 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
     });
 
     invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
+    auditLog(created_by, "added to featured | type=" + type + " | listing=" + listingId);
     return { success: true };
   } catch (error) {
     return {
@@ -995,9 +1009,10 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
 
 export async function removeFromFeatured(featuredId: number) {
   try {
-    await requirePermission("featured_listings", "delete");
+    const userId = await requirePermission("featured_listings", "delete");
     await featuredListingService.delete(featuredId);
     invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
+    auditLog(userId, "removed from featured | id=" + featuredId);
     return { success: true };
   } catch (error) {
     return {
@@ -1240,6 +1255,7 @@ export async function approveListingSale(id: number) {
       [userId, id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "approved sale listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
     const listing = await d1.query<{
@@ -1277,6 +1293,7 @@ export async function requestReworkSale(id: number, reason?: string) {
       [reason || null, id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "requested rework for sale listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
     const listing = await d1.query<{
@@ -1315,6 +1332,7 @@ export async function approveListingRent(id: number) {
       [userId, id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "approved rent listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
     const listing = await d1.query<{
@@ -1352,6 +1370,7 @@ export async function requestReworkRent(id: number, reason?: string) {
       [reason || null, id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "requested rework for rent listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
     const listing = await d1.query<{
@@ -1394,6 +1413,7 @@ export async function resubmitSaleListing(id: number) {
       [id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    auditLog(userId, "resubmitted sale listing | id=" + id);
 
     // Notify approvers (fire-and-forget)
     const listing = await d1.query<{ product_list_id: number }>(
@@ -1423,6 +1443,7 @@ export async function resubmitRentListing(id: number) {
       [id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    auditLog(userId, "resubmitted rent listing | id=" + id);
 
     // Notify approvers (fire-and-forget)
     const listing = await d1.query<{ product_list_id: number }>(
@@ -1522,6 +1543,7 @@ export async function saveDraft(formData: FormData) {
       await syncProductImages(productId, photos, userId);
     }
 
+    auditLog(userId, "saved draft | id=" + productId);
     return { success: true, draftId: productId };
   } catch (error) {
     await Promise.allSettled(uploadedKeys.map((key) => deleteFile(key)));
@@ -1823,6 +1845,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
       );
     }
 
+    auditLog(userId, "submitted draft as listing | product=" + productListId);
     return { success: true };
   } catch (error) {
     await Promise.allSettled(uploadedKeys.map((key) => deleteFile(key)));
@@ -1856,6 +1879,7 @@ export async function deleteDraft(productListId: number) {
     await productListService.softDelete(productListId, userId);
     saveTrashMetadata("product_list", productListId, userId).catch(() => {});
 
+    auditLog(userId, "deleted draft | id=" + productListId);
     return { success: true };
   } catch (error) {
     return {

@@ -138,6 +138,8 @@ export function AttachmentCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="attachment-categories"
         />
       ) : (
         <EmptyState

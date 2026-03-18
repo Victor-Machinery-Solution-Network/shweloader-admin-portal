@@ -5,6 +5,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { auditLog } from "@/lib/actions/audit";
 import type { PartnerWithDetails } from "@/types/partner";
 
 // ─── Partner Queries ─────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ export async function approvePartner(id: number) {
       rejection_reason: null,
     });
     invalidateTag(CACHE_TAGS.PARTNERS);
+    auditLog(reviewed_by, "approved partner | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -112,6 +114,7 @@ export async function rejectPartner(id: number, reason: string) {
       rejection_reason: reason || null,
     });
     invalidateTag(CACHE_TAGS.PARTNERS);
+    auditLog(reviewed_by, "rejected partner | id=" + id);
     return { success: true };
   } catch (error) {
     return {

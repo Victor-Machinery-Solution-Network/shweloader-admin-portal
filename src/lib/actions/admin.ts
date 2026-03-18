@@ -63,7 +63,7 @@ export async function createAdmin(formData: FormData) {
   }
 
   try {
-    await requirePermission("admin_users", "create");
+    const actorId = await requirePermission("admin_users", "create");
 
     // Prevent assigning the Super Admin role via form manipulation
     if (Number(roleId) === SUPER_ADMIN_ROLE_ID) {
@@ -81,6 +81,7 @@ export async function createAdmin(formData: FormData) {
     });
 
     invalidateTag(CACHE_TAGS.ADMINS);
+    auditLog(actorId, "created admin | username=" + username.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -189,6 +190,7 @@ export async function deleteAdmin(userId: number) {
     await adminUserService.softDelete(userId, deletedBy);
     saveTrashMetadata("admin_user", userId, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ADMINS);
+    auditLog(deletedBy, "deleted admin | id=" + userId);
     return { success: true };
   } catch (error) {
     return {
@@ -216,6 +218,7 @@ export async function deleteAdmins(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(CACHE_TAGS.ADMINS);
+  auditLog(deletedBy, "bulk deleted admins | count=" + deleted);
 
   if (errors.length > 0) {
     return {

@@ -4,6 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { auditLog } from "@/lib/actions/audit";
 import type { AppSetting } from "@/types/setting";
 import { SETTING_KEYS } from "@/types/setting";
 
@@ -75,6 +76,7 @@ export async function updateSettings(
     }
 
     invalidateTag(CACHE_TAGS.SETTINGS);
+    auditLog(updatedBy, "updated settings | keys=" + Object.keys(settings).join(","));
     return { success: true };
   } catch (error) {
     return {

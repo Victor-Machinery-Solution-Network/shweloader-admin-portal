@@ -101,6 +101,8 @@ export function RolesClient({
           pageSize={10}
           getRowId={(row) => row.role_id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="roles"
         />
       ) : (
         <EmptyState

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
+import { auditLog } from "@/lib/actions/audit";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getLastDisplayOrder } from "@/lib/actions/reorder";
@@ -60,6 +61,7 @@ export async function addCarouselImage(
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
+    auditLog(added_by, "added carousel image | carousel=" + carouselId);
     return { success: true };
   } catch (error) {
     return {
@@ -74,7 +76,7 @@ export async function removeCarouselImage(
   imageId: number,
 ) {
   try {
-    await requirePermission("carousels", "delete");
+    const userId = await requirePermission("carousels", "delete");
     // Get image key for R2 cleanup
     const { results } = await d1.query<{ image_url: string }>(
       "SELECT image_url FROM image WHERE image_id = ?",
@@ -92,6 +94,7 @@ export async function removeCarouselImage(
     await deleteFile(imageKey);
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
+    auditLog(userId, "removed carousel image | carousel=" + carouselId + " | image=" + imageId);
     return { success: true };
   } catch (error) {
     return {
@@ -107,12 +110,13 @@ export async function updateCarouselImageLink(
   linkUrl: string | null,
 ) {
   try {
-    await requirePermission("carousels", "edit");
+    const userId = await requirePermission("carousels", "edit");
     await d1.query(
       "UPDATE carousel_image SET link_url = ? WHERE carousel_id = ? AND image_id = ?",
       [linkUrl, carouselId, imageId],
     );
     invalidateTag(CACHE_TAGS.CAROUSELS);
+    auditLog(userId, "updated carousel image link | carousel=" + carouselId + " | image=" + imageId);
     return { success: true };
   } catch (error) {
     return {
@@ -127,12 +131,13 @@ export async function toggleCarouselImageActive(
   imageId: number,
 ) {
   try {
-    await requirePermission("carousels", "edit");
+    const userId = await requirePermission("carousels", "edit");
     await d1.query(
       "UPDATE carousel_image SET active = 1 - active WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],
     );
     invalidateTag(CACHE_TAGS.CAROUSELS);
+    auditLog(userId, "toggled carousel image active | carousel=" + carouselId + " | image=" + imageId);
     return { success: true };
   } catch (error) {
     return {
@@ -152,13 +157,14 @@ export async function updateImageFocalPoint(
   }
 
   try {
-    await requirePermission("carousels", "edit");
+    const userId = await requirePermission("carousels", "edit");
     await d1.query(
       "UPDATE image SET focal_x = ?, focal_y = ? WHERE image_id = ?",
       [focalX, focalY, imageId],
     );
     invalidateTag(CACHE_TAGS.CAROUSELS);
     revalidatePath("/carousel");
+    auditLog(userId, "updated image focal point | image=" + imageId);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to update focal point") };

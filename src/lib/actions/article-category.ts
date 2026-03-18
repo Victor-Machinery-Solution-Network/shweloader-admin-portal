@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Article Category Actions ────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export async function createArticleCategory(formData: FormData) {
       created_by,
     });
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
+    auditLog(created_by, "created article category | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -40,9 +42,10 @@ export async function updateArticleCategory(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("article_categories", "edit");
+    const userId = await requirePermission("article_categories", "edit");
     await articleCategoryService.update(id, { name: name.trim() });
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
+    auditLog(userId, "updated article category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -58,6 +61,7 @@ export async function deleteArticleCategory(id: number) {
     await articleCategoryService.softDelete(id, deletedBy);
     saveTrashMetadata("article_category", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
+    auditLog(deletedBy, "deleted article category | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -107,6 +111,7 @@ export async function deleteArticleCategories(ids: number[]) {
     );
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
+  auditLog(deletedBy, "bulk deleted article categories | count=" + deleted);
 
   if (errors.length > 0) {
     return {

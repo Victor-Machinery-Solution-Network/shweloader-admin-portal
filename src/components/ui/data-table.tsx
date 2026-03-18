@@ -61,6 +61,13 @@ import {
 // Lazy-load the dnd table module (only loaded when enableDragSort is true)
 const LazyDndTable = React.lazy(() => import("./data-table-dnd"));
 
+// Lazy-load the export button (only loaded when enableExport is true)
+const LazyExportExcelButton = React.lazy(() =>
+  import("@/components/shared/export-excel-button").then((m) => ({
+    default: m.ExportExcelButton,
+  })),
+);
+
 // --- Internal registry: maps column ID → display title (populated by DataTableColumnHeader) ---
 const ColumnTitleRegistry = React.createContext<Map<string, string>>(new Map());
 
@@ -314,6 +321,10 @@ interface DataTableProps<TData, TValue> {
   filterStorageKey?: string;
   /** Initial column visibility — use to hide filter-only columns */
   initialColumnVisibility?: VisibilityState;
+  /** Enable Excel export button in the toolbar */
+  enableExport?: boolean;
+  /** File name for the exported Excel file (without extension) */
+  exportFileName?: string;
 }
 
 function DataTable<TData, TValue>({
@@ -332,6 +343,8 @@ function DataTable<TData, TValue>({
   filterConfig,
   filterStorageKey,
   initialColumnVisibility,
+  enableExport = false,
+  exportFileName,
 }: DataTableProps<TData, TValue>) {
   "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const columnTitlesRef = React.useRef(new Map<string, string>());
@@ -522,6 +535,45 @@ function DataTable<TData, TValue>({
   const resolvedToolbar =
     typeof toolbar === "function" ? toolbar(selectedRows) : toolbar;
 
+  // --- Export support ---
+  // Columns use `meta.exportValue(row)` for custom display values in exports.
+  // Falls back to `row.getValue(col.id)` for simple accessor columns.
+  // The "index" column auto-generates 1-based row numbers.
+  const exportColumns = React.useMemo(() => {
+    if (!enableExport) return [];
+    const SKIP_IDS = new Set(["select", "actions", "drag-handle"]);
+    return table
+      .getAllColumns()
+      .filter((col) => !SKIP_IDS.has(col.id) && col.getIsVisible())
+      .map((col) => ({
+        key: col.id,
+        header: columnTitlesRef.current.get(col.id)
+          ?? (col.id === "index" ? "No." : col.id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())),
+        exportValue: (col.columnDef.meta as Record<string, unknown>)?.exportValue as
+          | ((row: Row<TData>) => unknown)
+          | undefined,
+      }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableExport, columnVisibility]);
+
+  const exportData = React.useMemo(() => {
+    if (!enableExport) return [];
+    return table.getFilteredRowModel().rows.map((row, rowIndex) => {
+      const obj: Record<string, unknown> = {};
+      for (const col of exportColumns) {
+        if (col.exportValue) {
+          obj[col.key] = col.exportValue(row);
+        } else if (col.key === "index") {
+          obj[col.key] = rowIndex + 1;
+        } else {
+          obj[col.key] = row.getValue(col.key);
+        }
+      }
+      return obj;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableExport, exportColumns, data, globalFilter, columnFilters]);
+
   // Allow parent to clear selection by resetting when data changes
   const clearSelection = React.useCallback(() => setRowSelection({}), []);
 
@@ -702,7 +754,7 @@ function DataTable<TData, TValue>({
     <DataTableContext.Provider value={{ clearSelection }}>
       <div className="space-y-4">
         {/* Toolbar */}
-        {(searchKeys || resolvedToolbar || sorting.length > 0 || hasFilters) && (
+        {(searchKeys || resolvedToolbar || enableExport || sorting.length > 0 || hasFilters) && (
           <div className="space-y-2">
             {/* Row 1: search + filter picker + sort chip + actions */}
             <div className="flex items-center gap-2">
@@ -743,6 +795,15 @@ function DataTable<TData, TValue>({
               )}
               <div className="ml-auto flex items-center gap-2">
                 {resolvedToolbar}
+                {enableExport && (
+                  <React.Suspense fallback={null}>
+                    <LazyExportExcelButton
+                      data={exportData}
+                      columns={exportColumns}
+                      fileName={exportFileName}
+                    />
+                  </React.Suspense>
+                )}
               </div>
             </div>
 

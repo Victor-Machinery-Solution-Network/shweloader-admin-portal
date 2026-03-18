@@ -113,6 +113,8 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               filterStorageKey="partners-all-filters"
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="partners-all"
             />
           ) : (
             <EmptyState
@@ -135,6 +137,8 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               filterStorageKey="partners-approved-filters"
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="partners-approved"
             />
           ) : (
             <EmptyState
@@ -157,6 +161,8 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               filterStorageKey="partners-pending-filters"
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="partners-pending"
             />
           ) : (
             <EmptyState
@@ -179,6 +185,8 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               filterStorageKey="partners-rejected-filters"
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="partners-rejected"
             />
           ) : (
             <EmptyState

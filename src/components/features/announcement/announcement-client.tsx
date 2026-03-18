@@ -115,6 +115,8 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="announcements"
         />
       ) : (
         <EmptyState

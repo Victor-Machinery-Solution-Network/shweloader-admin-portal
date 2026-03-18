@@ -29,6 +29,7 @@ import {
   UserCog,
   Trash2,
   Headset,
+  ClipboardList,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -712,6 +713,20 @@ export function AppSidebar() {
                         <Link href={ROUTES.SETTINGS}>
                           <Settings aria-hidden="true" />
                           <span>General Settings</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
+                  {canRead("admin_users") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === ROUTES.ACTIVITY_LOGS}
+                      >
+                        <Link href={ROUTES.ACTIVITY_LOGS}>
+                          <ClipboardList aria-hidden="true" />
+                          <span>Activity Logs</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

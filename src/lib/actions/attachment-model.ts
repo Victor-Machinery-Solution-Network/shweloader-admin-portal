@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 
 // ─── Attachment Model Actions ───────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export async function createAttachmentModel(formData: FormData) {
       created_by,
     });
     invalidateTag(CACHE_TAGS.ATTACHMENT_MODELS);
+    auditLog(created_by, "created attachment model | name=" + name.trim());
     return { success: true };
   } catch (error) {
     return {
@@ -60,7 +62,7 @@ export async function updateAttachmentModel(id: number, formData: FormData) {
   }
 
   try {
-    await requirePermission("attachment_models", "edit");
+    const userId = await requirePermission("attachment_models", "edit");
     const existing = await attachmentModelService.getById(id);
     const pdf_url = await processFileField(
       formData, "pdf_url", "pdfs/attachments/", name.trim(), existing?.pdf_url,
@@ -73,6 +75,7 @@ export async function updateAttachmentModel(id: number, formData: FormData) {
     });
     await cleanupOldFile(existing?.pdf_url, pdf_url);
     invalidateTag(CACHE_TAGS.ATTACHMENT_MODELS);
+    auditLog(userId, "updated attachment model | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -88,6 +91,7 @@ export async function deleteAttachmentModel(id: number) {
     await attachmentModelService.softDelete(id, deletedBy);
     saveTrashMetadata("attachment_model", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.ATTACHMENT_MODELS);
+    auditLog(deletedBy, "deleted attachment model | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -116,6 +120,7 @@ export async function deleteAttachmentModels(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.ATTACHMENT_MODELS);
+  auditLog(deletedBy, "bulk deleted attachment models | count=" + deleted);
 
   if (errors.length > 0) {
     return {

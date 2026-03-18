@@ -36,6 +36,7 @@ import { getNextDisplayOrder } from "@/lib/actions/reorder";
 import { uploadToR2, slugify } from "@/lib/api/r2-client";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
+import { auditLog } from "@/lib/actions/audit";
 import type {
   BulkUploadConfig,
   ParsedRow,
@@ -269,6 +270,8 @@ export async function processBulkImport(
     invalidateTag(tag as Parameters<typeof invalidateTag>[0]);
   }
 
+  auditLog(userId, "bulk imported " + entityKey + " | succeeded=" + succeeded + " | failed=" + failed);
+
   // Sort results by rowIndex
   results.sort((a, b) => a.rowIndex - b.rowIndex);
 
@@ -399,6 +402,8 @@ export async function processBulkImportWithImages(
   for (const tag of config.cacheTags) {
     invalidateTag(tag as Parameters<typeof invalidateTag>[0]);
   }
+
+  auditLog(userId, "bulk imported " + entityKey + " with images | succeeded=" + succeeded + " | failed=" + failed);
 
   results.sort((a, b) => a.rowIndex - b.rowIndex);
 

@@ -366,6 +366,8 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.state_region_id}
               toolbar={renderSRToolbar}
+              enableExport
+              exportFileName="state-regions"
             />
           ) : (
             <EmptyState
@@ -412,6 +414,8 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.district_id}
               toolbar={renderDistrictToolbar}
+              enableExport
+              exportFileName="districts"
             />
           ) : (
             <EmptyState
@@ -458,6 +462,8 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.township_id}
               toolbar={renderTownshipToolbar}
+              enableExport
+              exportFileName="townships"
             />
           ) : (
             <EmptyState

@@ -86,6 +86,7 @@ const ROUTE_FEATURE_MAP: [prefix: string, feature: string][] = [
   ["/admins", "admin_users"],
   ["/roles-permissions", "roles"],
   ["/settings", "app_settings"],
+  ["/activity-logs", "admin_users"],
 ];
 
 /**

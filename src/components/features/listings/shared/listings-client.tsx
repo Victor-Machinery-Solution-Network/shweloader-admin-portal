@@ -433,6 +433,8 @@ export function ListingsClient({
               getRowId={(row) => row.id}
               onReorder={handleApprovedReorder}
               onMoveToPosition={handleApprovedMoveToPosition}
+              enableExport
+              exportFileName={`${pageType}-listings`}
             />
           ) : (
             <EmptyState
@@ -479,6 +481,8 @@ export function ListingsClient({
               getRowId={(row) => row.id}
               onReorder={handleReorder}
               onMoveToPosition={handleMoveToPosition}
+              enableExport
+              exportFileName="featured-listings"
             />
           ) : (
             <EmptyState
@@ -501,6 +505,8 @@ export function ListingsClient({
               filterStorageKey={`listings-${pageType}-pending-filters`}
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="pending-listings"
             />
           ) : (
             <EmptyState
@@ -526,6 +532,8 @@ export function ListingsClient({
               enablePagination
               pageSize={10}
               getRowId={(row) => row.id}
+              enableExport
+              exportFileName="draft-listings"
             />
           ) : (
             <EmptyState
@@ -548,6 +556,8 @@ export function ListingsClient({
               filterStorageKey={`listings-${pageType}-rework-filters`}
               enablePagination
               pageSize={10}
+              enableExport
+              exportFileName="rework-listings"
             />
           ) : (
             <EmptyState

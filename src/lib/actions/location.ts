@@ -10,6 +10,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { saveTrashMetadata } from "@/lib/actions/trash";
+import { auditLog } from "@/lib/actions/audit";
 import type { StateRegion, DistrictWithParent, TownshipWithParents } from "@/types/location";
 
 // ─── State/Region Actions ───────────────────────────────────────────────────
@@ -29,6 +30,7 @@ export async function createStateRegion(formData: FormData) {
     const created_by = await requirePermission("locations", "create");
     await stateRegionService.create({ name, type: validType, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(created_by, "created state/region | name=" + name);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to create state/region") };
@@ -44,9 +46,10 @@ export async function updateStateRegion(id: number, formData: FormData) {
   const validType = type as StateRegion["type"];
 
   try {
-    await requirePermission("locations", "edit");
+    const userId = await requirePermission("locations", "edit");
     await stateRegionService.update(id, { name, type: validType });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(userId, "updated state/region | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to update state/region") };
@@ -59,6 +62,7 @@ export async function deleteStateRegion(id: number) {
     await stateRegionService.softDelete(id, deletedBy);
     saveTrashMetadata("state_region", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(deletedBy, "deleted state/region | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to delete state/region") };
@@ -78,6 +82,7 @@ export async function createDistrict(formData: FormData) {
     const created_by = await requirePermission("locations", "create");
     await districtService.create({ name, state_region_id, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(created_by, "created district | name=" + name);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to create district") };
@@ -91,9 +96,10 @@ export async function updateDistrict(id: number, formData: FormData) {
   if (!name) return { success: false, error: "Name is required" };
 
   try {
-    await requirePermission("locations", "edit");
+    const userId = await requirePermission("locations", "edit");
     await districtService.update(id, { name, state_region_id });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(userId, "updated district | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to update district") };
@@ -106,6 +112,7 @@ export async function deleteDistrict(id: number) {
     await districtService.softDelete(id, deletedBy);
     saveTrashMetadata("district", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(deletedBy, "deleted district | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to delete district") };
@@ -125,6 +132,7 @@ export async function createTownship(formData: FormData) {
     const created_by = await requirePermission("locations", "create");
     await townshipService.create({ name, district_id, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(created_by, "created township | name=" + name);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to create township") };
@@ -138,9 +146,10 @@ export async function updateTownship(id: number, formData: FormData) {
   if (!name) return { success: false, error: "Name is required" };
 
   try {
-    await requirePermission("locations", "edit");
+    const userId = await requirePermission("locations", "edit");
     await townshipService.update(id, { name, district_id });
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(userId, "updated township | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to update township") };
@@ -153,6 +162,7 @@ export async function deleteTownship(id: number) {
     await townshipService.softDelete(id, deletedBy);
     saveTrashMetadata("township", id, deletedBy).catch(() => {});
     invalidateTag(CACHE_TAGS.LOCATIONS);
+    auditLog(deletedBy, "deleted township | id=" + id);
     return { success: true };
   } catch (error) {
     return { success: false, error: getErrorMessage(error, "Failed to delete township") };
@@ -323,6 +333,7 @@ export async function deleteStateRegions(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.LOCATIONS);
+  auditLog(deletedBy, "bulk deleted state/regions | count=" + deleted);
 
   if (errors.length > 0) {
     return {
@@ -351,6 +362,7 @@ export async function deleteDistricts(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.LOCATIONS);
+  auditLog(deletedBy, "bulk deleted districts | count=" + deleted);
 
   if (errors.length > 0) {
     return {
@@ -379,6 +391,7 @@ export async function deleteTownships(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.LOCATIONS);
+  auditLog(deletedBy, "bulk deleted townships | count=" + deleted);
 
   if (errors.length > 0) {
     return {

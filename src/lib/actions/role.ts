@@ -218,6 +218,7 @@ export async function deleteRoles(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
+  auditLog(deletedBy, "bulk deleted roles | count=" + deleted);
 
   if (errors.length > 0) {
     return {

@@ -103,6 +103,8 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
           pageSize={10}
           getRowId={(row) => row.user_id}
           toolbar={renderToolbar}
+          enableExport
+          exportFileName="admins"
         />
       ) : (
         <EmptyState
