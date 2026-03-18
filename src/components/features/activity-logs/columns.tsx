@@ -5,18 +5,19 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/utils";
 import type { ActivityLogEntry } from "@/lib/actions/activity-log";
 
+/** Title-case a space-separated string: "equipment model" → "Equipment Model" */
+function titleCase(s: string): string {
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
- * Convert raw log description into a natural-language sentence.
+ * Convert raw log description + timestamp into a human-readable sentence.
  *
- * Input formats:
- *   "created brand | name=Caterpillar"
- *   "bulk deleted equipment models | count=5"
- *   "login_success | ip=::1"
- *   "toggled sale listing hidden | id=3"
- *   "admin_role_changed | target=2 | role=3"
- *   "logout"
+ * Output style matches the reference portal:
+ *   "Admin has created the Brand at 2026-03-18 14:30:05."
+ *   "Admin has logged in at 2026-03-18 14:30:05."
  */
-function humanize(raw: string, adminName: string): string {
+function humanize(raw: string, adminName: string, date: string): string {
   const parts = raw.split("|").map((s) => s.trim());
   const actionPart = parts[0] ?? "";
 
@@ -29,43 +30,45 @@ function humanize(raw: string, adminName: string): string {
     }
   }
 
-  const name = adminName;
+  const at = date ? ` at ${date.replace("T", " ").replace(/\.\d+Z?$/, "")}` : "";
 
   // ── Auth actions ──────────────────────────────────────────────────
   if (actionPart === "login_success") {
-    return `${name} has logged in.`;
+    return `${adminName} has logged in${at}.`;
   }
   if (actionPart === "login_failed") {
     const email = meta.email ?? "unknown";
-    return `Failed login attempt for ${email}.`;
+    return `Failed login attempt for ${email}${at}.`;
   }
   if (actionPart === "logout") {
-    return `${name} has logged out.`;
+    return `${adminName} has logged out${at}.`;
   }
 
   // ── Bulk actions ──────────────────────────────────────────────────
   if (actionPart.startsWith("bulk deleted")) {
-    const entity = actionPart.replace("bulk deleted", "").trim().replace(/_/g, " ");
+    const entity = titleCase(actionPart.replace("bulk deleted", "").trim().replace(/_/g, " "));
     const count = meta.count ?? "multiple";
-    return `${name} has deleted ${count} ${entity}.`;
+    return `${adminName} has deleted ${count} ${entity}${at}.`;
   }
   if (actionPart.startsWith("bulk restored")) {
     const count = meta.count ?? "multiple";
-    return `${name} has restored ${count} trash items.`;
+    return `${adminName} has restored ${count} Trash Items${at}.`;
   }
   if (actionPart.startsWith("bulk permanently deleted")) {
     const count = meta.count ?? "multiple";
-    return `${name} has permanently deleted ${count} items.`;
+    return `${adminName} has permanently deleted ${count} items${at}.`;
   }
   if (actionPart.startsWith("bulk imported")) {
-    const entity = actionPart.replace("bulk imported", "").trim().replace(/_/g, " ");
+    const entity = titleCase(actionPart.replace("bulk imported", "").trim().replace(/_/g, " "));
     const succeeded = meta.succeeded ?? "?";
     const failed = meta.failed ?? "0";
-    return `${name} has bulk imported ${entity} (${succeeded} succeeded, ${failed} failed).`;
+    return `${adminName} has bulk imported ${entity} (${succeeded} succeeded, ${failed} failed)${at}.`;
   }
 
   // ── CRUD actions ──────────────────────────────────────────────────
-  const crudPatterns: [string, string][] = [
+  const crudVerbs: [string, string][] = [
+    ["created and submitted", "created and submitted"],
+    ["permanently deleted", "permanently deleted"],
     ["created", "created"],
     ["updated", "updated"],
     ["deleted", "deleted"],
@@ -76,61 +79,54 @@ function humanize(raw: string, adminName: string): string {
     ["reordered", "reordered"],
     ["toggled", "toggled"],
     ["submitted", "submitted"],
-    ["requested", "requested"],
+    ["requested", "requested rework for"],
     ["added", "added"],
     ["removed", "removed"],
     ["emptied", "emptied"],
-    ["permanently deleted", "permanently deleted"],
   ];
 
-  for (const [prefix, verb] of crudPatterns) {
+  for (const [prefix, verb] of crudVerbs) {
     if (actionPart.startsWith(prefix + " ") || actionPart === prefix) {
-      const entity = actionPart.slice(prefix.length).trim().replace(/_/g, " ");
+      const entityRaw = actionPart.slice(prefix.length).trim().replace(/_/g, " ");
+      const entity = titleCase(entityRaw);
 
-      // Build a detail suffix from metadata
-      const detail = meta.name
+      // Identifier: prefer name/title/username, fall back to id
+      const identifier = meta.name
         ? ` "${meta.name}"`
         : meta.title
           ? ` "${meta.title}"`
           : meta.username
             ? ` "${meta.username}"`
-            : meta.id
-              ? ` #${meta.id}`
-              : meta.product
-                ? ` (product #${meta.product})`
-                : "";
+            : "";
 
-      const extra: string[] = [];
-      if (meta.type) extra.push(`type: ${meta.type.replace(/_/g, " ")}`);
-      if (meta.status) extra.push(`status: ${meta.status.replace(/_/g, " ")}`);
-      if (meta.role) extra.push(`role: #${meta.role}`);
-      if (meta.target) extra.push(`target: #${meta.target}`);
-      if (meta.count) extra.push(`${meta.count} items`);
-      if (meta.group) extra.push(`group: ${meta.group}`);
-      if (meta.keys) extra.push(meta.keys.replace(/,/g, ", "));
-
-      const suffix = extra.length > 0 ? ` (${extra.join(", ")})` : "";
-      return `${name} has ${verb} ${entity || "item"}${detail}${suffix}.`;
+      if (entity) {
+        return `${adminName} has ${verb} the ${entity}${identifier}${at}.`;
+      }
+      return `${adminName} has ${verb}${identifier}${at}.`;
     }
   }
 
   // ── Special named actions ─────────────────────────────────────────
   if (actionPart === "admin_role_changed") {
-    return `${name} has changed the role for admin #${meta.target ?? "?"} to role #${meta.role ?? "?"}.`;
+    return `${adminName} has changed the Role for Admin #${meta.target ?? "?"}${at}.`;
   }
   if (actionPart === "admin_deactivated") {
-    return `${name} has deactivated admin #${meta.target ?? "?"}.`;
+    return `${adminName} has deactivated Admin #${meta.target ?? "?"}${at}.`;
   }
   if (actionPart === "blacklisted") {
-    return `${name} has blacklisted user #${meta.user_id ?? meta.id ?? "?"}.`;
+    return `${adminName} has blacklisted User #${meta.user_id ?? meta.id ?? "?"}${at}.`;
   }
   if (actionPart === "unblacklisted") {
-    return `${name} has unblacklisted user #${meta.user_id ?? meta.id ?? "?"}.`;
+    return `${adminName} has unblacklisted User #${meta.user_id ?? meta.id ?? "?"}${at}.`;
+  }
+  if (actionPart === "updated settings") {
+    const keys = meta.keys ? ` (${meta.keys.replace(/,/g, ", ")})` : "";
+    return `${adminName} has updated the Settings${keys}${at}.`;
   }
 
-  // ── Fallback: title-case the raw string ───────────────────────────
+  // ── Fallback ──────────────────────────────────────────────────────
   const cleaned = raw.replace(/\|/g, ",").replace(/_/g, " ").replace(/=/g, ": ");
-  return `${name} has ${cleaned}.`;
+  return `${adminName} has ${cleaned}${at}.`;
 }
 
 export function getColumns(): ColumnDef<ActivityLogEntry>[] {
@@ -170,9 +166,10 @@ export function getColumns(): ColumnDef<ActivityLogEntry>[] {
       cell: ({ row }) => {
         const raw = row.getValue("activity_description") as string;
         const adminName = (row.original.admin_name ?? "System");
+        const date = row.original.activity_date;
         return (
           <span className="text-sm">
-            {humanize(raw, adminName)}
+            {humanize(raw, adminName, date)}
           </span>
         );
       },

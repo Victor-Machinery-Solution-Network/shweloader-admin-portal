@@ -147,6 +147,10 @@ export function createColumns(
           </div>
         );
       },
+      meta: {
+        exportValue: (row: { original: AppUser }) =>
+          row.original.is_verified === 1 ? "Verified" : "Unverified",
+      },
     },
     {
       accessorKey: "created_at",

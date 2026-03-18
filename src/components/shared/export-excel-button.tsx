@@ -14,22 +14,25 @@ export interface ExportColumn {
 }
 
 interface ExportExcelButtonProps {
-  /** Filtered data rows to export */
-  data: Record<string, unknown>[];
-  /** Column definitions: key → header label */
-  columns: ExportColumn[];
+  /** Getter for filtered data rows — called at click time so titles are fresh */
+  getData: () => Record<string, unknown>[];
+  /** Getter for column definitions — called at click time */
+  getColumns: () => ExportColumn[];
   /** File name (without extension) */
   fileName?: string;
 }
 
 export function ExportExcelButton({
-  data,
-  columns,
+  getData,
+  getColumns,
   fileName = "export",
 }: ExportExcelButtonProps) {
   const [exporting, setExporting] = useState(false);
 
   async function handleExport() {
+    const columns = getColumns();
+    const data = getData();
+
     if (data.length === 0) {
       toast.info("No data to export");
       return;
@@ -108,7 +111,7 @@ export function ExportExcelButton({
       variant="outline"
       size="sm"
       onClick={handleExport}
-      disabled={exporting || data.length === 0}
+      disabled={exporting}
     >
       {exporting ? <Spinner className="mr-1" /> : <Download className="size-4" />}
       Export

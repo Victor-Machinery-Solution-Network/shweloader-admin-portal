@@ -539,7 +539,9 @@ function DataTable<TData, TValue>({
   // Columns use `meta.exportValue(row)` for custom display values in exports.
   // Falls back to `row.getValue(col.id)` for simple accessor columns.
   // The "index" column auto-generates 1-based row numbers.
-  const exportColumns = React.useMemo(() => {
+  // NOTE: computed via getters (not useMemo) so columnTitlesRef is read at
+  // export-click time, after headers have rendered and registered their titles.
+  const getExportColumns = React.useCallback(() => {
     if (!enableExport) return [];
     const SKIP_IDS = new Set(["select", "actions", "drag-handle"]);
     return table
@@ -556,11 +558,12 @@ function DataTable<TData, TValue>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableExport, columnVisibility]);
 
-  const exportData = React.useMemo(() => {
+  const getExportData = React.useCallback(() => {
     if (!enableExport) return [];
+    const cols = getExportColumns();
     return table.getFilteredRowModel().rows.map((row, rowIndex) => {
       const obj: Record<string, unknown> = {};
-      for (const col of exportColumns) {
+      for (const col of cols) {
         if (col.exportValue) {
           obj[col.key] = col.exportValue(row);
         } else if (col.key === "index") {
@@ -572,7 +575,7 @@ function DataTable<TData, TValue>({
       return obj;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableExport, exportColumns, data, globalFilter, columnFilters]);
+  }, [enableExport, getExportColumns, data, globalFilter, columnFilters]);
 
   // Allow parent to clear selection by resetting when data changes
   const clearSelection = React.useCallback(() => setRowSelection({}), []);
@@ -798,8 +801,8 @@ function DataTable<TData, TValue>({
                 {enableExport && (
                   <React.Suspense fallback={null}>
                     <LazyExportExcelButton
-                      data={exportData}
-                      columns={exportColumns}
+                      getData={getExportData}
+                      getColumns={getExportColumns}
                       fileName={exportFileName}
                     />
                   </React.Suspense>
@@ -832,7 +835,7 @@ function DataTable<TData, TValue>({
         )}
 
         {/* Table */}
-        <div ref={tableWrapperRef} className="overflow-hidden rounded-xl border">
+        <div ref={tableWrapperRef} className="max-h-[calc(100vh-300px)] overflow-auto rounded-xl border">
           {enableDragSort && getRowId ? (
             <React.Suspense fallback={renderTableContent()}>
               <LazyDndTable

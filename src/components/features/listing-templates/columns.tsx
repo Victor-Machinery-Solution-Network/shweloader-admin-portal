@@ -34,7 +34,10 @@ export function createColumns(): ColumnDef<CustomFieldTemplateWithFields>[] {
     },
     {
       id: "field_types",
-      header: "Types",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Types" />
+      ),
+      enableSorting: false,
       cell: ({ row }) => {
         const types = [...new Set(row.original.fields.map((f) => f.type))];
         return (
@@ -50,6 +53,10 @@ export function createColumns(): ColumnDef<CustomFieldTemplateWithFields>[] {
             })}
           </div>
         );
+      },
+      meta: {
+        exportValue: (row: { original: CustomFieldTemplateWithFields }) =>
+          [...new Set(row.original.fields.map((f) => FIELD_TYPE_LABELS[f.type]))].join(", "),
       },
     },
     {
