@@ -103,8 +103,11 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
   }
 
   function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setMessage(e.target.value);
-    sendTyping();
+    const newValue = e.target.value;
+    if (newValue.length > message.length) {
+      sendTyping();
+    }
+    setMessage(newValue);
   }
 
   const canSend =

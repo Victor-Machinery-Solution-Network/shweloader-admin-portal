@@ -154,11 +154,11 @@ export function useTypingIndicator(sessionId: number | null) {
       // Clear any existing timeout
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-      // Auto-clear after 3 seconds
+      // Auto-clear after 1.5 seconds
       timeoutRef.current = setTimeout(() => {
         setIsTyping(false);
         setTypingUser(null);
-      }, 3000);
+      }, 1500);
     });
 
     // Reset when user sends a message (they stopped typing)
@@ -182,7 +182,7 @@ export function useTypingIndicator(sessionId: number | null) {
   return { isTyping, typingUser };
 }
 
-/** Hook to emit typing events — debounced to at most once per 2 seconds */
+/** Hook to emit typing events — debounced to at most once per 1 second */
 export function useSendTypingEvent(sessionId: number | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentRef = useRef(0);
@@ -193,7 +193,7 @@ export function useSendTypingEvent(sessionId: number | null) {
     const now = Date.now();
     const elapsed = now - lastSentRef.current;
 
-    if (elapsed >= 2000) {
+    if (elapsed >= 1000) {
       // Send immediately
       lastSentRef.current = now;
       sendTypingEvent(sessionId).catch(() => {});
@@ -203,7 +203,7 @@ export function useSendTypingEvent(sessionId: number | null) {
         lastSentRef.current = Date.now();
         sendTypingEvent(sessionId).catch(() => {});
         timerRef.current = null;
-      }, 2000 - elapsed);
+      }, 1000 - elapsed);
     }
   }, [sessionId]);
 

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, formatFileSize } from "@/lib/utils";
 import { format } from "date-fns";
 import { ProductMessageCard } from "./product-message-card";
+import { ChatImageGallery } from "./chat-image-gallery";
 import type { ChatMessageWithDetails } from "@/types/chat";
 
 interface MessageBubbleProps {
@@ -100,26 +101,42 @@ export function MessageBubble({
           isAdminMessage ? "items-end" : "items-start",
         )}
       >
-        {/* Image attachments */}
-        {imageAttachments.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {imageAttachments.map((att) => (
-              <a
-                key={att.id}
-                href={assetUrl(att.file_url) ?? undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg overflow-hidden border border-border hover:opacity-90 transition-opacity"
+        {/* Unified bubble: images + text grouped together */}
+        {imageAttachments.length > 0 ? (
+          <div
+            className={cn(
+              "rounded-2xl overflow-hidden max-w-72",
+              isAdminMessage
+                ? "bg-primary rounded-br-sm"
+                : "bg-muted rounded-bl-sm",
+            )}
+          >
+            <ChatImageGallery attachments={imageAttachments} />
+            {message.message && (
+              <div
+                className={cn(
+                  "px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                  isAdminMessage
+                    ? "text-primary-foreground"
+                    : "text-foreground",
+                )}
               >
-                <img
-                  src={assetUrl(att.file_url) ?? undefined}
-                  alt={att.file_name}
-                  className="object-cover max-h-37.5 w-auto"
-                />
-              </a>
-            ))}
+                {message.message}
+              </div>
+            )}
           </div>
-        )}
+        ) : message.message ? (
+          <div
+            className={cn(
+              "rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words min-w-[3rem]",
+              isAdminMessage
+                ? "bg-primary text-primary-foreground rounded-br-sm"
+                : "bg-muted text-foreground rounded-bl-sm",
+            )}
+          >
+            {message.message}
+          </div>
+        ) : null}
 
         {/* PDF/file attachments */}
         {fileAttachments.map((att) => (
@@ -142,20 +159,6 @@ export function MessageBubble({
             </div>
           </a>
         ))}
-
-        {/* Text message */}
-        {message.message && (
-          <div
-            className={cn(
-              "rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words min-w-[3rem]",
-              isAdminMessage
-                ? "bg-primary text-primary-foreground rounded-br-sm"
-                : "bg-muted text-foreground rounded-bl-sm",
-            )}
-          >
-            {message.message}
-          </div>
-        )}
 
         {/* Product reference card */}
         {hasProductRef && (

@@ -81,16 +81,25 @@ export function ConversationPanel({
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
 
-  // Auto-scroll only when admin sends a message (not on incoming messages)
+  // Auto-scroll when admin sends OR when an incoming message arrives while at the bottom
   useEffect(() => {
     if (justSentRef.current) {
+      // Admin just sent — always scroll to bottom
       justSentRef.current = false;
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       if (session?.id) {
         onMessagesRead?.();
         markSessionRead(session.id).catch(() => {});
       }
+    } else if (isNearBottomRef.current) {
+      // Incoming message while already at bottom — scroll to stay at bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (session?.id) {
+        onMessagesRead?.();
+        markSessionRead(session.id).catch(() => {});
+      }
     }
+    // If not near bottom: don't scroll — user is reading mid-conversation
   }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // IntersectionObserver on the bottom sentinel — when visible, user has seen latest messages
