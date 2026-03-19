@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/utils";
 import { removeFromFeatured } from "@/lib/actions/listing";
 import type { FeaturedListingWithDetails } from "@/types/listing";
 
-function RemoveButton({ featuredId }: { featuredId: number }) {
+function RemoveButton({ featuredIds }: { featuredIds: number[] }) {
   const canEdit = useHasPermission("featured_listings", "edit");
   const [isPending, startTransition] = useTransition();
 
@@ -29,11 +29,15 @@ function RemoveButton({ featuredId }: { featuredId: number }) {
       disabled={isPending}
       onClick={() => {
         startTransition(async () => {
-          const result = await removeFromFeatured(featuredId);
-          if (result.success) {
-            toast.success("Removed from featured");
+          // Remove all featured entries for this product
+          const results = await Promise.all(
+            featuredIds.map((id) => removeFromFeatured(id)),
+          );
+          const failed = results.find((r) => !r.success);
+          if (failed) {
+            toast.error(failed.error ?? "Failed to remove");
           } else {
-            toast.error(result.error ?? "Failed to remove");
+            toast.success("Removed from featured");
           }
         });
       }}
@@ -114,14 +118,18 @@ export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
   },
   {
     id: "listing_type",
-    accessorFn: (row) => row.listing_type === "sale" ? "For Sale" : "For Rent",
+    accessorFn: (row) => row.listing_types.map((t) => t === "sale" ? "For Sale" : "For Rent").join(", "),
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Listing" />
     ),
     cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs">
-        {row.original.listing_type === "sale" ? "For Sale" : "For Rent"}
-      </Badge>
+      <div className="flex items-center gap-1">
+        {row.original.listing_types.map((type) => (
+          <Badge key={type} variant="secondary" className="text-xs">
+            {type === "sale" ? "For Sale" : "For Rent"}
+          </Badge>
+        ))}
+      </div>
     ),
   },
   {
@@ -141,7 +149,7 @@ export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
   {
     id: "remove",
     header: "",
-    cell: ({ row }) => <RemoveButton featuredId={row.original.id} />,
+    cell: ({ row }) => <RemoveButton featuredIds={row.original.featured_ids} />,
     size: 40,
   },
 ];

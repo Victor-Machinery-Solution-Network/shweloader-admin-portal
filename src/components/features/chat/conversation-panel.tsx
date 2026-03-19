@@ -54,12 +54,14 @@ function isSameGroup(
 interface ConversationPanelProps {
   session: ChatSessionWithDetails | null;
   onSessionClosed: () => void;
+  onSessionReopened?: () => void;
   onMessagesRead?: () => void;
 }
 
 export function ConversationPanel({
   session,
   onSessionClosed,
+  onSessionReopened,
   onMessagesRead,
 }: ConversationPanelProps) {
   const [isSending, setIsSending] = useState(false);
@@ -219,10 +221,11 @@ export function ConversationPanel({
     setIsReopening(true);
     try {
       const result = await reopenSession(session.id);
-      if (!result.success) {
+      if (result.success) {
+        onSessionReopened?.();
+      } else {
         console.error("Failed to reopen session:", result.error);
       }
-      // Success: Pusher event will update UI via sessionClosed state
     } finally {
       setIsReopening(false);
     }

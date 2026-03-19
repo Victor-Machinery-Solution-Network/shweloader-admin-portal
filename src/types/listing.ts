@@ -198,13 +198,34 @@ export interface RentListingWithDetails {
   featured_id: number | null;
 }
 
-/** JOIN view for featured listings tab */
-export interface FeaturedListingWithDetails {
+/** Raw row from featured listings query (before merging) */
+export interface FeaturedListingRow {
   id: number;
   sale_listing_id: number | null;
   rent_listing_id: number | null;
   display_order: string;
   listing_type: "sale" | "rent";
+  product_list_id: number;
+  custom_id: string | null;
+  model_name: string | null;
+  product_type: "equipment" | "attachment";
+  partner_name: string | null;
+  thumbnail_url: string | null;
+  approved_at: string | null;
+}
+
+/** Merged view for featured listings tab (one row per product) */
+export interface FeaturedListingWithDetails {
+  /** Primary featured_listing id (sale row preferred, used for drag-sort) */
+  id: number;
+  /** All featured_listing ids for this product (for removal) */
+  featured_ids: number[];
+  sale_listing_id: number | null;
+  rent_listing_id: number | null;
+  display_order: string;
+  /** Can be both when product is featured as sale AND rent */
+  listing_types: ("sale" | "rent")[];
+  product_list_id: number;
   custom_id: string | null;
   model_name: string | null;
   product_type: "equipment" | "attachment";

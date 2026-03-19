@@ -293,6 +293,7 @@ export async function sendMessage(
     // Notify other admins' inboxes about the new message
     triggerAdminChatEvent("new-message", {
       sessionId,
+      senderType: "admin",
       lastMessagePreview: preview,
       lastMessageAt: now,
     }).catch(() => {});
@@ -319,10 +320,15 @@ export async function resolveSession(sessionId: number) {
       [sessionId],
     );
 
-    // Trigger Pusher event
+    // Trigger Pusher events
     triggerChatEvent(sessionId, "session-resolved", {
       sessionId,
       resolvedAt: new Date().toISOString(),
+    }).catch(() => {});
+
+    // Notify admin inbox so sidebar updates without refresh
+    triggerAdminChatEvent("session-resolved", {
+      sessionId,
     }).catch(() => {});
 
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
@@ -385,6 +391,11 @@ export async function reopenSession(sessionId: number) {
     );
 
     triggerChatEvent(sessionId, "session-reopened", { sessionId }).catch(
+      () => {},
+    );
+
+    // Notify admin inbox so sidebar updates without refresh
+    triggerAdminChatEvent("session-reopened", { sessionId }).catch(
       () => {},
     );
 

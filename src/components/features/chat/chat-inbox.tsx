@@ -21,7 +21,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
   const handleSessionUpdate = useCallback(
-    (sessionId: number, preview: string, at: string) => {
+    (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionId
@@ -29,7 +29,10 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
                 ...s,
                 last_message_preview: preview,
                 last_message_at: at,
-                unread_admin_count: s.unread_admin_count + 1,
+                // Only increment unread badge for user messages, not admin's own
+                unread_admin_count: isUserMessage
+                  ? s.unread_admin_count + 1
+                  : s.unread_admin_count,
               }
             : s,
         ),
@@ -48,7 +51,27 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     );
   }, [selectedId]);
 
-  useChatInbox(handleSessionUpdate);
+  const handleSessionResolved = useCallback((sessionId: number) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, status: "resolved" as const, unread_admin_count: 0 }
+          : s,
+      ),
+    );
+  }, []);
+
+  const handleSessionReopened = useCallback((sessionId: number) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, status: "active" as const }
+          : s,
+      ),
+    );
+  }, []);
+
+  useChatInbox(handleSessionUpdate, handleSessionResolved, handleSessionReopened);
 
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;
@@ -83,8 +106,8 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   }
 
   function handleSessionClosed() {
-    // After closing, keep the session selected (it will update via server refresh)
-    // The conversation panel will show it as closed
+    if (!selectedId) return;
+    handleSessionResolved(selectedId);
   }
 
   return (
@@ -103,7 +126,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
         <ConversationPanel
           session={selectedSession}
           onSessionClosed={handleSessionClosed}
-
+          onSessionReopened={() => selectedId && handleSessionReopened(selectedId)}
           onMessagesRead={handleMessagesRead}
         />
       </div>

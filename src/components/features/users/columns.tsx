@@ -1,8 +1,7 @@
 "use client";
 
-import { UserRound, Phone, Building2, Handshake, Ban } from "lucide-react";
+import { UserRound, Phone, Building2, Handshake, Ban, Eye, Pencil } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Eye } from "lucide-react";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ export type BusinessTypeInfo = { name: string; isListed: boolean };
 export function createColumns(
   businessTypeMap: Map<number, BusinessTypeInfo>,
   onView: (user: AppUser) => void,
+  onEdit?: (user: AppUser) => void,
 ): ColumnDef<AppUser>[] {
   return [
     {
@@ -173,8 +173,24 @@ export function createColumns(
       id: "actions",
       header: () => null,
       cell: ({ row }) => (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-0.5">
           <TooltipProvider>
+            {onEdit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onEdit(row.original)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Edit user</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Edit user</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -192,7 +208,7 @@ export function createColumns(
           </TooltipProvider>
         </div>
       ),
-      size: 48,
+      size: 80,
       enableSorting: false,
     },
   ];

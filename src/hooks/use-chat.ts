@@ -219,7 +219,9 @@ export function useSendTypingEvent(sessionId: number | null) {
 
 /** Hook for inbox-level real-time updates */
 export function useChatInbox(
-  onSessionUpdate?: (sessionId: number, preview: string, at: string) => void,
+  onSessionUpdate?: (sessionId: number, preview: string, at: string, isUserMessage: boolean) => void,
+  onSessionResolved?: (sessionId: number) => void,
+  onSessionReopened?: (sessionId: number) => void,
 ) {
   const [totalUnread, setTotalUnread] = useState(0);
   const router = useRouter();
@@ -227,6 +229,10 @@ export function useChatInbox(
   const mountedRef = useRef(true);
   const onSessionUpdateRef = useRef(onSessionUpdate);
   onSessionUpdateRef.current = onSessionUpdate;
+  const onSessionResolvedRef = useRef(onSessionResolved);
+  onSessionResolvedRef.current = onSessionResolved;
+  const onSessionReopenedRef = useRef(onSessionReopened);
+  onSessionReopenedRef.current = onSessionReopened;
 
   // Initial fetch
   useEffect(() => {
@@ -253,25 +259,39 @@ export function useChatInbox(
 
     // Listen for messages on existing sessions to update inbox (unread counts, preview)
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
-      getTotalUnreadCount().then((count) => {
-        if (mountedRef.current) setTotalUnread(count);
-      });
       const raw = data as Record<string, unknown>;
+      const isUserMessage = raw.senderType === "user";
+      // Refresh unread count only for user messages
+      if (isUserMessage) {
+        getTotalUnreadCount().then((count) => {
+          if (mountedRef.current) setTotalUnread(count);
+        });
+      }
+      // Always update preview, but pass sender type so inbox can decide on unread badge
       onSessionUpdateRef.current?.(
         raw.sessionId as number,
         raw.lastMessagePreview as string,
         raw.lastMessageAt as string,
+        isUserMessage,
       );
     });
 
-    // Listen for session-reopened to refresh inbox
-    const unsubReopened = handle.subscribe("session-reopened", () => {
-      router.refresh();
+    // Listen for session resolved to update sidebar
+    const unsubResolved = handle.subscribe("session-resolved", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      onSessionResolvedRef.current?.(raw.sessionId as number);
+    });
+
+    // Listen for session-reopened to update sidebar
+    const unsubReopened = handle.subscribe("session-reopened", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      onSessionReopenedRef.current?.(raw.sessionId as number);
     });
 
     return () => {
       unsubSession();
       unsubMessage();
+      unsubResolved();
       unsubReopened();
       handle.unsubscribe();
     };

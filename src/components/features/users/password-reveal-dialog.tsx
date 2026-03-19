@@ -41,7 +41,7 @@ export function PasswordRevealDialog({
     >
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>User Created Successfully</DialogTitle>
+          <DialogTitle>Password Generated</DialogTitle>
           <DialogDescription>
             Share this password with the user. It will not be shown again.
           </DialogDescription>

@@ -23,6 +23,7 @@ import { isR2Key, slugify } from "@/lib/api/r2-client";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
+  FeaturedListingRow,
   FeaturedListingWithDetails,
   DraftListingWithDetails,
   ProductImage,
@@ -1113,10 +1114,11 @@ export async function getRentListingsWithDetails(): Promise<
 export async function getFeaturedListingsWithDetails(): Promise<
   FeaturedListingWithDetails[]
 > {
-  const result = await d1.query<FeaturedListingWithDetails>(
+  const result = await d1.query<FeaturedListingRow>(
     `SELECT
       fl.id, fl.sale_listing_id, fl.rent_listing_id, fl.display_order,
       CASE WHEN fl.sale_listing_id IS NOT NULL THEN 'sale' ELSE 'rent' END AS listing_type,
+      COALESCE(pl_s.id, pl_r.id) AS product_list_id,
       COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
       CASE WHEN COALESCE(pl_s.equipment_model_id, pl_r.equipment_model_id) IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       COALESCE(em_s.name, am_s.name, em_r.name, am_r.name) AS model_name,
@@ -1138,7 +1140,40 @@ export async function getFeaturedListingsWithDetails(): Promise<
     LEFT JOIN app_user c_r ON p_r.app_user_id = c_r.app_user_id AND c_r.deleted_at IS NULL
     ORDER BY fl.display_order ASC`,
   );
-  return result.results;
+
+  // Merge rows that share the same product_list_id into a single row
+  const mergedMap = new Map<number, FeaturedListingWithDetails>();
+  for (const row of result.results) {
+    const existing = mergedMap.get(row.product_list_id);
+    if (existing) {
+      // Merge listing types and featured ids
+      if (!existing.listing_types.includes(row.listing_type)) {
+        existing.listing_types.push(row.listing_type);
+      }
+      existing.featured_ids.push(row.id);
+      // Keep the sale_listing_id and rent_listing_id from both rows
+      if (row.sale_listing_id) existing.sale_listing_id = row.sale_listing_id;
+      if (row.rent_listing_id) existing.rent_listing_id = row.rent_listing_id;
+    } else {
+      mergedMap.set(row.product_list_id, {
+        id: row.id,
+        featured_ids: [row.id],
+        sale_listing_id: row.sale_listing_id,
+        rent_listing_id: row.rent_listing_id,
+        display_order: row.display_order,
+        listing_types: [row.listing_type],
+        product_list_id: row.product_list_id,
+        custom_id: row.custom_id,
+        model_name: row.model_name,
+        product_type: row.product_type,
+        partner_name: row.partner_name,
+        thumbnail_url: row.thumbnail_url,
+        approved_at: row.approved_at,
+      });
+    }
+  }
+
+  return Array.from(mergedMap.values());
 }
 
 // ─── Get product images for a product ───────────────────────────────────────

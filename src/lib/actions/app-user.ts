@@ -125,6 +125,106 @@ export async function createAppUser(formData: FormData) {
   }
 }
 
+// ─── Update App User ──────────────────────────────────────────────────────────
+
+export async function updateAppUser(userId: number, formData: FormData) {
+  const username = formData.get("username") as string;
+  const fullName = formData.get("full_name") as string;
+  const email = (formData.get("email") as string) || null;
+  const phone = formData.get("phone") as string;
+  const companyName = (formData.get("company_name") as string) || null;
+  const address = (formData.get("address") as string) || null;
+  const businessTypeId = formData.get("business_type_id") as string;
+  const businessTypeOther = (formData.get("business_type_other") as string) || null;
+
+  if (!username?.trim()) {
+    return { success: false, error: "Username is required" };
+  }
+  if (!fullName?.trim()) {
+    return { success: false, error: "Full name is required" };
+  }
+  if (!phone?.trim()) {
+    return { success: false, error: "Phone number is required" };
+  }
+  if (!businessTypeId && !businessTypeOther?.trim()) {
+    return { success: false, error: "Business type is required" };
+  }
+
+  try {
+    const actorId = await requirePermission("users", "edit");
+
+    // Resolve business type ID — create an unlisted type if "Other" was specified
+    let resolvedBtId: number = businessTypeId ? Number(businessTypeId) : 0;
+
+    if (businessTypeOther?.trim()) {
+      const otherName = businessTypeOther.trim();
+
+      const existing = await d1.query<{ business_type_id: number }>(
+        "SELECT business_type_id FROM business_type WHERE name = ? LIMIT 1",
+        [otherName],
+      );
+
+      if (existing.results.length > 0) {
+        resolvedBtId = existing.results[0].business_type_id;
+      } else {
+        const created = await businessTypeService.create({
+          name: otherName,
+          is_listed: 0,
+          created_by: actorId,
+        });
+        resolvedBtId = created.business_type_id;
+      }
+    }
+
+    const trimmedUsername = username.trim();
+    const trimmedFullName = fullName.trim();
+    const trimmedEmail = email?.trim().toLowerCase() || null;
+    const trimmedPhone = phone.trim();
+    const trimmedCompany = companyName?.trim() || null;
+    const trimmedAddress = address?.trim() || null;
+
+    await d1.query(
+      `UPDATE app_user
+       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?
+       WHERE app_user_id = ? AND deleted_at IS NULL`,
+      [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, userId],
+    );
+
+    invalidateTag(CACHE_TAGS.USERS);
+    auditLog(actorId, "updated app user | username=" + trimmedUsername);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to update user"),
+    };
+  }
+}
+
+// ─── Reset App User Password ──────────────────────────────────────────────────
+
+export async function resetAppUserPassword(userId: number) {
+  try {
+    const actorId = await requirePermission("users", "edit");
+
+    const password = generatePassword();
+    const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    await d1.query(
+      "UPDATE app_user SET password_hash = ? WHERE app_user_id = ? AND deleted_at IS NULL",
+      [password_hash, userId],
+    );
+
+    auditLog(actorId, "reset password for app user | id=" + userId);
+    return { success: true, password };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to reset password"),
+    };
+  }
+}
+
 // ─── Get User Delete Impact ─────────────────────────────────────────────────
 
 export interface UserDeleteImpact {

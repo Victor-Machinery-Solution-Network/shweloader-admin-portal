@@ -17,6 +17,7 @@ import { BlacklistConfirmDialog } from "./blacklist-confirm-dialog";
 import { UnblacklistDialog } from "./unblacklist-dialog";
 import { BlacklistSearchDialog } from "./blacklist-search-dialog";
 import { UserForm } from "./user-form";
+import { UserEditForm } from "./user-edit-form";
 import { PasswordRevealDialog } from "./password-reveal-dialog";
 import { columns as businessTypeColumns } from "@/components/features/business-types/columns";
 import { BusinessTypeForm } from "@/components/features/business-types/business-type-form";
@@ -43,6 +44,7 @@ export function UsersClient({
 }: UsersClientProps) {
   // Permissions
   const canCreateUser = useHasPermission("users", "create");
+  const canEditUser = useHasPermission("users", "edit");
   const canCreateBT = useHasPermission("business_types", "create");
   const canDeleteBT = useHasPermission("business_types", "delete");
   const canCreateBlacklist = useHasPermission("blacklist", "create");
@@ -57,6 +59,9 @@ export function UsersClient({
 
   // User detail dialog
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+
+  // User edit dialog
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
 
   // Blacklist dialogs
   const [blacklistTarget, setBlacklistTarget] = useState<AppUser | null>(null);
@@ -83,9 +88,13 @@ export function UsersClient({
     setSelectedUser(user);
   }, []);
 
+  const handleEditUser = useCallback((user: AppUser) => {
+    setEditingUser(user);
+  }, []);
+
   const userColumns = useMemo(
-    () => createColumns(businessTypeMap, handleViewUser),
-    [businessTypeMap, handleViewUser],
+    () => createColumns(businessTypeMap, handleViewUser, canEditUser ? handleEditUser : undefined),
+    [businessTypeMap, handleViewUser, handleEditUser, canEditUser],
   );
 
   const renderUserToolbar = useCallback(
@@ -363,6 +372,17 @@ export function UsersClient({
         onBlacklist={handleBlacklistFromDetail}
         businessTypeMap={businessTypeMap}
       />
+
+      {/* User edit form */}
+      {editingUser && (
+        <UserEditForm
+          user={editingUser}
+          open={!!editingUser}
+          onOpenChange={(open) => { if (!open) setEditingUser(null); }}
+          businessTypes={listedBusinessTypes}
+          onPasswordGenerated={setGeneratedPassword}
+        />
+      )}
 
       {/* Business type form */}
       <BusinessTypeForm open={showCreateBT} onOpenChange={setShowCreateBT} />
