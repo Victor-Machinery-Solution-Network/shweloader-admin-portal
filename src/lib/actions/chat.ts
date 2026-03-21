@@ -5,6 +5,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { triggerChatEvent, triggerAdminChatEvent } from "@/lib/pusher";
+import { sendPushToUser } from "@/lib/services/push-notification";
 import type {
   ChatSessionWithDetails,
   ChatMessageWithDetails,
@@ -297,6 +298,21 @@ export async function sendMessage(
       lastMessagePreview: preview,
       lastMessageAt: now,
     }).catch(() => {});
+
+    // Send push notification to mobile user
+    const sessionResult = await d1.query<{ app_user_id: number }>(
+      "SELECT app_user_id FROM chat_session WHERE id = ?",
+      [sessionId],
+    );
+    const appUserId = sessionResult.results[0]?.app_user_id;
+    if (appUserId) {
+      sendPushToUser(appUserId, {
+        type: "chat_reply",
+        title: "New message from Shweloader",
+        body: preview,
+        referenceId: String(sessionId),
+      }).catch(() => {}); // Fire and forget
+    }
 
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true, messageId };
