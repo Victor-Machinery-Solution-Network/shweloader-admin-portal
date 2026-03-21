@@ -1028,3 +1028,19 @@ CREATE INDEX IF NOT EXISTS idx_trash_metadata_entity ON trash_metadata(entity_ty
 CREATE INDEX IF NOT EXISTS idx_trash_metadata_batch ON trash_metadata(batch_id);
 CREATE INDEX IF NOT EXISTS idx_trash_metadata_expires ON trash_metadata(expires_at);
 CREATE INDEX IF NOT EXISTS idx_trash_metadata_deleted_by ON trash_metadata(deleted_by);
+
+-- ─── Push Notification Device Tokens ─────────────────────────────────────────
+CREATE TABLE device_token (
+    device_token_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    app_user_id INTEGER,
+    platform TEXT NOT NULL CHECK (platform IN ('android', 'ios')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX idx_device_token_token ON device_token(token);
+CREATE INDEX idx_device_token_user ON device_token(app_user_id);
+CREATE INDEX idx_device_token_device ON device_token(device_id);
