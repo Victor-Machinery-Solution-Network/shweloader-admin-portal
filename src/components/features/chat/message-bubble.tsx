@@ -105,7 +105,7 @@ export function MessageBubble({
         {imageAttachments.length > 0 ? (
           <div
             className={cn(
-              "rounded-2xl overflow-hidden max-w-72",
+              "rounded-2xl overflow-hidden w-72 sm:w-80",
               isAdminMessage
                 ? "bg-primary rounded-br-sm"
                 : "bg-muted rounded-bl-sm",
@@ -135,6 +135,17 @@ export function MessageBubble({
             )}
           >
             {message.message}
+          </div>
+        ) : !hasProductRef && fileAttachments.length === 0 ? (
+          <div
+            className={cn(
+              "rounded-2xl px-4 py-2 text-sm leading-relaxed min-w-[3rem] italic opacity-60",
+              isAdminMessage
+                ? "bg-primary text-primary-foreground rounded-br-sm"
+                : "bg-muted text-foreground rounded-bl-sm",
+            )}
+          >
+            Sent a photo
           </div>
         ) : null}
 

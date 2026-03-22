@@ -215,7 +215,15 @@ export function ArticleEditor({
                 ? "Submitted for review"
                 : "Article updated";
         toast.success(message);
-        router.push("/articles/posts");
+        const tab =
+          action === "publish"
+            ? "published"
+            : action === "submit-review" || action === "resubmit"
+              ? "pending"
+              : action === "draft"
+                ? "drafts"
+                : "published";
+        router.push(`/articles/posts?tab=${tab}`);
       } else {
         toast.error(result.error ?? "Something went wrong");
       }
@@ -229,7 +237,7 @@ export function ArticleEditor({
       const result = await publishArticle(article.article_id);
       if (result.success) {
         toast.success("Article published");
-        router.push("/articles/posts");
+        router.push("/articles/posts?tab=published");
       } else {
         toast.error(result.error ?? "Failed to publish");
       }

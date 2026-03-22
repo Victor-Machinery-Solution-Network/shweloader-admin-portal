@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/utils";
+import { format } from "date-fns";
 import type { ActivityLogEntry } from "@/lib/actions/activity-log";
 
 /** Title-case a space-separated string: "equipment model" → "Equipment Model" */
@@ -10,14 +11,21 @@ function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Format a date string to time only (e.g. "2:30:05 PM") */
+function formatTime(dateStr: string): string {
+  try {
+    const d = dateStr.endsWith("Z") ? new Date(dateStr) : new Date(dateStr + "Z");
+    return format(d, "h:mm:ss a");
+  } catch {
+    return "";
+  }
+}
+
 /**
- * Convert raw log description + timestamp into a human-readable sentence.
- *
- * Output style matches the reference portal:
- *   "Admin has created the Brand at 2026-03-18 14:30:05."
- *   "Admin has logged in at 2026-03-18 14:30:05."
+ * Convert raw log description into a human-readable sentence.
+ * Datetime is NOT included — shown in separate Date/Time columns.
  */
-function humanize(raw: string, adminName: string, date: string): string {
+function humanize(raw: string, adminName: string): string {
   const parts = raw.split("|").map((s) => s.trim());
   const actionPart = parts[0] ?? "";
 
@@ -30,39 +38,37 @@ function humanize(raw: string, adminName: string, date: string): string {
     }
   }
 
-  const at = date ? ` at ${date.replace("T", " ").replace(/\.\d+Z?$/, "")}` : "";
-
   // ── Auth actions ──────────────────────────────────────────────────
   if (actionPart === "login_success") {
-    return `${adminName} has logged in${at}.`;
+    return `${adminName} has logged in.`;
   }
   if (actionPart === "login_failed") {
     const email = meta.email ?? "unknown";
-    return `Failed login attempt for ${email}${at}.`;
+    return `Failed login attempt for ${email}.`;
   }
   if (actionPart === "logout") {
-    return `${adminName} has logged out${at}.`;
+    return `${adminName} has logged out.`;
   }
 
   // ── Bulk actions ──────────────────────────────────────────────────
   if (actionPart.startsWith("bulk deleted")) {
     const entity = titleCase(actionPart.replace("bulk deleted", "").trim().replace(/_/g, " "));
     const count = meta.count ?? "multiple";
-    return `${adminName} has deleted ${count} ${entity}${at}.`;
+    return `${adminName} has deleted ${count} ${entity}.`;
   }
   if (actionPart.startsWith("bulk restored")) {
     const count = meta.count ?? "multiple";
-    return `${adminName} has restored ${count} Trash Items${at}.`;
+    return `${adminName} has restored ${count} Trash Items.`;
   }
   if (actionPart.startsWith("bulk permanently deleted")) {
     const count = meta.count ?? "multiple";
-    return `${adminName} has permanently deleted ${count} items${at}.`;
+    return `${adminName} has permanently deleted ${count} items.`;
   }
   if (actionPart.startsWith("bulk imported")) {
     const entity = titleCase(actionPart.replace("bulk imported", "").trim().replace(/_/g, " "));
     const succeeded = meta.succeeded ?? "?";
     const failed = meta.failed ?? "0";
-    return `${adminName} has bulk imported ${entity} (${succeeded} succeeded, ${failed} failed)${at}.`;
+    return `${adminName} has bulk imported ${entity} (${succeeded} succeeded, ${failed} failed).`;
   }
 
   // ── CRUD actions ──────────────────────────────────────────────────
@@ -100,33 +106,36 @@ function humanize(raw: string, adminName: string, date: string): string {
             : "";
 
       if (entity) {
-        return `${adminName} has ${verb} the ${entity}${identifier}${at}.`;
+        return `${adminName} has ${verb} the ${entity}${identifier}.`;
       }
-      return `${adminName} has ${verb}${identifier}${at}.`;
+      return `${adminName} has ${verb}${identifier}.`;
     }
   }
 
   // ── Special named actions ─────────────────────────────────────────
   if (actionPart === "admin_role_changed") {
-    return `${adminName} has changed the Role for Admin #${meta.target ?? "?"}${at}.`;
+    return `${adminName} has changed the Role for Admin #${meta.target ?? "?"}.`;
   }
   if (actionPart === "admin_deactivated") {
-    return `${adminName} has deactivated Admin #${meta.target ?? "?"}${at}.`;
+    return `${adminName} has deactivated Admin #${meta.target ?? "?"}.`;
   }
   if (actionPart === "blacklisted") {
-    return `${adminName} has blacklisted User #${meta.user_id ?? meta.id ?? "?"}${at}.`;
+    return `${adminName} has blacklisted User #${meta.user_id ?? meta.id ?? "?"}.`;
   }
   if (actionPart === "unblacklisted") {
-    return `${adminName} has unblacklisted User #${meta.user_id ?? meta.id ?? "?"}${at}.`;
+    return `${adminName} has unblacklisted User #${meta.user_id ?? meta.id ?? "?"}.`;
   }
   if (actionPart === "updated settings") {
     const keys = meta.keys ? ` (${meta.keys.replace(/,/g, ", ")})` : "";
-    return `${adminName} has updated the Settings${keys}${at}.`;
+    return `${adminName} has updated the Settings${keys}.`;
+  }
+  if (actionPart.startsWith("reset password")) {
+    return `${adminName} has reset password for App User #${meta.id ?? "?"}.`;
   }
 
   // ── Fallback ──────────────────────────────────────────────────────
   const cleaned = raw.replace(/\|/g, ",").replace(/_/g, " ").replace(/=/g, ": ");
-  return `${adminName} has ${cleaned}${at}.`;
+  return `${adminName} has ${cleaned}.`;
 }
 
 export function getColumns(): ColumnDef<ActivityLogEntry>[] {
@@ -159,22 +168,6 @@ export function getColumns(): ColumnDef<ActivityLogEntry>[] {
       },
     },
     {
-      accessorKey: "activity_description",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Description" />
-      ),
-      cell: ({ row }) => {
-        const raw = row.getValue("activity_description") as string;
-        const adminName = (row.original.admin_name ?? "System");
-        const date = row.original.activity_date;
-        return (
-          <span className="text-sm">
-            {humanize(raw, adminName, date)}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "activity_date",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Date" />
@@ -184,6 +177,33 @@ export function getColumns(): ColumnDef<ActivityLogEntry>[] {
           {formatDate(row.getValue("activity_date") as string)}
         </span>
       ),
+    },
+    {
+      id: "activity_time",
+      accessorKey: "activity_date",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Time" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm tabular-nums">
+          {formatTime(row.original.activity_date)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "activity_description",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Description" />
+      ),
+      cell: ({ row }) => {
+        const raw = row.getValue("activity_description") as string;
+        const adminName = (row.original.admin_name ?? "System");
+        return (
+          <span className="text-sm">
+            {humanize(raw, adminName)}
+          </span>
+        );
+      },
     },
   ];
 }

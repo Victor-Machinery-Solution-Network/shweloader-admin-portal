@@ -7,6 +7,7 @@ import {
   X,
   RotateCcw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -177,7 +178,7 @@ export function ConversationPanel({
         for (const file of files) formData.append("files", file);
         const uploadResult = await uploadChatAttachments(session.id, formData);
         if (!uploadResult.success) {
-          console.error("Failed to upload attachments:", uploadResult.error);
+          toast.error(uploadResult.error ?? "Failed to upload attachments");
           return;
         }
         attachmentData = uploadResult.attachments;
@@ -194,7 +195,7 @@ export function ConversationPanel({
       justSentRef.current = true;
       const result = await sendMessage(session.id, message || null, attachmentData, listingRef);
       if (!result.success) {
-        console.error("Failed to send message:", result.error);
+        toast.error(result.error ?? "Failed to send message");
       }
     } finally {
       setIsSending(false);

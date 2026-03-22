@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { FileText, Plus, Clock, BookOpen, FileEdit, XCircle } from "lucide-react";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ export function PostsClient({
   articles,
   statusTypes,
 }: PostsClientProps) {
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") ?? "published";
   const canCreate = useHasPermission("articles", "create");
   const canDelete = useHasPermission("articles", "delete");
 
@@ -150,7 +153,7 @@ export function PostsClient({
   );
 
   return (
-    <Tabs defaultValue="drafts">
+    <Tabs defaultValue={defaultTab}>
       <TabsList>
         <TabsTrigger value="published">
           <BookOpen className="size-4" />

@@ -53,7 +53,7 @@ export function ChatImageGallery({ attachments }: ChatImageGalleryProps) {
     <>
       <div
         className={cn(
-          "grid gap-px overflow-hidden bg-border",
+          "grid gap-px overflow-hidden bg-border w-full",
           count === 1 && "grid-cols-1",
           count === 2 && "grid-cols-2",
           count === 3 && "grid-cols-2",
@@ -73,7 +73,7 @@ export function ChatImageGallery({ attachments }: ChatImageGalleryProps) {
               className={cn(
                 "relative overflow-hidden cursor-pointer focus:outline-none group",
                 spanFull && "col-span-2",
-                count === 1 ? "max-h-72 aspect-video" : "aspect-square",
+                count === 1 ? "aspect-4/3" : "aspect-square",
               )}
             >
               <Image
