@@ -1106,7 +1106,9 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     WHERE rl.deleted_at IS NULL AND pl.deleted_at IS NULL
+      AND (sl.is_sold_out IS NULL OR sl.is_sold_out = 0)
     ORDER BY rl.display_order ASC, rl.created_at DESC`,
   );
   return result.results;
