@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { assetUrl } from "@/lib/r2-url";
@@ -63,12 +64,14 @@ export function ProductMessageCard({
   return (
     <div className="bg-muted/30 border rounded-xl p-2.5 flex gap-2.5 items-center">
       {/* Thumbnail */}
-      <div className="size-12 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+      <div className="relative size-12 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
         {productThumbnail ? (
-          <img
-            src={assetUrl(productThumbnail) ?? undefined}
+          <Image
+            src={assetUrl(productThumbnail) ?? ""}
             alt={productName ?? "Product"}
-            className="object-cover size-full"
+            fill
+            className="object-cover"
+            sizes="48px"
           />
         ) : (
           <div className="size-full bg-muted" />

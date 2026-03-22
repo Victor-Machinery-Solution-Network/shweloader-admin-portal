@@ -52,6 +52,7 @@ DROP TABLE IF EXISTS article_status_type;
 DROP TABLE IF EXISTS approval_status_type;
 DROP TABLE IF EXISTS partner_status_type;
 DROP TABLE IF EXISTS partner_type;
+DROP TABLE IF EXISTS device_token;
 
 PRAGMA foreign_keys = ON;
 
@@ -235,14 +236,14 @@ CREATE INDEX IF NOT EXISTS idx_business_type_created_by ON business_type(created
 CREATE TABLE IF NOT EXISTS app_user (
     app_user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL,
-    full_name TEXT NOT NULL,
+    full_name TEXT,
     email TEXT,
     password_hash TEXT NOT NULL,
     phone TEXT NOT NULL,
     is_verified INTEGER DEFAULT 0,
     company_name TEXT,
     address TEXT,
-    business_type_id INTEGER NOT NULL,
+    business_type_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,

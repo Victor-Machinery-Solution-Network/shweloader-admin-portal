@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { assetUrl } from "@/lib/r2-url";
 import { cn } from "@/lib/utils";
@@ -72,15 +73,17 @@ export function ChatImageGallery({ attachments }: ChatImageGalleryProps) {
               className={cn(
                 "relative overflow-hidden cursor-pointer focus:outline-none group",
                 spanFull && "col-span-2",
+                count === 1 ? "max-h-72 aspect-video" : "aspect-square",
               )}
             >
-              <img
-                src={assetUrl(att.file_url) ?? undefined}
+              <Image
+                src={assetUrl(att.file_url) ?? ""}
                 alt={att.file_name}
+                fill
                 className={cn(
-                  "w-full object-cover transition-opacity group-hover:opacity-90",
-                  count === 1 ? "max-h-72" : "aspect-square",
+                  "object-cover transition-opacity group-hover:opacity-90",
                 )}
+                sizes="(max-width: 640px) 50vw, 300px"
               />
               {isLastWithExtra && (
                 <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
@@ -129,10 +132,13 @@ export function ChatImageGallery({ attachments }: ChatImageGalleryProps) {
           )}
 
           {/* Image */}
-          <img
-            src={assetUrl(attachments[viewerIndex].file_url) ?? undefined}
+          <Image
+            src={assetUrl(attachments[viewerIndex].file_url) ?? ""}
             alt={attachments[viewerIndex].file_name}
-            className="max-h-[85vh] max-w-[85vw] object-contain rounded-lg"
+            width={0}
+            height={0}
+            sizes="85vw"
+            className="max-h-[85vh] max-w-[85vw] w-auto h-auto object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
 

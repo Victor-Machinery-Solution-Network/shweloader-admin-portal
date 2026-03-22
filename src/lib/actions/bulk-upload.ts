@@ -838,19 +838,17 @@ async function createListingRow(
     const imageKeys = Array.isArray(productImages)
       ? productImages
       : [productImages];
+    const { productImageService } = await import("@/lib/services/listing");
     for (let i = 0; i < imageKeys.length; i++) {
-      const { results: imgRows } = await d1.query<{ image_id: number }>(
-        "INSERT INTO image (image_url, uploaded_by) VALUES (?, ?) RETURNING image_id",
-        [imageKeys[i], userId],
-      );
-      const imageId = imgRows[0]?.image_id;
-      if (imageId) {
-        await d1.query(
-          `INSERT INTO product_image (image_id, product_list_id, display_order, uploaded_by, active)
-           VALUES (?, ?, ?, ?, 1)`,
-          [imageId, productId, String(i), userId],
-        );
-      }
+      await productImageService.create({
+        product_list_id: productId,
+        url: imageKeys[i],
+        display_order: String(i),
+        uploaded_by: userId,
+        active: 1,
+        focal_x: 0.5,
+        focal_y: 0.5,
+      });
     }
   }
 

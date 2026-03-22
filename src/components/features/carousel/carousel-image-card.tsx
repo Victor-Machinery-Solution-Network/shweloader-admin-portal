@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import {
   GripVertical,
@@ -120,14 +121,13 @@ export function CarouselImageCard({ image, index, onAdjustPosition }: CarouselIm
       >
         {/* Image area */}
         <div className="relative aspect-video w-full">
-          <img
+          <Image
             src={assetUrl(image.image_url) ?? ""}
             alt=""
-            className="size-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
             style={image.focal_x != null && image.focal_y != null ? { objectPosition: `${image.focal_x * 100}% ${image.focal_y * 100}%` } : undefined}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
           />
 
           {/* Order badge — always visible */}

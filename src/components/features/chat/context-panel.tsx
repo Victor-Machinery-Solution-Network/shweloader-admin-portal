@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Phone, Mail, Building2, MapPin, AtSign, Briefcase, Calendar, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { assetUrl } from "@/lib/r2-url";
@@ -138,12 +139,14 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
                   rel="noopener noreferrer"
                   className="flex gap-2 items-center rounded-lg p-2 hover:bg-muted/50 transition-colors"
                 >
-                  <div className="size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                  <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                     {product.productThumbnail ? (
-                      <img
-                        src={assetUrl(product.productThumbnail) ?? undefined}
+                      <Image
+                        src={assetUrl(product.productThumbnail) ?? ""}
                         alt={product.productName ?? "Product"}
-                        className="object-cover size-full"
+                        fill
+                        className="object-cover"
+                        sizes="40px"
                       />
                     ) : (
                       <div className="size-full bg-muted" />

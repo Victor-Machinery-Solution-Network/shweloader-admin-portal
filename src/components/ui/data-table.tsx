@@ -325,6 +325,8 @@ interface DataTableProps<TData, TValue> {
   enableExport?: boolean;
   /** File name for the exported Excel file (without extension) */
   exportFileName?: string;
+  /** Called when a row is clicked. Receives the row data. */
+  onRowClick?: (row: TData) => void;
 }
 
 function DataTable<TData, TValue>({
@@ -345,6 +347,7 @@ function DataTable<TData, TValue>({
   initialColumnVisibility,
   enableExport = false,
   exportFileName,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const columnTitlesRef = React.useRef(new Map<string, string>());
@@ -736,6 +739,17 @@ function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() ? "selected" : undefined}
+                onClick={
+                  onRowClick
+                    ? (e) => {
+                        // Don't trigger row click if user clicked a button, link, input, or interactive element
+                        const target = e.target as HTMLElement;
+                        if (target.closest("button, a, input, select, [role='menuitem'], [data-no-row-click]")) return;
+                        onRowClick(row.original);
+                      }
+                    : undefined
+                }
+                className={onRowClick ? "cursor-pointer" : undefined}
               >
                 {cells}
               </TableRow>
@@ -844,6 +858,7 @@ function DataTable<TData, TValue>({
                 getRowId={getRowId as (row: unknown) => string | number}
                 onReorder={onReorder as ((data: unknown[], dragInfo: { activeId: string | number; newIndex: number }) => void) | undefined}
                 colCount={allColumns.length}
+                onRowClick={onRowClick as ((row: unknown) => void) | undefined}
               />
             </React.Suspense>
           ) : (

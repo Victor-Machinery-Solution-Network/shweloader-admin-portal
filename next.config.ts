@@ -9,6 +9,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "asset-staging.shweloader.com.mm",
+      },
+    ],
+  },
   cacheComponents: true,
   reactCompiler: true,
   serverExternalPackages: ["sharp"],

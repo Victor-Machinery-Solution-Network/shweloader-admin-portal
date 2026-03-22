@@ -89,6 +89,7 @@ interface DndTableProps {
     dragInfo: { activeId: string | number; newIndex: number },
   ) => void;
   colCount: number;
+  onRowClick?: (row: unknown) => void;
 }
 
 function DndTable({
@@ -97,6 +98,7 @@ function DndTable({
   getRowId,
   onReorder,
   colCount,
+  onRowClick,
 }: DndTableProps) {
   "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const sensors = useSensors(
@@ -189,6 +191,16 @@ function DndTable({
                     key={row.id}
                     id={getRowId(row.original)}
                     data-state={row.getIsSelected() ? "selected" : undefined}
+                    onClick={
+                      onRowClick
+                        ? (e: React.MouseEvent) => {
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button, a, input, select, [role='menuitem'], [data-no-row-click]")) return;
+                            onRowClick(row.original);
+                          }
+                        : undefined
+                    }
+                    className={onRowClick ? "cursor-pointer" : undefined}
                   >
                     {visibleCells.map((cell, cellIdx) => {
                       const colId = cell.column.id;

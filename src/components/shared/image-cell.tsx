@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -28,12 +29,14 @@ export function ImageCell({ name, imageUrl, focalX, focalY }: ImageCellProps) {
         <button
           type="button"
           onClick={() => setShowPreview(true)}
-          className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer hover:opacity-80 transition-opacity"
+          className="relative size-11 shrink-0 overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <img
+          <Image
             src={src}
             alt={name}
-            className="size-full object-cover"
+            fill
+            className="object-cover"
+            sizes="44px"
             style={focalX != null && focalY != null ? { objectPosition: `${focalX * 100}% ${focalY * 100}%` } : undefined}
           />
         </button>
@@ -54,11 +57,13 @@ export function ImageCell({ name, imageUrl, focalX, focalY }: ImageCellProps) {
               <DialogTitle>{name}</DialogTitle>
               <DialogDescription>Image preview</DialogDescription>
             </DialogHeader>
-            <div className="overflow-hidden rounded-lg border bg-muted">
-              <img
+            <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
+              <Image
                 src={src}
                 alt={name}
-                className="w-full object-contain"
+                fill
+                className="object-contain"
+                sizes="(max-width: 640px) 100vw, 512px"
               />
             </div>
           </DialogContent>

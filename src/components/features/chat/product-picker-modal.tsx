@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import { getPickableListings } from "@/lib/actions/chat";
 
@@ -164,13 +165,14 @@ export function ProductPickerModal({
                 onClick={() => handleSelect(listing)}
                 className="w-full flex gap-3 items-center rounded-lg p-2 hover:bg-muted/50 transition-colors text-left"
               >
-                <div className="size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                   {listing.thumbnail ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={assetUrl(listing.thumbnail) ?? undefined}
+                    <Image
+                      src={assetUrl(listing.thumbnail) ?? ""}
                       alt={listing.name ?? "Product"}
-                      className="object-cover size-full"
+                      fill
+                      className="object-cover"
+                      sizes="40px"
                     />
                   ) : (
                     <div className="size-full bg-muted" />

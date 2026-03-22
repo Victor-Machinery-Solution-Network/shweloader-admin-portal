@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
 import { assetUrl } from "@/lib/r2-url";
 import { Tag, UserRound } from "lucide-react";
@@ -86,11 +87,9 @@ const titleColumn: ColumnDef<ArticleWithDetails> = {
     return (
       <div className="flex items-center gap-2.5">
         {src ? (
-          <img
-            src={src}
-            alt=""
-            className="size-9 shrink-0 rounded-md object-cover"
-          />
+          <div className="relative size-9 shrink-0 overflow-hidden rounded-md">
+            <Image src={src} alt="" fill className="object-cover" sizes="36px" />
+          </div>
         ) : (
           <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-cyan-500/10">
             <Tag className="size-3.5 text-cyan-500" />

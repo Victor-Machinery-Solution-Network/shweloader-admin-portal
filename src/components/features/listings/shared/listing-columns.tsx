@@ -3,6 +3,7 @@
 
 import { useState, useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import { formatDate } from "@/lib/utils";
 import {
@@ -328,8 +329,8 @@ function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
       return (
         <div className="flex items-center gap-3">
           {src ? (
-            <div className="size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
-              <img src={src} alt="" className="size-full object-cover" />
+            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
+              <Image src={src} alt="" fill className="object-cover" sizes="40px" />
             </div>
           ) : (
             <div className="size-10 shrink-0 rounded-lg border bg-muted" />

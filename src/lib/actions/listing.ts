@@ -11,7 +11,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
-import { getLastDisplayOrder } from "@/lib/actions/reorder";
+import { getLastDisplayOrder, getNextDisplayOrder } from "@/lib/actions/reorder";
 import { nKeysBetween } from "@/lib/utils/display-order";
 import {
   processFileField,
@@ -27,6 +27,7 @@ import type {
   FeaturedListingWithDetails,
   DraftListingWithDetails,
   ProductImage,
+  ListingDetail,
 } from "@/types/listing";
 import { requireAuth } from "@/lib/actions/utils";
 import { getCachedPermissionsForRole } from "@/lib/cache";
@@ -1278,6 +1279,130 @@ export async function getRentListingWithDetailsById(
   return result.results[0] ?? null;
 }
 
+// ─── Unified listing detail (for detail page) ──────────────────────────────
+
+export async function getListingDetail(
+  productListId: number,
+): Promise<ListingDetail | null> {
+  // Try sale first, then rent
+  const sale = await d1.query<ListingDetail>(
+    `SELECT
+      'sale' AS listing_type,
+      sl.id, sl.custom_id, sl.product_list_id,
+      sl.condition_type_id, ct.name AS condition_name,
+      sl.is_sold_out, NULL AS is_rented,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.display_currency, sl.use_system_rate, sl.is_hidden,
+      pl.thumbnail_url, pl.description, pl.township_id,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.custom_fields,
+      COALESCE(em.name, am.name) AS model_name,
+      CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
+      COALESCE(eb.name, ab.name) AS brand_name,
+      COALESCE(em.pdf_url, am.pdf_url) AS pdf_url,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name,
+      t.name AS township_name,
+      d.name AS district_name,
+      sr.name AS state_region_name,
+      c.username AS partner_name, c.email AS partner_email, c.phone AS partner_phone,
+      c.company_name AS partner_company, c.address AS partner_address,
+      c.is_verified AS partner_verified, c.created_at AS partner_joined,
+      bt.name AS partner_business_type, pt.name AS partner_type_name,
+      pst.status_name AS partner_status,
+      sl.approve_status_id, ast.status_name AS approve_status_name,
+      sl.rejection_reason, sl.approved_at,
+      approved_admin.username AS approved_by_name,
+      created_admin.username AS created_by_name,
+      fl.id AS featured_id,
+      (SELECT rl2.id FROM rent_listing rl2 WHERE rl2.product_list_id = pl.id AND rl2.deleted_at IS NULL LIMIT 1) AS other_listing_id,
+      (SELECT CASE WHEN rl2.id IS NOT NULL THEN 'rent' END FROM rent_listing rl2 WHERE rl2.product_list_id = pl.id AND rl2.deleted_at IS NULL LIMIT 1) AS other_listing_type,
+      sl.created_at, sl.updated_at
+    FROM sale_listing sl
+    JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
+    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN product_brand eb ON em.brand_id = eb.brand_id
+    LEFT JOIN product_brand ab ON am.brand_id = ab.brand_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
+    LEFT JOIN partner p ON pl.partner_id = p.id
+    LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
+    LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    LEFT JOIN township t ON pl.township_id = t.township_id
+    LEFT JOIN district d ON t.district_id = d.district_id
+    LEFT JOIN state_region sr ON d.state_region_id = sr.state_region_id
+    LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
+    LEFT JOIN admin_user approved_admin ON sl.approved_by = approved_admin.user_id
+    LEFT JOIN admin_user created_admin ON sl.created_by = created_admin.user_id
+    LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
+    WHERE sl.product_list_id = ? AND sl.deleted_at IS NULL`,
+    [productListId],
+  );
+  if (sale.results[0]) return sale.results[0];
+
+  const rent = await d1.query<ListingDetail>(
+    `SELECT
+      'rent' AS listing_type,
+      rl.id, rl.custom_id, rl.product_list_id,
+      NULL AS condition_type_id, NULL AS condition_name,
+      NULL AS is_sold_out, rl.is_rented,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.display_currency, rl.use_system_rate, rl.is_hidden,
+      pl.thumbnail_url, pl.description, pl.township_id,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.custom_fields,
+      COALESCE(em.name, am.name) AS model_name,
+      CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
+      COALESCE(eb.name, ab.name) AS brand_name,
+      COALESCE(em.pdf_url, am.pdf_url) AS pdf_url,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name,
+      t.name AS township_name,
+      d.name AS district_name,
+      sr.name AS state_region_name,
+      c.username AS partner_name, c.email AS partner_email, c.phone AS partner_phone,
+      c.company_name AS partner_company, c.address AS partner_address,
+      c.is_verified AS partner_verified, c.created_at AS partner_joined,
+      bt.name AS partner_business_type, pt.name AS partner_type_name,
+      pst.status_name AS partner_status,
+      rl.approve_status_id, ast.status_name AS approve_status_name,
+      rl.rejection_reason, rl.approved_at,
+      approved_admin.username AS approved_by_name,
+      created_admin.username AS created_by_name,
+      fl.id AS featured_id,
+      (SELECT sl2.id FROM sale_listing sl2 WHERE sl2.product_list_id = pl.id AND sl2.deleted_at IS NULL LIMIT 1) AS other_listing_id,
+      (SELECT CASE WHEN sl2.id IS NOT NULL THEN 'sale' END FROM sale_listing sl2 WHERE sl2.product_list_id = pl.id AND sl2.deleted_at IS NULL LIMIT 1) AS other_listing_type,
+      rl.created_at, rl.updated_at
+    FROM rent_listing rl
+    JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN product_brand eb ON em.brand_id = eb.brand_id
+    LEFT JOIN product_brand ab ON am.brand_id = ab.brand_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
+    LEFT JOIN partner p ON pl.partner_id = p.id
+    LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+    LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
+    LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+    LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+    LEFT JOIN township t ON pl.township_id = t.township_id
+    LEFT JOIN district d ON t.district_id = d.district_id
+    LEFT JOIN state_region sr ON d.state_region_id = sr.state_region_id
+    LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
+    LEFT JOIN admin_user approved_admin ON rl.approved_by = approved_admin.user_id
+    LEFT JOIN admin_user created_admin ON rl.created_by = created_admin.user_id
+    LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    WHERE rl.product_list_id = ? AND rl.deleted_at IS NULL`,
+    [productListId],
+  );
+  return rent.results[0] ?? null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // LISTING APPROVAL ACTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1769,6 +1894,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
       );
       const saleApproveStatusId = statusResult.results[0]?.id ?? null;
 
+      const saleDisplayOrder = await getNextDisplayOrder("sale_listing");
       const saleResult = await saleListingService.create({
         product_list_id: productListId,
         custom_id: saleCustomId,
@@ -1792,6 +1918,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
         approved_by: canApproveSale ? userId : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
         created_by: userId,
+        display_order: saleDisplayOrder,
       });
       saleListingId = (saleResult as unknown as { id: number })?.id ?? null;
       if (!saleListingId) {
@@ -1813,6 +1940,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
       );
       const rentApproveStatusId = statusResult.results[0]?.id ?? null;
 
+      const rentDisplayOrder = await getNextDisplayOrder("rent_listing");
       const rentResult = await rentListingService.create({
         product_list_id: productListId,
         custom_id: rentCustomId,
@@ -1833,6 +1961,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
         approved_by: canApproveRent ? userId : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
         created_by: userId,
+        display_order: rentDisplayOrder,
       });
       rentListingId = (rentResult as unknown as { id: number })?.id ?? null;
       if (!rentListingId) {

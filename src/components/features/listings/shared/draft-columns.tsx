@@ -2,6 +2,7 @@
 
 
 import type { ColumnDef } from "@tanstack/react-table";
+import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +23,8 @@ export function createDraftColumns(): ColumnDef<DraftListingWithDetails>[] {
         return (
           <div className="flex items-center gap-3">
             {src ? (
-              <div className="size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
-                <img src={src} alt="" className="size-full object-cover" />
+              <div className="relative size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
+                <Image src={src} alt="" fill className="object-cover" sizes="40px" />
               </div>
             ) : (
               <div className="size-10 shrink-0 rounded-lg border bg-muted" />

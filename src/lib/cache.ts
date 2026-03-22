@@ -35,6 +35,7 @@ import {
   getSaleListingWithDetailsById,
   getRentListingWithDetailsById,
   getProductImages,
+  getListingDetail as fetchListingDetail,
 } from "@/lib/actions/listing";
 import { getPartnersWithDetails as fetchPartnersWithDetails } from "@/lib/actions/partner";
 import {
@@ -303,6 +304,10 @@ export function getRentListingById(id: number) {
 
 export function getListingImages(productListId: number) {
   return getProductImages(productListId);
+}
+
+export function getListingDetail(productListId: number) {
+  return fetchListingDetail(productListId);
 }
 
 // Roles

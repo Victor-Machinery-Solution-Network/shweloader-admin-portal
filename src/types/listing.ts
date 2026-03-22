@@ -60,6 +60,7 @@ export interface SaleListing {
   updated_at: string;
   deleted_at: string | null;
   deleted_by: number | null;
+  display_order: string;
 }
 
 /** Matches the rent_listing table in D1 */
@@ -83,6 +84,7 @@ export interface RentListing {
   updated_at: string;
   deleted_at: string | null;
   deleted_by: number | null;
+  display_order: string;
 }
 
 /** Matches the featured_listing table in D1 */
@@ -256,6 +258,74 @@ export interface DraftListingWithDetails {
   product_type: "equipment" | "attachment" | null;
   partner_name: string | null;
   township_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Unified listing detail view (works for both sale and rent) */
+export interface ListingDetail {
+  listing_type: "sale" | "rent";
+  id: number;
+  custom_id: string | null;
+  product_list_id: number;
+  // Sale-only
+  condition_type_id: number | null;
+  condition_name: string | null;
+  is_sold_out: number | null;
+  // Rent-only
+  is_rented: number | null;
+  // Shared pricing
+  mmk_price: number | null;
+  usd_price: number | null;
+  hide_price: number;
+  display_currency: string;
+  use_system_rate: number;
+  is_hidden: number;
+  // Product info
+  thumbnail_url: string | null;
+  description: string | null;
+  township_id: number | null;
+  equipment_model_id: number | null;
+  attachment_model_id: number | null;
+  partner_id: number;
+  hide_partner: number;
+  custom_fields: string | null;
+  // Joined product details
+  model_name: string | null;
+  product_type: "equipment" | "attachment";
+  brand_name: string | null;
+  pdf_url: string | null;
+  main_category_name: string | null;
+  sub_category_name: string | null;
+  attachment_category_name: string | null;
+  // Location hierarchy
+  township_name: string | null;
+  district_name: string | null;
+  state_region_name: string | null;
+  // Partner details
+  partner_name: string | null;
+  partner_email: string | null;
+  partner_phone: string | null;
+  partner_company: string | null;
+  partner_address: string | null;
+  partner_verified: number | null;
+  partner_joined: string | null;
+  partner_business_type: string | null;
+  partner_type_name: string | null;
+  partner_status: string | null;
+  // Approval
+  approve_status_id: number | null;
+  approve_status_name: string | null;
+  rejection_reason: string | null;
+  approved_at: string | null;
+  approved_by_name: string | null;
+  created_by_name: string | null;
+  // Featured
+  featured_id: number | null;
+  // Other listing (if product is listed as both sale and rent)
+  other_listing_id: number | null;
+  other_listing_type: "sale" | "rent" | null;
+  // Timestamps
   created_at: string;
   updated_at: string;
 }

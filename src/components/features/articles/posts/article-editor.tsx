@@ -120,8 +120,8 @@ export function ArticleEditor({
     article?.cover_image_url ?? null,
   );
   const [coverFocalPoint, setCoverFocalPoint] = useState<{ x: number; y: number } | null>(
-    article?.cover_focal_x != null && article?.cover_focal_y != null
-      ? { x: article.cover_focal_x, y: article.cover_focal_y }
+    article?.focal_x != null && article?.focal_y != null
+      ? { x: article.focal_x, y: article.focal_y }
       : null,
   );
   const [contentValue, setContentValue] = useState(article?.content ?? "");

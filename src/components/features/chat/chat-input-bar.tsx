@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
+import Image from "next/image";
 import { Paperclip, Send, X, FileText, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,12 +123,14 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
       {selectedProduct && (
         <div className="flex items-center gap-2 px-3 pt-3">
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2 py-1.5 pr-7 text-sm relative">
-            <div className="size-8 rounded overflow-hidden bg-muted shrink-0">
+            <div className="relative size-8 rounded overflow-hidden bg-muted shrink-0">
               {selectedProduct.thumbnail ? (
-                <img
-                  src={assetUrl(selectedProduct.thumbnail) ?? undefined}
+                <Image
+                  src={assetUrl(selectedProduct.thumbnail) ?? ""}
                   alt={selectedProduct.name ?? "Product"}
-                  className="object-cover size-full"
+                  fill
+                  className="object-cover"
+                  sizes="32px"
                 />
               ) : (
                 <div className="size-full bg-muted" />

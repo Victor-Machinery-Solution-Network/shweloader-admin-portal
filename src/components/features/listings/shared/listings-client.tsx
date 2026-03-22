@@ -435,6 +435,7 @@ export function ListingsClient({
               onMoveToPosition={handleApprovedMoveToPosition}
               enableExport
               exportFileName={`${pageType}-listings`}
+              onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />
           ) : (
             <EmptyState
@@ -507,6 +508,7 @@ export function ListingsClient({
               pageSize={10}
               enableExport
               exportFileName="pending-listings"
+              onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />
           ) : (
             <EmptyState
@@ -558,6 +560,7 @@ export function ListingsClient({
               pageSize={10}
               enableExport
               exportFileName="rework-listings"
+              onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />
           ) : (
             <EmptyState
