@@ -32,8 +32,8 @@ export default function FirebaseSmsTestPage() {
   const [verifyDisabled, setVerifyDisabled] = useState(false);
   const [firebaseReady, setFirebaseReady] = useState(false);
   const recaptchaRef = useRef<HTMLDivElement>(null);
-  const firebaseRef = useRef<typeof import("firebase/app")>();
-  const authRef = useRef<import("firebase/auth").Auth>();
+  const firebaseRef = useRef<typeof import("firebase/app") | null>(null);
+  const authRef = useRef<import("firebase/auth").Auth | null>(null);
 
   // Load Firebase SDK dynamically
   useEffect(() => {
