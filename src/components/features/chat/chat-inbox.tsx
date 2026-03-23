@@ -71,7 +71,13 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     );
   }, []);
 
-  useChatInbox(handleSessionUpdate, handleSessionResolved, handleSessionReopened);
+  const handleNewSession = useCallback((session: ChatSessionWithDetails) => {
+    setSessions((prev) =>
+      prev.some((s) => s.id === session.id) ? prev : [session, ...prev],
+    );
+  }, []);
+
+  useChatInbox(handleNewSession, handleSessionUpdate, handleSessionResolved, handleSessionReopened);
 
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;

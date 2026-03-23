@@ -75,6 +75,66 @@ export async function getChatSessionsWithDetails(): Promise<
   return result.results;
 }
 
+/** Get a single chat session by ID (for real-time new-session events) */
+export async function getChatSessionById(
+  sessionId: number,
+): Promise<ChatSessionWithDetails | null> {
+  await requirePermission("chat", "read");
+
+  const result = await d1.query<ChatSessionWithDetails>(
+    `SELECT
+      cs.id, cs.app_user_id, cs.status,
+      cs.created_at, cs.updated_at, cs.resolved_at,
+      cs.last_message_at, cs.last_message_preview,
+      cs.unread_admin_count, cs.unread_user_count,
+      cs.admin_last_read_at, cs.user_last_read_at,
+      cs.deleted_at, cs.deleted_by,
+      au.full_name AS user_name,
+      au.username AS user_username,
+      au.email AS user_email,
+      au.phone AS user_phone,
+      au.company_name AS user_company,
+      au.address AS user_address,
+      au.is_verified AS user_is_verified,
+      bt.name AS user_business_type,
+      au.created_at AS user_joined,
+      COALESCE(em.name, am.name) AS product_name,
+      pl.thumbnail_url AS product_thumbnail,
+      CASE
+        WHEN cm_ref.sale_listing_id IS NOT NULL THEN 'sale'
+        WHEN cm_ref.rent_listing_id IS NOT NULL THEN 'rent'
+        ELSE NULL
+      END AS listing_type,
+      COALESCE(cm_ref.sale_listing_id, cm_ref.rent_listing_id) AS listing_id,
+      pb.name AS brand_name,
+      COALESCE(sl.mmk_price, rl.mmk_price) AS mmk_price,
+      COALESCE(sl.usd_price, rl.usd_price) AS usd_price,
+      COALESCE(sl.display_currency, rl.display_currency) AS display_currency,
+      pau.company_name AS partner_name
+    FROM chat_session cs
+    JOIN app_user au ON au.app_user_id = cs.app_user_id
+    LEFT JOIN business_type bt ON bt.business_type_id = au.business_type_id
+    LEFT JOIN chat_message cm_ref ON cm_ref.id = (
+      SELECT id FROM chat_message
+      WHERE chat_session_id = cs.id
+        AND (sale_listing_id IS NOT NULL OR rent_listing_id IS NOT NULL)
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    LEFT JOIN sale_listing sl ON sl.id = cm_ref.sale_listing_id
+    LEFT JOIN rent_listing rl ON rl.id = cm_ref.rent_listing_id
+    LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
+    LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+    LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+    LEFT JOIN partner p ON p.id = pl.partner_id
+    LEFT JOIN app_user pau ON pau.app_user_id = p.app_user_id
+    WHERE cs.id = ? AND cs.deleted_at IS NULL`,
+    [sessionId],
+  );
+  return result.results[0] ?? null;
+}
+
 /** Get messages for a chat session with attachments */
 export async function getChatMessages(
   sessionId: number,

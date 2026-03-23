@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { usePusher } from "@/components/providers/pusher-provider";
 import {
   getChatMessages,
+  getChatSessionById,
   markSessionRead,
   getTotalUnreadCount,
   sendTypingEvent,
 } from "@/lib/actions/chat";
-import type { ChatMessageWithDetails } from "@/types/chat";
+import type { ChatMessageWithDetails, ChatSessionWithDetails } from "@/types/chat";
 
 /** Hook for real-time messages in an active chat session */
 export function useChatMessages(sessionId: number | null, initialUnreadCount = 0, initialUserLastReadAt: string | null = null) {
@@ -219,14 +219,16 @@ export function useSendTypingEvent(sessionId: number | null) {
 
 /** Hook for inbox-level real-time updates */
 export function useChatInbox(
+  onNewSession?: (session: ChatSessionWithDetails) => void,
   onSessionUpdate?: (sessionId: number, preview: string, at: string, isUserMessage: boolean) => void,
   onSessionResolved?: (sessionId: number) => void,
   onSessionReopened?: (sessionId: number) => void,
 ) {
   const [totalUnread, setTotalUnread] = useState(0);
-  const router = useRouter();
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
+  const onNewSessionRef = useRef(onNewSession);
+  onNewSessionRef.current = onNewSession;
   const onSessionUpdateRef = useRef(onSessionUpdate);
   onSessionUpdateRef.current = onSessionUpdate;
   const onSessionResolvedRef = useRef(onSessionResolved);
@@ -249,12 +251,17 @@ export function useChatInbox(
   useEffect(() => {
     const handle = subscribeToChannel("private-admin-chat");
 
-    const unsubSession = handle.subscribe("new-session", () => {
-      // Refetch unread count and refresh server components
+    const unsubSession = handle.subscribe("new-session", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      const sessionId = raw.sessionId as number;
+      // Fetch full session details and prepend to list
+      getChatSessionById(sessionId).then((session) => {
+        if (!mountedRef.current || !session) return;
+        onNewSessionRef.current?.(session);
+      });
       getTotalUnreadCount().then((count) => {
         if (mountedRef.current) setTotalUnread(count);
       });
-      router.refresh();
     });
 
     // Listen for messages on existing sessions to update inbox (unread counts, preview)
@@ -295,7 +302,7 @@ export function useChatInbox(
       unsubReopened();
       handle.unsubscribe();
     };
-  }, [subscribeToChannel, router]);
+  }, [subscribeToChannel]);
 
   const refreshUnread = useCallback(() => {
     getTotalUnreadCount().then((count) => {

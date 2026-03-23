@@ -10,6 +10,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public assets (images, etc.)
      */
-    "/((?!api/auth|firebase-sms-test|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
   ],
 };
