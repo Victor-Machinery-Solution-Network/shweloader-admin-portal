@@ -146,6 +146,7 @@ export function UserEditForm({
           <FieldContent>
             <RequiredInput
               name="phone"
+              type="tel"
               defaultValue={user.phone}
               placeholder="e.g. 09xxxxxxxxx"
               errorMessage="Phone number is required"

@@ -132,6 +132,7 @@ export function UserForm({
           <FieldContent>
             <RequiredInput
               name="phone"
+              type="tel"
               placeholder="e.g. 09xxxxxxxxx"
               errorMessage="Phone number is required"
               autoComplete="off"
