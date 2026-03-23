@@ -146,6 +146,7 @@ export function SortableImageGallery({
   itemsRef.current = items;
   const [nextId, setNextId] = useState(() => items.length);
   const [adjustingItem, setAdjustingItem] = useState<string | null>(null);
+  const [pendingQueue, setPendingQueue] = useState<string[]>([]);
 
   // Revoke all file-based object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -192,8 +193,11 @@ export function SortableImageGallery({
       if (newItems.length > 0) {
         setNextId(id);
         onChange([...items, ...newItems]);
-        // Auto-open focal point modal for the first newly added image
+        // Queue all newly added images for focal point adjustment
         setAdjustingItem(newItems[0].id);
+        if (newItems.length > 1) {
+          setPendingQueue(newItems.slice(1).map((item) => item.id));
+        }
       }
     },
     [items, nextId, maxImages, onChange],
@@ -207,6 +211,15 @@ export function SortableImageGallery({
     },
     [items, onChange],
   );
+
+  const advanceQueue = useCallback(() => {
+    if (pendingQueue.length > 0) {
+      setAdjustingItem(pendingQueue[0]);
+      setPendingQueue((q) => q.slice(1));
+    } else {
+      setAdjustingItem(null);
+    }
+  }, [pendingQueue]);
 
   const adjustingItemData = adjustingItem
     ? items.find((item) => item.id === adjustingItem) ?? null
@@ -291,9 +304,9 @@ export function SortableImageGallery({
                   : item,
               ),
             );
-            setAdjustingItem(null);
+            advanceQueue();
           }}
-          onSkip={() => setAdjustingItem(null)}
+          onSkip={() => advanceQueue()}
         />
       )}
     </div>

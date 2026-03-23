@@ -145,6 +145,11 @@ export function AppSidebar() {
   const isAttachmentsActive =
     pathname.startsWith(ROUTES.ATTACHMENTS) ||
     isBulkEntity("attachment-categories", "attachment-models");
+  const isListingDetailPage =
+    pathname.startsWith(ROUTES.LISTINGS + "/") &&
+    !pathname.startsWith(ROUTES.LISTINGS_FOR_SALE) &&
+    !pathname.startsWith(ROUTES.LISTINGS_FOR_RENT) &&
+    !pathname.startsWith(ROUTES.LISTINGS_NEW);
   const isListingsActive =
     pathname.startsWith(ROUTES.LISTINGS) ||
     pathname.startsWith(ROUTES.LISTING_TEMPLATES) ||
@@ -456,7 +461,7 @@ export function AppSidebar() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={pathname === ROUTES.LISTINGS_FOR_SALE}
+                                isActive={pathname.startsWith(ROUTES.LISTINGS_FOR_SALE) || isListingDetailPage}
                               >
                                 <Link href={ROUTES.LISTINGS_FOR_SALE}>
                                   <span>For Sale</span>
@@ -468,7 +473,7 @@ export function AppSidebar() {
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 asChild
-                                isActive={pathname === ROUTES.LISTINGS_FOR_RENT}
+                                isActive={pathname.startsWith(ROUTES.LISTINGS_FOR_RENT)}
                               >
                                 <Link href={ROUTES.LISTINGS_FOR_RENT}>
                                   <span>For Rent</span>
