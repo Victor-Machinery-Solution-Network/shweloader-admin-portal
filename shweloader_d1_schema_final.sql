@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS app_user (
     company_name TEXT,
     address TEXT,
     business_type_id INTEGER,
+    last_login_at TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
