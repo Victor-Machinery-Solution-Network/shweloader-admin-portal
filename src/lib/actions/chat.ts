@@ -211,6 +211,7 @@ export async function getChatMessages(
 
 /** Get total unread count across all active/pending sessions (for sidebar badge) */
 export async function getTotalUnreadCount(): Promise<number> {
+  await requirePermission("chat", "read");
   const result = await d1.query<{ total: number }>(
     "SELECT COALESCE(SUM(unread_admin_count), 0) AS total FROM chat_session WHERE status IN ('pending', 'active') AND deleted_at IS NULL",
   );
@@ -221,6 +222,7 @@ export async function getTotalUnreadCount(): Promise<number> {
 export async function getUnreadChatSessions(): Promise<
   { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
 > {
+  await requirePermission("chat", "read");
   const result = await d1.query<{
     id: number;
     user_name: string;
@@ -662,9 +664,16 @@ export async function getPickableListings(): Promise<
 
 /** Fire a typing indicator event to the chat session */
 export async function sendTypingEvent(sessionId: number) {
+  const adminId = await requirePermission("chat", "edit");
+  const adminResult = await d1.query<{ username: string }>(
+    "SELECT username FROM admin_user WHERE user_id = ?",
+    [adminId],
+  );
+  const senderName = adminResult.results[0]?.username ?? "Admin";
+
   triggerChatEvent(sessionId, "typing-start", {
     sender_type: "admin",
-    sender_name: "Admin",
+    sender_name: senderName,
   }).catch(() => {});
 
   return { success: true };

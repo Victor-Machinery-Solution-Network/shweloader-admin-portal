@@ -221,6 +221,7 @@ export function ConversationPanel({
       justSentRef.current = true;
       const result = await sendMessage(session.id, message || null, attachmentData, listingRef);
       if (!result.success) {
+        justSentRef.current = false;
         toast.error(result.error ?? "Failed to send message");
       }
     } finally {

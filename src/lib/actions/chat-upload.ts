@@ -62,7 +62,7 @@ export async function uploadChatAttachments(
       }
     }
 
-    const uniqueName = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const uniqueName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
     const r2Path = `chat/${sessionId}/`;
     const result = await uploadToR2(uploadFile, r2Path, uniqueName);
     results.push({

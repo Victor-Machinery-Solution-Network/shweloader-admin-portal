@@ -253,10 +253,14 @@ export function NotificationBell() {
   async function handleNotificationClick(notification: Notification) {
     // Only check status for "submitted" notifications — those can go stale
     if (notification.type.endsWith("_submitted") && notification.reference_id) {
-      const result = await checkNotificationItemStatus(notification.notification_id);
-      if (result.handled) {
-        setStatusDialog({ open: true, status: result, notification });
-        return;
+      try {
+        const result = await checkNotificationItemStatus(notification.notification_id);
+        if (result.handled) {
+          setStatusDialog({ open: true, status: result, notification });
+          return;
+        }
+      } catch {
+        // Status check failed — fall through to normal navigation
       }
     }
     // Not handled or not a submitted type — navigate normally

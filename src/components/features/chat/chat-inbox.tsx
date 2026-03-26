@@ -26,6 +26,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
+  const pendingSessionRef = useRef<number | null>(null);
 
   // Update selection when URL query param changes (e.g. clicking a notification)
   useEffect(() => {
@@ -33,6 +34,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     const id = Number(sessionParam);
     if (id && sessions.some((s) => s.id === id)) {
       setSelectedId(id);
+      pendingSessionRef.current = null;
       // Mark as read in DB + notify bell, then clear badge locally
       const session = sessions.find((s) => s.id === id);
       if (session && session.unread_admin_count > 0) {
@@ -41,8 +43,27 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
       setSessions((prev) =>
         prev.map((s) => (s.id === id ? { ...s, unread_admin_count: 0 } : s)),
       );
+    } else if (id) {
+      pendingSessionRef.current = id;
     }
   }, [sessionParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve pending session selection when the session arrives via Pusher
+  useEffect(() => {
+    const pending = pendingSessionRef.current;
+    if (!pending) return;
+    const session = sessions.find((s) => s.id === pending);
+    if (session) {
+      pendingSessionRef.current = null;
+      setSelectedId(pending);
+      if (session.unread_admin_count > 0) {
+        markReadAndNotify(pending);
+      }
+      setSessions((prev) =>
+        prev.map((s) => (s.id === pending ? { ...s, unread_admin_count: 0 } : s)),
+      );
+    }
+  }, [sessions]);
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
       setSessions((prev) =>

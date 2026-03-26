@@ -92,6 +92,14 @@ export function useNotifications() {
 
   // Debounced refresh to coalesce rapid Pusher events into a single DB query
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear debounce timer on unmount to avoid stale server action calls
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, []);
+
   const refreshChat = useCallback(() => {
     // On chat page: mark all alerts as read but keep them visible
     if (pathnameRef.current.startsWith("/chat")) {
