@@ -327,3 +327,99 @@ export async function deleteAllNotifications() {
   );
   return { success: true };
 }
+
+// ─── Status Check for Already-Handled Items ─────────────────────────────────
+
+export interface ItemStatusResult {
+  handled: boolean;
+  status: string | null;
+  actionBy: string | null;
+  actionAt: string | null;
+  reason: string | null;
+}
+
+/** Check if a notification's referenced item has already been handled by another admin */
+export async function checkNotificationItemStatus(
+  notificationId: number,
+): Promise<ItemStatusResult> {
+  const session = await auth();
+  if (!session?.user?.id)
+    return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+  // Get the notification to find reference type + id
+  const notifResult = await d1.query<Notification>(
+    `SELECT * FROM notification WHERE notification_id = ? AND recipient_id = ?`,
+    [notificationId, session.user.id],
+  );
+  const notif = notifResult.results[0];
+  if (!notif || !notif.reference_type || !notif.reference_id)
+    return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+  // Only check "submitted" notifications — those are the ones that can be stale
+  if (!notif.type.endsWith("_submitted"))
+    return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+  if (notif.reference_type === "article") {
+    const result = await d1.query<{
+      status_name: string;
+      approved_by_name: string | null;
+      approved_at: string | null;
+      rejection_reason: string | null;
+    }>(
+      `SELECT ast.status_name, au.username AS approved_by_name, a.approved_at, a.rejection_reason
+       FROM article a
+       LEFT JOIN article_status_type ast ON a.article_status_type_id = ast.id
+       LEFT JOIN admin_user au ON a.approved_by = au.user_id
+       WHERE a.article_id = ?`,
+      [notif.reference_id],
+    );
+    const row = result.results[0];
+    if (!row) return { handled: true, status: "Deleted", actionBy: null, actionAt: null, reason: null };
+
+    const isPending = row.status_name === "Pending Review";
+    if (isPending) return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+    return {
+      handled: true,
+      status: row.status_name,
+      actionBy: row.approved_by_name,
+      actionAt: row.approved_at,
+      reason: row.rejection_reason,
+    };
+  }
+
+  if (notif.reference_type === "listing") {
+    // Try sale_listing first, then rent_listing
+    for (const table of ["sale_listing", "rent_listing"]) {
+      const result = await d1.query<{
+        status_name: string;
+        approved_by_name: string | null;
+        approved_at: string | null;
+        rejection_reason: string | null;
+      }>(
+        `SELECT ast.status_name, au.username AS approved_by_name, l.approved_at, l.rejection_reason
+         FROM ${table} l
+         LEFT JOIN approval_status_type ast ON l.approve_status_id = ast.id
+         LEFT JOIN admin_user au ON l.approved_by = au.user_id
+         WHERE l.id = ?`,
+        [notif.reference_id],
+      );
+      const row = result.results[0];
+      if (!row) continue;
+
+      const isPending = row.status_name === "Pending";
+      if (isPending) return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+      return {
+        handled: true,
+        status: row.status_name,
+        actionBy: row.approved_by_name,
+        actionAt: row.approved_at,
+        reason: row.rejection_reason,
+      };
+    }
+    return { handled: true, status: "Deleted", actionBy: null, actionAt: null, reason: null };
+  }
+
+  return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+}

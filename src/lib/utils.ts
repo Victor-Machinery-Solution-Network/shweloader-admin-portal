@@ -24,7 +24,9 @@ export function formatDate(value: string | Date): string {
  */
 export function timeAgo(dateStr: string): string {
   const now = Date.now();
-  const then = new Date(dateStr + "Z").getTime(); // D1 stores UTC without Z
+  // D1 stores UTC without Z, but Pusher payloads use ISO with Z — handle both
+  const normalized = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  const then = new Date(normalized).getTime();
   const diff = Math.max(0, now - then);
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return "Just now";

@@ -787,7 +787,7 @@ async function createListingRow(
   const thumbnailUrl = data.thumbnail_url as string | null;
 
   // Build custom_fields JSON from name-value column pairs
-  const customFieldEntries: { key: string; label: string; value: string }[] =
+  const customFieldEntries: { key: string; label: string; type: string; value: string }[] =
     [];
   for (let i = 1; i <= 5; i++) {
     const name = data[`cf_${i}_name`] as string | null;
@@ -798,7 +798,7 @@ async function createListingRow(
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_|_$/g, "");
-      customFieldEntries.push({ key, label, value: value.trim() });
+      customFieldEntries.push({ key, label, type: "text", value: value.trim() });
     }
   }
   const customFields =

@@ -22,7 +22,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -44,11 +43,12 @@ import {
   ActiveFilterChips,
 } from "@/components/ui/data-table-filter";
 import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -884,58 +884,21 @@ function DataTable<TData, TValue>({
                   <p className="text-muted-foreground text-sm whitespace-nowrap">
                     Rows per page
                   </p>
-                  <Popover>
-                    <PopoverAnchor asChild>
-                    <div className="flex items-center">
-                      <Input
-                        type="number"
-                        min={1}
-                        defaultValue={table.getState().pagination.pageSize}
-                        key={table.getState().pagination.pageSize}
-                        className="h-8 w-14 rounded-r-none border-r-0 pr-0 text-center text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-                        onBlur={(e) => {
-                          const val = Math.max(1, parseInt(e.target.value) || pageSize);
-                          table.setPageSize(val);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            (e.target as HTMLInputElement).blur();
-                          }
-                        }}
-                      />
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-6 rounded-l-none border-l-0 px-0"
-                        >
-                          <ChevronDown className="size-3.5 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                    </div>
-                    </PopoverAnchor>
-                    <PopoverContent
-                      align="end"
-                      side="bottom"
-                      collisionPadding={8}
-                      className="w-auto min-w-0 gap-0 rounded-lg p-1"
-                    >
+                  <Select
+                    value={String(table.getState().pagination.pageSize)}
+                    onValueChange={(val) => table.setPageSize(Number(val))}
+                  >
+                    <SelectTrigger size="sm" className="w-auto min-w-0 gap-1 px-2.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" align="end">
                       {[5, 10, 20, 50, 100].map((size) => (
-                        <PopoverTrigger key={size} asChild>
-                          <button
-                            className={cn(
-                              "hover:bg-accent w-full rounded-md px-3 py-1.5 text-left text-sm",
-                              table.getState().pagination.pageSize === size &&
-                                "bg-accent font-medium",
-                            )}
-                            onClick={() => table.setPageSize(size)}
-                          >
-                            {size}
-                          </button>
-                        </PopoverTrigger>
+                        <SelectItem key={size} value={String(size)}>
+                          {size}
+                        </SelectItem>
                       ))}
-                    </PopoverContent>
-                  </Popover>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <p className="text-muted-foreground text-sm whitespace-nowrap tabular-nums">

@@ -1223,7 +1223,7 @@ export async function getSaleListingWithDetailsById(
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner,
-      sl.approve_status_id, sl.rejection_reason, sl.approved_at,
+      sl.approve_status_id, sl.rejection_reason, sl.approved_at, sl.approved_by,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
@@ -1232,7 +1232,8 @@ export async function getSaleListingWithDetailsById(
       c.username AS partner_name,
       t.name AS township_name,
       ast.status_name AS approve_status_name,
-      fl.id AS featured_id
+      fl.id AS featured_id,
+      approver.username AS approved_by_name
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
@@ -1243,6 +1244,7 @@ export async function getSaleListingWithDetailsById(
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
+    LEFT JOIN admin_user approver ON sl.approved_by = approver.user_id
     WHERE sl.id = ? AND sl.deleted_at IS NULL`,
     [id],
   );
@@ -1256,7 +1258,7 @@ export async function getRentListingWithDetailsById(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, pl.hide_partner,
-      rl.approve_status_id, rl.rejection_reason, rl.approved_at,
+      rl.approve_status_id, rl.rejection_reason, rl.approved_at, rl.approved_by,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.custom_fields,
@@ -1265,7 +1267,8 @@ export async function getRentListingWithDetailsById(
       c.username AS partner_name,
       t.name AS township_name,
       ast.status_name AS approve_status_name,
-      fl.id AS featured_id
+      fl.id AS featured_id,
+      approver.username AS approved_by_name
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
@@ -1275,6 +1278,7 @@ export async function getRentListingWithDetailsById(
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    LEFT JOIN admin_user approver ON rl.approved_by = approver.user_id
     WHERE rl.id = ? AND rl.deleted_at IS NULL`,
     [id],
   );

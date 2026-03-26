@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
 import { ContextPanel } from "./context-panel";
-import { useChatInbox } from "@/hooks/use-chat";
+import { useChatInbox, markReadAndNotify } from "@/hooks/use-chat";
 import { getSessionProducts } from "@/lib/actions/chat";
 import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
 
@@ -13,13 +14,35 @@ interface ChatInboxProps {
 }
 
 export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
+  const searchParams = useSearchParams();
   const [sessions, setSessions] = useState(initialSessions);
-  const [selectedId, setSelectedId] = useState<number | null>(
-    initialSessions[0]?.id ?? null,
-  );
+
+  // Select session from URL query param (?session=123) or default to first
+  const sessionParam = searchParams.get("session");
+  const initialSelectedId = sessionParam
+    ? (initialSessions.some((s) => s.id === Number(sessionParam)) ? Number(sessionParam) : initialSessions[0]?.id ?? null)
+    : (initialSessions[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<number | null>(initialSelectedId);
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
+
+  // Update selection when URL query param changes (e.g. clicking a notification)
+  useEffect(() => {
+    if (!sessionParam) return;
+    const id = Number(sessionParam);
+    if (id && sessions.some((s) => s.id === id)) {
+      setSelectedId(id);
+      // Mark as read in DB + notify bell, then clear badge locally
+      const session = sessions.find((s) => s.id === id);
+      if (session && session.unread_admin_count > 0) {
+        markReadAndNotify(id);
+      }
+      setSessions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, unread_admin_count: 0 } : s)),
+      );
+    }
+  }, [sessionParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
       setSessions((prev) =>
@@ -103,7 +126,11 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
 
   function handleSelect(id: number) {
     setSelectedId(id);
-    // Clear unread badge locally when selecting a session
+    // Clear unread badge locally and mark as read in DB + notify bell
+    const session = sessions.find((s) => s.id === id);
+    if (session && session.unread_admin_count > 0) {
+      markReadAndNotify(id);
+    }
     setSessions((prev) =>
       prev.map((s) =>
         s.id === id ? { ...s, unread_admin_count: 0 } : s,

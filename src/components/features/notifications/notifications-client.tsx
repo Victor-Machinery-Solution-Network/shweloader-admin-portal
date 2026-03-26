@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -11,13 +11,20 @@ import {
   CheckCircle,
   XCircle,
   Package,
+  MessageCircle,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
-import { useNotifications } from "@/hooks/use-notifications";
+import {
+  useNotifications,
+  type FeedItem,
+  type ChatAlertItem,
+  type NotificationItem as NotifItem,
+} from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Notification, NotificationType } from "@/types/notification";
+import type { NotificationType } from "@/types/notification";
 
 const typeIcons: Record<NotificationType, typeof FileText> = {
   article_submitted: FileText,
@@ -38,16 +45,17 @@ const typeColors: Record<NotificationType, string> = {
 };
 
 function NotificationCard({
-  notification,
+  item,
   onRead,
   onRemove,
   onNavigate,
 }: {
-  notification: Notification;
+  item: NotifItem;
   onRead: (id: number) => void;
   onRemove: (id: number) => void;
   onNavigate: (url: string) => void;
 }) {
+  const notification = item.data;
   const isUnread = notification.is_read === 0;
   const Icon = typeIcons[notification.type] ?? Bell;
   const iconColor = typeColors[notification.type] ?? "bg-muted text-muted-foreground";
@@ -70,12 +78,9 @@ function NotificationCard({
         if (e.key === "Enter" || e.key === " ") handleClick();
       }}
     >
-      {/* Icon */}
       <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", iconColor)}>
         <Icon className="size-4" />
       </div>
-
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn("text-sm", isUnread && "font-medium")}>
@@ -91,8 +96,6 @@ function NotificationCard({
           </p>
         )}
       </div>
-
-      {/* Actions */}
       <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         {isUnread && (
           <Button
@@ -124,27 +127,112 @@ function NotificationCard({
   );
 }
 
+function ChatAlertCard({
+  item,
+  onClick,
+}: {
+  item: ChatAlertItem;
+  onClick: () => void;
+}) {
+  const isUnread = item.unreadCount > 0;
+
+  return (
+    <div
+      className={cn(
+        "group flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent",
+        isUnread && "border-primary/20 bg-primary/[0.02]",
+      )}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick();
+      }}
+    >
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <MessageCircle className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <p className={cn("text-sm", isUnread && "font-medium")}>
+              {item.userName}
+            </p>
+            {item.unreadCount > 1 && (
+              <Badge variant="default" className="min-w-5 text-[10px] bg-red-500 text-white px-1 py-0">
+                {item.unreadCount}
+              </Badge>
+            )}
+          </div>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {timeAgo(item.at)}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
+          {item.preview}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FeedCard({
+  item,
+  onReadNotification,
+  onRemoveNotification,
+  onNavigate,
+  onChatClick,
+}: {
+  item: FeedItem;
+  onReadNotification: (id: number) => void;
+  onRemoveNotification: (id: number) => void;
+  onNavigate: (url: string) => void;
+  onChatClick: (sessionId: number) => void;
+}) {
+  if (item.kind === "chat") {
+    return <ChatAlertCard item={item} onClick={() => onChatClick(item.sessionId)} />;
+  }
+  return (
+    <NotificationCard
+      item={item}
+      onRead={onReadNotification}
+      onRemove={onRemoveNotification}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
 export function NotificationsClient() {
   const router = useRouter();
   const {
-    notifications,
+    feedItems,
     unreadCount,
+    chatUnread,
     isLoaded,
     markRead,
+    markChatRead,
     markAllRead,
     remove,
-    removeAll,
   } = useNotifications();
 
-  const unreadNotifications = useMemo(
-    () => notifications.filter((n) => n.is_read === 0),
-    [notifications],
+  const totalUnread = unreadCount + chatUnread;
+
+  const unreadItems = useMemo(
+    () => feedItems.filter((item) =>
+      item.kind === "chat" ? item.unreadCount > 0 : item.data.is_read === 0,
+    ),
+    [feedItems],
   );
 
   const handleNavigate = useCallback(
     (url: string) => router.push(url),
     [router],
   );
+
+  function handleChatClick(sessionId: number) {
+    markChatRead(sessionId);
+    router.push(`/chat?session=${sessionId}`);
+  }
 
   if (!isLoaded) {
     return (
@@ -157,23 +245,14 @@ export function NotificationsClient() {
   return (
     <div className="space-y-4">
       {/* Bulk actions */}
-      {notifications.length > 0 && (
+      {feedItems.length > 0 && (
         <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
+          {totalUnread > 0 && (
             <Button variant="outline" size="sm" onClick={markAllRead}>
               <CheckCheck className="mr-1.5 size-4" />
               Mark all as read
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={removeAll}
-          >
-            <Trash2 className="mr-1.5 size-4" />
-            Delete all
-          </Button>
         </div>
       )}
 
@@ -181,28 +260,29 @@ export function NotificationsClient() {
         <TabsList>
           <TabsTrigger value="all">
             All
-            {notifications.length > 0 && (
-              <TabCount>{notifications.length}</TabCount>
+            {feedItems.length > 0 && (
+              <TabCount>{feedItems.length}</TabCount>
             )}
           </TabsTrigger>
           <TabsTrigger value="unread">
             Unread
-            {unreadCount > 0 && (
-              <TabCount>{unreadCount}</TabCount>
+            {totalUnread > 0 && (
+              <TabCount>{totalUnread}</TabCount>
             )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
-          {notifications.length > 0 ? (
+          {feedItems.length > 0 ? (
             <div className="space-y-2">
-              {notifications.map((n) => (
-                <NotificationCard
-                  key={n.notification_id}
-                  notification={n}
-                  onRead={markRead}
-                  onRemove={remove}
+              {feedItems.map((item) => (
+                <FeedCard
+                  key={item.kind === "chat" ? item.id : `notif-${item.data.notification_id}`}
+                  item={item}
+                  onReadNotification={markRead}
+                  onRemoveNotification={remove}
                   onNavigate={handleNavigate}
+                  onChatClick={handleChatClick}
                 />
               ))}
             </div>
@@ -217,15 +297,16 @@ export function NotificationsClient() {
         </TabsContent>
 
         <TabsContent value="unread">
-          {unreadNotifications.length > 0 ? (
+          {unreadItems.length > 0 ? (
             <div className="space-y-2">
-              {unreadNotifications.map((n) => (
-                <NotificationCard
-                  key={n.notification_id}
-                  notification={n}
-                  onRead={markRead}
-                  onRemove={remove}
+              {unreadItems.map((item) => (
+                <FeedCard
+                  key={item.kind === "chat" ? item.id : `notif-${item.data.notification_id}`}
+                  item={item}
+                  onReadNotification={markRead}
+                  onRemoveNotification={remove}
                   onNavigate={handleNavigate}
+                  onChatClick={handleChatClick}
                 />
               ))}
             </div>

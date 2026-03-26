@@ -217,6 +217,58 @@ export async function getTotalUnreadCount(): Promise<number> {
   return result.results[0]?.total ?? 0;
 }
 
+/** Get unread chat sessions with user name and preview (for bell notification) */
+export async function getUnreadChatSessions(): Promise<
+  { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
+> {
+  const result = await d1.query<{
+    id: number;
+    user_name: string;
+    preview: string;
+    last_message_at: string;
+    unread_count: number;
+  }>(
+    `SELECT cs.id, au.full_name AS user_name,
+            cs.last_message_preview AS preview,
+            cs.last_message_at,
+            cs.unread_admin_count AS unread_count
+     FROM chat_session cs
+     JOIN app_user au ON au.app_user_id = cs.app_user_id
+     WHERE cs.unread_admin_count > 0
+       AND cs.status IN ('pending', 'active')
+       AND cs.deleted_at IS NULL
+     ORDER BY cs.last_message_at DESC
+     LIMIT 10`,
+  );
+  return result.results;
+}
+
+/** Get recent chat sessions (read and unread) for the notifications page */
+export async function getRecentChatSessions(): Promise<
+  { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
+> {
+  const result = await d1.query<{
+    id: number;
+    user_name: string;
+    preview: string;
+    last_message_at: string;
+    unread_count: number;
+  }>(
+    `SELECT cs.id, au.full_name AS user_name,
+            cs.last_message_preview AS preview,
+            cs.last_message_at,
+            cs.unread_admin_count AS unread_count
+     FROM chat_session cs
+     JOIN app_user au ON au.app_user_id = cs.app_user_id
+     WHERE cs.last_message_at IS NOT NULL
+       AND cs.status IN ('pending', 'active')
+       AND cs.deleted_at IS NULL
+     ORDER BY cs.last_message_at DESC
+     LIMIT 20`,
+  );
+  return result.results;
+}
+
 // ─── Mutations ──────────────────────────────────────────────────────────────
 
 /** Send a message in a chat session */

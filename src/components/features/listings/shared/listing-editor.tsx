@@ -33,7 +33,6 @@ import {
   EyeOff,
   Map as MapIcon,
   Image as ImageIcon,
-  AlertTriangle,
   XCircle,
   CheckCircle,
   Pencil,
@@ -60,6 +59,7 @@ import {
 } from "@/components/ui/combobox";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { FormDialog } from "@/components/shared/form-dialog";
+import { StatusBanner } from "@/components/shared/status-banner";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
   createListing,
@@ -1521,18 +1521,22 @@ export function ListingEditor({
             </div>
           </div>
 
-          {/* ── Rework banner ── */}
+          {/* ── Status banners ── */}
+          {listing?.approve_status_name === "Approved" && listing?.approved_by_name && (
+            <div className="mt-3">
+              <StatusBanner
+                status="approved"
+                actionBy={listing.approved_by_name}
+                actionAt={listing.approved_at}
+              />
+            </div>
+          )}
           {isRework && listing?.rejection_reason && (
-            <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-800">
-                  Returned for Rework
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {listing.rejection_reason}
-                </p>
-              </div>
+            <div className="mt-3">
+              <StatusBanner
+                status="rework"
+                reason={listing.rejection_reason}
+              />
             </div>
           )}
 

@@ -20,14 +20,17 @@ interface ChannelHandle {
 }
 
 interface PusherContextValue {
-  /** Subscribe to an event on the user's private channel (existing API) */
+  /** Subscribe to an event on the user's private channel */
   subscribe: (event: string, callback: (data: unknown) => void) => () => void;
-  /** Subscribe to an arbitrary private channel. Returns a handle with subscribe/unsubscribe. */
+  /** Subscribe to an event on the admin chat channel (same deferred pattern as subscribe) */
+  subscribeAdminChat: (event: string, callback: (data: unknown) => void) => () => void;
+  /** Subscribe to an arbitrary private channel (only works after Pusher is connected) */
   subscribeToChannel: (channelName: string) => ChannelHandle;
 }
 
 const PusherContext = createContext<PusherContextValue>({
   subscribe: () => () => {},
+  subscribeAdminChat: () => () => {},
   subscribeToChannel: () => ({
     subscribe: () => () => {},
     unsubscribe: () => {},
@@ -38,8 +41,12 @@ export function PusherProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const pusherRef = useRef<PusherClient | null>(null);
   const userChannelRef = useRef<Channel | null>(null);
+  const adminChatChannelRef = useRef<Channel | null>(null);
   const channelsRef = useRef<Map<string, { channel: Channel; refCount: number }>>(new Map());
+  // Deferred listeners for user channel
   const listenersRef = useRef<Set<Listener>>(new Set());
+  // Deferred listeners for admin chat channel
+  const adminChatListenersRef = useRef<Set<Listener>>(new Set());
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
@@ -55,23 +62,31 @@ export function PusherProvider({ children }: { children: ReactNode }) {
     });
     pusherRef.current = pusher;
 
-    // Subscribe to the user's private channel (existing behavior)
+    // Subscribe to the user's private channel
     const userChannel = pusher.subscribe(`private-user-${session.user.id}`);
     userChannelRef.current = userChannel;
 
-    // Listen for session revocation
     userChannel.bind("session-revoked", async () => {
       await signOut({ redirect: false });
       window.location.href = "/login";
     });
 
-    // Bind any listeners that were registered before the channel was ready
+    // Bind deferred user channel listeners
     for (const listener of listenersRef.current) {
       userChannel.bind(listener.event, listener.callback);
     }
 
+    // Subscribe to admin chat channel (for bell notifications)
+    // Uses same deferred pattern as user channel — always subscribed when Pusher is up
+    const adminChatChannel = pusher.subscribe("private-admin-chat");
+    adminChatChannelRef.current = adminChatChannel;
+
+    // Bind deferred admin chat listeners
+    for (const listener of adminChatListenersRef.current) {
+      adminChatChannel.bind(listener.event, listener.callback);
+    }
+
     return () => {
-      // Cleanup all channels
       for (const [name, entry] of channelsRef.current) {
         entry.channel.unbind_all();
         pusher.unsubscribe(name);
@@ -80,13 +95,18 @@ export function PusherProvider({ children }: { children: ReactNode }) {
 
       userChannel.unbind_all();
       pusher.unsubscribe(`private-user-${session.user.id}`);
+
+      adminChatChannel.unbind_all();
+      pusher.unsubscribe("private-admin-chat");
+      adminChatChannelRef.current = null;
+
       pusher.disconnect();
       pusherRef.current = null;
       userChannelRef.current = null;
     };
   }, [status, session?.user?.id]);
 
-  // Existing subscribe for user channel
+  // Subscribe to user's private channel (deferred)
   const subscribe = useCallback(
     (event: string, callback: (data: unknown) => void) => {
       const listener: Listener = { event, callback };
@@ -108,21 +128,56 @@ export function PusherProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // New: subscribe to an arbitrary channel
+  // Subscribe to admin chat channel (deferred — same pattern as subscribe)
+  const subscribeAdminChat = useCallback(
+    (event: string, callback: (data: unknown) => void) => {
+      const listener: Listener = { event, callback };
+      adminChatListenersRef.current.add(listener);
+      const channel = adminChatChannelRef.current;
+      if (channel) {
+        channel.bind(event, callback);
+      }
+
+      return () => {
+        adminChatListenersRef.current.delete(listener);
+        const ch = adminChatChannelRef.current;
+        if (ch) {
+          ch.unbind(event, callback);
+        }
+      };
+    },
+    [],
+  );
+
+  // Subscribe to arbitrary channel (only works when Pusher is already connected)
   const subscribeToChannel = useCallback(
     (channelName: string): ChannelHandle => {
       const pusher = pusherRef.current;
 
-      // Get or create channel subscription
+      // For admin-chat, reuse the always-on channel
+      if (channelName === "private-admin-chat") {
+        return {
+          subscribe: (event: string, callback: (data: unknown) => void) => {
+            return subscribeAdminChat(event, callback);
+          },
+          unsubscribe: () => {}, // Don't unsubscribe the shared channel
+        };
+      }
+
+      if (!pusher) {
+        return {
+          subscribe: () => () => {},
+          unsubscribe: () => {},
+        };
+      }
+
       let entry = channelsRef.current.get(channelName);
-      if (!entry && pusher) {
+      if (!entry) {
         const channel = pusher.subscribe(channelName);
         entry = { channel, refCount: 0 };
         channelsRef.current.set(channelName, entry);
       }
-
-      entry = channelsRef.current.get(channelName);
-      if (entry) entry.refCount++;
+      entry.refCount++;
 
       return {
         subscribe: (event: string, callback: (data: unknown) => void) => {
@@ -150,11 +205,11 @@ export function PusherProvider({ children }: { children: ReactNode }) {
         },
       };
     },
-    [],
+    [subscribeAdminChat],
   );
 
   return (
-    <PusherContext value={{ subscribe, subscribeToChannel }}>
+    <PusherContext value={{ subscribe, subscribeAdminChat, subscribeToChannel }}>
       {children}
     </PusherContext>
   );

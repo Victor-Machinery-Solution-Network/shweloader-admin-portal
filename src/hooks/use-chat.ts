@@ -11,6 +11,18 @@ import {
 } from "@/lib/actions/chat";
 import type { ChatMessageWithDetails, ChatSessionWithDetails } from "@/types/chat";
 
+/** Custom event name dispatched when an admin reads a chat session */
+export const CHAT_SESSION_READ_EVENT = "chat-session-read";
+
+/** Mark session as read and notify the bell to refresh */
+export function markReadAndNotify(sessionId: number) {
+  markSessionRead(sessionId)
+    .then(() => {
+      window.dispatchEvent(new Event(CHAT_SESSION_READ_EVENT));
+    })
+    .catch(() => {});
+}
+
 /** Hook for real-time messages in an active chat session */
 export function useChatMessages(sessionId: number | null, initialUnreadCount = 0, initialUserLastReadAt: string | null = null) {
   const [messages, setMessages] = useState<ChatMessageWithDetails[]>([]);
@@ -41,7 +53,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 
     // Mark as read only if there are unread messages
     if (initialUnreadRef.current > 0) {
-      markSessionRead(sessionId).catch(() => {});
+      markReadAndNotify(sessionId);
     }
 
     return () => {
@@ -94,7 +106,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 
       // Auto-mark as read when a user message arrives while admin is viewing this session
       if (msg.sender_type === "user" && sessionId) {
-        markSessionRead(sessionId).catch(() => {});
+        markReadAndNotify(sessionId);
       }
     });
 
@@ -267,7 +279,8 @@ export function useChatInbox(
     // Listen for messages on existing sessions to update inbox (unread counts, preview)
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      const isUserMessage = raw.senderType === "user";
+      // Worker (user messages) doesn't include senderType; admin messages explicitly set senderType: "admin"
+      const isUserMessage = raw.senderType !== "admin";
       // Refresh unread count only for user messages
       if (isUserMessage) {
         getTotalUnreadCount().then((count) => {

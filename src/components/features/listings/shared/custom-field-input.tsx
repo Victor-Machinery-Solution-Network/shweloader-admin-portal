@@ -134,5 +134,15 @@ export function FieldValueInput({
           </PopoverContent>
         </Popover>
       );
+
+    default:
+      return (
+        <Input
+          value={field.value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Value"
+          autoComplete="off"
+        />
+      );
   }
 }

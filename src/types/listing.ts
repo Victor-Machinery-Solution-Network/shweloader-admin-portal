@@ -146,6 +146,7 @@ export interface SaleListingWithDetails {
   // Approval status
   approve_status_name: string | null;
   approved_at: string | null;
+  approved_by_name: string | null;
   // Featured status
   featured_id: number | null;
 }
@@ -196,6 +197,7 @@ export interface RentListingWithDetails {
   // Approval status
   approve_status_name: string | null;
   approved_at: string | null;
+  approved_by_name: string | null;
   // Featured status
   featured_id: number | null;
 }

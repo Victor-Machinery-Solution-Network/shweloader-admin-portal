@@ -44,6 +44,7 @@ export function EquipmentModelsClient({
   const canCreate = useHasPermission("equipment_models", "create");
   const canDelete = useHasPermission("equipment_models", "delete");
   const [showCreate, setShowCreate] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   const columns = useMemo(
     () => createColumns(mainCategories, subCategories, brands, subCategoryBrandLinks),
@@ -117,7 +118,7 @@ export function EquipmentModelsClient({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+              <DropdownMenuItem onClick={() => { setFormKey((k) => k + 1); setShowCreate(true); }}>
                 <FileText /> Fill Form
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -165,7 +166,7 @@ export function EquipmentModelsClient({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
-                  <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                  <DropdownMenuItem onClick={() => { setFormKey((k) => k + 1); setShowCreate(true); }}>
                     <FileText /> Fill Form
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -181,6 +182,7 @@ export function EquipmentModelsClient({
       )}
 
       <EquipmentModelForm
+        key={formKey}
         open={showCreate}
         onOpenChange={setShowCreate}
         mainCategories={mainCategories}

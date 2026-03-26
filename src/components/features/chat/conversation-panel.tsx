@@ -14,8 +14,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { MessageBubble } from "./message-bubble";
 import { ChatInputBar } from "./chat-input-bar";
 import { TypingIndicator } from "./typing-indicator";
-import { useChatMessages, useTypingIndicator } from "@/hooks/use-chat";
-import { sendMessage, resolveSession, reopenSession, markSessionRead } from "@/lib/actions/chat";
+import { useChatMessages, useTypingIndicator, markReadAndNotify } from "@/hooks/use-chat";
+import { sendMessage, resolveSession, reopenSession } from "@/lib/actions/chat";
 import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
@@ -84,25 +84,51 @@ export function ConversationPanel({
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
 
-  // Auto-scroll when admin sends OR when an incoming message arrives while at the bottom
+  // Track session changes to force scroll on initial load
+  const prevSessionIdRef = useRef<number | null>(null);
+  const isNewSessionRef = useRef(false);
+
   useEffect(() => {
-    if (justSentRef.current) {
+    if (session?.id && session.id !== prevSessionIdRef.current) {
+      prevSessionIdRef.current = session.id;
+      isNewSessionRef.current = true;
+      isNearBottomRef.current = true;
+    }
+  }, [session?.id]);
+
+  // Auto-scroll: on session change (instant), on send, or on incoming message at bottom
+  useEffect(() => {
+    if (messages.length === 0) return;
+
+    if (isNewSessionRef.current) {
+      // New session loaded — always scroll to bottom instantly
+      isNewSessionRef.current = false;
+      // Double rAF to ensure DOM has painted the messages
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+        });
+      });
+      if (session?.id) {
+        onMessagesRead?.();
+        markReadAndNotify(session.id);
+      }
+    } else if (justSentRef.current) {
       // Admin just sent — always scroll to bottom
       justSentRef.current = false;
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       if (session?.id) {
         onMessagesRead?.();
-        markSessionRead(session.id).catch(() => {});
+        markReadAndNotify(session.id);
       }
     } else if (isNearBottomRef.current) {
       // Incoming message while already at bottom — scroll to stay at bottom
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       if (session?.id) {
         onMessagesRead?.();
-        markSessionRead(session.id).catch(() => {});
+        markReadAndNotify(session.id);
       }
     }
-    // If not near bottom: don't scroll — user is reading mid-conversation
   }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // IntersectionObserver on the bottom sentinel — when visible, user has seen latest messages
@@ -123,7 +149,7 @@ export function ConversationPanel({
         isNearBottomRef.current = entry.isIntersecting;
         if (entry.isIntersecting && session?.id) {
           onMessagesReadRef.current?.();
-          markSessionRead(session.id).catch(() => {});
+          markReadAndNotify(session.id);
         }
       },
       { root: viewport, threshold: 0.1 },

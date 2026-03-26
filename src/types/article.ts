@@ -41,4 +41,5 @@ export interface Article {
 export interface ArticleWithDetails extends Article {
   category_name: string | null;
   status_name: string | null;
+  approved_by_name: string | null;
 }

@@ -13,8 +13,6 @@ import {
   ComboboxContent,
   ComboboxList,
   ComboboxItem,
-  ComboboxGroup,
-  ComboboxLabel,
   ComboboxEmpty,
   ComboboxCollection,
 } from "@/components/ui/combobox";
@@ -108,25 +106,34 @@ export function EquipmentModelForm({
       .map((sc) => sc.name);
   }, [selectedBrand, allSubCategoryNames, brandMap, subCategoriesByBrand, subCategories]);
 
-  // Group filtered sub-categories by main category for the scrollable grouped dropdown
-  const groupedSubCategories = useMemo(() => {
+  // Map each sub-category name to its main category group label
+  const subCategoryGroupLabel = useMemo(() => {
     const mainCatIdToName = new Map(
       mainCategories.map((mc) => [mc.category_id, mc.name]),
     );
-    const filteredSet = new Set(filteredSubCategoryNames);
-    const groups = new Map<string, { name: string; id: number }[]>();
+    const map = new Map<string, string>();
+    for (const sc of subCategories) {
+      map.set(sc.name, mainCatIdToName.get(sc.category_id) ?? "Other");
+    }
+    return map;
+  }, [subCategories, mainCategories]);
 
+  // Build ordered items list grouped by main category (for ComboboxCollection rendering)
+  const orderedSubCategoryNames = useMemo(() => {
+    const filteredSet = new Set(filteredSubCategoryNames);
+    const groups = new Map<string, string[]>();
     for (const sc of subCategories) {
       if (!filteredSet.has(sc.name)) continue;
-      const groupName = mainCatIdToName.get(sc.category_id) ?? "Other";
-      if (!groups.has(groupName)) {
-        groups.set(groupName, []);
-      }
-      groups.get(groupName)!.push({ name: sc.name, id: sc.sub_category_id });
+      const groupName = subCategoryGroupLabel.get(sc.name) ?? "Other";
+      if (!groups.has(groupName)) groups.set(groupName, []);
+      groups.get(groupName)!.push(sc.name);
     }
+    // Flatten in group order
+    const result: string[] = [];
+    for (const items of groups.values()) result.push(...items);
+    return result;
+  }, [filteredSubCategoryNames, subCategories, subCategoryGroupLabel]);
 
-    return groups;
-  }, [filteredSubCategoryNames, subCategories, mainCategories]);
 
   const filteredBrandNames = useMemo(() => {
     if (!selectedSubCategory) return allBrandNames;
@@ -276,7 +283,7 @@ export function EquipmentModelForm({
               <Combobox
                 value={selectedSubCategory}
                 onValueChange={handleSubCategoryChange}
-                items={filteredSubCategoryNames}
+                items={orderedSubCategoryNames}
               >
                 <ComboboxInput
                   placeholder="Search sub category…"
@@ -285,18 +292,16 @@ export function EquipmentModelForm({
                 <ComboboxContent>
                   <ComboboxList>
                     <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                    {Array.from(groupedSubCategories.entries()).map(
-                      ([groupName, items]) => (
-                        <ComboboxGroup key={groupName}>
-                          <ComboboxLabel>{groupName}</ComboboxLabel>
-                          {items.map((item) => (
-                            <ComboboxItem key={item.id} value={item.name}>
-                              {item.name}
-                            </ComboboxItem>
-                          ))}
-                        </ComboboxGroup>
-                      ),
-                    )}
+                    <ComboboxCollection>
+                      {(name) => (
+                        <ComboboxItem key={name} value={name}>
+                          <span className="flex flex-col">
+                            <span>{name}</span>
+                            <span className="text-muted-foreground text-xs">{subCategoryGroupLabel.get(name)}</span>
+                          </span>
+                        </ComboboxItem>
+                      )}
+                    </ComboboxCollection>
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>

@@ -9,7 +9,6 @@ import {
   Pencil,
   CalendarIcon,
   SendHorizontal,
-  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
@@ -24,6 +23,7 @@ import { ImageInput } from "@/components/ui/image-input";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { FormSubmittedContext, RequiredInput } from "@/components/ui/required-input";
 import { FormDialog } from "@/components/shared/form-dialog";
+import { StatusBanner } from "@/components/shared/status-banner";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 const LazyCalendar = lazy(() =>
   import("@/components/ui/calendar").then((mod) => ({
@@ -562,15 +562,21 @@ export function ArticleEditor({
           <div className="flex min-h-0 flex-1">
             {/* Left column — editor */}
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 pt-4 pb-6">
+              {/* Status banner — shows when article was already handled by another admin */}
+              {isPublished && article?.approved_by_name && (
+                <StatusBanner
+                  status="approved"
+                  actionBy={article.approved_by_name}
+                  actionAt={article.approved_at}
+                />
+              )}
+
               {/* Rework reason banner */}
               {isRework && article?.rejection_reason && (
-                <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-amber-800">Returned for Rework</p>
-                    <p className="text-sm text-muted-foreground">{article.rejection_reason}</p>
-                  </div>
-                </div>
+                <StatusBanner
+                  status="rework"
+                  reason={article.rejection_reason}
+                />
               )}
               <Field>
                 <FieldLabel>Title <span className="text-destructive">*</span></FieldLabel>
