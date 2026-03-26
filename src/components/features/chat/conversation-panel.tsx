@@ -103,12 +103,10 @@ export function ConversationPanel({
     if (isNewSessionRef.current) {
       // New session loaded — always scroll to bottom instantly
       isNewSessionRef.current = false;
-      // Double rAF to ensure DOM has painted the messages
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-        });
-      });
+      // Wait for DOM layout to complete before scrolling
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      }, 50);
       if (session?.id) {
         onMessagesRead?.();
         markReadAndNotify(session.id);
