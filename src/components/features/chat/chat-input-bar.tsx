@@ -136,13 +136,25 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
                 <div className="size-full bg-muted" />
               )}
             </div>
-            <div className="min-w-0 max-w-[200px]">
+            <div className="min-w-0 max-w-65">
               {selectedProduct.brandName && (
                 <p className="text-[10px] uppercase text-muted-foreground truncate">
                   {selectedProduct.brandName}
                 </p>
               )}
               <p className="truncate text-xs font-medium">{selectedProduct.name ?? "Unnamed"}</p>
+              <div className="flex items-center gap-1.5">
+                {selectedProduct.customId && (
+                  <span className="text-[10px] text-muted-foreground">{selectedProduct.customId}</span>
+                )}
+                {selectedProduct.price != null && (
+                  <span className={`text-[10px] font-medium ${selectedProduct.type === "rent" ? "text-amber-500" : "text-blue-400"}`}>
+                    {selectedProduct.displayCurrency === "USD"
+                      ? `$${selectedProduct.price.toLocaleString()}`
+                      : `${selectedProduct.price.toLocaleString()} MMK`}
+                  </span>
+                )}
+              </div>
             </div>
             <button
               type="button"

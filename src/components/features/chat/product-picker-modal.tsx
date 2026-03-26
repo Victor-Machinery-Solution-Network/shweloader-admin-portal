@@ -18,6 +18,8 @@ import { getPickableListings } from "@/lib/actions/chat";
 export interface SelectedListing {
   id: number;
   type: "sale" | "rent";
+  productListId: number;
+  customId: string | null;
   name: string | null;
   thumbnail: string | null;
   brandName: string | null;
@@ -85,7 +87,8 @@ export function ProductPickerModal({
       items = items.filter(
         (l) =>
           l.name?.toLowerCase().includes(q) ||
-          l.brandName?.toLowerCase().includes(q),
+          l.brandName?.toLowerCase().includes(q) ||
+          l.customId?.toLowerCase().includes(q),
       );
     }
     return items;

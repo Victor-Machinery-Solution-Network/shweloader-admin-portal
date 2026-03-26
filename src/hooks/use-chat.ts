@@ -29,7 +29,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   const [isLoading, setIsLoading] = useState(false);
   const [sessionClosed, setSessionClosed] = useState(false);
   const [userLastReadAt, setUserLastReadAt] = useState<string | null>(initialUserLastReadAt);
-  const { subscribeToChannel } = usePusher();
+  const { subscribeToChannel, isReady } = usePusher();
   const mountedRef = useRef(true);
   const initialUnreadRef = useRef(initialUnreadCount);
   initialUnreadRef.current = initialUnreadCount;
@@ -61,9 +61,9 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
     };
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pusher subscription for new messages
+  // Pusher subscription for new messages (re-runs when Pusher becomes ready)
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !isReady) return;
 
     const handle = subscribeToChannel(`private-chat-${sessionId}`);
 
@@ -135,7 +135,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
       unsubRead();
       handle.unsubscribe();
     };
-  }, [sessionId, subscribeToChannel]);
+  }, [sessionId, subscribeToChannel, isReady]);
 
   return { messages, isLoading, setMessages, sessionClosed, userLastReadAt };
 }
@@ -144,11 +144,11 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 export function useTypingIndicator(sessionId: number | null) {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
-  const { subscribeToChannel } = usePusher();
+  const { subscribeToChannel, isReady } = usePusher();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || !isReady) {
       setIsTyping(false);
       setTypingUser(null);
       return;
@@ -189,7 +189,7 @@ export function useTypingIndicator(sessionId: number | null) {
       handle.unsubscribe();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [sessionId, subscribeToChannel]);
+  }, [sessionId, subscribeToChannel, isReady]);
 
   return { isTyping, typingUser };
 }

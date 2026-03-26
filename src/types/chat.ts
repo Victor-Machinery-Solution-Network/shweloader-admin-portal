@@ -42,6 +42,8 @@ export interface ChatSessionWithDetails extends ChatSession {
 export interface ProductDiscussed {
   listingId: number;
   listingType: "sale" | "rent";
+  productListId: number;
+  customId: string | null;
   productName: string | null;
   productThumbnail: string | null;
   brandName: string | null;
@@ -69,6 +71,8 @@ export interface ChatMessageWithDetails extends ChatMessage {
   product_name: string | null;
   product_thumbnail: string | null;
   listing_type: "sale" | "rent" | null;
+  product_list_id: number | null;
+  custom_id: string | null;
   brand_name: string | null;
   mmk_price: number | null;
   usd_price: number | null;

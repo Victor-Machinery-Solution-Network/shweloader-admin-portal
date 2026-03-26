@@ -9,6 +9,8 @@ interface ProductMessageCardProps {
   productThumbnail: string | null;
   listingType: "sale" | "rent" | null;
   listingId: number | null;
+  productListId?: number | null;
+  customId?: string | null;
   brandName: string | null;
   mmkPrice: number | null;
   usdPrice: number | null;
@@ -37,6 +39,8 @@ export function ProductMessageCard({
   productThumbnail,
   listingType,
   listingId,
+  productListId,
+  customId,
   brandName,
   mmkPrice,
   usdPrice,
@@ -54,10 +58,9 @@ export function ProductMessageCard({
     );
   }
 
-  const listingUrl =
-    listingType && listingId
-      ? `/listings/for-${listingType}/${listingId}/edit`
-      : null;
+  const listingUrl = productListId
+    ? `/listings/${productListId}`
+    : null;
 
   const priceDisplay = formatPrice(mmkPrice, usdPrice, displayCurrency);
 
@@ -88,11 +91,14 @@ export function ProductMessageCard({
         <p className="text-sm font-semibold truncate">
           {productName ?? "Unnamed product"}
         </p>
+        {customId && (
+          <p className="text-[10px] text-muted-foreground">{customId}</p>
+        )}
       </div>
 
       {/* Price + badge */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+        <span className={`text-xs font-medium ${listingType === "rent" ? "text-amber-500" : "text-blue-400"}`}>
           {priceDisplay}
         </span>
         {listingType && (

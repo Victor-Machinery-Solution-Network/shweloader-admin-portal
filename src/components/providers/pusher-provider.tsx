@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -26,6 +27,8 @@ interface PusherContextValue {
   subscribeAdminChat: (event: string, callback: (data: unknown) => void) => () => void;
   /** Subscribe to an arbitrary private channel (only works after Pusher is connected) */
   subscribeToChannel: (channelName: string) => ChannelHandle;
+  /** True when Pusher client is connected and ready */
+  isReady: boolean;
 }
 
 const PusherContext = createContext<PusherContextValue>({
@@ -35,6 +38,7 @@ const PusherContext = createContext<PusherContextValue>({
     subscribe: () => () => {},
     unsubscribe: () => {},
   }),
+  isReady: false,
 });
 
 export function PusherProvider({ children }: { children: ReactNode }) {
@@ -43,6 +47,7 @@ export function PusherProvider({ children }: { children: ReactNode }) {
   const userChannelRef = useRef<Channel | null>(null);
   const adminChatChannelRef = useRef<Channel | null>(null);
   const channelsRef = useRef<Map<string, { channel: Channel; refCount: number }>>(new Map());
+  const [isReady, setIsReady] = useState(false);
   // Deferred listeners for user channel
   const listenersRef = useRef<Set<Listener>>(new Set());
   // Deferred listeners for admin chat channel
@@ -86,7 +91,10 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       adminChatChannel.bind(listener.event, listener.callback);
     }
 
+    setIsReady(true);
+
     return () => {
+      setIsReady(false);
       for (const [name, entry] of channelsRef.current) {
         entry.channel.unbind_all();
         pusher.unsubscribe(name);
@@ -209,7 +217,7 @@ export function PusherProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <PusherContext value={{ subscribe, subscribeAdminChat, subscribeToChannel }}>
+    <PusherContext value={{ subscribe, subscribeAdminChat, subscribeToChannel, isReady }}>
       {children}
     </PusherContext>
   );

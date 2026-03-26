@@ -178,6 +178,8 @@ export function MessageBubble({
             productThumbnail={message.product_thumbnail}
             listingType={message.listing_type}
             listingId={message.sale_listing_id ?? message.rent_listing_id}
+            productListId={message.product_list_id}
+            customId={message.custom_id}
             brandName={message.brand_name}
             mmkPrice={message.mmk_price}
             usdPrice={message.usd_price}

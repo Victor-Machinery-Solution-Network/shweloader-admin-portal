@@ -26,6 +26,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
+  const [productRefreshKey, setProductRefreshKey] = useState(0);
   const pendingSessionRef = useRef<number | null>(null);
 
   // Update selection when URL query param changes (e.g. clicking a notification)
@@ -81,6 +82,10 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
             : s,
         ),
       );
+      // Re-fetch products if a new message arrived for the selected session
+      if (sessionId === selectedIdRef.current) {
+        setProductRefreshKey((k) => k + 1);
+      }
     },
     [],
   );
@@ -126,7 +131,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;
 
-  // Fetch products discussed for the selected session
+  // Fetch products discussed for the selected session (re-fetches on new messages)
   useEffect(() => {
     if (!selectedId) {
       setSessionProducts([]);
@@ -143,7 +148,7 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, productRefreshKey]);
 
   function handleSelect(id: number) {
     setSelectedId(id);

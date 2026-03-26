@@ -59,7 +59,6 @@ import {
 } from "@/components/ui/combobox";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { FormDialog } from "@/components/shared/form-dialog";
-import { StatusBanner } from "@/components/shared/status-banner";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
   createListing,
@@ -1520,25 +1519,6 @@ export function ListingEditor({
               })()}
             </div>
           </div>
-
-          {/* ── Status banners ── */}
-          {listing?.approve_status_name === "Approved" && listing?.approved_by_name && (
-            <div className="mt-3">
-              <StatusBanner
-                status="approved"
-                actionBy={listing.approved_by_name}
-                actionAt={listing.approved_at}
-              />
-            </div>
-          )}
-          {isRework && listing?.rejection_reason && (
-            <div className="mt-3">
-              <StatusBanner
-                status="rework"
-                reason={listing.rejection_reason}
-              />
-            </div>
-          )}
 
           {/* ── Step Indicator ──────────────────────────────────── */}
           <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm">

@@ -158,6 +158,8 @@ export async function getChatMessages(
         WHEN cm.rent_listing_id IS NOT NULL THEN 'rent'
         ELSE NULL
       END AS listing_type,
+      pl.id AS product_list_id,
+      COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
       pb.name AS brand_name,
       COALESCE(sl.mmk_price, rl.mmk_price) AS mmk_price,
       COALESCE(sl.usd_price, rl.usd_price) AS usd_price,
@@ -548,6 +550,8 @@ export async function getSessionProducts(
   const result = await d1.query<{
     sale_id: number;
     rent_id: number;
+    product_list_id: number;
+    custom_id: string | null;
     product_name: string | null;
     product_thumbnail: string | null;
     brand_name: string | null;
@@ -558,6 +562,8 @@ export async function getSessionProducts(
     `SELECT DISTINCT
       COALESCE(cm.sale_listing_id, 0) AS sale_id,
       COALESCE(cm.rent_listing_id, 0) AS rent_id,
+      pl.id AS product_list_id,
+      COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pl.thumbnail_url AS product_thumbnail,
       pb.name AS brand_name,
@@ -579,6 +585,8 @@ export async function getSessionProducts(
   return result.results.map((row) => ({
     listingId: row.sale_id || row.rent_id,
     listingType: row.sale_id ? "sale" : "rent",
+    productListId: row.product_list_id,
+    customId: row.custom_id,
     productName: row.product_name,
     productThumbnail: row.product_thumbnail,
     brandName: row.brand_name,
@@ -593,6 +601,8 @@ export async function getPickableListings(): Promise<
   {
     id: number;
     type: "sale" | "rent";
+    productListId: number;
+    customId: string | null;
     name: string | null;
     brandName: string | null;
     thumbnail: string | null;
@@ -605,6 +615,8 @@ export async function getPickableListings(): Promise<
   const result = await d1.query<{
     listing_id: number;
     listing_type: "sale" | "rent";
+    product_list_id: number;
+    custom_id: string | null;
     product_name: string | null;
     brand_name: string | null;
     thumbnail_url: string | null;
@@ -614,6 +626,8 @@ export async function getPickableListings(): Promise<
   }>(
     `SELECT
       sl.id AS listing_id, 'sale' AS listing_type,
+      pl.id AS product_list_id,
+      sl.custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
@@ -632,6 +646,8 @@ export async function getPickableListings(): Promise<
     UNION ALL
     SELECT
       rl.id AS listing_id, 'rent' AS listing_type,
+      pl.id AS product_list_id,
+      rl.custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
@@ -654,6 +670,8 @@ export async function getPickableListings(): Promise<
   return result.results.map((row) => ({
     id: row.listing_id,
     type: row.listing_type,
+    productListId: row.product_list_id,
+    customId: row.custom_id,
     name: row.product_name,
     brandName: row.brand_name,
     thumbnail: row.thumbnail_url,

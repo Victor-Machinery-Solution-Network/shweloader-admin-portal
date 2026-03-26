@@ -67,9 +67,9 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
   }
 
   return (
-    <div className="w-[260px] shrink-0 border-l bg-muted/10 overflow-y-auto">
-      {/* User Info */}
-      <div className="flex flex-col items-center gap-2 p-4 border-b">
+    <div className="w-[260px] shrink-0 border-l bg-muted/10 flex flex-col min-h-0">
+      {/* User Info — fixed top */}
+      <div className="flex flex-col items-center gap-2 p-4 border-b shrink-0">
         <div className="size-14 rounded-full bg-secondary flex items-center justify-center">
           <span className="text-lg font-semibold text-secondary-foreground">
             {getInitials(session.user_name)}
@@ -120,8 +120,8 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
         </div>
       </div>
 
-      {/* Products Discussed */}
-      <div className="p-4 border-b">
+      {/* Products Discussed — scrollable middle */}
+      <div className="p-4 border-b flex-1 min-h-0 overflow-y-auto">
         <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
           Products Discussed ({products.length})
         </h3>
@@ -130,7 +130,7 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
         ) : (
           <div className="flex flex-col gap-2">
             {products.map((product) => {
-              const url = `/listings/for-${product.listingType}/${product.listingId}/edit`;
+              const url = `/listings/${product.productListId}`;
               return (
                 <a
                   key={`${product.listingType}-${product.listingId}`}
@@ -161,15 +161,20 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
                     <p className="text-xs font-medium truncate">
                       {product.productName ?? "Unnamed"}
                     </p>
+                    {product.customId && (
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {product.customId}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className={`text-[10px] font-medium ${product.listingType === "rent" ? "text-amber-500" : "text-blue-400"}`}>
                         {formatPrice(product.mmkPrice, product.usdPrice, product.displayCurrency)}
                       </span>
                       <Badge
                         variant={product.listingType === "sale" ? "equipment" : "attachment"}
                         className="text-[10px] h-4 px-1"
                       >
-                        {product.listingType === "sale" ? "Sale" : "Rent"}
+                        {product.listingType === "sale" ? "For Sale" : "For Rent"}
                       </Badge>
                     </div>
                   </div>
@@ -180,8 +185,8 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
         )}
       </div>
 
-      {/* Session Info */}
-      <div className="p-4">
+      {/* Session Info — fixed bottom */}
+      <div className="p-4 shrink-0">
         <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
           Session Info
         </h3>
