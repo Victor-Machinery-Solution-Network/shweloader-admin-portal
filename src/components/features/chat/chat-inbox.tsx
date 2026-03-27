@@ -6,7 +6,7 @@ import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
 import { ContextPanel } from "./context-panel";
 import { useChatInbox, markReadAndNotify } from "@/hooks/use-chat";
-import { getSessionProducts } from "@/lib/actions/chat";
+import { getSessionProducts, getChatSessionById } from "@/lib/actions/chat";
 import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
 
 interface ChatInboxProps {
@@ -45,7 +45,19 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
         prev.map((s) => (s.id === id ? { ...s, unread_admin_count: 0 } : s)),
       );
     } else if (id) {
+      // Session not in list yet — fetch it directly from the server
       pendingSessionRef.current = id;
+      getChatSessionById(id).then((fetched) => {
+        if (!fetched) return;
+        setSessions((prev) =>
+          prev.some((s) => s.id === id) ? prev : [fetched, ...prev],
+        );
+        setSelectedId(id);
+        pendingSessionRef.current = null;
+        if (fetched.unread_admin_count > 0) {
+          markReadAndNotify(id);
+        }
+      });
     }
   }, [sessionParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -67,21 +79,21 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   }, [sessions]);
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId
-            ? {
-                ...s,
-                last_message_preview: preview,
-                last_message_at: at,
-                // Only increment unread badge for user messages, not admin's own
-                unread_admin_count: isUserMessage
-                  ? s.unread_admin_count + 1
-                  : s.unread_admin_count,
-              }
-            : s,
-        ),
-      );
+      setSessions((prev) => {
+        const idx = prev.findIndex((s) => s.id === sessionId);
+        if (idx === -1) return prev;
+        const updated = {
+          ...prev[idx],
+          last_message_preview: preview,
+          last_message_at: at,
+          unread_admin_count: isUserMessage
+            ? prev[idx].unread_admin_count + 1
+            : prev[idx].unread_admin_count,
+        };
+        // Move to top — most recent message goes first
+        const rest = prev.filter((_, i) => i !== idx);
+        return [updated, ...rest];
+      });
       // Re-fetch products if a new message arrived for the selected session
       if (sessionId === selectedIdRef.current) {
         setProductRefreshKey((k) => k + 1);

@@ -94,6 +94,8 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
         product_name: (raw.productName as string | null) ?? null,
         product_thumbnail: (raw.productThumbnail as string | null) ?? null,
         listing_type: (raw.listingType as "sale" | "rent" | null) ?? null,
+        product_list_id: (raw.productListId as number | null) ?? null,
+        custom_id: (raw.customId as string | null) ?? null,
         brand_name: (raw.brandName as string | null) ?? null,
         mmk_price: (raw.mmkPrice as number | null) ?? null,
         usd_price: (raw.usdPrice as number | null) ?? null,
@@ -277,8 +279,10 @@ export function useChatInbox(
     });
 
     // Listen for messages on existing sessions to update inbox (unread counts, preview)
+    // Also handles new sessions that arrive via message instead of new-session event
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
       const raw = data as Record<string, unknown>;
+      const sessionId = raw.sessionId as number;
       // Worker (user messages) doesn't include senderType; admin messages explicitly set senderType: "admin"
       const isUserMessage = raw.senderType !== "admin";
       // Refresh unread count only for user messages
@@ -287,9 +291,20 @@ export function useChatInbox(
           if (mountedRef.current) setTotalUnread(count);
         });
       }
+
+      // If this message is for a session we don't have yet, fetch and add it
+      // (handles case where new-session event was missed or not sent)
+      if (raw.isNewSession || isUserMessage) {
+        getChatSessionById(sessionId).then((session) => {
+          if (!mountedRef.current || !session) return;
+          // onNewSession will deduplicate (only adds if not already in list)
+          onNewSessionRef.current?.(session);
+        });
+      }
+
       // Always update preview, but pass sender type so inbox can decide on unread badge
       onSessionUpdateRef.current?.(
-        raw.sessionId as number,
+        sessionId,
         raw.lastMessagePreview as string,
         raw.lastMessageAt as string,
         isUserMessage,
