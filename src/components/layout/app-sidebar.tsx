@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -217,14 +218,23 @@ export function AppSidebar() {
     <>
       <Sidebar variant="inset">
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Package className="h-4 w-4" aria-hidden="true" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">Admin Portal</span>
-              <span className="text-xs text-muted-foreground">Shweloader</span>
-            </div>
+          <div>
+            <Image
+              src="/logo-white.svg"
+              alt="Shweloader Admin Portal"
+              width={384}
+              height={120}
+              className="w-full h-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/logo-dark.svg"
+              alt="Shweloader Admin Portal"
+              width={384}
+              height={120}
+              className="w-full h-auto hidden dark:block"
+              priority
+            />
           </div>
         </SidebarHeader>
 
