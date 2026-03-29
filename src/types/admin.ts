@@ -6,6 +6,7 @@ export interface AdminUser {
   password_hash: string;
   role_id: number | null;
   active: number;
+  avatar_url: string | null;
   created_at: string;
   deleted_at: string | null;
   deleted_by: number | null;

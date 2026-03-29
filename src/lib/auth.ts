@@ -217,6 +217,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             role_id: user.role_id,
             permissions,
+            avatar_url: user.avatar_url ?? null,
           };
         } catch (error) {
           // Re-throw AccountDeactivatedError so auth-actions.ts can
@@ -241,7 +242,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // On initial sign-in, persist custom fields into the JWT
       if (user) {
         token.user_id = user.id;
@@ -250,7 +251,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user as AdminUser & { role_id: number | null }
         ).role_id;
         token.permissions = (user as { permissions?: string[] }).permissions ?? [];
+        token.avatar_url = (user as { avatar_url?: string | null }).avatar_url ?? null;
         token.refreshed_at = Date.now();
+      }
+
+      // Force immediate refresh when session.update() is called (e.g. after profile changes)
+      if (trigger === "update") {
+        console.log("[auth:jwt] trigger=update, forcing refresh");
+        token.refreshed_at = 0;
       }
 
       // Periodic refresh: re-check active status, role_id, and permissions
@@ -263,8 +271,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const dbUser = await d1.query<{
             active: number;
             role_id: number | null;
+            username: string;
+            avatar_url: string | null;
           }>(
-            "SELECT active, role_id FROM admin_user WHERE user_id = ? LIMIT 1",
+            "SELECT active, role_id, username, avatar_url FROM admin_user WHERE user_id = ? LIMIT 1",
             [token.user_id as string],
           );
           const row = dbUser.results[0];
@@ -275,11 +285,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.username = undefined;
             token.role_id = null;
             token.permissions = [];
+            token.avatar_url = null;
             return token;
           }
 
-          // Sync role_id in case it was changed by another admin
+          // Sync profile fields in case they were changed
           token.role_id = row.role_id;
+          token.username = row.username;
+          token.avatar_url = row.avatar_url ?? null;
+          console.log("[auth:jwt] refreshed from DB, avatar_url:", row.avatar_url);
 
           // Re-fetch permissions for the (possibly new) role
           if (row.role_id) {
@@ -313,6 +327,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.name = token.username as string;
         session.user.role_id = token.role_id as number | null;
         session.user.permissions = (token.permissions as string[]) ?? [];
+        session.user.avatar_url = (token.avatar_url as string | null) ?? null;
       }
       return session;
     },

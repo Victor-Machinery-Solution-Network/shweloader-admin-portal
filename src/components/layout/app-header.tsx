@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { ROUTES } from "@/lib/constants";
+import { assetUrl } from "@/lib/r2-url";
 
 export function AppHeader() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export function AppHeader() {
 
   const userName = session?.user?.name ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
+  const avatarSrc = assetUrl(session?.user?.avatar_url) ?? undefined;
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -50,7 +52,7 @@ export function AppHeader() {
                 aria-label="User profile"
               >
                 <Avatar className="size-8">
-                  <AvatarImage src="/avatars/user.png" alt={userName} />
+                  <AvatarImage src={avatarSrc} alt={userName} />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </button>
@@ -64,7 +66,7 @@ export function AppHeader() {
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="size-8">
-                    <AvatarImage src="/avatars/user.png" alt={userName} />
+                    <AvatarImage src={avatarSrc} alt={userName} />
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -78,7 +80,7 @@ export function AppHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(ROUTES.PROFILE)}>
                 <User className="mr-2 size-4" aria-hidden="true" />
                 Account
               </DropdownMenuItem>

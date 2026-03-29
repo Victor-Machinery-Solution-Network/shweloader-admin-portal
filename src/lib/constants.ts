@@ -65,6 +65,9 @@ export const ROUTES = {
   // Notifications
   NOTIFICATIONS: "/notifications",
 
+  // Profile
+  PROFILE: "/profile",
+
   // Trash
   TRASH: "/trash",
 } as const;
