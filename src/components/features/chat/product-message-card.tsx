@@ -65,7 +65,7 @@ export function ProductMessageCard({
   const priceDisplay = formatPrice(mmkPrice, usdPrice, displayCurrency);
 
   return (
-    <div className="bg-muted/30 border rounded-xl p-2.5 flex gap-2.5 items-center">
+    <div className="bg-muted/30 border rounded-xl p-2.5 flex gap-2.5 items-center w-72 sm:w-80">
       {/* Thumbnail */}
       <div className="relative size-12 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
         {productThumbnail ? (
@@ -98,7 +98,7 @@ export function ProductMessageCard({
 
       {/* Price + badge */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className={`text-xs font-medium ${listingType === "rent" ? "text-amber-500" : "text-blue-400"}`}>
+        <span className={`text-xs font-medium ${listingType === "rent" ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400"}`}>
           {priceDisplay}
         </span>
         {listingType && (

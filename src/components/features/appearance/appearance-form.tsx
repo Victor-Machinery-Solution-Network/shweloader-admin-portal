@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Monitor, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +22,30 @@ import {
 } from "@/components/providers/custom-theme-provider";
 import { cn } from "@/lib/utils";
 
+const THEME_OPTIONS = [
+  {
+    value: "system",
+    label: "System",
+    description: "Follow your device settings",
+    icon: Monitor,
+  },
+  {
+    value: "light",
+    label: "Light",
+    description: "Light background with dark text",
+    icon: Sun,
+  },
+  {
+    value: "dark",
+    label: "Dark",
+    description: "Dark background with light text",
+    icon: Moon,
+  },
+] as const;
+
 export function AppearanceForm() {
   const { customTheme, setCustomTheme, resetTheme } = useCustomTheme();
+  const { theme, setTheme } = useTheme();
 
   const activePrimary = customTheme.primary ?? "#fbb811";
   const activeSidebarDark = customTheme.sidebarDark ?? "#0A0A0A";
@@ -48,6 +70,56 @@ export function AppearanceForm() {
 
   return (
     <>
+      {/* Theme Mode */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Theme Mode</CardTitle>
+          <CardDescription>
+            Choose between light, dark, or system-based appearance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {THEME_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const isSelected = theme === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTheme(option.value)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-lg border px-4 py-4 transition-all cursor-pointer",
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
+                      : "border-border hover:bg-muted/50",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-full",
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-5" />
+                  </div>
+                  <div className="text-center">
+                    <p className={cn("text-sm font-medium", isSelected && "text-primary")}>
+                      {option.label}
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {option.description}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Primary Color */}
       <Card>
         <CardHeader>

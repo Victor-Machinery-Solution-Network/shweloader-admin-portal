@@ -148,7 +148,7 @@ export function ChatInputBar({ onSend, disabled = false, sessionId }: ChatInputB
                   <span className="text-[10px] text-muted-foreground">{selectedProduct.customId}</span>
                 )}
                 {selectedProduct.price != null && (
-                  <span className={`text-[10px] font-medium ${selectedProduct.type === "rent" ? "text-amber-500" : "text-blue-400"}`}>
+                  <span className={`text-[10px] font-medium ${selectedProduct.type === "rent" ? "text-primary" : "text-accent-foreground"}`}>
                     {selectedProduct.displayCurrency === "USD"
                       ? `$${selectedProduct.price.toLocaleString()}`
                       : `${selectedProduct.price.toLocaleString()} MMK`}

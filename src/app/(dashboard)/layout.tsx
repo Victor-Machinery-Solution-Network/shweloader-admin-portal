@@ -16,6 +16,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AuthSessionProvider } from '@/components/providers/session-provider';
 import { PermissionsProvider } from '@/components/providers/permissions-provider';
 import { PusherProvider } from '@/components/providers/pusher-provider';
+import { IdleTimeoutProvider } from '@/components/providers/idle-timeout-provider';
 
 export default function DashboardLayout({
   children,
@@ -26,6 +27,7 @@ export default function DashboardLayout({
     <AuthSessionProvider>
       <PermissionsProvider>
       <PusherProvider>
+      <IdleTimeoutProvider>
       <SidebarProvider>
         <a
           href="#main-content"
@@ -41,6 +43,7 @@ export default function DashboardLayout({
           </main>
         </SidebarInset>
       </SidebarProvider>
+      </IdleTimeoutProvider>
       </PusherProvider>
       </PermissionsProvider>
     </AuthSessionProvider>

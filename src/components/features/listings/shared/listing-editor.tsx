@@ -187,6 +187,8 @@ interface AutoSaveState {
   saleCustomRate: string;
   rentUseSystemRate: boolean;
   rentCustomRate: string;
+  address: string;
+  hideAddress: boolean;
   hidePartner: boolean;
   saleHidePrice: boolean;
   rentHidePrice: boolean;
@@ -756,7 +758,15 @@ export function ListingEditor({
     savedState?.rentCustomRate ?? String(exchangeRate),
   );
 
+  // ── Address ─────────────────────────────────────────────────────────────
+  const [address, setAddress] = useState(
+    savedState?.address ?? sourceData?.address ?? "",
+  );
+
   // ── Visibility toggles ──────────────────────────────────────────────────
+  const [hideAddress, setHideAddress] = useState(
+    savedState?.hideAddress ?? sourceData?.hide_address === 1,
+  );
   const [hidePartner, setHidePartner] = useState(
     savedState?.hidePartner ?? sourceData?.hide_partner === 1,
   );
@@ -950,6 +960,8 @@ export function ListingEditor({
       saleCustomRate,
       rentUseSystemRate,
       rentCustomRate,
+      address,
+      hideAddress,
       hidePartner,
       saleHidePrice,
       rentHidePrice,
@@ -1041,11 +1053,21 @@ export function ListingEditor({
       }
     }
     setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+    scrollToFormTop();
   }
 
   function goPrev() {
     setCurrentStep((s) => Math.max(s - 1, 0));
+    scrollToFormTop();
   }
+
+  function scrollToFormTop() {
+    setTimeout(() => {
+      scrollBodyRef.current?.scrollTo(0, 0);
+    }, 0);
+  }
+
+  const scrollBodyRef = useRef<HTMLDivElement>(null);
 
   function goToStep(idx: number) {
     if (isEditing || isDraftMode || idx < currentStep) {
@@ -1150,6 +1172,8 @@ export function ListingEditor({
     formData.set("is_hidden", "0");
     formData.set("sale_hide_price", saleHidePrice ? "1" : "0");
     formData.set("rent_hide_price", rentHidePrice ? "1" : "0");
+    formData.set("address", address);
+    formData.set("hide_address", hideAddress ? "1" : "0");
     formData.set("hide_partner", hidePartner ? "1" : "0");
     formData.set("sale_display_currency", saleDisplayCurrency);
     formData.set("rent_display_currency", rentDisplayCurrency);
@@ -1607,7 +1631,7 @@ export function ListingEditor({
         </header>
 
         {/* ── Scrollable Body ───────────────────────────────────── */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollBodyRef} className="min-h-0 flex-1 overflow-y-auto">
           {/* ──────────────────────────────────────────────────────
               STEP 0: PRODUCT
              ────────────────────────────────────────────────────── */}
@@ -2029,6 +2053,20 @@ export function ListingEditor({
                     </Combobox>
                   </div>
                 )}
+
+                {/* Address */}
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Address (optional)"
+                />
+                <label className="flex items-center gap-2 cursor-pointer -mt-1">
+                  <Switch
+                    checked={hideAddress}
+                    onCheckedChange={setHideAddress}
+                  />
+                  <span className="text-xs text-muted-foreground">Hide address from buyers</span>
+                </label>
               </div>
             </div>
 

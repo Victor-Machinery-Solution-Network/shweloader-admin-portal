@@ -126,7 +126,7 @@ export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
     cell: ({ row }) => (
       <div className="flex items-center gap-1">
         {row.original.listing_types.map((type) => (
-          <Badge key={type} variant="secondary" className="text-xs">
+          <Badge key={type} variant={type === "sale" ? "equipment" : "attachment"} className="text-xs">
             {type === "sale" ? "For Sale" : "For Rent"}
           </Badge>
         ))}

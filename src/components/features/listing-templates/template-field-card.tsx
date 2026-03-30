@@ -208,6 +208,8 @@ export function TemplateFieldCard({
                     }
                     if (value === "boolean") {
                       updates.defaultValue = "false";
+                    } else {
+                      updates.defaultValue = undefined;
                     }
                     updateField(updates);
                   }

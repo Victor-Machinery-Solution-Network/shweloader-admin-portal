@@ -6,11 +6,7 @@ import {
   Megaphone,
   Newspaper,
   DollarSign,
-  Monitor,
-  Sun,
-  Moon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
@@ -53,33 +49,10 @@ const TOGGLE_SETTINGS = [
   },
 ] as const;
 
-const THEME_OPTIONS = [
-  {
-    value: "system",
-    label: "System",
-    description: "Follow your device settings",
-    icon: Monitor,
-  },
-  {
-    value: "light",
-    label: "Light",
-    description: "Light background with dark text",
-    icon: Sun,
-  },
-  {
-    value: "dark",
-    label: "Dark",
-    description: "Dark background with light text",
-    icon: Moon,
-  },
-] as const;
-
 export function SettingsClient({ settings }: SettingsClientProps) {
   const canEdit = useHasPermission("app_settings", "edit");
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const { theme, setTheme } = useTheme();
-
   const [exchangeRate, setExchangeRate] = useState(
     settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200",
   );
@@ -123,51 +96,6 @@ export function SettingsClient({ settings }: SettingsClientProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Appearance Section */}
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
-          Appearance
-        </p>
-        <div className="grid grid-cols-3 gap-3">
-          {THEME_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const isSelected = theme === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setTheme(option.value)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border px-4 py-4 transition-all cursor-pointer",
-                  isSelected
-                    ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
-                    : "border-border hover:bg-muted/50",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-full",
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  <Icon className="size-5" />
-                </div>
-                <div className="text-center">
-                  <p className={cn("text-sm font-medium", isSelected && "text-primary")}>
-                    {option.label}
-                  </p>
-                  <p className="text-muted-foreground text-xs mt-0.5">
-                    {option.description}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Feature Toggles Section */}
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">

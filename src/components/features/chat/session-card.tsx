@@ -45,7 +45,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
           : hasUnread
             ? "border-l-primary bg-primary/50"
             : isPending
-              ? "border-l-amber-500"
+              ? "border-l-primary/60"
               : "border-l-transparent",
         isResolved && "opacity-50",
       )}
@@ -86,7 +86,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
           >
             {formatPreview(session.last_message_preview)}
           </p>
-          {unreadCount > 0 && (
+          {hasUnread && (
             <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs bg-primary text-primary-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>

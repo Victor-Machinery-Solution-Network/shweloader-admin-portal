@@ -71,7 +71,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "flex gap-2 items-end",
+        "flex gap-2 items-end min-w-0",
         isAdminMessage ? "flex-row-reverse" : "flex-row",
       )}
     >
@@ -97,7 +97,7 @@ export function MessageBubble({
       {/* Bubble */}
       <div
         className={cn(
-          "flex flex-col gap-1 max-w-[75%]",
+          "flex flex-col gap-1 max-w-[75%] min-w-0",
           isAdminMessage ? "items-end" : "items-start",
         )}
       >
@@ -115,7 +115,7 @@ export function MessageBubble({
             {message.message && (
               <div
                 className={cn(
-                  "px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                  "px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-all",
                   isAdminMessage
                     ? "text-primary-foreground"
                     : "text-foreground",
@@ -128,7 +128,7 @@ export function MessageBubble({
         ) : message.message ? (
           <div
             className={cn(
-              "rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words min-w-[3rem]",
+              "rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-all min-w-[3rem]",
               isAdminMessage
                 ? "bg-primary text-primary-foreground rounded-br-sm"
                 : "bg-muted text-foreground rounded-bl-sm",

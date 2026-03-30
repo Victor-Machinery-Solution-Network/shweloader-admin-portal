@@ -97,9 +97,9 @@ export function useCustomTheme() {
 
 function applyThemeToDOM(theme: CustomTheme) {
   const root = document.documentElement;
+  const isDark = root.classList.contains("dark");
 
   if (theme.primary) {
-    const isDark = root.classList.contains("dark");
     const fg = theme.primaryForeground ?? "#ffffff";
     // Primary color and all derived variables
     root.style.setProperty("--primary", theme.primary);
@@ -138,7 +138,6 @@ function applyThemeToDOM(theme: CustomTheme) {
   }
 
   if (theme.sidebarLight || theme.sidebarDark) {
-    const isDark = root.classList.contains("dark");
     const sidebarColor = isDark ? theme.sidebarDark : theme.sidebarLight;
     if (sidebarColor) {
       root.style.setProperty("--sidebar", sidebarColor);

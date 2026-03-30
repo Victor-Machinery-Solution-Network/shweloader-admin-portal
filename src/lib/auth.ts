@@ -234,7 +234,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 8, // 8 hours
+    maxAge: 60 * 60 * 8, // 8 hours (JWT expiry, but cookie is session-based)
+  },
+
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production"
+        ? "__Secure-authjs.session-token"
+        : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        // No maxAge → session cookie, cleared when browser is fully closed
+      },
+    },
   },
 
   pages: {
@@ -257,7 +272,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Force immediate refresh when session.update() is called (e.g. after profile changes)
       if (trigger === "update") {
-        console.log("[auth:jwt] trigger=update, forcing refresh");
         token.refreshed_at = 0;
       }
 
@@ -293,7 +307,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role_id = row.role_id;
           token.username = row.username;
           token.avatar_url = row.avatar_url ?? null;
-          console.log("[auth:jwt] refreshed from DB, avatar_url:", row.avatar_url);
 
           // Re-fetch permissions for the (possibly new) role
           if (row.role_id) {

@@ -167,7 +167,7 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
                       </p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`text-[10px] font-medium ${product.listingType === "rent" ? "text-amber-500" : "text-blue-400"}`}>
+                      <span className={`text-[10px] font-medium ${product.listingType === "rent" ? "text-primary" : "text-accent-foreground"}`}>
                         {formatPrice(product.mmkPrice, product.usdPrice, product.displayCurrency)}
                       </span>
                       <Badge

@@ -10,6 +10,8 @@ export interface ProductList {
   focal_x: number;
   focal_y: number;
   township_id: number | null;
+  address: string | null;
+  hide_address: number;
   hide_partner: number;
   is_draft: number;
   created_by: number | null;
@@ -120,6 +122,8 @@ export interface SaleListingWithDetails {
   thumbnail_url: string | null;
   description: string | null;
   township_id: number | null;
+  address: string | null;
+  hide_address: number;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
@@ -171,6 +175,8 @@ export interface RentListingWithDetails {
   thumbnail_url: string | null;
   description: string | null;
   township_id: number | null;
+  address: string | null;
+  hide_address: number;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
@@ -252,6 +258,8 @@ export interface DraftListingWithDetails {
   attachment_model_id: number | null;
   partner_id: number | null;
   township_id: number | null;
+  address: string | null;
+  hide_address: number;
   description: string | null;
   thumbnail_url: string | null;
   hide_partner: number;
@@ -287,6 +295,8 @@ export interface ListingDetail {
   thumbnail_url: string | null;
   description: string | null;
   township_id: number | null;
+  address: string | null;
+  hide_address: number;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
   partner_id: number;
