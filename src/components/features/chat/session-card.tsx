@@ -31,6 +31,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
   const isResolved = session.status === "resolved";
   const isPending = session.status === "pending";
   const unreadCount = session.unread_admin_count;
+  const hasUnread = unreadCount > 0;
   const relativeTime = session.last_message_at ? timeAgo(session.last_message_at) : "";
 
   return (
@@ -41,9 +42,11 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         "w-full text-left px-4 py-3 flex items-center gap-3 border-l-2 transition-colors hover:bg-muted/50",
         isSelected
           ? "border-l-primary bg-primary/10"
-          : isPending
-            ? "border-l-amber-500"
-            : "border-l-transparent",
+          : hasUnread
+            ? "border-l-primary bg-primary/50"
+            : isPending
+              ? "border-l-amber-500"
+              : "border-l-transparent",
         isResolved && "opacity-50",
       )}
     >
@@ -61,7 +64,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
           <span
             className={cn(
               "text-sm font-medium truncate",
-              unreadCount > 0 && !isSelected ? "text-foreground" : "text-foreground/80",
+              hasUnread && !isSelected ? "text-foreground" : "text-foreground/80",
             )}
           >
             {session.user_name}
@@ -76,7 +79,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
           <p
             className={cn(
               "text-xs truncate flex-1",
-              unreadCount > 0 && !isSelected
+              hasUnread && !isSelected
                 ? "text-foreground font-medium"
                 : "text-muted-foreground",
             )}
@@ -84,7 +87,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
             {formatPreview(session.last_message_preview)}
           </p>
           {unreadCount > 0 && (
-            <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs bg-red-500 text-white">
+            <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs bg-primary text-primary-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}

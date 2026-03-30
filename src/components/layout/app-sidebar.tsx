@@ -57,7 +57,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, User, LogOut, Bell } from "lucide-react";
+import { MoreVertical, User, LogOut, Bell, Palette } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { logoutAction } from "@/lib/actions/auth-actions";
@@ -823,6 +823,13 @@ export function AppSidebar() {
                   >
                     <User className="mr-2 h-4 w-4" aria-hidden="true" />
                     Account
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:text-sidebar-hover-foreground!"
+                    onClick={() => router.push(ROUTES.APPEARANCE)}
+                  >
+                    <Palette className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Appearance
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="focus:bg-sidebar-hover focus:text-sidebar-hover-foreground focus:**:text-sidebar-hover-foreground!"

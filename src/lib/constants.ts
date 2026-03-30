@@ -67,6 +67,7 @@ export const ROUTES = {
 
   // Profile
   PROFILE: "/profile",
+  APPEARANCE: "/appearance",
 
   // Trash
   TRASH: "/trash",

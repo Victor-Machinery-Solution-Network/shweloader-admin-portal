@@ -1734,7 +1734,7 @@ export function ListingEditor({
                           className={cn(
                             "rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
                             conditionId === String(ct.id)
-                              ? "bg-foreground text-background shadow-sm"
+                              ? "bg-primary text-primary-foreground shadow-sm"
                               : "ring-border text-muted-foreground hover:text-foreground bg-background ring-1",
                           )}
                         >

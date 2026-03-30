@@ -6,7 +6,7 @@
 
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { User, Bell, LogOut } from "lucide-react";
+import { User, Bell, LogOut, Palette } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -83,6 +83,10 @@ export function AppHeader() {
               <DropdownMenuItem onClick={() => router.push(ROUTES.PROFILE)}>
                 <User className="mr-2 size-4" aria-hidden="true" />
                 Account
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(ROUTES.APPEARANCE)}>
+                <Palette className="mr-2 size-4" aria-hidden="true" />
+                Appearance
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => router.push(ROUTES.NOTIFICATIONS)}

@@ -101,8 +101,6 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
         usd_price: (raw.usdPrice as number | null) ?? null,
         display_currency: (raw.displayCurrency as string | null) ?? null,
         partner_name: (raw.partnerName as string | null) ?? null,
-        product_list_id: (raw.productListId as number | null) ?? null,
-        custom_id: (raw.customId as string | null) ?? null,
       };
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],

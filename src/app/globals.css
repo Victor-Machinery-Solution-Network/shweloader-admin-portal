@@ -378,11 +378,11 @@
     color: var(--sidebar-hover-foreground) !important;
   }
 
-  /* Active state uses primary color with dark text */
+  /* Active state uses primary color */
   [data-sidebar="menu-button"][data-active="true"],
   [data-sidebar="menu-sub-button"][data-active="true"] {
     background-color: var(--primary) !important;
-    color: hsl(0 0% 10%) !important;
+    color: var(--primary-foreground) !important;
   }
 }
 
