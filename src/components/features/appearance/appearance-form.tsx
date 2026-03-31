@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, RotateCcw, Monitor, Sun, Moon } from "lucide-react";
+import { Check, RotateCcw, Monitor, Sun, Moon, Pipette } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -47,8 +48,36 @@ export function AppearanceForm() {
   const { customTheme, setCustomTheme, resetTheme } = useCustomTheme();
   const { theme, setTheme } = useTheme();
 
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const sidebarColorInputRef = useRef<HTMLInputElement>(null);
   const activePrimary = customTheme.primary ?? "#fbb811";
   const activeSidebarDark = customTheme.sidebarDark ?? "#0A0A0A";
+  const isCustomColor = activePrimary && !COLOR_PRESETS.some((p) => p.primary === activePrimary);
+  const isCustomSidebar = activeSidebarDark && !SIDEBAR_PRESETS.some((p) => p.dark === activeSidebarDark);
+
+  function getForeground(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness < 128 ? "#ffffff" : "#1A1A1A";
+  }
+
+  function handleCustomColor(hex: string) {
+    setCustomTheme({
+      ...customTheme,
+      primary: hex,
+      primaryForeground: getForeground(hex),
+    });
+  }
+
+  function handleCustomSidebar(hex: string) {
+    setCustomTheme({
+      ...customTheme,
+      sidebarLight: hex,
+      sidebarDark: hex,
+    });
+  }
 
   function handlePrimarySelect(preset: (typeof COLOR_PRESETS)[number]) {
     setCustomTheme({
@@ -138,7 +167,7 @@ export function AppearanceForm() {
                 className={cn(
                   "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all",
                   activePrimary === preset.primary
-                    ? "border-foreground shadow-sm"
+                    ? "border-primary shadow-sm"
                     : "border-transparent hover:border-border",
                 )}
               >
@@ -159,6 +188,39 @@ export function AppearanceForm() {
                 <span className="text-xs text-muted-foreground">{preset.name}</span>
               </button>
             ))}
+            {/* Custom color picker */}
+            <button
+              type="button"
+              onClick={() => colorInputRef.current?.click()}
+              className={cn(
+                "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all",
+                isCustomColor
+                  ? "border-primary shadow-sm"
+                  : "border-transparent hover:border-border",
+              )}
+            >
+              <div
+                className={cn(
+                  "size-10 rounded-full shadow-sm transition-transform group-hover:scale-110 flex items-center justify-center",
+                  !isCustomColor && "bg-muted",
+                )}
+                style={isCustomColor ? { backgroundColor: activePrimary } : undefined}
+              >
+                {isCustomColor ? (
+                  <Check className="size-5" style={{ color: getForeground(activePrimary) }} strokeWidth={3} />
+                ) : (
+                  <Pipette className="size-5 text-muted-foreground" />
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">Custom</span>
+              <input
+                ref={colorInputRef}
+                type="color"
+                value={activePrimary}
+                onChange={(e) => handleCustomColor(e.target.value)}
+                className="sr-only"
+              />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -181,7 +243,7 @@ export function AppearanceForm() {
                 className={cn(
                   "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all",
                   activeSidebarDark === preset.dark
-                    ? "border-foreground shadow-sm"
+                    ? "border-primary shadow-sm"
                     : "border-transparent hover:border-border",
                 )}
               >
@@ -198,6 +260,39 @@ export function AppearanceForm() {
                 <span className="text-xs text-muted-foreground">{preset.name}</span>
               </button>
             ))}
+            {/* Custom sidebar color picker */}
+            <button
+              type="button"
+              onClick={() => sidebarColorInputRef.current?.click()}
+              className={cn(
+                "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all",
+                isCustomSidebar
+                  ? "border-primary shadow-sm"
+                  : "border-transparent hover:border-border",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-full h-10 rounded-lg shadow-sm border border-border/50 transition-transform group-hover:scale-105 flex items-center justify-center",
+                  !isCustomSidebar && "bg-muted",
+                )}
+                style={isCustomSidebar ? { backgroundColor: activeSidebarDark } : undefined}
+              >
+                {isCustomSidebar ? (
+                  <Check className="size-5 text-white" strokeWidth={3} />
+                ) : (
+                  <Pipette className="size-5 text-muted-foreground" />
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">Custom</span>
+              <input
+                ref={sidebarColorInputRef}
+                type="color"
+                value={activeSidebarDark}
+                onChange={(e) => handleCustomSidebar(e.target.value)}
+                className="sr-only"
+              />
+            </button>
           </div>
         </CardContent>
       </Card>
