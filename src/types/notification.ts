@@ -6,7 +6,8 @@ export type NotificationType =
   | "article_rework"
   | "listing_submitted"
   | "listing_approved"
-  | "listing_rework";
+  | "listing_rework"
+  | "partner_submitted";
 
 /** Matches the notification table in D1 */
 export interface Notification {

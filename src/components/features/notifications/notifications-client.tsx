@@ -12,6 +12,7 @@ import {
   XCircle,
   Package,
   MessageCircle,
+  Handshake,
 } from "lucide-react";
 import { cn, timeAgo } from "@/lib/utils";
 import {
@@ -33,6 +34,7 @@ const typeIcons: Record<NotificationType, typeof FileText> = {
   listing_submitted: Package,
   listing_approved: CheckCircle,
   listing_rework: XCircle,
+  partner_submitted: Handshake,
 };
 
 const typeColors: Record<NotificationType, string> = {
@@ -42,6 +44,7 @@ const typeColors: Record<NotificationType, string> = {
   listing_submitted: "bg-indigo-500/10 text-indigo-600",
   listing_approved: "bg-emerald-500/10 text-emerald-600",
   listing_rework: "bg-amber-500/10 text-amber-600",
+  partner_submitted: "bg-purple-500/10 text-purple-600",
 };
 
 function NotificationCard({

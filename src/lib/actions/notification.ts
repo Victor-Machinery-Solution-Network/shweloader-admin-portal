@@ -247,6 +247,44 @@ export async function notifyListingRework(
   });
 }
 
+// ─── Partner Notification Helpers ──────────────────────────────────────────
+
+/** Notify all admins with partners:approve about a new partner application */
+export async function notifyPartnerSubmitted(
+  partnerId: number,
+  userName: string,
+): Promise<void> {
+  const approverIds = await getAdminIdsWithPermission("partners", "approve");
+  if (approverIds.length === 0) return;
+
+  const title = "New partner application";
+  const message = `${userName} has applied to become a partner.`;
+  const actionUrl = "/partners";
+
+  await Promise.all(
+    approverIds.map((recipientId) =>
+      createNotification({
+        recipientId,
+        type: "partner_submitted",
+        title,
+        message,
+        referenceType: "partner",
+        referenceId: partnerId,
+        actionUrl,
+      }),
+    ),
+  );
+
+  await triggerNotificationBatch(approverIds, "new-notification", {
+    type: "partner_submitted",
+    title,
+    message,
+    referenceType: "partner",
+    referenceId: partnerId,
+    actionUrl,
+  });
+}
+
 // ─── Notification Data Actions (for UI) ─────────────────────────────────────
 
 /** Get notifications for the current user */
@@ -419,6 +457,35 @@ export async function checkNotificationItemStatus(
       };
     }
     return { handled: true, status: "Deleted", actionBy: null, actionAt: null, reason: null };
+  }
+
+  if (notif.reference_type === "partner") {
+    const result = await d1.query<{
+      status_name: string;
+      reviewed_by_name: string | null;
+      reviewed_at: string | null;
+      rejection_reason: string | null;
+    }>(
+      `SELECT pst.status_name, au.username AS reviewed_by_name, p.reviewed_at, p.rejection_reason
+       FROM partner p
+       LEFT JOIN partner_status_type pst ON p.status_id = pst.id
+       LEFT JOIN admin_user au ON p.reviewed_by = au.user_id
+       WHERE p.id = ?`,
+      [notif.reference_id],
+    );
+    const row = result.results[0];
+    if (!row) return { handled: true, status: "Deleted", actionBy: null, actionAt: null, reason: null };
+
+    const isPending = row.status_name === "Pending";
+    if (isPending) return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
+
+    return {
+      handled: true,
+      status: row.status_name,
+      actionBy: row.reviewed_by_name,
+      actionAt: row.reviewed_at,
+      reason: row.rejection_reason,
+    };
   }
 
   return { handled: false, status: null, actionBy: null, actionAt: null, reason: null };
