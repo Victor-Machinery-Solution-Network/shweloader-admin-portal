@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { triggerChatEvent, triggerAdminChatEvent } from "@/lib/pusher";
 import { sendPushToUser } from "@/lib/services/push-notification";
+import { assetUrl } from "@/lib/r2-url";
 import type {
   ChatSessionWithDetails,
   ChatMessageWithDetails,
@@ -341,12 +342,16 @@ export async function sendMessage(
       [preview, sessionId],
     );
 
-    // Fetch admin name for Pusher payload
-    const adminResult = await d1.query<{ username: string }>(
-      "SELECT username FROM admin_user WHERE user_id = ?",
+    // Fetch admin name + avatar for Pusher payload and push notification
+    const adminResult = await d1.query<{
+      username: string;
+      avatar_url: string | null;
+    }>(
+      "SELECT username, avatar_url FROM admin_user WHERE user_id = ?",
       [adminId],
     );
     const senderName = adminResult.results[0]?.username ?? "Admin";
+    const adminAvatarUrl = assetUrl(adminResult.results[0]?.avatar_url) ?? undefined;
 
     // Look up product details if a listing reference is included
     let productPayload: Record<string, unknown> = {};
@@ -423,11 +428,20 @@ export async function sendMessage(
     );
     const appUserId = sessionResult.results[0]?.app_user_id;
     if (appUserId) {
+      const firstImage = attachmentData?.find((a) =>
+        a.fileType.startsWith("image/"),
+      );
+      const imageUrl = firstImage
+        ? assetUrl(firstImage.fileUrl) ?? undefined
+        : undefined;
+
       sendPushToUser(appUserId, {
         type: "chat_reply",
-        title: "New message from Shweloader",
+        title: "Shwe Loader",
         body: preview,
         referenceId: String(sessionId),
+        ...(adminAvatarUrl && { avatarUrl: adminAvatarUrl }),
+        ...(imageUrl && { imageUrl }),
       }).catch(() => {}); // Fire and forget
     }
 

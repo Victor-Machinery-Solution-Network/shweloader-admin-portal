@@ -8,6 +8,8 @@ export interface PushPayload {
   title: string;
   body: string;
   referenceId?: string;
+  imageUrl?: string;      // attachment image (full R2 public URL)
+  avatarUrl?: string;     // sender avatar (full R2 public URL)
   data?: Record<string, string>;
 }
 
@@ -69,24 +71,32 @@ async function sendToTokens(
 ): Promise<void> {
   const messaging = getFirebaseMessaging();
 
+  // Data payload for Android notifee (foreground rich notifications)
   const dataPayload: Record<string, string> = {
     type: payload.type,
+    title: payload.title,
+    body: payload.body,
     ...(payload.referenceId && { referenceId: payload.referenceId }),
+    ...(payload.avatarUrl && { avatarUrl: payload.avatarUrl }),
+    ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
     ...(payload.data ?? {}),
   };
 
   const response = await messaging.sendEachForMulticast({
     tokens,
+    // Top-level notification — system displays this on both platforms
+    // when app is background/killed.
     notification: {
       title: payload.title,
       body: payload.body,
+      ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
     },
     data: dataPayload,
     android: {
       priority: 'high',
       notification: {
         sound: 'default',
-        channelId: 'default',
+        ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
       },
     },
     apns: {
@@ -95,6 +105,9 @@ async function sendToTokens(
           sound: 'default',
           badge: 1,
         },
+      },
+      fcmOptions: {
+        ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
       },
     },
   });
