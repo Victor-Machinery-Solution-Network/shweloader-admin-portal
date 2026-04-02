@@ -56,8 +56,8 @@ export interface ProductDiscussed {
 export interface ChatMessage {
   id: number;
   chat_session_id: number;
-  sender_type: "user" | "admin";
-  sender_id: number;
+  sender_type: "user" | "admin" | "system";
+  sender_id: number | null;
   message: string | null;
   sale_listing_id: number | null;
   rent_listing_id: number | null;
