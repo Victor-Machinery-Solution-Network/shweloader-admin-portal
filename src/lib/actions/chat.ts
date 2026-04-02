@@ -335,6 +335,7 @@ export async function sendMessage(
            last_message_preview = ?,
            unread_user_count = unread_user_count + 1,
            status = CASE WHEN status = 'pending' THEN 'active' ELSE status END,
+           auto_replied_at = NULL,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [preview, sessionId],

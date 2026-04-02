@@ -305,6 +305,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
     user_last_read_at TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
+    auto_replied_at TIMESTAMP DEFAULT NULL,
     FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id)
 );
 
@@ -319,8 +320,8 @@ CREATE INDEX IF NOT EXISTS idx_chat_session_created ON chat_session(created_at D
 CREATE TABLE IF NOT EXISTS chat_message (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_session_id INTEGER NOT NULL,
-    sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'admin')),
-    sender_id INTEGER NOT NULL,
+    sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'admin', 'system')),
+    sender_id INTEGER,
     message TEXT,
     sale_listing_id INTEGER,
     rent_listing_id INTEGER,

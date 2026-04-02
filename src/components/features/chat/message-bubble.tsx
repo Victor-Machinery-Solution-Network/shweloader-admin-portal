@@ -55,9 +55,24 @@ export function MessageBubble({
   userLastReadAt = null,
   isLastAdminMessage = false,
 }: MessageBubbleProps) {
+  const isSystemMessage = message.sender_type === "system";
   const isAdminMessage = message.sender_type === "admin";
   const initials = getInitials(message.sender_name);
   const timestamp = formatTimestamp(message.created_at);
+
+  // System messages render as centered info text
+  if (isSystemMessage) {
+    return (
+      <div className="flex justify-center my-2">
+        <div className="bg-muted/60 text-muted-foreground text-xs rounded-full px-4 py-1.5 max-w-[80%] text-center">
+          {message.message}
+          {timestamp && (
+            <span className="ml-2 opacity-60">{timestamp}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const imageAttachments = message.attachments.filter((a) =>
     a.file_type.startsWith("image/"),
