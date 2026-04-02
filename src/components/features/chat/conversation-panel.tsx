@@ -20,6 +20,7 @@ import { uploadChatAttachments } from "@/lib/actions/chat-upload";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import type { ChatSessionWithDetails, ChatMessageWithDetails } from "@/types/chat";
+import { useUserPresence } from "@/hooks/use-user-presence";
 
 function parseDate(dateStr: string | null | undefined): Date {
   if (!dateStr) return new Date();
@@ -80,6 +81,7 @@ export function ConversationPanel({
   );
 
   const { isTyping, typingUser } = useTypingIndicator(session?.id ?? null);
+  const userPresence = useUserPresence(session?.app_user_id ?? null);
 
   // Derive resolved state from both session prop and real-time event
   const isResolved = session?.status === "resolved" || sessionClosed;
@@ -286,8 +288,11 @@ export function ConversationPanel({
                   .toUpperCase()}
               </span>
             </div>
-            {session.status === "active" && (
+            {userPresence.status === "online" && (
               <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+            )}
+            {userPresence.status === "recently-active" && (
+              <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-amber-400 ring-2 ring-background" />
             )}
           </div>
           <div className="min-w-0">
@@ -297,7 +302,9 @@ export function ConversationPanel({
                 ? "Resolved"
                 : session.status === "pending"
                   ? "Pending"
-                  : "Active now"}
+                  : userPresence.status === "online"
+                    ? "Online"
+                    : userPresence.lastActiveText ?? "Offline"}
             </p>
           </div>
         </div>

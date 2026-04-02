@@ -8,12 +8,15 @@ import { ContextPanel } from "./context-panel";
 import { useChatInbox, markReadAndNotify } from "@/hooks/use-chat";
 import { getSessionProducts, getChatSessionById } from "@/lib/actions/chat";
 import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
+import { useAdminPresence } from "@/hooks/use-admin-presence";
 
 interface ChatInboxProps {
   sessions: ChatSessionWithDetails[];
 }
 
 export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
+  useAdminPresence(); // broadcast admin presence while on chat page
+
   const searchParams = useSearchParams();
   const [sessions, setSessions] = useState(initialSessions);
 

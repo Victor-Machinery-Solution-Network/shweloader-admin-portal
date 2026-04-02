@@ -4,6 +4,7 @@ import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ChatSessionWithDetails } from "@/types/chat";
+import { useUserPresence } from "@/hooks/use-user-presence";
 
 interface SessionCardProps {
   session: ChatSessionWithDetails;
@@ -33,6 +34,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
   const unreadCount = session.unread_admin_count;
   const hasUnread = unreadCount > 0;
   const relativeTime = session.last_message_at ? timeAgo(session.last_message_at) : "";
+  const userPresence = useUserPresence(isResolved ? null : session.app_user_id);
 
   return (
     <button
@@ -51,11 +53,19 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
       )}
     >
       {/* Avatar */}
-      <Avatar size="sm" className="shrink-0">
-        <AvatarFallback className="text-xs font-medium bg-secondary text-secondary-foreground">
-          {getInitials(session.user_name)}
-        </AvatarFallback>
-      </Avatar>
+      <div className="relative shrink-0">
+        <Avatar size="sm">
+          <AvatarFallback className="text-xs font-medium bg-secondary text-secondary-foreground">
+            {getInitials(session.user_name)}
+          </AvatarFallback>
+        </Avatar>
+        {userPresence.status === "online" && (
+          <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-[1.5px] ring-background" />
+        )}
+        {userPresence.status === "recently-active" && (
+          <span className="absolute bottom-0 right-0 size-2 rounded-full bg-amber-400 ring-[1.5px] ring-background" />
+        )}
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
