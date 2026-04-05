@@ -32,6 +32,7 @@ export async function createAppUser(formData: FormData) {
   const address = (formData.get("address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
+  const townshipId = formData.get("township_id") as string;
   const isApprovedPartner = formData.get("is_approved_partner") === "1";
 
   if (!username?.trim()) {
@@ -45,6 +46,9 @@ export async function createAppUser(formData: FormData) {
   }
   if (!businessTypeId && !businessTypeOther?.trim()) {
     return { success: false, error: "Business type is required" };
+  }
+  if (!townshipId) {
+    return { success: false, error: "Location is required" };
   }
 
   try {
@@ -88,9 +92,9 @@ export async function createAppUser(formData: FormData) {
     // Use raw SQL with RETURNING to guarantee app_user_id is in the response
     // (the REST proxy's POST endpoint may not return custom PK columns)
     const userResult = await d1.query<{ app_user_id: number }>(
-      `INSERT INTO app_user (username, full_name, email, password_hash, phone, company_name, address, business_type_id, is_verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING app_user_id`,
-      [trimmedUsername, trimmedFullName, trimmedEmail, password_hash, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId],
+      `INSERT INTO app_user (username, full_name, email, password_hash, phone, company_name, address, business_type_id, township_id, is_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING app_user_id`,
+      [trimmedUsername, trimmedFullName, trimmedEmail, password_hash, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId)],
     );
     const newUserId = userResult.results[0].app_user_id;
 
@@ -136,6 +140,7 @@ export async function updateAppUser(userId: number, formData: FormData) {
   const address = (formData.get("address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
+  const townshipId = formData.get("township_id") as string;
 
   if (!username?.trim()) {
     return { success: false, error: "Username is required" };
@@ -148,6 +153,9 @@ export async function updateAppUser(userId: number, formData: FormData) {
   }
   if (!businessTypeId && !businessTypeOther?.trim()) {
     return { success: false, error: "Business type is required" };
+  }
+  if (!townshipId) {
+    return { success: false, error: "Location is required" };
   }
 
   try {
@@ -185,9 +193,9 @@ export async function updateAppUser(userId: number, formData: FormData) {
 
     await d1.query(
       `UPDATE app_user
-       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?
+       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?, township_id = ?
        WHERE app_user_id = ? AND deleted_at IS NULL`,
-      [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, userId],
+      [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), userId],
     );
 
     invalidateTag(CACHE_TAGS.USERS);

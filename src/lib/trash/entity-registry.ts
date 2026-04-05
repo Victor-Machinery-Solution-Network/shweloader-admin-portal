@@ -95,6 +95,14 @@ export const ENTITY_REGISTRY: Record<TrashEntityType, EntityConfig> = {
     fileColumns: [],
     group: "content",
   },
+  promotion_push: {
+    table: "promotion_push",
+    primaryKey: "promotion_push_id",
+    displayName: "Promotion Push",
+    cacheTags: [CACHE_TAGS.PROMOTION_PUSHES],
+    fileColumns: [],
+    group: "content",
+  },
   state_region: {
     table: "state_region",
     primaryKey: "state_region_id",
@@ -203,6 +211,7 @@ export const TRASH_GROUP_LABELS: Record<TrashGroup, string> = {
 export function getNameColumn(entityType: TrashEntityType): string {
   switch (entityType) {
     case "article":
+    case "promotion_push":
       return "title";
     case "announcement":
       return "text";

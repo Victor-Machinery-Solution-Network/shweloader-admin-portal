@@ -28,12 +28,16 @@ import {
 import { unblacklistUsers } from "@/lib/actions/blacklist";
 import type { AppUser, BusinessType } from "@/types/app-user";
 import type { BlacklistEntryWithDetails } from "@/types/blacklist";
+import type { StateRegion, District, Township } from "@/types/location";
 
 interface UsersClientProps {
   users: AppUser[];
   businessTypes: BusinessType[];
   listedBusinessTypes: BusinessType[];
   blacklistEntries: BlacklistEntryWithDetails[];
+  stateRegions: StateRegion[];
+  districts: District[];
+  townships: Township[];
 }
 
 export function UsersClient({
@@ -41,6 +45,9 @@ export function UsersClient({
   businessTypes = [],
   listedBusinessTypes = [],
   blacklistEntries = [],
+  stateRegions = [],
+  districts = [],
+  townships = [],
 }: UsersClientProps) {
   // Permissions
   const canCreateUser = useHasPermission("users", "create");
@@ -355,6 +362,9 @@ export function UsersClient({
           open={showCreateUser}
           onOpenChange={setShowCreateUser}
           businessTypes={listedBusinessTypes}
+          stateRegions={stateRegions}
+          districts={districts}
+          townships={townships}
           onPasswordGenerated={setGeneratedPassword}
         />
       )}
@@ -380,6 +390,9 @@ export function UsersClient({
           open={!!editingUser}
           onOpenChange={(open) => { if (!open) setEditingUser(null); }}
           businessTypes={listedBusinessTypes}
+          stateRegions={stateRegions}
+          districts={districts}
+          townships={townships}
           onPasswordGenerated={setGeneratedPassword}
         />
       )}

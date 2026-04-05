@@ -7,8 +7,7 @@ PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS chat_attachment;
 DROP TABLE IF EXISTS chat_message;
 DROP TABLE IF EXISTS chat_session;
-DROP TABLE IF EXISTS enquiry;
-DROP TABLE IF EXISTS enquiry_status_type;
+-- enquiry / enquiry_status_type: not yet implemented (RN app has UI but no backend endpoint)
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
 DROP TABLE IF EXISTS notification;
@@ -159,6 +158,7 @@ CREATE TABLE IF NOT EXISTS admin_user (
     password_hash TEXT NOT NULL,
     role_id INTEGER,
     active INTEGER DEFAULT 1,
+    avatar_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
@@ -244,18 +244,22 @@ CREATE TABLE IF NOT EXISTS app_user (
     company_name TEXT,
     address TEXT,
     business_type_id INTEGER,
+    township_id INTEGER,
     last_login_at TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
-    FOREIGN KEY (business_type_id) REFERENCES business_type(business_type_id) ON DELETE RESTRICT
+    FOREIGN KEY (business_type_id) REFERENCES business_type(business_type_id) ON DELETE RESTRICT,
+    FOREIGN KEY (township_id) REFERENCES township(township_id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_username ON app_user(username);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_email ON app_user(email);
 CREATE INDEX IF NOT EXISTS idx_app_user_business_type ON app_user(business_type_id);
+CREATE INDEX IF NOT EXISTS idx_app_user_township ON app_user(township_id);
 CREATE INDEX IF NOT EXISTS idx_app_user_is_verified ON app_user(is_verified);
+CREATE INDEX IF NOT EXISTS idx_app_user_phone ON app_user(phone, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_app_user_company_name ON app_user(company_name);
 CREATE INDEX IF NOT EXISTS idx_app_user_deleted_at ON app_user(deleted_at);
 
@@ -314,7 +318,7 @@ ON chat_session(app_user_id)
 WHERE status != 'resolved' AND deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_chat_session_app_user ON chat_session(app_user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_session_status ON chat_session(status);
-CREATE INDEX IF NOT EXISTS idx_chat_session_last_message ON chat_session(last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_session_active ON chat_session(deleted_at, status, last_message_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_session_created ON chat_session(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS chat_message (
@@ -339,6 +343,7 @@ CREATE TABLE IF NOT EXISTS chat_message (
 CREATE INDEX IF NOT EXISTS idx_chat_message_session ON chat_message(chat_session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_message_created ON chat_message(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_message_session_created ON chat_message(chat_session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_message_session_listing ON chat_message(chat_session_id, sale_listing_id, rent_listing_id);
 
 CREATE TABLE IF NOT EXISTS chat_attachment (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -444,6 +449,7 @@ CREATE INDEX IF NOT EXISTS idx_article_category ON article(category_id);
 CREATE INDEX IF NOT EXISTS idx_article_status_type ON article(article_status_type_id);
 CREATE INDEX IF NOT EXISTS idx_article_approved_by ON article(approved_by);
 CREATE INDEX IF NOT EXISTS idx_article_publish_date ON article(publish_date);
+CREATE INDEX IF NOT EXISTS idx_article_published ON article(deleted_at, article_status_type_id, publish_date DESC);
 CREATE INDEX IF NOT EXISTS idx_article_created_at ON article(created_at);
 CREATE INDEX IF NOT EXISTS idx_article_deleted_at ON article(deleted_at);
 
@@ -496,8 +502,7 @@ CREATE TABLE IF NOT EXISTS carousel_image (
 
 CREATE INDEX IF NOT EXISTS idx_carousel_image_carousel ON carousel_image(carousel_id);
 CREATE INDEX IF NOT EXISTS idx_carousel_image_image ON carousel_image(image_id);
-CREATE INDEX IF NOT EXISTS idx_carousel_image_display_order ON carousel_image(display_order);
-CREATE INDEX IF NOT EXISTS idx_carousel_image_active ON carousel_image(active);
+CREATE INDEX IF NOT EXISTS idx_carousel_image_active_order ON carousel_image(active, display_order);
 
 -- =============================================
 -- ANNOUNCEMENT TEXT
@@ -516,8 +521,7 @@ CREATE TABLE IF NOT EXISTS announcement_text (
     FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_announcement_text_is_active ON announcement_text(is_active);
-CREATE INDEX IF NOT EXISTS idx_announcement_text_display_order ON announcement_text(display_order);
+CREATE INDEX IF NOT EXISTS idx_announcement_active ON announcement_text(is_active, deleted_at, display_order);
 CREATE INDEX IF NOT EXISTS idx_announcement_text_created_by ON announcement_text(created_by);
 
 -- =============================================
@@ -791,6 +795,8 @@ CREATE TABLE IF NOT EXISTS product_list (
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     township_id INTEGER,
+    address TEXT,
+    hide_address INTEGER DEFAULT 0,
     hide_partner INTEGER DEFAULT 0,
     is_draft INTEGER DEFAULT 0,
     created_by INTEGER,
@@ -817,8 +823,8 @@ CREATE INDEX IF NOT EXISTS idx_product_list_equipment_model ON product_list(equi
 CREATE INDEX IF NOT EXISTS idx_product_list_attachment_model ON product_list(attachment_model_id);
 CREATE INDEX IF NOT EXISTS idx_product_list_township ON product_list(township_id);
 CREATE INDEX IF NOT EXISTS idx_product_list_created_by ON product_list(created_by);
-CREATE INDEX IF NOT EXISTS idx_product_list_is_draft ON product_list(is_draft);
-CREATE INDEX IF NOT EXISTS idx_product_list_deleted_at ON product_list(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_product_list_active ON product_list(deleted_at, is_draft);
+CREATE INDEX IF NOT EXISTS idx_product_list_drafts ON product_list(created_by, is_draft, deleted_at);
 
 -- =============================================
 -- TEMPLATE
@@ -859,8 +865,7 @@ CREATE TABLE IF NOT EXISTS product_image (
 
 CREATE INDEX IF NOT EXISTS idx_product_image_product ON product_image(product_list_id);
 CREATE INDEX IF NOT EXISTS idx_product_image_uploaded_by ON product_image(uploaded_by);
-CREATE INDEX IF NOT EXISTS idx_product_image_active ON product_image(active);
-CREATE INDEX IF NOT EXISTS idx_product_image_display_order ON product_image(display_order);
+CREATE INDEX IF NOT EXISTS idx_product_image_active_list ON product_image(product_list_id, active, display_order);
 
 -- =============================================
 -- SALE LISTING
@@ -897,13 +902,11 @@ CREATE TABLE IF NOT EXISTS sale_listing (
 
 CREATE INDEX IF NOT EXISTS idx_sale_listing_product_list ON sale_listing(product_list_id);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_condition_type ON sale_listing(condition_type_id);
-CREATE INDEX IF NOT EXISTS idx_sale_listing_is_hidden ON sale_listing(is_hidden);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_approve_status ON sale_listing(approve_status_id);
+CREATE INDEX IF NOT EXISTS idx_sale_listing_active ON sale_listing(deleted_at, is_hidden, approve_status_id, display_order);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_approved_by ON sale_listing(approved_by);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_created_by ON sale_listing(created_by);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_created_at ON sale_listing(created_at);
-CREATE INDEX IF NOT EXISTS idx_sale_listing_deleted_at ON sale_listing(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sale_listing_display_order ON sale_listing(display_order);
 
 -- =============================================
 -- RENT LISTING
@@ -937,14 +940,12 @@ CREATE TABLE IF NOT EXISTS rent_listing (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rent_listing_product_list ON rent_listing(product_list_id);
-CREATE INDEX IF NOT EXISTS idx_rent_listing_is_hidden ON rent_listing(is_hidden);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_is_rented ON rent_listing(is_rented);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_approve_status ON rent_listing(approve_status_id);
+CREATE INDEX IF NOT EXISTS idx_rent_listing_active ON rent_listing(deleted_at, is_hidden, approve_status_id, display_order);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_approved_by ON rent_listing(approved_by);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_created_by ON rent_listing(created_by);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_created_at ON rent_listing(created_at);
-CREATE INDEX IF NOT EXISTS idx_rent_listing_deleted_at ON rent_listing(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_rent_listing_display_order ON rent_listing(display_order);
 
 -- =============================================
 -- FEATURED LISTING

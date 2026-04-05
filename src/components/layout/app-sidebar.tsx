@@ -31,6 +31,7 @@ import {
   Trash2,
   Headset,
   ClipboardList,
+  Send,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { assetUrl } from "@/lib/r2-url";
@@ -123,7 +124,7 @@ export function AppSidebar() {
     showListings || canRead("chat");
   const showUsers = canRead("users") || canRead("partners");
   const showContent =
-    showArticles || canRead("carousels") || canRead("announcements");
+    showArticles || canRead("carousels") || canRead("announcements") || canRead("promotions");
   const showSettings =
     canRead("admin_users") ||
     canRead("roles") ||
@@ -678,6 +679,20 @@ export function AppSidebar() {
                         <Link href={ROUTES.ANNOUNCEMENT_BAR}>
                           <Megaphone aria-hidden="true" />
                           <span>Announcement Bar</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
+                  {canRead("promotions") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === ROUTES.PROMOTIONS}
+                      >
+                        <Link href={ROUTES.PROMOTIONS}>
+                          <Send aria-hidden="true" />
+                          <span>Promotions</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

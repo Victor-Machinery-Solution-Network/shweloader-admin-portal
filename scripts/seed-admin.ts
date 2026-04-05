@@ -283,11 +283,12 @@ const FEATURES = [
   { name: "article_categories", group_name: "Content", display_order: 22 },
   { name: "announcements", group_name: "Content", display_order: 23 },
   { name: "carousels", group_name: "Content", display_order: 24 },
-  // Administration (25–28)
-  { name: "admin_users", group_name: "Administration", display_order: 25 },
-  { name: "roles", group_name: "Administration", display_order: 26 },
-  { name: "app_settings", group_name: "Administration", display_order: 27 },
-  { name: "trash", group_name: "Administration", display_order: 28 },
+  { name: "promotions", group_name: "Content", display_order: 25 },
+  // Administration (26–29)
+  { name: "admin_users", group_name: "Administration", display_order: 26 },
+  { name: "roles", group_name: "Administration", display_order: 27 },
+  { name: "app_settings", group_name: "Administration", display_order: 28 },
+  { name: "trash", group_name: "Administration", display_order: 29 },
 ];
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
@@ -303,6 +304,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   blacklist: ["read", "create", "delete"],
   articles: ["create", "read", "edit", "delete", "approve"],
   app_settings: ["read", "edit"],
+  promotions: ["read", "create", "delete"],
   trash: ["read", "restore", "delete"],
 };
 

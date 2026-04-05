@@ -20,6 +20,7 @@ import { d1 } from "@/lib/api/d1-client";
 import type { AppUser } from "@/types/app-user";
 import type { BlacklistEntryWithDetails } from "@/types/blacklist";
 import { announcementTextService } from "@/lib/services/announcement";
+import { promotionPushService } from "@/lib/services/promotion";
 import {
   articleCategoryService,
   articleStatusTypeService,
@@ -183,6 +184,7 @@ export async function getUsersPageData() {
         'phone', t.phone, 'is_verified', t.is_verified,
         'company_name', t.company_name, 'address', t.address,
         'business_type_id', t.business_type_id,
+        'township_id', t.township_id,
         'created_at', t.created_at, 'deleted_at', t.deleted_at,
         'deleted_by', t.deleted_by,
         'is_approved_partner', t.is_approved_partner
@@ -242,6 +244,13 @@ export function getAnnouncements() {
   return announcementTextService.list({
     sort_by: "display_order",
     order: "asc",
+  });
+}
+
+export function getPromotionPushes() {
+  return promotionPushService.list({
+    sort_by: "created_at",
+    order: "desc",
   });
 }
 

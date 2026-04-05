@@ -27,6 +27,19 @@ export interface SelectedListing {
   displayCurrency: string | null;
 }
 
+/** A raw listing row from the API */
+interface ListingRow extends SelectedListing {}
+
+/** A merged product row for the "All" tab — groups sale + rent under one productListId */
+interface MergedProduct {
+  productListId: number;
+  name: string | null;
+  brandName: string | null;
+  thumbnail: string | null;
+  sale: ListingRow | null;
+  rent: ListingRow | null;
+}
+
 interface ProductPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,7 +62,7 @@ export function ProductPickerModal({
   onOpenChange,
   onSelect,
 }: ProductPickerModalProps) {
-  const [listings, setListings] = useState<SelectedListing[]>([]);
+  const [listings, setListings] = useState<ListingRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [search, setSearch] = useState("");
@@ -76,12 +89,45 @@ export function ProductPickerModal({
     }
   }, [open]);
 
-  // Client-side filtering
-  const filtered = useMemo(() => {
-    let items = listings;
-    if (tab !== "all") {
-      items = items.filter((l) => l.type === tab);
+  // Merge listings by productListId for the "All" tab
+  const mergedProducts = useMemo(() => {
+    const map = new Map<number, MergedProduct>();
+    for (const l of listings) {
+      let entry = map.get(l.productListId);
+      if (!entry) {
+        entry = {
+          productListId: l.productListId,
+          name: l.name,
+          brandName: l.brandName,
+          thumbnail: l.thumbnail,
+          sale: null,
+          rent: null,
+        };
+        map.set(l.productListId, entry);
+      }
+      if (l.type === "sale") entry.sale = l;
+      else entry.rent = l;
     }
+    return Array.from(map.values());
+  }, [listings]);
+
+  // Filtered results based on tab + search
+  const filteredMerged = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return mergedProducts.filter((p) => {
+      if (!q) return true;
+      return (
+        p.name?.toLowerCase().includes(q) ||
+        p.brandName?.toLowerCase().includes(q) ||
+        p.sale?.customId?.toLowerCase().includes(q) ||
+        p.rent?.customId?.toLowerCase().includes(q)
+      );
+    });
+  }, [mergedProducts, search]);
+
+  const filteredSingle = useMemo(() => {
+    if (tab === "all") return [];
+    let items = listings.filter((l) => l.type === tab);
     const q = search.trim().toLowerCase();
     if (q) {
       items = items.filter(
@@ -97,6 +143,15 @@ export function ProductPickerModal({
   function handleSelect(listing: SelectedListing) {
     onSelect(listing);
     onOpenChange(false);
+  }
+
+  function handleSelectMerged(product: MergedProduct) {
+    // Prefer sale listing, fall back to rent
+    const listing = product.sale ?? product.rent;
+    if (listing) {
+      onSelect(listing);
+      onOpenChange(false);
+    }
   }
 
   const tabs: { label: string; value: TabFilter }[] = [
@@ -154,58 +209,135 @@ export function ProductPickerModal({
             </div>
           )}
 
-          {!isLoading && filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-12">
-              No listings found
-            </p>
+          {/* All tab — merged rows */}
+          {!isLoading && tab === "all" && (
+            <>
+              {filteredMerged.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-12">
+                  No listings found
+                </p>
+              )}
+              {filteredMerged.map((product) => (
+                <button
+                  key={product.productListId}
+                  type="button"
+                  onClick={() => handleSelectMerged(product)}
+                  className="w-full flex gap-3 items-center rounded-lg p-2 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                    {product.thumbnail ? (
+                      <Image
+                        src={assetUrl(product.thumbnail) ?? ""}
+                        alt={product.name ?? "Product"}
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    ) : (
+                      <div className="size-full bg-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {product.brandName && (
+                      <p className="text-[10px] uppercase text-muted-foreground truncate">
+                        {product.brandName}
+                      </p>
+                    )}
+                    <p className="text-xs font-medium truncate">
+                      {product.name ?? "Unnamed"}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {product.sale && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatPrice(product.sale.price, product.sale.displayCurrency)}
+                          </span>
+                          <Badge
+                            variant="equipment"
+                            className="text-[10px] h-4 px-1"
+                          >
+                            Sale
+                          </Badge>
+                        </>
+                      )}
+                      {product.rent && (
+                        <>
+                          {product.sale && (
+                            <span className="text-[10px] text-muted-foreground/40">|</span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatPrice(product.rent.price, product.rent.displayCurrency)}
+                          </span>
+                          <Badge
+                            variant="attachment"
+                            className="text-[10px] h-4 px-1"
+                          >
+                            Rent
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
           )}
 
-          {!isLoading &&
-            filtered.map((listing) => (
-              <button
-                key={`${listing.type}-${listing.id}`}
-                type="button"
-                onClick={() => handleSelect(listing)}
-                className="w-full flex gap-3 items-center rounded-lg p-2 hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-                  {listing.thumbnail ? (
-                    <Image
-                      src={assetUrl(listing.thumbnail) ?? ""}
-                      alt={listing.name ?? "Product"}
-                      fill
-                      className="object-cover"
-                      sizes="40px"
-                    />
-                  ) : (
-                    <div className="size-full bg-muted" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  {listing.brandName && (
-                    <p className="text-[10px] uppercase text-muted-foreground truncate">
-                      {listing.brandName}
-                    </p>
-                  )}
-                  <p className="text-xs font-medium truncate">
-                    {listing.name ?? "Unnamed"}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatPrice(listing.price, listing.displayCurrency)}
-                    </span>
-                    <Badge
-                      variant={
-                        listing.type === "sale" ? "equipment" : "attachment"
-                      }
-                      className="text-[10px] h-4 px-1"
-                    >
-                      {listing.type === "sale" ? "Sale" : "Rent"}
-                    </Badge>
+          {/* Sale / Rent tabs — individual rows */}
+          {!isLoading && tab !== "all" && (
+            <>
+              {filteredSingle.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-12">
+                  No listings found
+                </p>
+              )}
+              {filteredSingle.map((listing) => (
+                <button
+                  key={`${listing.type}-${listing.id}`}
+                  type="button"
+                  onClick={() => handleSelect(listing)}
+                  className="w-full flex gap-3 items-center rounded-lg p-2 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+                    {listing.thumbnail ? (
+                      <Image
+                        src={assetUrl(listing.thumbnail) ?? ""}
+                        alt={listing.name ?? "Product"}
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    ) : (
+                      <div className="size-full bg-muted" />
+                    )}
                   </div>
-                </div>
-              </button>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    {listing.brandName && (
+                      <p className="text-[10px] uppercase text-muted-foreground truncate">
+                        {listing.brandName}
+                      </p>
+                    )}
+                    <p className="text-xs font-medium truncate">
+                      {listing.name ?? "Unnamed"}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatPrice(listing.price, listing.displayCurrency)}
+                      </span>
+                      <Badge
+                        variant={
+                          listing.type === "sale" ? "equipment" : "attachment"
+                        }
+                        className="text-[10px] h-4 px-1"
+                      >
+                        {listing.type === "sale" ? "Sale" : "Rent"}
+                      </Badge>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

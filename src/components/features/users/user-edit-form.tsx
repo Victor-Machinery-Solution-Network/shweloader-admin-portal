@@ -21,12 +21,16 @@ import {
 import { FormDialog } from "@/components/shared/form-dialog";
 import { updateAppUser, resetAppUserPassword } from "@/lib/actions/app-user";
 import type { AppUser, BusinessType } from "@/types/app-user";
+import type { StateRegion, District, Township } from "@/types/location";
 
 interface UserEditFormProps {
   user: AppUser;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessTypes: BusinessType[];
+  stateRegions: StateRegion[];
+  districts: District[];
+  townships: Township[];
   onPasswordGenerated: (password: string) => void;
 }
 
@@ -35,6 +39,9 @@ export function UserEditForm({
   open,
   onOpenChange,
   businessTypes,
+  stateRegions,
+  districts,
+  townships,
   onPasswordGenerated,
 }: UserEditFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -59,6 +66,58 @@ export function UserEditForm({
   const initialBT = btNameById.get(user.business_type_id) ?? OTHER_OPTION;
   const [selectedBT, setSelectedBT] = useState(initialBT);
   const isOther = selectedBT === OTHER_OPTION;
+
+  // Cascading location state — derive initial values from user's township_id
+  const initLocation = useMemo(() => {
+    if (!user.township_id) return { stateRegionId: "", districtId: "", townshipId: "" };
+    const township = townships.find((t) => t.township_id === user.township_id);
+    if (!township) return { stateRegionId: "", districtId: "", townshipId: "" };
+    const district = districts.find((d) => d.district_id === township.district_id);
+    if (!district) return { stateRegionId: "", districtId: "", townshipId: "" };
+    return {
+      stateRegionId: String(district.state_region_id),
+      districtId: String(district.district_id),
+      townshipId: String(township.township_id),
+    };
+  }, [user.township_id, townships, districts]);
+
+  const [selectedStateRegionId, setSelectedStateRegionId] = useState(initLocation.stateRegionId);
+  const [selectedDistrictId, setSelectedDistrictId] = useState(initLocation.districtId);
+  const [selectedTownshipId, setSelectedTownshipId] = useState(initLocation.townshipId);
+
+  const stateRegionNames = useMemo(() => stateRegions.map((sr) => sr.name), [stateRegions]);
+  const stateRegionIdByName = useMemo(
+    () => new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
+    [stateRegions],
+  );
+  const stateRegionNameById = useMemo(
+    () => new Map(stateRegions.map((sr) => [String(sr.state_region_id), sr.name])),
+    [stateRegions],
+  );
+
+  const filteredDistricts = useMemo(
+    () => selectedStateRegionId ? districts.filter((d) => String(d.state_region_id) === selectedStateRegionId) : [],
+    [districts, selectedStateRegionId],
+  );
+  const districtNames = useMemo(() => filteredDistricts.map((d) => d.name), [filteredDistricts]);
+  const districtIdByName = useMemo(
+    () => new Map(filteredDistricts.map((d) => [d.name, String(d.district_id)])),
+    [filteredDistricts],
+  );
+  const districtNameById = useMemo(
+    () => new Map(filteredDistricts.map((d) => [String(d.district_id), d.name])),
+    [filteredDistricts],
+  );
+
+  const filteredTownships = useMemo(
+    () => selectedDistrictId ? townships.filter((t) => String(t.district_id) === selectedDistrictId) : [],
+    [townships, selectedDistrictId],
+  );
+  const townshipNames = useMemo(() => filteredTownships.map((t) => t.name), [filteredTownships]);
+  const townshipIdByName = useMemo(
+    () => new Map(filteredTownships.map((t) => [t.name, String(t.township_id)])),
+    [filteredTownships],
+  );
 
   function handleResetPassword() {
     startResetTransition(async () => {
@@ -88,6 +147,11 @@ export function UserEditForm({
       const btId = btIdByName.get(selectedBT);
       if (btId) formData.set("business_type_id", String(btId));
     }
+    if (!selectedTownshipId) {
+      toast.error("Location is required — select State, District, and Township");
+      return;
+    }
+    formData.set("township_id", selectedTownshipId);
     startTransition(async () => {
       const result = await updateAppUser(user.app_user_id, formData);
 
@@ -258,6 +322,87 @@ export function UserEditForm({
               placeholder="e.g. No. 123, Main Street, Yangon"
               autoComplete="off"
             />
+          </FieldContent>
+        </Field>
+
+        {/* Row 5: Location (cascading) */}
+        <Field orientation="vertical">
+          <FieldLabel>State / Region</FieldLabel>
+          <FieldContent>
+            <Combobox
+              value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
+              onValueChange={(val) => {
+                const id = val ? stateRegionIdByName.get(val) ?? "" : "";
+                setSelectedStateRegionId(id);
+                setSelectedDistrictId("");
+                setSelectedTownshipId("");
+              }}
+              items={stateRegionNames}
+            >
+              <ComboboxInput placeholder="Select state / region..." showClear={!!selectedStateRegionId} />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No state / region found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(name) => <ComboboxItem key={name} value={name}>{name}</ComboboxItem>}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FieldError show={!selectedStateRegionId} message="State / Region is required" />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>District</FieldLabel>
+          <FieldContent>
+            <Combobox
+              value={districtNameById.get(selectedDistrictId) ?? ""}
+              onValueChange={(val) => {
+                const id = val ? districtIdByName.get(val) ?? "" : "";
+                setSelectedDistrictId(id);
+                setSelectedTownshipId("");
+              }}
+              items={districtNames}
+              disabled={!selectedStateRegionId}
+            >
+              <ComboboxInput placeholder={selectedStateRegionId ? "Select district..." : "Select state first"} showClear={!!selectedDistrictId} disabled={!selectedStateRegionId} />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No district found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(name) => <ComboboxItem key={name} value={name}>{name}</ComboboxItem>}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FieldError show={!!selectedStateRegionId && !selectedDistrictId} message="District is required" />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical" className="sm:col-span-2 sm:max-w-[calc(50%-0.75rem)]">
+          <FieldLabel>Township</FieldLabel>
+          <FieldContent>
+            <Combobox
+              value={filteredTownships.find((t) => String(t.township_id) === selectedTownshipId)?.name ?? ""}
+              onValueChange={(val) => {
+                const id = val ? townshipIdByName.get(val) ?? "" : "";
+                setSelectedTownshipId(id);
+              }}
+              items={townshipNames}
+              disabled={!selectedDistrictId}
+            >
+              <ComboboxInput placeholder={selectedDistrictId ? "Select township..." : "Select district first"} showClear={!!selectedTownshipId} disabled={!selectedDistrictId} />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No township found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(name) => <ComboboxItem key={name} value={name}>{name}</ComboboxItem>}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <FieldError show={!!selectedDistrictId && !selectedTownshipId} message="Township is required" />
           </FieldContent>
         </Field>
 

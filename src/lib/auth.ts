@@ -82,6 +82,7 @@ const ROUTE_FEATURE_MAP: [prefix: string, feature: string][] = [
   ["/articles/categories", "article_categories"],
   ["/carousel-images", "carousels"],
   ["/announcement-bar", "announcements"],
+  ["/promotions", "promotions"],
   // Settings
   ["/admins", "admin_users"],
   ["/roles-permissions", "roles"],
@@ -112,6 +113,7 @@ const LANDING_PRIORITY: [route: string, permission: string][] = [
   ["/articles/posts", "articles:read"],
   ["/carousel-images", "carousels:read"],
   ["/announcement-bar", "announcements:read"],
+  ["/promotions", "promotions:read"],
   // Settings
   ["/admins", "admin_users:read"],
   ["/roles-permissions", "roles:read"],

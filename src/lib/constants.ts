@@ -52,6 +52,7 @@ export const ROUTES = {
   POSTS: "/articles/posts",
   CAROUSEL_IMAGES: "/carousel-images",
   ANNOUNCEMENT_BAR: "/announcement-bar",
+  PROMOTIONS: "/promotions",
 
   // Settings
   ADMINS: "/admins",
@@ -105,6 +106,7 @@ export const CACHE_TAGS = {
   USERS: "users",
   BUSINESS_TYPES: "business-types",
   ANNOUNCEMENTS: "announcements",
+  PROMOTION_PUSHES: "promotion-pushes",
   ARTICLE_CATEGORIES: "article-categories",
   ARTICLES: "articles",
   CAROUSELS: "carousels",

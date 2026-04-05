@@ -69,6 +69,9 @@ export type { Carousel, CarouselImageWithDetails } from "./carousel";
 // Re-export announcement types
 export type { AnnouncementText } from "./announcement";
 
+// Re-export promotion types
+export type { PromotionPush } from "./promotion";
+
 // Re-export role types
 export type {
   Role,
