@@ -29,6 +29,7 @@ DROP TABLE IF EXISTS township;
 DROP TABLE IF EXISTS district;
 DROP TABLE IF EXISTS state_region;
 DROP TABLE IF EXISTS app_setting;
+DROP TABLE IF EXISTS promotion_push;
 DROP TABLE IF EXISTS announcement_text;
 DROP TABLE IF EXISTS carousel_image;
 DROP TABLE IF EXISTS carousel;
@@ -523,6 +524,27 @@ CREATE TABLE IF NOT EXISTS announcement_text (
 
 CREATE INDEX IF NOT EXISTS idx_announcement_active ON announcement_text(is_active, deleted_at, display_order);
 CREATE INDEX IF NOT EXISTS idx_announcement_text_created_by ON announcement_text(created_by);
+
+-- =============================================
+-- PROMOTION PUSH
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS promotion_push (
+    promotion_push_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    image_url TEXT,
+    listing_id INTEGER,
+    device_count INTEGER DEFAULT 0,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
+    deleted_by INTEGER,
+    FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_promotion_push_created_at ON promotion_push(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_promotion_push_deleted_at ON promotion_push(deleted_at);
 
 -- =============================================
 -- APP SETTING
