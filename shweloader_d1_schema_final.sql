@@ -159,11 +159,11 @@ CREATE TABLE IF NOT EXISTS admin_user (
     password_hash TEXT NOT NULL,
     role_id INTEGER,
     active INTEGER DEFAULT 1,
-    avatar_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
+    avatar_url TEXT DEFAULT NULL,
     FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE RESTRICT
 );
 
@@ -245,12 +245,12 @@ CREATE TABLE IF NOT EXISTS app_user (
     company_name TEXT,
     address TEXT,
     business_type_id INTEGER,
-    township_id INTEGER,
-    last_login_at TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
+    last_login_at TEXT,
+    township_id INTEGER,
     FOREIGN KEY (business_type_id) REFERENCES business_type(business_type_id) ON DELETE RESTRICT,
     FOREIGN KEY (township_id) REFERENCES township(township_id)
 );
@@ -310,7 +310,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
     user_last_read_at TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
-    auto_replied_at TIMESTAMP DEFAULT NULL,
+    auto_replied_at TEXT DEFAULT NULL,
     FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id)
 );
 
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS chat_message (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_session_id INTEGER NOT NULL,
     sender_type TEXT NOT NULL CHECK(sender_type IN ('user', 'admin', 'system')),
-    sender_id INTEGER,
+    sender_id INTEGER NOT NULL,
     message TEXT,
     sale_listing_id INTEGER,
     rent_listing_id INTEGER,
@@ -537,8 +537,8 @@ CREATE TABLE IF NOT EXISTS promotion_push (
     listing_id INTEGER,
     device_count INTEGER DEFAULT 0,
     created_by INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP DEFAULT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    deleted_at TEXT,
     deleted_by INTEGER,
     FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
 );
@@ -817,8 +817,6 @@ CREATE TABLE IF NOT EXISTS product_list (
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     township_id INTEGER,
-    address TEXT,
-    hide_address INTEGER DEFAULT 0,
     hide_partner INTEGER DEFAULT 0,
     is_draft INTEGER DEFAULT 0,
     created_by INTEGER,
@@ -826,6 +824,8 @@ CREATE TABLE IF NOT EXISTS product_list (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
+    hide_address INTEGER NOT NULL DEFAULT 0,
+    address TEXT DEFAULT NULL,
     FOREIGN KEY (partner_id) REFERENCES partner(id) ON DELETE CASCADE,
     FOREIGN KEY (equipment_model_id) REFERENCES equipment_model(model_id) ON DELETE RESTRICT,
     FOREIGN KEY (attachment_model_id) REFERENCES attachment_model(model_id) ON DELETE RESTRICT,
