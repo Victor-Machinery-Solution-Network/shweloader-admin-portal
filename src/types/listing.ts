@@ -65,6 +65,8 @@ export interface SaleListing {
   display_order: string;
 }
 
+export type RentalUnit = 'per_day' | 'per_month' | 'per_duty';
+
 /** Matches the rent_listing table in D1 */
 export interface RentListing {
   id: number;
@@ -77,6 +79,7 @@ export interface RentListing {
   is_rented: number;
   display_currency: string;
   use_system_rate: number;
+  rental_unit: RentalUnit;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -167,6 +170,7 @@ export interface RentListingWithDetails {
   is_rented: number;
   display_currency: string;
   use_system_rate: number;
+  rental_unit: RentalUnit;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
@@ -284,6 +288,7 @@ export interface ListingDetail {
   is_sold_out: number | null;
   // Rent-only
   is_rented: number | null;
+  rental_unit: RentalUnit | null;
   // Shared pricing
   mmk_price: number | null;
   usd_price: number | null;

@@ -955,6 +955,7 @@ CREATE TABLE IF NOT EXISTS rent_listing (
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
     display_order TEXT DEFAULT '0',
+    rental_unit TEXT DEFAULT 'per_day',
     FOREIGN KEY (product_list_id) REFERENCES product_list(id) ON DELETE CASCADE,
     FOREIGN KEY (approved_by) REFERENCES admin_user(user_id) ON DELETE SET NULL,
     FOREIGN KEY (approve_status_id) REFERENCES approval_status_type(id) ON DELETE RESTRICT,

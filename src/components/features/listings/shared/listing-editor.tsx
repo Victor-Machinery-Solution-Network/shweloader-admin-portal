@@ -61,6 +61,13 @@ import { useHasPermission } from "@/hooks/use-permissions";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   createListing,
   updateSaleListing,
   updateRentListing,
@@ -187,6 +194,7 @@ interface AutoSaveState {
   saleCustomRate: string;
   rentUseSystemRate: boolean;
   rentCustomRate: string;
+  rentalUnit: string;
   address: string;
   hideAddress: boolean;
   hidePartner: boolean;
@@ -757,6 +765,12 @@ export function ListingEditor({
   const [rentCustomRate, setRentCustomRate] = useState<string>(
     savedState?.rentCustomRate ?? String(exchangeRate),
   );
+  const [rentalUnit, setRentalUnit] = useState<string>(
+    savedState?.rentalUnit ??
+      (isEditing && pageType === "rent" && "rental_unit" in (listing ?? {})
+        ? ((listing as any)?.rental_unit ?? "per_day")
+        : "per_day"),
+  );
 
   // ── Address ─────────────────────────────────────────────────────────────
   const [address, setAddress] = useState(
@@ -960,6 +974,7 @@ export function ListingEditor({
       saleCustomRate,
       rentUseSystemRate,
       rentCustomRate,
+      rentalUnit,
       address,
       hideAddress,
       hidePartner,
@@ -992,6 +1007,7 @@ export function ListingEditor({
     saleCustomRate,
     rentUseSystemRate,
     rentCustomRate,
+    rentalUnit,
     hidePartner,
     saleHidePrice,
     rentHidePrice,
@@ -1172,6 +1188,7 @@ export function ListingEditor({
     formData.set("is_hidden", "0");
     formData.set("sale_hide_price", saleHidePrice ? "1" : "0");
     formData.set("rent_hide_price", rentHidePrice ? "1" : "0");
+    formData.set("rental_unit", rentalUnit);
     formData.set("address", address);
     formData.set("hide_address", hideAddress ? "1" : "0");
     formData.set("hide_partner", hidePartner ? "1" : "0");
@@ -2102,30 +2119,47 @@ export function ListingEditor({
                     onHidePriceChange={setSaleHidePrice}
                   />
                 ) : (
-                  <PricingCard
-                    icon={RotateCcw}
-                    label="Rental Price"
-                    usdPrice={rentUsdPrice}
-                    mmkPrice={rentMmkPrice}
-                    onUsdChange={(v) => {
-                      setRentUsdPrice(v);
-                      setRentMmkPrice(convertRentUsdToMmk(v));
-                    }}
-                    onMmkChange={(v) => {
-                      setRentMmkPrice(v);
-                      setRentUsdPrice(convertRentMmkToUsd(v));
-                    }}
-                    activeRate={rentActiveRate}
-                    useSystemRate={rentUseSystemRate}
-                    onToggleSystemRate={setRentUseSystemRate}
-                    customRate={rentCustomRate}
-                    onCustomRateChange={setRentCustomRate}
-                    systemRate={exchangeRate}
-                    displayCurrency={rentDisplayCurrency}
-                    onDisplayCurrencyChange={setRentDisplayCurrency}
-                    hidePrice={rentHidePrice}
-                    onHidePriceChange={setRentHidePrice}
-                  />
+                  <div className="flex flex-col gap-6">
+                    <PricingCard
+                      icon={RotateCcw}
+                      label="Rental Price"
+                      usdPrice={rentUsdPrice}
+                      mmkPrice={rentMmkPrice}
+                      onUsdChange={(v) => {
+                        setRentUsdPrice(v);
+                        setRentMmkPrice(convertRentUsdToMmk(v));
+                      }}
+                      onMmkChange={(v) => {
+                        setRentMmkPrice(v);
+                        setRentUsdPrice(convertRentMmkToUsd(v));
+                      }}
+                      activeRate={rentActiveRate}
+                      useSystemRate={rentUseSystemRate}
+                      onToggleSystemRate={setRentUseSystemRate}
+                      customRate={rentCustomRate}
+                      onCustomRateChange={setRentCustomRate}
+                      systemRate={exchangeRate}
+                      displayCurrency={rentDisplayCurrency}
+                      onDisplayCurrencyChange={setRentDisplayCurrency}
+                      hidePrice={rentHidePrice}
+                      onHidePriceChange={setRentHidePrice}
+                    />
+                    <Field>
+                      <FieldLabel>Rental Unit</FieldLabel>
+                      <FieldContent>
+                        <Select value={rentalUnit} onValueChange={setRentalUnit}>
+                          <SelectTrigger className="w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="per_day">Per Day</SelectItem>
+                            <SelectItem value="per_month">Per Month</SelectItem>
+                            <SelectItem value="per_duty">Per Duty</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
+                  </div>
                 );
               }
 
@@ -2164,35 +2198,52 @@ export function ListingEditor({
                     />
                   )}
                   {forRent && (
-                    <PricingCard
-                      icon={RotateCcw}
-                      label="Rental Price"
-                      usdPrice={rentUsdPrice}
-                      mmkPrice={rentMmkPrice}
-                      onUsdChange={(v) => {
-                        setRentUsdPrice(v);
-                        setRentMmkPrice(convertRentUsdToMmk(v));
-                      }}
-                      onMmkChange={(v) => {
-                        setRentMmkPrice(v);
-                        setRentUsdPrice(convertRentMmkToUsd(v));
-                      }}
-                      activeRate={rentActiveRate}
-                      useSystemRate={rentUseSystemRate}
-                      onToggleSystemRate={setRentUseSystemRate}
-                      customRate={rentCustomRate}
-                      onCustomRateChange={setRentCustomRate}
-                      systemRate={exchangeRate}
-                      displayCurrency={rentDisplayCurrency}
-                      onDisplayCurrencyChange={setRentDisplayCurrency}
-                      hidePrice={rentHidePrice}
-                      onHidePriceChange={setRentHidePrice}
-                      error={
-                        step1Attempted && !rentPriceValid
-                          ? "Please enter a rental price"
-                          : undefined
-                      }
-                    />
+                    <>
+                      <PricingCard
+                        icon={RotateCcw}
+                        label="Rental Price"
+                        usdPrice={rentUsdPrice}
+                        mmkPrice={rentMmkPrice}
+                        onUsdChange={(v) => {
+                          setRentUsdPrice(v);
+                          setRentMmkPrice(convertRentUsdToMmk(v));
+                        }}
+                        onMmkChange={(v) => {
+                          setRentMmkPrice(v);
+                          setRentUsdPrice(convertRentMmkToUsd(v));
+                        }}
+                        activeRate={rentActiveRate}
+                        useSystemRate={rentUseSystemRate}
+                        onToggleSystemRate={setRentUseSystemRate}
+                        customRate={rentCustomRate}
+                        onCustomRateChange={setRentCustomRate}
+                        systemRate={exchangeRate}
+                        displayCurrency={rentDisplayCurrency}
+                        onDisplayCurrencyChange={setRentDisplayCurrency}
+                        hidePrice={rentHidePrice}
+                        onHidePriceChange={setRentHidePrice}
+                        error={
+                          step1Attempted && !rentPriceValid
+                            ? "Please enter a rental price"
+                            : undefined
+                        }
+                      />
+                      <Field>
+                        <FieldLabel>Rental Unit</FieldLabel>
+                        <FieldContent>
+                          <Select value={rentalUnit} onValueChange={setRentalUnit}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="per_day">Per Day</SelectItem>
+                              <SelectItem value="per_month">Per Month</SelectItem>
+                              <SelectItem value="per_duty">Per Duty</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                      </Field>
+                    </>
                   )}
                   {!forSale && !forRent && (
                     <p className="text-muted-foreground text-sm">
