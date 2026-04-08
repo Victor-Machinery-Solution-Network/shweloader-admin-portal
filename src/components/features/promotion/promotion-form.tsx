@@ -183,7 +183,7 @@ export function PromotionForm({ open, onOpenChange }: PromotionFormProps) {
       />
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100">
               <TriangleAlert className="size-6 text-amber-600" />

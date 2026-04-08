@@ -11,6 +11,7 @@ export interface PushPayload {
   imageUrl?: string;      // attachment image (full R2 public URL)
   avatarUrl?: string;     // sender avatar (full R2 public URL)
   data?: Record<string, string>;
+  iosTitle?: string;      // If set, overrides iOS title and moves original title to subtitle
 }
 
 // ── Send to specific user (all their devices) ──────────
@@ -75,6 +76,7 @@ async function sendToTokens(
     ...(payload.referenceId && { referenceId: payload.referenceId }),
     ...(payload.avatarUrl && { avatarUrl: payload.avatarUrl }),
     ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
+    ...(payload.iosTitle && { appTitle: payload.iosTitle }),
     ...(payload.data ?? {}),
   };
 
@@ -98,6 +100,15 @@ async function sendToTokens(
     apns: {
       payload: {
         aps: {
+          // When iosTitle is set, override the iOS notification to show:
+          // title (brand) → subtitle (promotion headline) → body (message)
+          ...(payload.iosTitle && {
+            alert: {
+              title: payload.iosTitle,
+              subtitle: payload.title,
+              body: payload.body,
+            },
+          }),
           sound: 'default',
           badge: 1,
         },

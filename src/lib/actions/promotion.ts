@@ -71,6 +71,7 @@ export async function sendPromotionPush(formData: FormData) {
       type: "promotion",
       title: title.trim(),
       body: body.trim(),
+      iosTitle: "Shwe Loader",
       ...(imageUrl && { imageUrl }),
       ...(productListId && { referenceId: productListId }),
     });
@@ -124,6 +125,7 @@ export async function resendPromotionPush(id: number) {
       type: "promotion",
       title: original.title,
       body: original.body,
+      iosTitle: "Shwe Loader",
       ...(imageUrl && { imageUrl }),
       ...(original.listing_id && { referenceId: String(original.listing_id) }),
     });
