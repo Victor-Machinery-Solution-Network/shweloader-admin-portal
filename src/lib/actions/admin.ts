@@ -188,7 +188,7 @@ export async function deleteAdmin(userId: number) {
       return { success: false, error: "Cannot delete the primary admin" };
     }
     await adminUserService.softDelete(userId, deletedBy);
-    saveTrashMetadata("admin_user", userId, deletedBy).catch(() => {});
+    await saveTrashMetadata("admin_user", userId, deletedBy);
     invalidateTag(CACHE_TAGS.ADMINS);
     auditLog(deletedBy, "deleted admin | id=" + userId);
     return { success: true };
@@ -207,7 +207,7 @@ export async function deleteAdmins(ids: number[]) {
     ids.map(async (id) => {
       if (id === PRIMARY_ADMIN_ID) throw new Error("Cannot delete the primary admin");
       await adminUserService.softDelete(id, deletedBy);
-      saveTrashMetadata("admin_user", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("admin_user", id, deletedBy);
     }),
   );
 

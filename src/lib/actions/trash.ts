@@ -96,6 +96,9 @@ export async function saveTrashMetadata(
       expiresAt.toISOString(),
     ],
   );
+
+  // Invalidate trash cache so the Trash page picks up the new item
+  invalidateTag(CACHE_TAGS.TRASH);
 }
 
 // ─── Fetch Trash Page Data ────────────────────────────────────────────────────
@@ -121,9 +124,18 @@ export async function getTrashPageData(group?: TrashGroup) {
       .map(([type]) => type);
     if (types.length === 0) return { items: [] as TrashItem[], counts: {} as TrashCounts };
     const placeholders = types.map(() => "?").join(", ");
-    typeFilter = `WHERE tm.entity_type IN (${placeholders})`;
+    typeFilter = `AND tm.entity_type IN (${placeholders})`;
     typeParams.push(...types);
   }
+
+  // Build a WHERE clause that verifies the source row is still soft-deleted.
+  // For each entity type: (entity_type = 'x' AND EXISTS(SELECT 1 FROM table WHERE pk = entity_id AND deleted_at IS NOT NULL))
+  const softDeleteCheck = Object.entries(ENTITY_REGISTRY)
+    .map(
+      ([type, config]) =>
+        `(tm.entity_type = '${type}' AND EXISTS (SELECT 1 FROM ${config.table} WHERE ${config.primaryKey} = tm.entity_id AND deleted_at IS NOT NULL))`,
+    )
+    .join("\n        OR ");
 
   // Single consolidated query
   const { results } = await d1.query<TrashPageRaw>(`
@@ -142,6 +154,7 @@ export async function getTrashPageData(group?: TrashGroup) {
         SELECT tm.*, au.username AS deleted_by_name
         FROM trash_metadata tm
         LEFT JOIN admin_user au ON tm.deleted_by = au.user_id
+        WHERE (${softDeleteCheck})
         ${typeFilter}
         ORDER BY tm.deleted_at DESC
       ) t
@@ -151,9 +164,10 @@ export async function getTrashPageData(group?: TrashGroup) {
         'entity_type', entity_type,
         'count', cnt
       )) FROM (
-        SELECT entity_type, COUNT(*) as cnt
-        FROM trash_metadata
-        GROUP BY entity_type
+        SELECT tm.entity_type, COUNT(*) as cnt
+        FROM trash_metadata tm
+        WHERE (${softDeleteCheck})
+        GROUP BY tm.entity_type
       )) AS counts
   `, typeParams);
 
@@ -171,9 +185,11 @@ export async function getTrashPageData(group?: TrashGroup) {
     has_files: number;
     deleted_by_name: string | null;
   }
-  const rawItems: RawTrashItem[] = raw?.items
+  const parsedItems: (RawTrashItem | null)[] = raw?.items
     ? JSON.parse(raw.items)
     : [];
+  // json_group_array returns [null] for empty results — filter nulls
+  const rawItems = parsedItems.filter((r): r is RawTrashItem => r !== null);
   const items: TrashItem[] = rawItems.map((r) => ({
     id: r.id,
     entity_type: r.entity_type,
@@ -187,9 +203,11 @@ export async function getTrashPageData(group?: TrashGroup) {
   }));
 
   // Parse counts
-  const rawCounts: { entity_type: TrashEntityType; count: number }[] = raw?.counts
+  const parsedCounts: ({ entity_type: TrashEntityType; count: number } | null)[] = raw?.counts
     ? JSON.parse(raw.counts)
     : [];
+  // json_group_array returns [null] for empty results — filter nulls
+  const rawCounts = parsedCounts.filter((r): r is { entity_type: TrashEntityType; count: number } => r !== null);
   const counts: TrashCounts = {};
   for (const row of rawCounts) {
     counts[row.entity_type] = row.count;

@@ -60,7 +60,7 @@ export async function deleteBusinessType(id: number) {
   try {
     const deletedBy = await requirePermission("business_types", "delete");
     await businessTypeService.softDelete(id, deletedBy);
-    saveTrashMetadata("business_type", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("business_type", id, deletedBy);
     invalidateTag(CACHE_TAGS.BUSINESS_TYPES);
     auditLog(deletedBy, "deleted business type | id=" + id);
     return { success: true };
@@ -101,7 +101,7 @@ export async function deleteBusinessTypes(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await businessTypeService.softDelete(id, deletedBy);
-      saveTrashMetadata("business_type", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("business_type", id, deletedBy);
     }),
   );
 

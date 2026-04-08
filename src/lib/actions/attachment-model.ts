@@ -89,7 +89,7 @@ export async function deleteAttachmentModel(id: number) {
   try {
     const deletedBy = await requirePermission("attachment_models", "delete");
     await attachmentModelService.softDelete(id, deletedBy);
-    saveTrashMetadata("attachment_model", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("attachment_model", id, deletedBy);
     invalidateTag(CACHE_TAGS.ATTACHMENT_MODELS);
     auditLog(deletedBy, "deleted attachment model | id=" + id);
     return { success: true };
@@ -108,7 +108,7 @@ export async function deleteAttachmentModels(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await attachmentModelService.softDelete(id, deletedBy);
-      saveTrashMetadata("attachment_model", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("attachment_model", id, deletedBy);
     }),
   );
 

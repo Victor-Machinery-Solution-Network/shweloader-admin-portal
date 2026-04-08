@@ -187,7 +187,7 @@ export async function deleteRole(roleId: number) {
     }
 
     await roleService.softDelete(roleId, deletedBy);
-    saveTrashMetadata("role", roleId, deletedBy).catch(() => {});
+    await saveTrashMetadata("role", roleId, deletedBy);
     auditLog(deletedBy, `role_deleted | role=${roleId}`);
     invalidateTag(CACHE_TAGS.ROLES, CACHE_TAGS.PERMISSIONS);
     return { success: true };
@@ -208,7 +208,7 @@ export async function deleteRoles(ids: number[]) {
         throw new Error("The Super Admin role cannot be deleted");
       }
       await roleService.softDelete(id, deletedBy);
-      saveTrashMetadata("role", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("role", id, deletedBy);
     }),
   );
 

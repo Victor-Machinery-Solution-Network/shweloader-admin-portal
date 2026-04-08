@@ -254,7 +254,7 @@ export async function deleteBrand(id: number) {
   try {
     const deletedBy = await requirePermission("brands", "delete");
     await brandService.softDelete(id, deletedBy);
-    saveTrashMetadata("brand", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("brand", id, deletedBy);
     invalidateTag(CACHE_TAGS.BRANDS);
     auditLog(deletedBy, "deleted brand | id=" + id);
     return { success: true };

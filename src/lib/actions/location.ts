@@ -60,7 +60,7 @@ export async function deleteStateRegion(id: number) {
   try {
     const deletedBy = await requirePermission("locations", "delete");
     await stateRegionService.softDelete(id, deletedBy);
-    saveTrashMetadata("state_region", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("state_region", id, deletedBy);
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(deletedBy, "deleted state/region | id=" + id);
     return { success: true };
@@ -110,7 +110,7 @@ export async function deleteDistrict(id: number) {
   try {
     const deletedBy = await requirePermission("locations", "delete");
     await districtService.softDelete(id, deletedBy);
-    saveTrashMetadata("district", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("district", id, deletedBy);
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(deletedBy, "deleted district | id=" + id);
     return { success: true };
@@ -160,7 +160,7 @@ export async function deleteTownship(id: number) {
   try {
     const deletedBy = await requirePermission("locations", "delete");
     await townshipService.softDelete(id, deletedBy);
-    saveTrashMetadata("township", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("township", id, deletedBy);
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(deletedBy, "deleted township | id=" + id);
     return { success: true };
@@ -321,7 +321,7 @@ export async function deleteStateRegions(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await stateRegionService.softDelete(id, deletedBy);
-      saveTrashMetadata("state_region", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("state_region", id, deletedBy);
     }),
   );
 
@@ -350,7 +350,7 @@ export async function deleteDistricts(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await districtService.softDelete(id, deletedBy);
-      saveTrashMetadata("district", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("district", id, deletedBy);
     }),
   );
 
@@ -379,7 +379,7 @@ export async function deleteTownships(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await townshipService.softDelete(id, deletedBy);
-      saveTrashMetadata("township", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("township", id, deletedBy);
     }),
   );
 

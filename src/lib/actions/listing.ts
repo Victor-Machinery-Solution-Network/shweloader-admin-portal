@@ -651,9 +651,7 @@ export async function deleteSaleListing(saleId: number) {
     await saleListingService.softDelete(saleId, deletedBy);
 
     const batchId = crypto.randomUUID();
-    saveTrashMetadata("sale_listing", saleId, deletedBy, { batchId }).catch(
-      () => {},
-    );
+    await saveTrashMetadata("sale_listing", saleId, deletedBy, { batchId });
 
     // Soft delete product_list if no other listing references it
     if (productListId) {
@@ -665,9 +663,9 @@ export async function deleteSaleListing(saleId: number) {
 
       if (remaining === 0) {
         await productListService.softDelete(productListId, deletedBy);
-        saveTrashMetadata("product_list", productListId, deletedBy, {
+        await saveTrashMetadata("product_list", productListId, deletedBy, {
           batchId,
-        }).catch(() => {});
+        });
       }
     }
 
@@ -774,9 +772,7 @@ export async function deleteRentListing(rentId: number) {
     await rentListingService.softDelete(rentId, deletedBy);
 
     const batchId = crypto.randomUUID();
-    saveTrashMetadata("rent_listing", rentId, deletedBy, { batchId }).catch(
-      () => {},
-    );
+    await saveTrashMetadata("rent_listing", rentId, deletedBy, { batchId });
 
     // Soft delete product_list if no other listing references it
     if (productListId) {
@@ -788,9 +784,9 @@ export async function deleteRentListing(rentId: number) {
 
       if (remaining === 0) {
         await productListService.softDelete(productListId, deletedBy);
-        saveTrashMetadata("product_list", productListId, deletedBy, {
+        await saveTrashMetadata("product_list", productListId, deletedBy, {
           batchId,
-        }).catch(() => {});
+        });
       }
     }
 
@@ -828,7 +824,7 @@ async function deleteListings(
 
       await service.softDelete(id, deletedBy);
       const batchId = crypto.randomUUID();
-      saveTrashMetadata(table, id, deletedBy, { batchId }).catch(() => {});
+      await saveTrashMetadata(table, id, deletedBy, { batchId });
 
       // Cascade: delete orphaned product_list if no other listings reference it
       if (productListId) {
@@ -838,7 +834,7 @@ async function deleteListings(
         );
         if ((siblings.results[0]?.cnt ?? 0) === 0) {
           await productListService.softDelete(productListId, deletedBy);
-          saveTrashMetadata("product_list", productListId, deletedBy, { batchId }).catch(() => {});
+          await saveTrashMetadata("product_list", productListId, deletedBy, { batchId });
         }
       }
     }),
@@ -2058,7 +2054,7 @@ export async function deleteDraft(productListId: number) {
 
     // Soft delete the product_list (R2 files cleaned up when permanently deleting from trash)
     await productListService.softDelete(productListId, userId);
-    saveTrashMetadata("product_list", productListId, userId).catch(() => {});
+    await saveTrashMetadata("product_list", productListId, userId);
 
     auditLog(userId, "deleted draft | id=" + productListId);
     return { success: true };

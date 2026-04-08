@@ -145,7 +145,7 @@ export async function deletePromotionPush(id: number) {
   try {
     const deletedBy = await requirePermission("promotions", "delete");
     await promotionPushService.softDelete(id, deletedBy);
-    saveTrashMetadata("promotion_push", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("promotion_push", id, deletedBy);
     invalidateTag(CACHE_TAGS.PROMOTION_PUSHES);
     auditLog(deletedBy, "deleted promotion push | id=" + id);
     return { success: true };
@@ -164,7 +164,7 @@ export async function deletePromotionPushes(ids: number[]) {
     const results = await Promise.allSettled(
       ids.map(async (id) => {
         await promotionPushService.softDelete(id, deletedBy);
-        saveTrashMetadata("promotion_push", id, deletedBy).catch(() => {});
+        await saveTrashMetadata("promotion_push", id, deletedBy);
       }),
     );
 

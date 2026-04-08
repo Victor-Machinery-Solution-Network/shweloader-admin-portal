@@ -85,7 +85,7 @@ export async function deleteAttachmentCategory(id: number) {
   try {
     const deletedBy = await requirePermission("attachment_categories", "delete");
     await attachmentCategoryService.softDelete(id, deletedBy);
-    saveTrashMetadata("attachment_category", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("attachment_category", id, deletedBy);
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);
     auditLog(deletedBy, "deleted attachment category | id=" + id);
     return { success: true };
@@ -104,7 +104,7 @@ export async function deleteAttachmentCategories(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await attachmentCategoryService.softDelete(id, deletedBy);
-      saveTrashMetadata("attachment_category", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("attachment_category", id, deletedBy);
     }),
   );
 

@@ -113,7 +113,7 @@ export async function deleteCustomFieldTemplate(id: number) {
   try {
     const deletedBy = await requirePermission("listing_templates", "delete");
     await customFieldTemplateService.softDelete(id, deletedBy);
-    saveTrashMetadata("custom_field_template", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("custom_field_template", id, deletedBy);
     invalidateTag(CACHE_TAGS.CUSTOM_FIELD_TEMPLATES);
     auditLog(deletedBy, "deleted listing template | id=" + id);
     return { success: true };
@@ -133,7 +133,7 @@ export async function deleteCustomFieldTemplates(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await customFieldTemplateService.softDelete(id, deletedBy);
-      saveTrashMetadata("custom_field_template", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("custom_field_template", id, deletedBy);
     }),
   );
 

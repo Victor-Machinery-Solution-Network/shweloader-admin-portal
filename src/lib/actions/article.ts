@@ -147,7 +147,7 @@ export async function deleteArticle(id: number) {
   try {
     const deletedBy = await requirePermission("articles", "delete");
     await articleService.softDelete(id, deletedBy);
-    saveTrashMetadata("article", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("article", id, deletedBy);
     invalidateTag(CACHE_TAGS.ARTICLES);
     auditLog(deletedBy, "deleted article | id=" + id);
     return { success: true };
@@ -453,7 +453,7 @@ export async function deleteArticles(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await articleService.softDelete(id, deletedBy);
-      saveTrashMetadata("article", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("article", id, deletedBy);
     }),
   );
 

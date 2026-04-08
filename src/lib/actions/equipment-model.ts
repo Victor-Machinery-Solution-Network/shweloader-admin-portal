@@ -89,7 +89,7 @@ export async function deleteEquipmentModel(id: number) {
   try {
     const deletedBy = await requirePermission("equipment_models", "delete");
     await equipmentModelService.softDelete(id, deletedBy);
-    saveTrashMetadata("equipment_model", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("equipment_model", id, deletedBy);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MODELS);
     auditLog(deletedBy, "deleted equipment model | id=" + id);
     return { success: true };
@@ -108,7 +108,7 @@ export async function deleteEquipmentModels(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await equipmentModelService.softDelete(id, deletedBy);
-      saveTrashMetadata("equipment_model", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("equipment_model", id, deletedBy);
     }),
   );
 

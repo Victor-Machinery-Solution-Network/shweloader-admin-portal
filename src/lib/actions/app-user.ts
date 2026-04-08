@@ -290,7 +290,7 @@ export async function deleteAppUser(userId: number) {
     }
 
     await appUserService.softDelete(userId, deletedBy);
-    saveTrashMetadata("app_user", userId, deletedBy).catch(() => {});
+    await saveTrashMetadata("app_user", userId, deletedBy);
 
     invalidateTag(CACHE_TAGS.USERS);
     auditLog(deletedBy, "deleted app user | id=" + userId);

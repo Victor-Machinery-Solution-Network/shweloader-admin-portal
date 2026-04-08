@@ -59,7 +59,7 @@ export async function deleteArticleCategory(id: number) {
   try {
     const deletedBy = await requirePermission("article_categories", "delete");
     await articleCategoryService.softDelete(id, deletedBy);
-    saveTrashMetadata("article_category", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("article_category", id, deletedBy);
     invalidateTag(CACHE_TAGS.ARTICLE_CATEGORIES);
     auditLog(deletedBy, "deleted article category | id=" + id);
     return { success: true };
@@ -100,7 +100,7 @@ export async function deleteArticleCategories(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await articleCategoryService.softDelete(id, deletedBy);
-      saveTrashMetadata("article_category", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("article_category", id, deletedBy);
     }),
   );
 

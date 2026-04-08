@@ -83,7 +83,7 @@ export async function deleteMainCategory(id: number) {
   try {
     const deletedBy = await requirePermission("equipment_main_categories", "delete");
     await mainCategoryService.softDelete(id, deletedBy);
-    saveTrashMetadata("equipment_main_category", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("equipment_main_category", id, deletedBy);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     auditLog(deletedBy, "deleted equipment main category | id=" + id);
     return { success: true };
@@ -102,7 +102,7 @@ export async function deleteMainCategories(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await mainCategoryService.softDelete(id, deletedBy);
-      saveTrashMetadata("equipment_main_category", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("equipment_main_category", id, deletedBy);
     }),
   );
 
@@ -229,7 +229,7 @@ export async function deleteSubCategory(id: number) {
   try {
     const deletedBy = await requirePermission("equipment_sub_categories", "delete");
     await subCategoryService.softDelete(id, deletedBy);
-    saveTrashMetadata("equipment_sub_category", id, deletedBy).catch(() => {});
+    await saveTrashMetadata("equipment_sub_category", id, deletedBy);
     invalidateTag(CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES);
     auditLog(deletedBy, "deleted equipment sub category | id=" + id);
     return { success: true };
@@ -248,7 +248,7 @@ export async function deleteSubCategories(ids: number[]) {
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       await subCategoryService.softDelete(id, deletedBy);
-      saveTrashMetadata("equipment_sub_category", id, deletedBy).catch(() => {});
+      await saveTrashMetadata("equipment_sub_category", id, deletedBy);
     }),
   );
 
