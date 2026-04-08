@@ -311,7 +311,7 @@ CREATE TABLE IF NOT EXISTS chat_session (
     deleted_at TIMESTAMP DEFAULT NULL,
     deleted_by INTEGER,
     auto_replied_at TEXT DEFAULT NULL,
-    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id)
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_session_active_per_user
@@ -331,9 +331,9 @@ CREATE TABLE IF NOT EXISTS chat_message (
     sale_listing_id INTEGER,
     rent_listing_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_session_id) REFERENCES chat_session(id),
-    FOREIGN KEY (sale_listing_id) REFERENCES sale_listing(id),
-    FOREIGN KEY (rent_listing_id) REFERENCES rent_listing(id),
+    FOREIGN KEY (chat_session_id) REFERENCES chat_session(id) ON DELETE CASCADE,
+    FOREIGN KEY (sale_listing_id) REFERENCES sale_listing(id) ON DELETE SET NULL,
+    FOREIGN KEY (rent_listing_id) REFERENCES rent_listing(id) ON DELETE SET NULL,
     CHECK (
         (sale_listing_id IS NULL AND rent_listing_id IS NULL)
         OR (sale_listing_id IS NOT NULL AND rent_listing_id IS NULL)
