@@ -141,13 +141,11 @@ function applyThemeToDOM(theme: CustomTheme) {
     const sidebarColor = isDark ? theme.sidebarDark : theme.sidebarLight;
     if (sidebarColor) {
       root.style.setProperty("--sidebar", sidebarColor);
-      root.style.setProperty("--background", sidebarColor);
       // Derive sidebar foreground based on brightness
       const rgb = hexToRgb(sidebarColor);
       if (rgb) {
         const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
         const fg = brightness < 128 ? "#E8E8E8" : "#262626";
-        root.style.setProperty("--foreground", fg);
         root.style.setProperty("--sidebar-foreground", fg);
         root.style.setProperty("--sidebar-hover", brightness < 128 ? mixWithWhite(sidebarColor, 0.15) : mixWithBlack(sidebarColor, 0.08));
         root.style.setProperty("--sidebar-hover-foreground", fg);
@@ -158,7 +156,6 @@ function applyThemeToDOM(theme: CustomTheme) {
     const sidebarVars = [
       "--sidebar", "--sidebar-foreground", "--sidebar-hover",
       "--sidebar-hover-foreground", "--sidebar-border",
-      "--background", "--foreground",
     ];
     sidebarVars.forEach((v) => root.style.removeProperty(v));
   }

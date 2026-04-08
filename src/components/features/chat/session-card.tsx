@@ -41,9 +41,9 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full text-left px-4 py-3 flex items-center gap-3 border-l-2 transition-colors hover:bg-muted/50",
+        "w-full text-left px-4 py-3 flex items-center gap-3 border-l-2 transition-colors",
         isSelected
-          ? "border-l-primary bg-primary/10"
+          ? "border-l-primary bg-primary/10 hover:bg-primary/15"
           : hasUnread
             ? "border-l-primary bg-primary/50"
             : isPending
