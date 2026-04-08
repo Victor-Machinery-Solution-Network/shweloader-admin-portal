@@ -28,6 +28,7 @@ import type {
   DraftListingWithDetails,
   ProductImage,
   ListingDetail,
+  RentalUnit,
 } from "@/types/listing";
 import { requireAuth } from "@/lib/actions/utils";
 import { getCachedPermissionsForRole } from "@/lib/cache";
@@ -480,7 +481,7 @@ export async function createListing(formData: FormData) {
         use_system_rate:
           formData.get("rent_use_system_rate") === "0" ? 0 : 1,
         rental_unit:
-          (formData.get("rental_unit") as string) || "per_day",
+          (formData.get("rental_unit") as RentalUnit) || "per_day",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? created_by : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
@@ -735,7 +736,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
       use_system_rate:
         formData.get("rent_use_system_rate") === "0" ? 0 : 1,
       rental_unit:
-        (formData.get("rental_unit") as string) || "per_day",
+        (formData.get("rental_unit") as RentalUnit) || "per_day",
     });
 
     // 4. Sync product photos
@@ -1972,7 +1973,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
         use_system_rate:
           formData.get("rent_use_system_rate") === "0" ? 0 : 1,
         rental_unit:
-          (formData.get("rental_unit") as string) || "per_day",
+          (formData.get("rental_unit") as RentalUnit) || "per_day",
         approve_status_id: rentApproveStatusId,
         approved_by: canApproveRent ? userId : null,
         approved_at: canApproveRent ? new Date().toISOString() : null,
