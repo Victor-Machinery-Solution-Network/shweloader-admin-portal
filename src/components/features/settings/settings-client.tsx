@@ -6,6 +6,7 @@ import {
   Megaphone,
   Newspaper,
   DollarSign,
+  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useHasPermission } from "@/hooks/use-permissions";
@@ -56,6 +57,9 @@ export function SettingsClient({ settings }: SettingsClientProps) {
   const [exchangeRate, setExchangeRate] = useState(
     settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200",
   );
+  const [contactPhone, setContactPhone] = useState(
+    settings[SETTING_KEYS.CONTACT_PHONE] ?? "",
+  );
 
   function handleToggle(key: string, value: boolean) {
     setPendingKey(key);
@@ -91,8 +95,30 @@ export function SettingsClient({ settings }: SettingsClientProps) {
     });
   }
 
+  function handleContactPhoneSave() {
+    if (!contactPhone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
+
+    setPendingKey(SETTING_KEYS.CONTACT_PHONE);
+    startTransition(async () => {
+      const result = await updateSettings({
+        [SETTING_KEYS.CONTACT_PHONE]: contactPhone.trim(),
+      });
+      if (result.success) {
+        toast.success("Contact phone updated");
+      } else {
+        toast.error(result.error ?? "Failed to update contact phone");
+      }
+      setPendingKey(null);
+    });
+  }
+
   const exchangeRateChanged =
     exchangeRate !== (settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200");
+  const contactPhoneChanged =
+    contactPhone !== (settings[SETTING_KEYS.CONTACT_PHONE] ?? "");
 
   return (
     <div className="flex flex-col gap-6">
@@ -183,6 +209,50 @@ export function SettingsClient({ settings }: SettingsClientProps) {
                 <Spinner className="size-3" />
               ) : (
                 "Set"
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Section */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Contact
+        </p>
+        <div className="rounded-lg border px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+              <Phone className="size-4 text-sky-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Phone Number</p>
+              <p className="text-muted-foreground text-xs">
+                Contact phone number shown in the mobile app.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 ml-11">
+            <Input
+              id="contact-phone"
+              type="tel"
+              placeholder="+959xxxxxxxxx"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              disabled={isPending || !canEdit}
+              className="w-44"
+            />
+            <Button
+              size="xs"
+              onClick={handleContactPhoneSave}
+              disabled={isPending || !contactPhoneChanged || !canEdit}
+            >
+              {pendingKey === SETTING_KEYS.CONTACT_PHONE ? (
+                <Spinner className="size-3" />
+              ) : settings[SETTING_KEYS.CONTACT_PHONE] ? (
+                "Update"
+              ) : (
+                "Add"
               )}
             </Button>
           </div>

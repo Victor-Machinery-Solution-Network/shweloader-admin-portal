@@ -241,6 +241,7 @@ const APP_SETTINGS = [
   { setting_key: "announcement_bar_enabled", value: "true" },
   { setting_key: "articles_enabled", value: "true" },
   { setting_key: "exchange_rate", value: "3200" },
+  { setting_key: "contact_phone", value: "+959940475000" },
 ];
 
 // ─── RBAC Data ──────────────────────────────────────────────────────────────

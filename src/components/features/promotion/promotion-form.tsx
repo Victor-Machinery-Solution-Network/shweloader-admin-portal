@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Send, Package, X } from "lucide-react";
+import { Send, Package, X, TriangleAlert } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
@@ -9,7 +9,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { FormDialog } from "@/components/shared/form-dialog";
-import { sendPromotionPush } from "@/lib/actions/promotion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { sendPromotionPush, getDeviceCount } from "@/lib/actions/promotion";
 import {
   ProductPickerModal,
   type SelectedListing,
@@ -24,6 +34,9 @@ interface PromotionFormProps {
 export function PromotionForm({ open, onOpenChange }: PromotionFormProps) {
   const [isPending, startTransition] = useTransition();
   const [showPicker, setShowPicker] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const [deviceCount, setDeviceCount] = useState<number | null>(null);
   const [selectedListing, setSelectedListing] =
     useState<SelectedListing | null>(null);
 
@@ -41,11 +54,24 @@ export function PromotionForm({ open, onOpenChange }: PromotionFormProps) {
       formData.set("productListId", String(selectedListing.productListId));
     }
 
+    // Store form data, fetch device count, and show confirmation dialog
+    setPendingFormData(formData);
+    setShowConfirm(true);
+    getDeviceCount().then(setDeviceCount).catch(() => setDeviceCount(null));
+  }
+
+  function handleConfirmSend() {
+    if (!pendingFormData || isPending) return;
+
+    setShowConfirm(false);
+    const formData = pendingFormData;
+    setPendingFormData(null);
+
     startTransition(async () => {
       const result = await sendPromotionPush(formData);
 
       if (result.success) {
-        toast.success("Promotion sent to all devices");
+        toast.success("Push notification sent to all devices");
         setSelectedListing(null);
         onOpenChange(false);
       } else {
@@ -155,6 +181,35 @@ export function PromotionForm({ open, onOpenChange }: PromotionFormProps) {
         onOpenChange={setShowPicker}
         onSelect={handleSelect}
       />
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100">
+              <TriangleAlert className="size-6 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-center">
+              Send push notification?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              This will send a push notification to{" "}
+              {deviceCount !== null ? (
+                <strong>{deviceCount.toLocaleString()} registered {deviceCount === 1 ? "device" : "devices"}</strong>
+              ) : (
+                <strong>all registered devices</strong>
+              )}
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSend}>
+              <Send className="size-4 mr-1.5" />
+              Yes, Send to All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

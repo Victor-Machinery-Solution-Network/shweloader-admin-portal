@@ -692,7 +692,7 @@ export function AppSidebar() {
                       >
                         <Link href={ROUTES.PROMOTIONS}>
                           <Send aria-hidden="true" />
-                          <span>Promotions</span>
+                          <span>Push Notifications</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

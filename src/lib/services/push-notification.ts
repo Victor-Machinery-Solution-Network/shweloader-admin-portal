@@ -40,26 +40,22 @@ export async function sendPushToUser(
 export async function sendBroadcast(
   payload: PushPayload,
 ): Promise<void> {
-  try {
-    const BATCH_SIZE = 500;
-    let offset = 0;
+  const BATCH_SIZE = 500;
+  let offset = 0;
 
-    while (true) {
-      const result = await d1.query<{ token: string }>(
-        'SELECT token FROM device_token LIMIT ? OFFSET ?',
-        [BATCH_SIZE, offset],
-      );
+  while (true) {
+    const result = await d1.query<{ token: string }>(
+      'SELECT token FROM device_token LIMIT ? OFFSET ?',
+      [BATCH_SIZE, offset],
+    );
 
-      const tokens = result.results.map((r) => r.token);
-      if (tokens.length === 0) break;
+    const tokens = result.results.map((r) => r.token);
+    if (tokens.length === 0) break;
 
-      await sendToTokens(tokens, payload);
-      offset += BATCH_SIZE;
+    await sendToTokens(tokens, payload);
+    offset += BATCH_SIZE;
 
-      if (tokens.length < BATCH_SIZE) break;
-    }
-  } catch (error) {
-    console.error('[push] sendBroadcast failed:', error);
+    if (tokens.length < BATCH_SIZE) break;
   }
 }
 

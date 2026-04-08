@@ -8,7 +8,7 @@ import { PromotionClient } from "@/components/features/promotion/promotion-clien
 import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
-  title: "Promotions",
+  title: "Push Notifications",
   description: "Send push notifications to all devices",
 };
 
@@ -16,7 +16,7 @@ export default function PromotionsPage() {
   return (
     <>
       <PageHeader
-        title="Promotions"
+        title="Push Notifications"
         description="Send push notifications to all registered devices"
       />
       <Suspense fallback={<DataTableSkeleton />}>

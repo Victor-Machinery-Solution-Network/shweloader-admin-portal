@@ -10,6 +10,15 @@ import { auditLog } from "@/lib/actions/audit";
 import { sendBroadcast } from "@/lib/services/push-notification";
 import { assetUrl } from "@/lib/r2-url";
 
+// ─── Device Count ─────────────────────────────────────────────────────────
+
+export async function getDeviceCount(): Promise<number> {
+  const result = await d1.query<{ count: number }>(
+    "SELECT COUNT(*) as count FROM device_token",
+  );
+  return result.results[0]?.count ?? 0;
+}
+
 // ─── Promotion Push Actions ────────────────────────────────────────────────
 
 export async function sendPromotionPush(formData: FormData) {
@@ -56,16 +65,14 @@ export async function sendPromotionPush(formData: FormData) {
       created_by,
     });
 
-    // Send push to all devices (fire-and-forget)
-    // referenceId = productListId — RN app uses /product/[id] which is product_list.id
-    sendBroadcast({
+    // Send push to all devices — must await so the serverless function
+    // doesn't terminate before FCM accepts all messages
+    await sendBroadcast({
       type: "promotion",
       title: title.trim(),
       body: body.trim(),
       ...(imageUrl && { imageUrl }),
       ...(productListId && { referenceId: productListId }),
-    }).catch((err) => {
-      console.error("[promotion] broadcast failed:", err);
     });
 
     invalidateTag(CACHE_TAGS.PROMOTION_PUSHES);
@@ -113,15 +120,12 @@ export async function resendPromotionPush(id: number) {
       created_by,
     });
 
-    // Broadcast
-    sendBroadcast({
+    await sendBroadcast({
       type: "promotion",
       title: original.title,
       body: original.body,
       ...(imageUrl && { imageUrl }),
       ...(original.listing_id && { referenceId: String(original.listing_id) }),
-    }).catch((err) => {
-      console.error("[promotion] broadcast failed:", err);
     });
 
     invalidateTag(CACHE_TAGS.PROMOTION_PUSHES);

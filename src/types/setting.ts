@@ -13,6 +13,7 @@ export const SETTING_KEYS = {
   ANNOUNCEMENT_BAR_ENABLED: "announcement_bar_enabled",
   ARTICLES_ENABLED: "articles_enabled",
   EXCHANGE_RATE: "exchange_rate",
+  CONTACT_PHONE: "contact_phone",
 } as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
