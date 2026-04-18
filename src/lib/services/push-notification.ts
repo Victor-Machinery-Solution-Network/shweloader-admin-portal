@@ -8,6 +8,7 @@ export interface PushPayload {
   title: string;
   body: string;
   referenceId?: string;
+  referenceType?: string;
   imageUrl?: string;      // attachment image (full R2 public URL)
   avatarUrl?: string;     // sender avatar (full R2 public URL)
   data?: Record<string, string>;
@@ -74,6 +75,7 @@ async function sendToTokens(
     title: payload.title,
     body: payload.body,
     ...(payload.referenceId && { referenceId: payload.referenceId }),
+    ...(payload.referenceType && { reference_type: payload.referenceType }),
     ...(payload.avatarUrl && { avatarUrl: payload.avatarUrl }),
     ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
     ...(payload.iosTitle && { appTitle: payload.iosTitle }),
