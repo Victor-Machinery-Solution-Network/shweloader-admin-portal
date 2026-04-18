@@ -150,7 +150,7 @@ export async function rejectPartner(id: number, reason: string) {
         app_user_id: appUserId,
         type: "partner_status",
         title: "Partner application rejected",
-        body: reason ?? null,
+        body: reason || null,
         reference_type: "partner",
         reference_id: id,
       });
