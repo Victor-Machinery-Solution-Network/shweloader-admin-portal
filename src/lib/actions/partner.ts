@@ -6,6 +6,8 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { auditLog } from "@/lib/actions/audit";
+import { insertUserNotification } from "@/lib/services/user-notification";
+import { sendPushToUser } from "@/lib/services/push-notification";
 import type { PartnerWithDetails } from "@/types/partner";
 
 // ─── Partner Queries ─────────────────────────────────────────────────────────
@@ -82,6 +84,30 @@ export async function approvePartner(id: number) {
       reviewed_by,
       rejection_reason: null,
     });
+
+    const partnerRow = await d1.query<{ app_user_id: number | null }>(
+      "SELECT app_user_id FROM partner WHERE id = ?",
+      [id],
+    );
+    const appUserId = partnerRow.results[0]?.app_user_id ?? null;
+    if (appUserId) {
+      await insertUserNotification({
+        app_user_id: appUserId,
+        type: "partner_status",
+        title: "Partner application approved",
+        body: null,
+        reference_type: "partner",
+        reference_id: id,
+      });
+      sendPushToUser(appUserId, {
+        type: "partner_status",
+        title: "Shwe Loader",
+        body: "Your partner application has been approved.",
+        referenceId: String(id),
+        referenceType: "partner",
+      }).catch(() => {});
+    }
+
     invalidateTag(CACHE_TAGS.PARTNERS);
     auditLog(reviewed_by, "approved partner | id=" + id);
     return { success: true };
@@ -113,6 +139,32 @@ export async function rejectPartner(id: number, reason: string) {
       reviewed_by,
       rejection_reason: reason || null,
     });
+
+    const partnerRow = await d1.query<{ app_user_id: number | null }>(
+      "SELECT app_user_id FROM partner WHERE id = ?",
+      [id],
+    );
+    const appUserId = partnerRow.results[0]?.app_user_id ?? null;
+    if (appUserId) {
+      await insertUserNotification({
+        app_user_id: appUserId,
+        type: "partner_status",
+        title: "Partner application rejected",
+        body: reason ?? null,
+        reference_type: "partner",
+        reference_id: id,
+      });
+      sendPushToUser(appUserId, {
+        type: "partner_status",
+        title: "Shwe Loader",
+        body: reason
+          ? `Application rejected: ${reason}`
+          : "Your partner application was not approved.",
+        referenceId: String(id),
+        referenceType: "partner",
+      }).catch(() => {});
+    }
+
     invalidateTag(CACHE_TAGS.PARTNERS);
     auditLog(reviewed_by, "rejected partner | id=" + id);
     return { success: true };
