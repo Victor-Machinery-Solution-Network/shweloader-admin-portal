@@ -1,5 +1,8 @@
 import d1 from "@/lib/api/d1-client";
-import { triggerNotification } from "@/lib/pusher";
+import {
+  triggerNotification,
+  triggerNotificationBatch,
+} from "@/lib/pusher";
 
 export type UserNotificationType =
   | "chat_reply"
@@ -45,7 +48,7 @@ export async function insertUserNotification(
     const id = result.results[0]?.id;
     if (!id) return null;
 
-    triggerNotification(input.app_user_id, "new-notification", {
+    await triggerNotification(input.app_user_id, "new-notification", {
       id,
       type: input.type,
       title: input.title,
@@ -70,14 +73,20 @@ export async function insertUserNotification(
 
 /**
  * Bulk-insert one row per distinct app_user_id that has at least one
- * registered device token. Used for broadcasts (promotions). Fires one
- * Pusher event per distinct user so in-app badge updates live.
+ * registered device token. Used for broadcasts (promotions). Fires a
+ * single batched Pusher event covering all recipients.
+ *
+ * Pusher payload does NOT include `id` (the batched event goes to all
+ * channels with the same body). Clients should treat a `new-notification`
+ * event without an `id` as a signal to refetch their inbox rather than
+ * optimistically prepend.
  */
 export async function insertUserNotificationBroadcast(
   payload: Omit<InsertUserNotificationInput, "app_user_id">,
 ): Promise<void> {
+  const ROWS_PER_INSERT = 10; // 10 rows × 8 cols = 80 params, safely under D1's ~100 limit
+
   try {
-    // Fetch distinct logged-in user ids with a device token
     const users = await d1.query<{ app_user_id: number }>(
       `SELECT DISTINCT app_user_id
          FROM device_token
@@ -86,49 +95,56 @@ export async function insertUserNotificationBroadcast(
     const ids = users.results.map((r) => r.app_user_id);
     if (ids.length === 0) return;
 
-    // Bulk insert in a single SQL statement (D1 supports multi-row VALUES)
-    const placeholders = ids.map(() => "(?, ?, ?, ?, ?, ?, ?, ?)").join(",");
-    const params: (number | string | null)[] = [];
-    for (const id of ids) {
-      params.push(
-        id,
-        payload.type,
-        payload.title,
-        payload.body ?? null,
-        payload.image_url ?? null,
-        payload.reference_type ?? null,
-        payload.reference_id ?? null,
-        payload.action_url ?? null,
-      );
-    }
-
-    await d1.query(
-      `INSERT INTO user_notification
-         (app_user_id, type, title, body, image_url, reference_type, reference_id, action_url)
-       VALUES ${placeholders}`,
-      params,
-    );
-
-    // Fire Pusher per recipient (do not block on these)
-    for (const id of ids) {
-      triggerNotification(id, "new-notification", {
-        type: payload.type,
-        title: payload.title,
-        body: payload.body ?? null,
-        image_url: payload.image_url ?? null,
-        reference_type: payload.reference_type ?? null,
-        reference_id: payload.reference_id ?? null,
-        action_url: payload.action_url ?? null,
-        is_read: 0,
-        created_at: new Date().toISOString(),
-        read_at: null,
-      }).catch((err) => {
+    // Insert in chunks to stay under D1's parameter-count limit.
+    // Each chunk is isolated — one bad chunk does not abort the rest.
+    for (let i = 0; i < ids.length; i += ROWS_PER_INSERT) {
+      const chunk = ids.slice(i, i + ROWS_PER_INSERT);
+      const placeholders = chunk
+        .map(() => "(?, ?, ?, ?, ?, ?, ?, ?)")
+        .join(",");
+      const params: (number | string | null)[] = [];
+      for (const id of chunk) {
+        params.push(
+          id,
+          payload.type,
+          payload.title,
+          payload.body ?? null,
+          payload.image_url ?? null,
+          payload.reference_type ?? null,
+          payload.reference_id ?? null,
+          payload.action_url ?? null,
+        );
+      }
+      try {
+        await d1.query(
+          `INSERT INTO user_notification
+             (app_user_id, type, title, body, image_url, reference_type, reference_id, action_url)
+           VALUES ${placeholders}`,
+          params,
+        );
+      } catch (err) {
         console.error(
-          `[user-notification] broadcast pusher trigger failed for user ${id}:`,
+          `[user-notification] broadcast chunk at offset ${i} failed:`,
           err,
         );
-      });
+      }
     }
+
+    // Single batched Pusher call fans out to all recipients.
+    await triggerNotificationBatch(ids, "new-notification", {
+      type: payload.type,
+      title: payload.title,
+      body: payload.body ?? null,
+      image_url: payload.image_url ?? null,
+      reference_type: payload.reference_type ?? null,
+      reference_id: payload.reference_id ?? null,
+      action_url: payload.action_url ?? null,
+      is_read: 0,
+      created_at: new Date().toISOString(),
+      read_at: null,
+    }).catch((err) => {
+      console.error("[user-notification] broadcast pusher batch failed:", err);
+    });
   } catch (error) {
     console.error("[user-notification] broadcast insert failed:", error);
   }
