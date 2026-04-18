@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { triggerChatEvent, triggerAdminChatEvent } from "@/lib/pusher";
 import { sendPushToUser } from "@/lib/services/push-notification";
+import { insertUserNotification } from "@/lib/services/user-notification";
 import { assetUrl } from "@/lib/r2-url";
 import type {
   ChatSessionWithDetails,
@@ -435,13 +436,25 @@ export async function sendMessage(
         ? assetUrl(firstImage.fileUrl) ?? undefined
         : undefined;
 
+      await insertUserNotification({
+        app_user_id: appUserId,
+        type: "chat_reply",
+        title: "New message from Support",
+        body: preview,
+        image_url: imageUrl ?? null,
+        reference_type: "chat_session",
+        reference_id: sessionId,
+      });
+
       sendPushToUser(appUserId, {
         type: "chat_reply",
         title: "Shwe Loader",
         body: preview,
         referenceId: String(sessionId),
+        referenceType: "chat_session",
         ...(adminAvatarUrl && { avatarUrl: adminAvatarUrl }),
         ...(imageUrl && { imageUrl }),
+        data: { senderName },
       }).catch(() => {}); // Fire and forget
     }
 
