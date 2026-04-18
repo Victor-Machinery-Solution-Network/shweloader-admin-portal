@@ -8,6 +8,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { saveTrashMetadata } from "@/lib/actions/trash";
 import { auditLog } from "@/lib/actions/audit";
 import { sendBroadcast } from "@/lib/services/push-notification";
+import { insertUserNotificationBroadcast } from "@/lib/services/user-notification";
 import { assetUrl } from "@/lib/r2-url";
 
 // ─── Device Count ─────────────────────────────────────────────────────────
@@ -67,13 +68,22 @@ export async function sendPromotionPush(formData: FormData) {
 
     // Send push to all devices — must await so the serverless function
     // doesn't terminate before FCM accepts all messages
+    await insertUserNotificationBroadcast({
+      type: "promotion",
+      title: title.trim(),
+      body: body.trim(),
+      image_url: imageUrl ?? null,
+      reference_type: "listing",
+      reference_id: productListId ? Number(productListId) : null,
+    });
+
     await sendBroadcast({
       type: "promotion",
       title: title.trim(),
       body: body.trim(),
       iosTitle: "Shwe Loader",
       ...(imageUrl && { imageUrl }),
-      ...(productListId && { referenceId: productListId }),
+      ...(productListId && { referenceId: productListId, referenceType: "listing" }),
     });
 
     invalidateTag(CACHE_TAGS.PROMOTION_PUSHES);
@@ -121,13 +131,22 @@ export async function resendPromotionPush(id: number) {
       created_by,
     });
 
+    await insertUserNotificationBroadcast({
+      type: "promotion",
+      title: original.title,
+      body: original.body,
+      image_url: imageUrl ?? null,
+      reference_type: "listing",
+      reference_id: original.listing_id ? Number(original.listing_id) : null,
+    });
+
     await sendBroadcast({
       type: "promotion",
       title: original.title,
       body: original.body,
       iosTitle: "Shwe Loader",
       ...(imageUrl && { imageUrl }),
-      ...(original.listing_id && { referenceId: String(original.listing_id) }),
+      ...(original.listing_id && { referenceId: String(original.listing_id), referenceType: "listing" }),
     });
 
     invalidateTag(CACHE_TAGS.PROMOTION_PUSHES);
