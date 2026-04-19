@@ -408,6 +408,7 @@ export async function sendMessage(
       senderType: "admin",
       senderId: adminId,
       senderName,
+      senderAvatarUrl: adminAvatarUrl ?? null,
       message: hasMessage ? message!.trim() : null,
       attachments: attachmentData ?? [],
       createdAt: now,
