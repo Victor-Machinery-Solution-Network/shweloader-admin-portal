@@ -69,7 +69,7 @@ async function sendToTokens(
 ): Promise<void> {
   const messaging = getFirebaseMessaging();
 
-  // Data payload for Android notifee (foreground rich notifications)
+  // Data payload — consumed by RN notifee background/foreground handlers.
   const dataPayload: Record<string, string> = {
     type: payload.type,
     title: payload.title,
@@ -82,37 +82,54 @@ async function sendToTokens(
     ...(payload.data ?? {}),
   };
 
+  // Rich-background types: data-only on Android so the RN background
+  // handler renders with avatar (MessagingStyle). iOS keeps APNs alert
+  // since rich iOS requires NSE (not yet set up).
+  const richBackground = payload.type === 'chat_reply';
+
   const response = await messaging.sendEachForMulticast({
     tokens,
-    // Top-level notification — system displays this on both platforms
-    // when app is background/killed.
-    notification: {
-      title: payload.title,
-      body: payload.body,
-      ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
-    },
+    ...(richBackground
+      ? {}
+      : {
+          // Top-level notification — system auto-displays on both
+          // platforms when app is backgrounded/killed. Intentionally
+          // omitted for chat_reply to hand control to RN's bg handler.
+          notification: {
+            title: payload.title,
+            body: payload.body,
+            ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
+          },
+        }),
     data: dataPayload,
     android: {
       priority: 'high',
-      notification: {
-        sound: 'default',
-        ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
-      },
+      ...(richBackground
+        ? {}
+        : {
+            notification: {
+              sound: 'default',
+              ...(payload.imageUrl && { imageUrl: payload.imageUrl }),
+            },
+          }),
     },
     apns: {
       payload: {
         aps: {
-          // When iosTitle is set, override the iOS notification to show:
-          // title (brand) → subtitle (promotion headline) → body (message)
-          ...(payload.iosTitle && {
-            alert: {
-              title: payload.iosTitle,
-              subtitle: payload.title,
-              body: payload.body,
-            },
-          }),
+          // iOS always uses APNs alert for background display.
+          alert: payload.iosTitle
+            ? {
+                title: payload.iosTitle,
+                subtitle: payload.title,
+                body: payload.body,
+              }
+            : {
+                title: payload.title,
+                body: payload.body,
+              },
           sound: 'default',
           badge: 1,
+          ...(richBackground && { 'mutable-content': 1 }),
         },
       },
       fcmOptions: {
