@@ -1,5 +1,6 @@
 import d1 from "@/lib/api/d1-client";
 import {
+  getPusher,
   triggerNotification,
   triggerNotificationBatch,
 } from "@/lib/pusher";
@@ -131,7 +132,7 @@ export async function insertUserNotificationBroadcast(
       }
     }
 
-    // Single batched Pusher call fans out to all recipients.
+    // Single batched Pusher call fans out to all authenticated recipients.
     await triggerNotificationBatch(ids, "new-notification", {
       type: payload.type,
       title: payload.title,
@@ -146,6 +147,24 @@ export async function insertUserNotificationBroadcast(
     }).catch((err) => {
       console.error("[user-notification] broadcast pusher batch failed:", err);
     });
+
+    // Additionally fire on a public channel so logged-out devices get
+    // real-time bell-badge updates (they can't subscribe to private-user
+    // channels without auth). Minimal payload — client uses it only as a
+    // signal to invalidate its cached unread-count.
+    if (payload.type === "promotion") {
+      await getPusher()
+        .trigger("promotions", "new-promotion", {
+          title: payload.title,
+          created_at: new Date().toISOString(),
+        })
+        .catch((err) => {
+          console.error(
+            "[user-notification] public promotions trigger failed:",
+            err,
+          );
+        });
+    }
   } catch (error) {
     console.error("[user-notification] broadcast insert failed:", error);
   }
