@@ -448,8 +448,9 @@ export async function sendMessage(
 
       sendPushToUser(appUserId, {
         type: "chat_reply",
-        title: "Shwe Loader",
+        title: senderName,
         body: preview,
+        iosTitle: "Shwe Loader",
         referenceId: String(sessionId),
         referenceType: "chat_session",
         ...(adminAvatarUrl && { avatarUrl: adminAvatarUrl }),
