@@ -7,14 +7,18 @@ import { auditLog } from "@/lib/actions/audit";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getLastDisplayOrder } from "@/lib/actions/reorder";
-import { processFileWithOriginalName, deleteFile } from "@/lib/actions/upload-helpers";
+import {
+  processImageFieldRich,
+  deleteFile,
+} from "@/lib/actions/upload-helpers";
+import { slugify } from "@/lib/api/r2-client";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 // ─── Carousel Image Actions ─────────────────────────────────────────────────
 
 export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]> {
   const { results } = await d1.query<CarouselImageWithDetails>(
-    `SELECT ci.*, i.image_url, i.focal_x, i.focal_y
+    `SELECT ci.*, i.image_url, i.thumb_url, i.blurhash, i.focal_x, i.focal_y
      FROM carousel_image ci
      JOIN image i ON ci.image_id = i.image_id
      ORDER BY ci.carousel_id ASC, ci.display_order ASC, ci.added_at ASC`,
@@ -27,12 +31,19 @@ export async function addCarouselImage(
   formData: FormData,
 ) {
   try {
-    // Upload file to R2
-    const imageKey = await processFileWithOriginalName(
-      formData, "image", "carousels/",
+    const file = formData.get("image");
+    if (!(file instanceof File) || file.size === 0) {
+      return { success: false, error: "Image file is required" };
+    }
+    const entityName = slugify(file.name.replace(/\.[^.]+$/, "")) || "carousel";
+    const uploaded = await processImageFieldRich(
+      formData,
+      "image",
+      "carousels/",
+      entityName,
     );
 
-    if (!imageKey) {
+    if (!uploaded) {
       return { success: false, error: "Image file is required" };
     }
 
@@ -45,8 +56,8 @@ export async function addCarouselImage(
       await Promise.all([
         requirePermission("carousels", "create"),
         d1.query<{ image_id: number }>(
-          "INSERT INTO image (image_url, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?) RETURNING image_id",
-          [imageKey, focalX, focalY, null],
+          "INSERT INTO image (image_url, thumb_url, blurhash, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING image_id",
+          [uploaded.key, uploaded.thumbKey, uploaded.blurhash, focalX, focalY, null],
         ),
         getLastDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
@@ -77,12 +88,13 @@ export async function removeCarouselImage(
 ) {
   try {
     const userId = await requirePermission("carousels", "delete");
-    // Get image key for R2 cleanup
-    const { results } = await d1.query<{ image_url: string }>(
-      "SELECT image_url FROM image WHERE image_id = ?",
+    // Get image keys for R2 cleanup
+    const { results } = await d1.query<{ image_url: string; thumb_url: string | null }>(
+      "SELECT image_url, thumb_url FROM image WHERE image_id = ?",
       [imageId],
     );
     const imageKey = results[0]?.image_url;
+    const thumbKey = results[0]?.thumb_url;
 
     // Delete junction record
     await d1.query(
@@ -90,8 +102,9 @@ export async function removeCarouselImage(
       [carouselId, imageId],
     );
 
-    // Delete from R2
+    // Delete from R2 (both full + thumb variant if present)
     await deleteFile(imageKey);
+    if (thumbKey) await deleteFile(thumbKey);
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
     auditLog(userId, "removed carousel image | carousel=" + carouselId + " | image=" + imageId);

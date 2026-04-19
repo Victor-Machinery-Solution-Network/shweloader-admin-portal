@@ -16,6 +16,7 @@ import { nKeysBetween } from "@/lib/utils/display-order";
 import {
   processFileField,
   processFileWithOriginalName,
+  processImageFieldRich,
   deleteFile,
   cleanupOldFile,
 } from "@/lib/actions/upload-helpers";
@@ -50,10 +51,20 @@ import { auditLog } from "@/lib/actions/audit";
  * - `photo_focal_x_N` / `photo_focal_y_N`: optional focal point (0–1)
  * Returns array of { key, focalX, focalY } in order.
  */
+type ProcessedPhoto = {
+  key: string;
+  /** Non-null only for freshly uploaded files; existing entries inherit the
+   *  thumb+blurhash already stored in product_image during syncProductImages. */
+  thumbKey: string | null;
+  blurhash: string | null;
+  focalX: number | null;
+  focalY: number | null;
+};
+
 async function processProductPhotos(
   formData: FormData,
   productListId: number,
-): Promise<Array<{ key: string; focalX: number | null; focalY: number | null }>> {
+): Promise<ProcessedPhoto[]> {
   const r2Path = `products/photos/${productListId}/`;
 
   // 1. Collect all entries (preserving order)
@@ -92,47 +103,68 @@ async function processProductPhotos(
   // 2. Upload all new files with index suffix to prevent filename collisions
   //    e.g. two "front.jpg" files become "front-0.webp" and "front-1.webp"
   const results = await Promise.all(
-    entries.map(async (entry, idx) => {
-      let key: string | null;
+    entries.map(async (entry, idx): Promise<ProcessedPhoto | null> => {
       if (entry.type === "url") {
-        key = entry.url!;
-      } else {
-        const nameWithoutExt = entry.file!.name.replace(/\.[^.]+$/, "");
-        const uniqueName = `${slugify(nameWithoutExt)}-${idx}`;
-        const tempFormData = new FormData();
-        tempFormData.set("photo", entry.file!);
-        key = await processFileField(tempFormData, "photo", r2Path, uniqueName);
+        return {
+          key: entry.url!,
+          thumbKey: null,
+          blurhash: null,
+          focalX: entry.focalX,
+          focalY: entry.focalY,
+        };
       }
-      if (!key) return null;
-      return { key, focalX: entry.focalX, focalY: entry.focalY };
+      const nameWithoutExt = entry.file!.name.replace(/\.[^.]+$/, "");
+      const uniqueName = `${slugify(nameWithoutExt)}-${idx}`;
+      const tempFormData = new FormData();
+      tempFormData.set("photo", entry.file!);
+      const rich = await processImageFieldRich(
+        tempFormData,
+        "photo",
+        r2Path,
+        uniqueName,
+      );
+      if (!rich) return null;
+      return {
+        key: rich.key,
+        thumbKey: rich.thumbKey,
+        blurhash: rich.blurhash,
+        focalX: entry.focalX,
+        focalY: entry.focalY,
+      };
     }),
   );
 
-  return results.filter(
-    (r): r is { key: string; focalX: number | null; focalY: number | null } =>
-      r !== null,
-  );
+  return results.filter((r): r is ProcessedPhoto => r !== null);
 }
 
 // ─── Helper: sync product images (with R2 cleanup) ─────────────────────────
 
 async function syncProductImages(
   productListId: number,
-  newPhotos: Array<{ key: string; focalX: number | null; focalY: number | null }>,
+  newPhotos: ProcessedPhoto[],
   uploadedBy: number | null,
 ) {
-  // Get existing images
+  // Get existing images with variants so we can both preserve unchanged
+  // photos' thumb+blurhash and clean up R2 objects for removed ones.
   const existing = await d1.query<ProductImage>(
-    "SELECT image_id, url FROM product_image WHERE product_list_id = ?",
+    "SELECT image_id, url, thumb_url, blurhash FROM product_image WHERE product_list_id = ?",
     [productListId],
   );
 
+  const existingByUrl = new Map(
+    existing.results.map((img) => [img.url, img] as const),
+  );
   const newKeySet = new Set(newPhotos.map((p) => p.key));
 
-  // Find keys that are no longer referenced
-  const removedKeys = existing.results
-    .map((img) => img.url)
-    .filter((key) => !newKeySet.has(key));
+  const removedImages = existing.results.filter(
+    (img) => !newKeySet.has(img.url),
+  );
+  const removedKeys = [
+    ...removedImages.map((img) => img.url),
+    ...removedImages
+      .map((img) => img.thumb_url)
+      .filter((k): k is string => !!k),
+  ];
 
   // 1. Delete existing DB records
   if (existing.results.length > 0) {
@@ -145,22 +177,79 @@ async function syncProductImages(
   if (newPhotos.length > 0) {
     const orderKeys = nKeysBetween(null, null, newPhotos.length);
     await Promise.all(
-      newPhotos.map((photo, i) =>
-        productImageService.create({
+      newPhotos.map((photo, i) => {
+        const prev = existingByUrl.get(photo.key);
+        return productImageService.create({
           product_list_id: productListId,
           url: photo.key,
+          thumb_url: photo.thumbKey ?? prev?.thumb_url ?? null,
+          blurhash: photo.blurhash ?? prev?.blurhash ?? null,
           display_order: orderKeys[i],
           uploaded_by: uploadedBy,
           active: 1,
           focal_x: photo.focalX,
           focal_y: photo.focalY,
-        }),
-      ),
+        });
+      }),
     );
   }
 
   // 3. Clean up removed files from R2 (after DB is consistent)
   await Promise.allSettled(removedKeys.map((key) => deleteFile(key)));
+}
+
+// ─── Helper: upload product thumbnail with variants ─────────────────────────
+
+type ThumbnailRecord = {
+  thumbnail_url: string | null;
+  thumbnail_sm_url: string | null;
+  thumbnail_blurhash: string | null;
+};
+
+/**
+ * Upload the product thumbnail (or keep the existing one) and return the
+ * full triplet of fields. `null` for any field means "clear in D1".
+ * Pair with `cleanupProductThumbnail` AFTER the D1 update succeeds.
+ */
+async function uploadProductThumbnail(
+  formData: FormData,
+  productListId: number,
+  existing: Partial<ThumbnailRecord> | null | undefined,
+): Promise<ThumbnailRecord> {
+  const result = await processImageFieldRich(
+    formData,
+    "thumbnail_url",
+    "products/thumbnails/",
+    String(productListId),
+    existing?.thumbnail_url
+      ? {
+          key: existing.thumbnail_url,
+          thumbKey: existing.thumbnail_sm_url ?? null,
+          blurhash: existing.thumbnail_blurhash ?? null,
+        }
+      : null,
+  );
+  if (!result) {
+    return {
+      thumbnail_url: null,
+      thumbnail_sm_url: null,
+      thumbnail_blurhash: null,
+    };
+  }
+  return {
+    thumbnail_url: result.key,
+    thumbnail_sm_url: result.thumbKey,
+    thumbnail_blurhash: result.blurhash,
+  };
+}
+
+/** Clean up both the full-size thumbnail and its sm variant from R2 when changed. */
+async function cleanupProductThumbnail(
+  oldRecord: Partial<ThumbnailRecord> | null | undefined,
+  newRecord: ThumbnailRecord,
+) {
+  await cleanupOldFile(oldRecord?.thumbnail_url, newRecord.thumbnail_url);
+  await cleanupOldFile(oldRecord?.thumbnail_sm_url, newRecord.thumbnail_sm_url);
 }
 
 // ─── Helper: extract common product fields from form ────────────────────────
@@ -393,16 +482,19 @@ export async function createListing(formData: FormData) {
     );
 
     // 2. Upload thumbnail using product_list_id for unique path
-    const thumbnail_url = await processFileField(
+    const thumbResult = await processImageFieldRich(
       formData,
       "thumbnail_url",
       "products/thumbnails/",
       String(productId),
     );
-    if (thumbnail_url) {
-      uploadedKeys.push(thumbnail_url);
+    if (thumbResult?.key) {
+      uploadedKeys.push(thumbResult.key);
+      if (thumbResult.thumbKey) uploadedKeys.push(thumbResult.thumbKey);
       await productListService.update(productId, {
-        thumbnail_url,
+        thumbnail_url: thumbResult.key,
+        thumbnail_sm_url: thumbResult.thumbKey,
+        thumbnail_blurhash: thumbResult.blurhash,
         ...thumbFocal,
       });
     }
@@ -569,11 +661,14 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     const existing = await d1.query<{
       product_list_id: number;
       thumbnail_url: string | null;
+      thumbnail_sm_url: string | null;
+      thumbnail_blurhash: string | null;
     }>(
-      "SELECT sl.product_list_id, pl.thumbnail_url FROM sale_listing sl JOIN product_list pl ON sl.product_list_id = pl.id WHERE sl.id = ?",
+      "SELECT sl.product_list_id, pl.thumbnail_url, pl.thumbnail_sm_url, pl.thumbnail_blurhash FROM sale_listing sl JOIN product_list pl ON sl.product_list_id = pl.id WHERE sl.id = ?",
       [saleId],
     );
-    const productListId = existing.results[0]?.product_list_id;
+    const existingRow = existing.results[0];
+    const productListId = existingRow?.product_list_id;
     if (!productListId) {
       return { success: false, error: "Sale listing not found" };
     }
@@ -582,18 +677,16 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     const thumbFocal = parseThumbnailFocal(formData);
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
-    const thumbnail_url = await processFileField(
+    const thumbnailFields = await uploadProductThumbnail(
       formData,
-      "thumbnail_url",
-      "products/thumbnails/",
-      String(productListId),
-      existing.results[0]?.thumbnail_url,
+      productListId,
+      existingRow,
     );
 
     // 2. Update product_list
     await productListService.update(productListId, {
       ...productFields,
-      thumbnail_url,
+      ...thumbnailFields,
       ...thumbFocal,
     });
 
@@ -621,7 +714,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     await syncProductImages(productListId, photos, null);
 
     // 5. Clean up old thumbnail from R2 (after D1 is consistent)
-    await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
+    await cleanupProductThumbnail(existingRow, thumbnailFields);
 
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
     auditLog(userId, "updated sale listing | id=" + saleId);
@@ -691,11 +784,14 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     const existing = await d1.query<{
       product_list_id: number;
       thumbnail_url: string | null;
+      thumbnail_sm_url: string | null;
+      thumbnail_blurhash: string | null;
     }>(
-      "SELECT rl.product_list_id, pl.thumbnail_url FROM rent_listing rl JOIN product_list pl ON rl.product_list_id = pl.id WHERE rl.id = ?",
+      "SELECT rl.product_list_id, pl.thumbnail_url, pl.thumbnail_sm_url, pl.thumbnail_blurhash FROM rent_listing rl JOIN product_list pl ON rl.product_list_id = pl.id WHERE rl.id = ?",
       [rentId],
     );
-    const productListId = existing.results[0]?.product_list_id;
+    const existingRow = existing.results[0];
+    const productListId = existingRow?.product_list_id;
     if (!productListId) {
       return { success: false, error: "Rent listing not found" };
     }
@@ -704,18 +800,16 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     const thumbFocal = parseThumbnailFocal(formData);
 
     // 1. Handle thumbnail upload (using productListId for unique R2 path)
-    const thumbnail_url = await processFileField(
+    const thumbnailFields = await uploadProductThumbnail(
       formData,
-      "thumbnail_url",
-      "products/thumbnails/",
-      String(productListId),
-      existing.results[0]?.thumbnail_url,
+      productListId,
+      existingRow,
     );
 
     // 2. Update product_list
     await productListService.update(productListId, {
       ...productFields,
-      thumbnail_url,
+      ...thumbnailFields,
       ...thumbFocal,
     });
 
@@ -742,7 +836,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await syncProductImages(productListId, photos, null);
 
     // 5. Clean up old thumbnail from R2 (after D1 is consistent)
-    await cleanupOldFile(existing.results[0]?.thumbnail_url, thumbnail_url);
+    await cleanupProductThumbnail(existingRow, thumbnailFields);
 
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
     auditLog(userId, "updated rent listing | id=" + rentId);
@@ -1693,16 +1787,12 @@ export async function saveDraft(formData: FormData) {
     }
 
     // Upload thumbnail if provided
-    const thumbnail_url = await processFileField(
-      formData,
-      "thumbnail_url",
-      "products/thumbnails/",
-      String(productId),
-    );
-    if (thumbnail_url) {
-      uploadedKeys.push(thumbnail_url);
+    const thumbFields = await uploadProductThumbnail(formData, productId, null);
+    if (thumbFields.thumbnail_url) {
+      uploadedKeys.push(thumbFields.thumbnail_url);
+      if (thumbFields.thumbnail_sm_url) uploadedKeys.push(thumbFields.thumbnail_sm_url);
       await productListService.update(productId, {
-        thumbnail_url,
+        ...thumbFields,
         ...thumbFocal,
       });
     }
@@ -1710,6 +1800,7 @@ export async function saveDraft(formData: FormData) {
     // Upload photos if provided
     const photos = await processProductPhotos(formData, productId);
     uploadedKeys.push(...photos.map((p) => p.key));
+    uploadedKeys.push(...photos.map((p) => p.thumbKey).filter((k): k is string => !!k));
     if (photos.length > 0) {
       await syncProductImages(productId, photos, userId);
     }
@@ -1735,8 +1826,10 @@ export async function updateDraft(productListId: number, formData: FormData) {
       created_by: number | null;
       is_draft: number;
       thumbnail_url: string | null;
+      thumbnail_sm_url: string | null;
+      thumbnail_blurhash: string | null;
     }>(
-      "SELECT created_by, is_draft, thumbnail_url FROM product_list WHERE id = ?",
+      "SELECT created_by, is_draft, thumbnail_url, thumbnail_sm_url, thumbnail_blurhash FROM product_list WHERE id = ?",
       [productListId],
     );
     const row = existing.results[0];
@@ -1770,12 +1863,10 @@ export async function updateDraft(productListId: number, formData: FormData) {
     );
 
     // Handle thumbnail
-    const thumbnail_url = await processFileField(
+    const thumbnailFields = await uploadProductThumbnail(
       formData,
-      "thumbnail_url",
-      "products/thumbnails/",
-      String(productListId),
-      row.thumbnail_url,
+      productListId,
+      row,
     );
 
     const thumbFocal = parseThumbnailFocal(formData);
@@ -1787,7 +1878,7 @@ export async function updateDraft(productListId: number, formData: FormData) {
       township_id: townshipId,
       hide_partner: hidePartner,
       custom_fields: customFields,
-      thumbnail_url,
+      ...thumbnailFields,
       ...thumbFocal,
     });
 
@@ -1796,7 +1887,7 @@ export async function updateDraft(productListId: number, formData: FormData) {
     await syncProductImages(productListId, photos, userId);
 
     // Clean up old thumbnail
-    await cleanupOldFile(row.thumbnail_url, thumbnail_url);
+    await cleanupProductThumbnail(row, thumbnailFields);
 
     return { success: true };
   } catch (error) {
@@ -1818,8 +1909,10 @@ export async function submitDraft(productListId: number, formData: FormData) {
       created_by: number | null;
       is_draft: number;
       thumbnail_url: string | null;
+      thumbnail_sm_url: string | null;
+      thumbnail_blurhash: string | null;
     }>(
-      "SELECT created_by, is_draft, thumbnail_url FROM product_list WHERE id = ?",
+      "SELECT created_by, is_draft, thumbnail_url, thumbnail_sm_url, thumbnail_blurhash FROM product_list WHERE id = ?",
       [productListId],
     );
     const row = existing.results[0];
@@ -1865,22 +1958,23 @@ export async function submitDraft(productListId: number, formData: FormData) {
       forRent && (await hasApprovePermission("rent_listings"));
 
     // Handle thumbnail
-    const thumbnail_url = await processFileField(
+    const thumbnailFields = await uploadProductThumbnail(
       formData,
-      "thumbnail_url",
-      "products/thumbnails/",
-      String(productListId),
-      row.thumbnail_url,
+      productListId,
+      row,
     );
-    if (thumbnail_url && thumbnail_url !== row.thumbnail_url) {
-      uploadedKeys.push(thumbnail_url);
+    if (thumbnailFields.thumbnail_url && thumbnailFields.thumbnail_url !== row.thumbnail_url) {
+      uploadedKeys.push(thumbnailFields.thumbnail_url);
+      if (thumbnailFields.thumbnail_sm_url) {
+        uploadedKeys.push(thumbnailFields.thumbnail_sm_url);
+      }
     }
 
     // Update product_list: set is_draft=0 and update all fields
     const thumbFocal = parseThumbnailFocal(formData);
     await productListService.update(productListId, {
       ...productFields,
-      thumbnail_url,
+      ...thumbnailFields,
       ...thumbFocal,
       is_draft: 0,
     });
@@ -1892,7 +1986,7 @@ export async function submitDraft(productListId: number, formData: FormData) {
     }
 
     // Clean up old thumbnail
-    await cleanupOldFile(row.thumbnail_url, thumbnail_url);
+    await cleanupProductThumbnail(row, thumbnailFields);
 
     // Create sale listing
     let saleListingId: number | null = null;

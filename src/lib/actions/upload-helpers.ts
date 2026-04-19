@@ -17,6 +17,16 @@ const IMAGE_TYPES = new Set([
 
 const PDF_TYPES = new Set(["application/pdf"]);
 
+// Thumbnail width in pixels. 400px covers phone grids at ~2x DPR without
+// being wasteful; the WebP-compressed output is typically 15-30KB.
+const THUMB_WIDTH = 400;
+
+// Blurhash component counts. 4x3 is the expo-image recommended default —
+// small enough to be cheap in the payload (~28 chars) and detailed enough
+// for a pleasant preview.
+const BLURHASH_X = 4;
+const BLURHASH_Y = 3;
+
 /**
  * Convert an image file to WebP format using sharp.
  * Returns the original file if it's a PDF.
@@ -136,6 +146,129 @@ export async function processFileWithOriginalName(
   const result = await uploadToR2(blob, r2Path, filename);
 
   return result.key;
+}
+
+/**
+ * Rich result returned by processImageFieldRich — includes the optional
+ * 400px variant key (thumb) and a blurhash string for placeholder rendering.
+ *
+ * A `null` return means "no new file was provided and no existing value";
+ * callers should treat that as "clear the column" only if the
+ * `<fieldName>_removed` flag was also set (same semantics as processFileField).
+ */
+export interface RichImageUploadResult {
+  key: string;
+  thumbKey: string | null;
+  blurhash: string | null;
+}
+
+/**
+ * Like processFileField but additionally:
+ *   - generates a 400px-wide WebP thumbnail and uploads it to R2 alongside the full image
+ *   - computes a BlurHash string from the pixels, for <expo-image placeholder=...> on the client
+ *
+ * Use this for images that the mobile app shows at multiple sizes
+ * (product photos, article covers, carousel banners, product thumbnails).
+ *
+ * Failure to generate the thumb or blurhash is non-fatal — the full image
+ * still uploads and the caller stores `null` for the missing field.
+ *
+ * @returns Rich result on successful upload, `{ key, ... }` with existing values
+ *          when no new file, or `null` when the field was explicitly removed.
+ */
+export async function processImageFieldRich(
+  formData: FormData,
+  fieldName: string,
+  r2Path: string,
+  entityName: string,
+  existing?: {
+    key: string | null;
+    thumbKey?: string | null;
+    blurhash?: string | null;
+  } | null,
+): Promise<RichImageUploadResult | null> {
+  const file = formData.get(fieldName);
+
+  if (formData.get(`${fieldName}_removed`) === "1") {
+    return null;
+  }
+
+  if (!validateFile(file)) {
+    // No new file — preserve what's already in D1
+    if (existing?.key) {
+      return {
+        key: existing.key,
+        thumbKey: existing.thumbKey ?? null,
+        blurhash: existing.blurhash ?? null,
+      };
+    }
+    return null;
+  }
+
+  assertFileType(file);
+  assertFileSize(file);
+
+  const sharp = (await import("sharp")).default;
+  const inputBuffer = Buffer.from(await file.arrayBuffer());
+
+  // Full-size WebP (same pipeline as convertToWebp — kept inline so we can
+  // share the decoded pixel data with the thumb + blurhash stages without
+  // decoding the JPEG/PNG three times).
+  const fullWebpBuffer = await sharp(inputBuffer, {
+    limitInputPixels: 100_000_000,
+    sequentialRead: true,
+  })
+    .webp({ quality: 80 })
+    .toBuffer();
+
+  // Deterministic filename per upload.
+  const suffix = existing?.key ? `-${Date.now()}` : "";
+  const baseName = `${slugify(entityName)}${suffix}`;
+  const fullFilename = `${baseName}.webp`;
+  const thumbFilename = `${baseName}-sm.webp`;
+
+  const fullBlob = new Blob([new Uint8Array(fullWebpBuffer)], {
+    type: "image/webp",
+  });
+  const fullResult = await uploadToR2(fullBlob, r2Path, fullFilename);
+
+  // Thumb + blurhash from a single sharp read of the WebP.
+  let thumbKey: string | null = null;
+  let blurhash: string | null = null;
+  try {
+    const [thumbBuffer, rawBuffer] = await Promise.all([
+      sharp(fullWebpBuffer)
+        .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+        .webp({ quality: 70 })
+        .toBuffer(),
+      // For blurhash: resize to a small raw RGBA buffer (32x32 is plenty
+      // for a 4x3 hash). This is much cheaper than hashing the full image.
+      sharp(fullWebpBuffer)
+        .resize({ width: 32, height: 32, fit: "inside" })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true }),
+    ]);
+
+    const thumbBlob = new Blob([new Uint8Array(thumbBuffer)], {
+      type: "image/webp",
+    });
+    const thumbResult = await uploadToR2(thumbBlob, r2Path, thumbFilename);
+    thumbKey = thumbResult.key;
+
+    const { encode } = await import("blurhash");
+    blurhash = encode(
+      new Uint8ClampedArray(rawBuffer.data),
+      rawBuffer.info.width,
+      rawBuffer.info.height,
+      BLURHASH_X,
+      BLURHASH_Y,
+    );
+  } catch (err) {
+    console.warn("thumb/blurhash generation failed:", err);
+  }
+
+  return { key: fullResult.key, thumbKey, blurhash };
 }
 
 /**

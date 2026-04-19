@@ -6,7 +6,10 @@ import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actio
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { calculateReadTime } from "@/lib/utils";
-import { processFileField, cleanupOldFile } from "@/lib/actions/upload-helpers";
+import {
+  processImageFieldRich,
+  cleanupOldFile,
+} from "@/lib/actions/upload-helpers";
 import { saveTrashMetadata } from "@/lib/actions/trash";
 import {
   notifyArticleSubmitted,
@@ -33,7 +36,7 @@ export async function createArticle(formData: FormData) {
   }
 
   try {
-    const cover_image_url = await processFileField(
+    const cover = await processImageFieldRich(
       formData, "cover_image_url", "articles/covers/", title.trim(),
     );
     const created_by = await requirePermission("articles", "create");
@@ -64,7 +67,9 @@ export async function createArticle(formData: FormData) {
       created_by,
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
-      cover_image_url,
+      cover_image_url: cover?.key ?? null,
+      cover_thumb_url: cover?.thumbKey ?? null,
+      cover_blurhash: cover?.blurhash ?? null,
       focal_x,
       focal_y,
       estimated_read_time,
@@ -110,8 +115,18 @@ export async function updateArticle(id: number, formData: FormData) {
     }
 
     const existing = await articleService.getById(id);
-    const cover_image_url = await processFileField(
-      formData, "cover_image_url", "articles/covers/", title.trim(), existing?.cover_image_url,
+    const cover = await processImageFieldRich(
+      formData,
+      "cover_image_url",
+      "articles/covers/",
+      title.trim(),
+      existing?.cover_image_url
+        ? {
+            key: existing.cover_image_url,
+            thumbKey: existing.cover_thumb_url ?? null,
+            blurhash: existing.cover_blurhash ?? null,
+          }
+        : null,
     );
     const estimated_read_time = calculateReadTime(content);
 
@@ -126,12 +141,15 @@ export async function updateArticle(id: number, formData: FormData) {
         : null,
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
-      cover_image_url,
+      cover_image_url: cover?.key ?? null,
+      cover_thumb_url: cover?.thumbKey ?? null,
+      cover_blurhash: cover?.blurhash ?? null,
       focal_x,
       focal_y,
       estimated_read_time,
     });
-    await cleanupOldFile(existing?.cover_image_url, cover_image_url);
+    await cleanupOldFile(existing?.cover_image_url, cover?.key ?? null);
+    await cleanupOldFile(existing?.cover_thumb_url, cover?.thumbKey ?? null);
     invalidateTag(CACHE_TAGS.ARTICLES);
     auditLog(userId, "updated article | id=" + id);
     return { success: true };
@@ -353,7 +371,7 @@ export async function createAndSubmitForReview(formData: FormData) {
   }
 
   try {
-    const cover_image_url = await processFileField(
+    const cover = await processImageFieldRich(
       formData, "cover_image_url", "articles/covers/", title.trim(),
     );
     const created_by = await requirePermission("articles", "create");
@@ -378,7 +396,9 @@ export async function createAndSubmitForReview(formData: FormData) {
       created_by,
       publish_date: publish_date || null,
       author_name: author_name?.trim() || null,
-      cover_image_url,
+      cover_image_url: cover?.key ?? null,
+      cover_thumb_url: cover?.thumbKey ?? null,
+      cover_blurhash: cover?.blurhash ?? null,
       focal_x,
       focal_y,
       estimated_read_time,

@@ -30,6 +30,8 @@ export interface Article {
   publish_date: string | null;
   author_name: string | null;
   cover_image_url: string | null;
+  cover_thumb_url: string | null;
+  cover_blurhash: string | null;
   focal_x: number | null;
   focal_y: number | null;
   estimated_read_time: number | null;
