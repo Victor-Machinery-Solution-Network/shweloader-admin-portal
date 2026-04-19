@@ -4,6 +4,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSettings } from "@/lib/cache";
+import { getAdminsWithRoles } from "@/lib/actions/admin";
 import { SettingsClient } from "@/components/features/settings/settings-client";
 import { PermissionGate } from "@/components/shared/permission-gate";
 
@@ -33,9 +34,15 @@ async function SettingsContent() {
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag(CACHE_TAGS.SETTINGS);
 
-  const settings = await getSettings();
+  const [settings, admins] = await Promise.all([
+    getSettings(),
+    getAdminsWithRoles(),
+  ]);
+  const activeAdmins = admins
+    .filter((a) => a.active === 1)
+    .map((a) => ({ user_id: a.user_id, username: a.username }));
 
-  return <SettingsClient settings={settings} />;
+  return <SettingsClient settings={settings} admins={activeAdmins} />;
 }
 
 function SettingsSkeleton() {

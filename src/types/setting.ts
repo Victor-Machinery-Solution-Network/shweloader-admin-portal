@@ -14,6 +14,7 @@ export const SETTING_KEYS = {
   ARTICLES_ENABLED: "articles_enabled",
   EXCHANGE_RATE: "exchange_rate",
   CONTACT_PHONE: "contact_phone",
+  CHAT_WELCOME_ADMIN_ID: "chat_welcome_admin_id",
 } as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];

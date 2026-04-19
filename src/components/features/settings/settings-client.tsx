@@ -7,7 +7,15 @@ import {
   Newspaper,
   DollarSign,
   Phone,
+  UserCircle2,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
@@ -19,8 +27,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { updateSettings } from "@/lib/actions/setting";
 import { SETTING_KEYS } from "@/types/setting";
 
+interface AdminOption {
+  user_id: number;
+  username: string;
+}
+
 interface SettingsClientProps {
   settings: Record<string, string>;
+  admins: AdminOption[];
 }
 
 const TOGGLE_SETTINGS = [
@@ -50,7 +64,7 @@ const TOGGLE_SETTINGS = [
   },
 ] as const;
 
-export function SettingsClient({ settings }: SettingsClientProps) {
+export function SettingsClient({ settings, admins }: SettingsClientProps) {
   const canEdit = useHasPermission("app_settings", "edit");
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -59,6 +73,9 @@ export function SettingsClient({ settings }: SettingsClientProps) {
   );
   const [contactPhone, setContactPhone] = useState(
     settings[SETTING_KEYS.CONTACT_PHONE] ?? "",
+  );
+  const [welcomeAdminId, setWelcomeAdminId] = useState(
+    settings[SETTING_KEYS.CHAT_WELCOME_ADMIN_ID] ?? "",
   );
 
   function handleToggle(key: string, value: boolean) {
@@ -110,6 +127,22 @@ export function SettingsClient({ settings }: SettingsClientProps) {
         toast.success("Contact phone updated");
       } else {
         toast.error(result.error ?? "Failed to update contact phone");
+      }
+      setPendingKey(null);
+    });
+  }
+
+  function handleWelcomeAdminChange(value: string) {
+    setWelcomeAdminId(value);
+    setPendingKey(SETTING_KEYS.CHAT_WELCOME_ADMIN_ID);
+    startTransition(async () => {
+      const result = await updateSettings({
+        [SETTING_KEYS.CHAT_WELCOME_ADMIN_ID]: value,
+      });
+      if (result.success) {
+        toast.success("Chat welcome admin updated");
+      } else {
+        toast.error(result.error ?? "Failed to update chat welcome admin");
       }
       setPendingKey(null);
     });
@@ -255,6 +288,48 @@ export function SettingsClient({ settings }: SettingsClientProps) {
                 "Add"
               )}
             </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Chat Section */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Chat
+        </p>
+        <div className="rounded-lg border px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10">
+              <UserCircle2 className="size-4 text-rose-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Welcome Face</p>
+              <p className="text-muted-foreground text-xs">
+                The admin whose name and avatar appear on the chat welcome
+                message. Falls back to the super admin if unset.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 ml-11">
+            <Select
+              value={welcomeAdminId || undefined}
+              onValueChange={handleWelcomeAdminChange}
+              disabled={isPending || !canEdit}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="(Super admin — default)" />
+              </SelectTrigger>
+              <SelectContent>
+                {admins.map((a) => (
+                  <SelectItem key={a.user_id} value={String(a.user_id)}>
+                    {a.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {pendingKey === SETTING_KEYS.CHAT_WELCOME_ADMIN_ID ? (
+              <Spinner className="size-4" />
+            ) : null}
           </div>
         </div>
       </div>
