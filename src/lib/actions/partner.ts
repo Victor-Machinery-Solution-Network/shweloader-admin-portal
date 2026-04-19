@@ -93,14 +93,14 @@ export async function approvePartner(id: number) {
     if (appUserId) {
       await insertUserNotification({
         app_user_id: appUserId,
-        type: "partner_status",
+        type: "partner_approved",
         title: "Partner application approved",
         body: null,
         reference_type: "partner",
         reference_id: id,
       });
       sendPushToUser(appUserId, {
-        type: "partner_status",
+        type: "partner_approved",
         title: "Shwe Loader",
         body: "Your partner application has been approved.",
         referenceId: String(id),
@@ -148,14 +148,14 @@ export async function rejectPartner(id: number, reason: string) {
     if (appUserId) {
       await insertUserNotification({
         app_user_id: appUserId,
-        type: "partner_status",
+        type: "partner_rejected",
         title: "Partner application rejected",
         body: reason || null,
         reference_type: "partner",
         reference_id: id,
       });
       sendPushToUser(appUserId, {
-        type: "partner_status",
+        type: "partner_rejected",
         title: "Shwe Loader",
         body: reason
           ? `Application rejected: ${reason}`

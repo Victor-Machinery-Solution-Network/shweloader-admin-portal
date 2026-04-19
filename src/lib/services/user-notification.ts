@@ -7,7 +7,8 @@ import {
 export type UserNotificationType =
   | "chat_reply"
   | "promotion"
-  | "partner_status";
+  | "partner_approved"
+  | "partner_rejected";
 
 export interface InsertUserNotificationInput {
   app_user_id: number;
