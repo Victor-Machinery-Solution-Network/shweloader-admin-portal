@@ -179,10 +179,10 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     );
   }
 
-  function handleSessionClosed() {
+  const handleSessionClosed = useCallback(() => {
     if (!selectedId) return;
     handleSessionResolved(selectedId);
-  }
+  }, [selectedId, handleSessionResolved]);
 
   return (
     <div className="flex flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-background">
