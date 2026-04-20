@@ -27,13 +27,9 @@ export async function createAttachmentCategory(formData: FormData) {
       requirePermission("attachment_categories", "create"),
       getNextDisplayOrder("attachment_category"),
     ]);
-    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
-    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
     await attachmentCategoryService.create({
       name: name.trim(),
       image_url,
-      focal_x,
-      focal_y,
       created_by,
       display_order,
     });
@@ -61,13 +57,9 @@ export async function updateAttachmentCategory(id: number, formData: FormData) {
     const image_url = await processFileField(
       formData, "image_url", "categories/attachments/", name.trim(), existing?.image_url,
     );
-    const focal_x = parseFloat(formData.get("focal_x") as string) || 0.5;
-    const focal_y = parseFloat(formData.get("focal_y") as string) || 0.5;
     await attachmentCategoryService.update(id, {
       name: name.trim(),
       image_url,
-      focal_x,
-      focal_y,
     });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.ATTACHMENT_CATEGORIES);

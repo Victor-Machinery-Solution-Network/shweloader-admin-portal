@@ -3,8 +3,6 @@ export interface EquipmentMainCategory {
   category_id: number;
   name: string;
   image_url: string | null;
-  focal_x: number | null;
-  focal_y: number | null;
   display_order: string;
   created_by: number | null;
   created_at: string;
@@ -18,8 +16,6 @@ export interface EquipmentSubCategory {
   category_id: number;
   name: string;
   image_url: string | null;
-  focal_x: number | null;
-  focal_y: number | null;
   display_order: string;
   created_by: number | null;
   created_at: string;

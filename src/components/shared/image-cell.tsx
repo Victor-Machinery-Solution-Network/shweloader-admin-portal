@@ -14,11 +14,9 @@ import { assetUrl } from "@/lib/r2-url";
 interface ImageCellProps {
   name: string;
   imageUrl: string | null;
-  focalX?: number | null;
-  focalY?: number | null;
 }
 
-export function ImageCell({ name, imageUrl, focalX, focalY }: ImageCellProps) {
+export function ImageCell({ name, imageUrl }: ImageCellProps) {
   const [showPreview, setShowPreview] = useState(false);
   const initial = name.charAt(0).toUpperCase();
   const src = assetUrl(imageUrl);
@@ -37,7 +35,6 @@ export function ImageCell({ name, imageUrl, focalX, focalY }: ImageCellProps) {
             fill
             className="object-cover"
             sizes="44px"
-            style={focalX != null && focalY != null ? { objectPosition: `${focalX * 100}% ${focalY * 100}%` } : undefined}
           />
         </button>
       ) : (
