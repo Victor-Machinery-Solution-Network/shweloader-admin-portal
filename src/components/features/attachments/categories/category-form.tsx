@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { FolderOpen, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
@@ -26,17 +26,8 @@ export function CategoryForm({
 }: CategoryFormProps) {
   const [isPending, startTransition] = useTransition();
   const isEditing = !!category;
-  const [focalPoint, setFocalPoint] = useState<{ x: number; y: number } | null>(
-    category?.focal_x != null && category?.focal_y != null
-      ? { x: category.focal_x, y: category.focal_y }
-      : null,
-  );
 
   function handleSubmit(formData: FormData) {
-    if (focalPoint) {
-      formData.set("focal_x", String(focalPoint.x));
-      formData.set("focal_y", String(focalPoint.y));
-    }
     startTransition(async () => {
       const result = isEditing
         ? await updateAttachmentCategory(category.category_id, formData)
@@ -89,9 +80,6 @@ export function CategoryForm({
             <ImageInput
               name="image_url"
               value={category?.image_url}
-              aspectRatio={1}
-              focalPoint={focalPoint ?? undefined}
-              onFocalPointChange={setFocalPoint}
             />
           </FieldContent>
         </Field>
