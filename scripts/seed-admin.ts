@@ -242,6 +242,10 @@ const APP_SETTINGS = [
   { setting_key: "articles_enabled", value: "true" },
   { setting_key: "exchange_rate", value: "3200" },
   { setting_key: "contact_phone", value: "+959940475000" },
+  { setting_key: "contact_email_info", value: "info@shweloader.com" },
+  { setting_key: "contact_email_support", value: "support@shweloader.com.mm" },
+  { setting_key: "contact_email_sales", value: "sales@shweloader.com" },
+  { setting_key: "contact_email_privacy", value: "privacy@shweloader.com" },
 ];
 
 // ─── RBAC Data ──────────────────────────────────────────────────────────────

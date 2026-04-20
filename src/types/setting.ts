@@ -14,6 +14,10 @@ export const SETTING_KEYS = {
   ARTICLES_ENABLED: "articles_enabled",
   EXCHANGE_RATE: "exchange_rate",
   CONTACT_PHONE: "contact_phone",
+  CONTACT_EMAIL_INFO: "contact_email_info",
+  CONTACT_EMAIL_SUPPORT: "contact_email_support",
+  CONTACT_EMAIL_SALES: "contact_email_sales",
+  CONTACT_EMAIL_PRIVACY: "contact_email_privacy",
   CHAT_WELCOME_ADMIN_ID: "chat_welcome_admin_id",
 } as const;
 

@@ -7,6 +7,7 @@ import {
   Newspaper,
   DollarSign,
   Phone,
+  Mail,
   UserCircle2,
 } from "lucide-react";
 import {
@@ -74,6 +75,12 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
   const [contactPhone, setContactPhone] = useState(
     settings[SETTING_KEYS.CONTACT_PHONE] ?? "",
   );
+  const [contactEmails, setContactEmails] = useState({
+    info: settings[SETTING_KEYS.CONTACT_EMAIL_INFO] ?? "",
+    support: settings[SETTING_KEYS.CONTACT_EMAIL_SUPPORT] ?? "",
+    sales: settings[SETTING_KEYS.CONTACT_EMAIL_SALES] ?? "",
+    privacy: settings[SETTING_KEYS.CONTACT_EMAIL_PRIVACY] ?? "",
+  });
   const [welcomeAdminId, setWelcomeAdminId] = useState(
     settings[SETTING_KEYS.CHAT_WELCOME_ADMIN_ID] ?? "",
   );
@@ -132,6 +139,35 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
     });
   }
 
+  function handleEmailSave(
+    key: typeof SETTING_KEYS.CONTACT_EMAIL_INFO
+      | typeof SETTING_KEYS.CONTACT_EMAIL_SUPPORT
+      | typeof SETTING_KEYS.CONTACT_EMAIL_SALES
+      | typeof SETTING_KEYS.CONTACT_EMAIL_PRIVACY,
+    value: string,
+  ) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error("Email is required");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error("Invalid email address");
+      return;
+    }
+
+    setPendingKey(key);
+    startTransition(async () => {
+      const result = await updateSettings({ [key]: trimmed });
+      if (result.success) {
+        toast.success("Email updated");
+      } else {
+        toast.error(result.error ?? "Failed to update email");
+      }
+      setPendingKey(null);
+    });
+  }
+
   function handleWelcomeAdminChange(value: string) {
     setWelcomeAdminId(value);
     setPendingKey(SETTING_KEYS.CHAT_WELCOME_ADMIN_ID);
@@ -152,6 +188,47 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
     exchangeRate !== (settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200");
   const contactPhoneChanged =
     contactPhone !== (settings[SETTING_KEYS.CONTACT_PHONE] ?? "");
+
+  const EMAIL_FIELDS: {
+    key:
+      | typeof SETTING_KEYS.CONTACT_EMAIL_INFO
+      | typeof SETTING_KEYS.CONTACT_EMAIL_SUPPORT
+      | typeof SETTING_KEYS.CONTACT_EMAIL_SALES
+      | typeof SETTING_KEYS.CONTACT_EMAIL_PRIVACY;
+    field: keyof typeof contactEmails;
+    label: string;
+    description: string;
+    placeholder: string;
+  }[] = [
+    {
+      key: SETTING_KEYS.CONTACT_EMAIL_INFO,
+      field: "info",
+      label: "General Inquiries",
+      description: "Shown on the About page for general contact.",
+      placeholder: "info@shweloader.com",
+    },
+    {
+      key: SETTING_KEYS.CONTACT_EMAIL_SUPPORT,
+      field: "support",
+      label: "Account Support",
+      description: "Used when a suspended user taps Contact Support.",
+      placeholder: "support@shweloader.com.mm",
+    },
+    {
+      key: SETTING_KEYS.CONTACT_EMAIL_SALES,
+      field: "sales",
+      label: "Sales / Parent Company",
+      description: "Shown in the VMSN block on the home screen.",
+      placeholder: "sales@shweloader.com",
+    },
+    {
+      key: SETTING_KEYS.CONTACT_EMAIL_PRIVACY,
+      field: "privacy",
+      label: "Privacy Requests",
+      description: "Shown in the Privacy Policy page.",
+      placeholder: "privacy@shweloader.com",
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -289,6 +366,63 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
               )}
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Contact Emails Section */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Contact Emails
+        </p>
+        <div className="rounded-lg border divide-y">
+          {EMAIL_FIELDS.map((f) => {
+            const current = settings[f.key] ?? "";
+            const changed = contactEmails[f.field] !== current;
+            return (
+              <div key={f.key} className="px-4 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
+                    <Mail className="size-4 text-indigo-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{f.label}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {f.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3 ml-11">
+                  <Input
+                    id={`email-${f.field}`}
+                    type="email"
+                    placeholder={f.placeholder}
+                    value={contactEmails[f.field]}
+                    onChange={(e) =>
+                      setContactEmails((prev) => ({
+                        ...prev,
+                        [f.field]: e.target.value,
+                      }))
+                    }
+                    disabled={isPending || !canEdit}
+                    className="w-72"
+                  />
+                  <Button
+                    size="xs"
+                    onClick={() => handleEmailSave(f.key, contactEmails[f.field])}
+                    disabled={isPending || !changed || !canEdit}
+                  >
+                    {pendingKey === f.key ? (
+                      <Spinner className="size-3" />
+                    ) : current ? (
+                      "Update"
+                    ) : (
+                      "Add"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
