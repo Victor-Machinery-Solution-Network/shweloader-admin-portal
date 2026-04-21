@@ -7,6 +7,8 @@ import { RequiredInput } from "@/components/ui/required-input";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { FieldError } from "@/components/ui/required-input";
 import {
@@ -85,6 +87,8 @@ export function UserEditForm({
   const [selectedDistrictId, setSelectedDistrictId] = useState(initLocation.districtId);
   const [selectedTownshipId, setSelectedTownshipId] = useState(initLocation.townshipId);
 
+  const [isVerified, setIsVerified] = useState(user.is_verified === 1);
+
   const stateRegionNames = useMemo(() => stateRegions.map((sr) => sr.name), [stateRegions]);
   const stateRegionIdByName = useMemo(
     () => new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
@@ -152,6 +156,7 @@ export function UserEditForm({
       return;
     }
     formData.set("township_id", selectedTownshipId);
+    formData.set("is_verified", isVerified ? "1" : "0");
     startTransition(async () => {
       const result = await updateAppUser(user.app_user_id, formData);
 
@@ -405,6 +410,21 @@ export function UserEditForm({
             <FieldError show={!!selectedDistrictId && !selectedTownshipId} message="Township is required" />
           </FieldContent>
         </Field>
+
+        {/* Verified toggle */}
+        <div className="sm:col-span-2 flex items-center justify-between rounded-lg border px-4 py-3">
+          <Label htmlFor="verified-switch" className="cursor-pointer">
+            <div className="font-medium">Verified</div>
+            <p className="text-muted-foreground text-sm font-normal">
+              Manually mark verified if the user did not receive an OTP
+            </p>
+          </Label>
+          <Switch
+            id="verified-switch"
+            checked={isVerified}
+            onCheckedChange={setIsVerified}
+          />
+        </div>
 
         {/* Reset Password */}
         <div className="sm:col-span-2 flex items-center justify-between rounded-lg border px-4 py-3">

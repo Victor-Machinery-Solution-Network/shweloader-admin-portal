@@ -141,6 +141,7 @@ export async function updateAppUser(userId: number, formData: FormData) {
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
   const townshipId = formData.get("township_id") as string;
+  const isVerified = formData.get("is_verified") === "1" ? 1 : 0;
 
   if (!username?.trim()) {
     return { success: false, error: "Username is required" };
@@ -160,6 +161,12 @@ export async function updateAppUser(userId: number, formData: FormData) {
 
   try {
     const actorId = await requirePermission("users", "edit");
+
+    const prior = await d1.query<{ is_verified: number }>(
+      "SELECT is_verified FROM app_user WHERE app_user_id = ? AND deleted_at IS NULL",
+      [userId],
+    );
+    const priorVerified = prior.results[0]?.is_verified ?? 0;
 
     // Resolve business type ID — create an unlisted type if "Other" was specified
     let resolvedBtId: number = businessTypeId ? Number(businessTypeId) : 0;
@@ -191,15 +198,30 @@ export async function updateAppUser(userId: number, formData: FormData) {
     const trimmedCompany = companyName?.trim() || null;
     const trimmedAddress = address?.trim() || null;
 
+    // When an admin manually verifies a stuck user (0 → 1), also stamp
+    // last_login_at = NOW() so the worker's OTP-bypass window (is_verified
+    // && last_login_at within 60 days) activates immediately — otherwise
+    // the user still hits OTP on next login, defeating the purpose.
+    const stampLogin = priorVerified === 0 && isVerified === 1;
+    const now = new Date().toISOString();
+
     await d1.query(
       `UPDATE app_user
-       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?, township_id = ?
+       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?, township_id = ?, is_verified = ?${stampLogin ? ", last_login_at = ?" : ""}
        WHERE app_user_id = ? AND deleted_at IS NULL`,
-      [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), userId],
+      stampLogin
+        ? [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), isVerified, now, userId]
+        : [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), isVerified, userId],
     );
 
     invalidateTag(CACHE_TAGS.USERS);
     auditLog(actorId, "updated app user | username=" + trimmedUsername);
+    if (priorVerified !== isVerified) {
+      auditLog(
+        actorId,
+        `manually ${isVerified ? "verified" : "unverified"} app user | id=${userId} username=${trimmedUsername}${stampLogin ? " (stamped last_login_at)" : ""}`,
+      );
+    }
     return { success: true };
   } catch (error) {
     return {
