@@ -50,6 +50,19 @@ function clearAttempts(email: string): void {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * Retry a D1 query once with a short backoff. Transient worker/network blips
+ * are almost always sub-500ms; one retry catches the vast majority.
+ */
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    await new Promise((r) => setTimeout(r, 200));
+    return fn();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Middleware route → feature mapping
 // Checked in the `authorized` callback (runs as Next.js middleware).
@@ -284,19 +297,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const lastRefresh = (token.refreshed_at as number) ?? 0;
       if (token.user_id && Date.now() - lastRefresh > REFRESH_MS) {
         try {
-          const dbUser = await d1.query<{
-            active: number;
-            role_id: number | null;
-            username: string;
-            avatar_url: string | null;
-          }>(
-            "SELECT active, role_id, username, avatar_url FROM admin_user WHERE user_id = ? LIMIT 1",
-            [token.user_id as string],
+          const dbUser = await withRetry(() =>
+            d1.query<{
+              active: number;
+              role_id: number | null;
+              username: string;
+              avatar_url: string | null;
+            }>(
+              "SELECT active, role_id, username, avatar_url FROM admin_user WHERE user_id = ? LIMIT 1",
+              [token.user_id as string],
+            ),
           );
           const row = dbUser.results[0];
 
-          if (!row || !row.active) {
-            // User deleted or deactivated — clear identity to force logout
+          if (row && !row.active) {
+            // Confirmed deactivation — clear identity to force logout
             token.user_id = undefined;
             token.username = undefined;
             token.role_id = null;
@@ -305,28 +320,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return token;
           }
 
-          // Sync profile fields in case they were changed
-          token.role_id = row.role_id;
-          token.username = row.username;
-          token.avatar_url = row.avatar_url ?? null;
-
-          // Re-fetch permissions for the (possibly new) role
-          if (row.role_id) {
-            const permResult = await d1.query<{ perm: string }>(
-              `SELECT f.name || ':' || p.name AS perm
-               FROM role_permission rp
-               JOIN feature_permission fp ON rp.feature_permission_id = fp.feature_permission_id
-               JOIN feature f ON fp.feature_id = f.feature_id
-               JOIN permission p ON fp.permission_id = p.permission_id
-               WHERE rp.role_id = ?`,
-              [row.role_id],
+          // If !row, treat as a transient empty response: keep the existing
+          // session and try again on the next refresh cycle.
+          if (!row) {
+            console.warn(
+              "[auth:jwt] refresh returned no row, keeping existing session",
             );
-            token.permissions = permResult.results.map((r) => r.perm);
           } else {
-            token.permissions = [];
+            // Sync profile fields in case they were changed
+            token.role_id = row.role_id;
+            token.username = row.username;
+            token.avatar_url = row.avatar_url ?? null;
+
+            // Re-fetch permissions for the (possibly new) role
+            if (row.role_id) {
+              const permResult = await withRetry(() =>
+                d1.query<{ perm: string }>(
+                  `SELECT f.name || ':' || p.name AS perm
+                   FROM role_permission rp
+                   JOIN feature_permission fp ON rp.feature_permission_id = fp.feature_permission_id
+                   JOIN feature f ON fp.feature_id = f.feature_id
+                   JOIN permission p ON fp.permission_id = p.permission_id
+                   WHERE rp.role_id = ?`,
+                  [row.role_id],
+                ),
+              );
+              token.permissions = permResult.results.map((r) => r.perm);
+            } else {
+              token.permissions = [];
+            }
           }
         } catch (error) {
-          // On refresh failure, keep existing token data — don't break the session
+          // On refresh failure (after retry), keep existing token data — don't break the session
           console.error("[auth:jwt] periodic refresh failed:", error);
         }
         token.refreshed_at = Date.now();
