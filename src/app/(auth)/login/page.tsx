@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 
 export const metadata = {
@@ -5,6 +6,23 @@ export const metadata = {
   description: 'Login to your account',
 };
 
-export default function LoginPage() {
-  return <LoginForm />;
+async function LoginFormWithReason({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  const { reason } = await searchParams;
+  return <LoginForm reason={reason} />;
+}
+
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  return (
+    <Suspense fallback={<LoginForm />}>
+      <LoginFormWithReason searchParams={searchParams} />
+    </Suspense>
+  );
 }

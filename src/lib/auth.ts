@@ -347,10 +347,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
 
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl } = request;
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
       const isOnLogin = pathname.startsWith("/login");
+      const isServerAction = !!request.headers.get("next-action");
 
       if (isOnLogin) {
         if (isLoggedIn) {
@@ -360,7 +362,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return true;
       }
 
-      if (!isLoggedIn) return false;
+      if (!isLoggedIn) {
+        // Server Actions expect an RSC response. An HTML redirect trips the
+        // RSC client with error E394. Return an RSC-compatible redirect so
+        // the browser navigates cleanly to /login with an "expired" banner.
+        if (isServerAction) {
+          const target = new URL("/login?reason=expired", nextUrl);
+          return new Response(null, {
+            status: 303,
+            headers: {
+              Location: target.toString(),
+              "x-action-redirect": `${target.pathname}${target.search};replace`,
+            },
+          });
+        }
+        return false;
+      }
 
       // Route-level permission check (permissions stored in JWT)
       const permissions = auth?.user?.permissions ?? [];

@@ -20,7 +20,7 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
 
-export function LoginForm() {
+export function LoginForm({ reason }: { reason?: string }) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState<
     LoginState | undefined,
@@ -77,6 +77,14 @@ export function LoginForm() {
 
   return (
     <div className="flex flex-col items-center gap-8">
+      {reason === 'expired' && (
+        <div
+          role="status"
+          className="w-full rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          Your session expired. Please sign in again to continue.
+        </div>
+      )}
       {/* Branding */}
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
