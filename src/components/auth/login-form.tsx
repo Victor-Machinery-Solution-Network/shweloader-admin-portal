@@ -77,12 +77,14 @@ export function LoginForm({ reason }: { reason?: string }) {
 
   return (
     <div className="flex flex-col items-center gap-8">
-      {reason === 'expired' && (
+      {(reason === 'expired' || reason === 'idle') && (
         <div
           role="status"
           className="w-full rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
-          Your session expired. Please sign in again to continue.
+          {reason === 'idle'
+            ? 'You were signed out after an hour of inactivity. Please sign in again.'
+            : 'Your session expired. Please sign in again to continue.'}
         </div>
       )}
       {/* Branding */}
