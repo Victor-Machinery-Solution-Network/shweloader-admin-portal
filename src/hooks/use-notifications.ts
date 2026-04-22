@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { usePusher } from "@/components/providers/pusher-provider";
+import { usePermissions } from "@/components/providers/permissions-provider";
 import {
   getMyNotifications,
   markNotificationRead,
@@ -72,6 +73,8 @@ export function useNotifications() {
   const router = useRouter();
   const pathname = usePathname();
   const { subscribe, subscribeAdminChat } = usePusher();
+  const { permissions } = usePermissions();
+  const canReadChat = permissions.includes("chat:read");
   const mountedRef = useRef(true);
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
@@ -101,6 +104,7 @@ export function useNotifications() {
   }, []);
 
   const refreshChat = useCallback(() => {
+    if (!canReadChat) return;
     // On chat page: mark all alerts as read but keep them visible
     if (pathnameRef.current.startsWith("/chat")) {
       setChatAlerts((prev) => prev.map((a) => ({ ...a, unreadCount: 0 })));
@@ -120,7 +124,7 @@ export function useNotifications() {
         });
       });
     }, 400);
-  }, []);
+  }, [canReadChat]);
 
   // Mark alerts as read when on chat page; refresh when leaving
   useEffect(() => {
@@ -156,17 +160,18 @@ export function useNotifications() {
     return allItems;
   }, [notifications, chatAlerts]);
 
-  // Initial fetch
+  // Initial fetch — swallow per-stream failures so one stream can't break the bell
   useEffect(() => {
     mountedRef.current = true;
-    Promise.all([
-      getMyNotifications(),
-      getUnreadChatSessions(),
-    ]).then(([notifs, sessions]) => {
+    const notifsPromise = getMyNotifications().catch(() => [] as Notification[]);
+    const sessionsPromise = canReadChat
+      ? getUnreadChatSessions().catch(() => [] as RawChatSession[])
+      : Promise.resolve([] as RawChatSession[]);
+    Promise.all([notifsPromise, sessionsPromise]).then(([notifs, sessions]) => {
       if (!mountedRef.current) return;
       setNotifications(notifs);
       // Only set chat alerts if not on chat page
-      if (!pathnameRef.current.startsWith("/chat")) {
+      if (canReadChat && !pathnameRef.current.startsWith("/chat")) {
         setChatAlerts(toAlerts(sessions));
       }
       setIsLoaded(true);
@@ -174,15 +179,17 @@ export function useNotifications() {
     return () => {
       mountedRef.current = false;
     };
-  }, []);
+  }, [canReadChat]);
 
   // Real-time: article/listing notifications via user's private channel
   useEffect(() => {
     const unsubscribe = subscribe("new-notification", () => {
-      getMyNotifications().then((notifs) => {
-        if (!mountedRef.current) return;
-        setNotifications(notifs);
-      });
+      getMyNotifications()
+        .then((notifs) => {
+          if (!mountedRef.current) return;
+          setNotifications(notifs);
+        })
+        .catch(() => {});
       router.refresh();
     });
     return unsubscribe;
@@ -190,6 +197,7 @@ export function useNotifications() {
 
   // Real-time: chat notifications via admin chat channel
   useEffect(() => {
+    if (!canReadChat) return;
     const unsubNewSession = subscribeAdminChat("new-session", () => {
       refreshChat();
     });
@@ -210,7 +218,7 @@ export function useNotifications() {
       unsubNewMessage();
       unsubResolved();
     };
-  }, [subscribeAdminChat, refreshChat]);
+  }, [canReadChat, subscribeAdminChat, refreshChat]);
 
   const markRead = useCallback(async (notificationId: number) => {
     const result = await markNotificationRead(notificationId);
@@ -224,26 +232,29 @@ export function useNotifications() {
   }, []);
 
   const markChatRead = useCallback(async (sessionId: number) => {
+    if (!canReadChat) return;
     await markSessionRead(sessionId).catch(() => {});
     setChatAlerts((prev) =>
       prev.map((a) =>
         a.sessionId === sessionId ? { ...a, unreadCount: 0 } : a,
       ),
     );
-  }, []);
+  }, [canReadChat]);
 
   const markAllRead = useCallback(async () => {
     const result = await markAllNotificationsRead();
     if (result.success) {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
     }
-    await Promise.all(
-      chatAlerts
-        .filter((a) => a.unreadCount > 0)
-        .map((a) => markSessionRead(a.sessionId).catch(() => {})),
-    );
-    setChatAlerts((prev) => prev.map((a) => ({ ...a, unreadCount: 0 })));
-  }, [chatAlerts]);
+    if (canReadChat) {
+      await Promise.all(
+        chatAlerts
+          .filter((a) => a.unreadCount > 0)
+          .map((a) => markSessionRead(a.sessionId).catch(() => {})),
+      );
+      setChatAlerts((prev) => prev.map((a) => ({ ...a, unreadCount: 0 })));
+    }
+  }, [canReadChat, chatAlerts]);
 
   const remove = useCallback(async (notificationId: number) => {
     const result = await deleteNotification(notificationId);
