@@ -77,15 +77,15 @@ export function AppSidebar() {
   const { data: session } = useSession();
   const { permissions, isLoaded: permsLoaded } = usePermissions();
 
-  /** Check read permission for a feature. Shows all while loading to avoid flash. */
+  /** Check read permission for a feature. Hides groups while loading to avoid a show-then-collapse flash for restricted users. */
   function canRead(feature: string): boolean {
-    if (!permsLoaded) return true;
+    if (!permsLoaded) return false;
     return permissions.includes(`${feature}:read`);
   }
 
   /** Check create permission for a feature. */
   function canCreate(feature: string): boolean {
-    if (!permsLoaded) return true;
+    if (!permsLoaded) return false;
     return permissions.includes(`${feature}:create`);
   }
 
