@@ -80,7 +80,7 @@ export function LoginForm({ reason }: { reason?: string }) {
       {reason === 'expired' && (
         <div
           role="status"
-          className="w-full rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200"
+          className="w-full rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
           Your session expired. Please sign in again to continue.
         </div>
