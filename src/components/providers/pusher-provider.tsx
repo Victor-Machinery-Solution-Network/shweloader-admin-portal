@@ -53,6 +53,11 @@ export function PusherProvider({ children }: { children: ReactNode }) {
   // Deferred listeners for admin chat channel
   const adminChatListenersRef = useRef<Set<Listener>>(new Set());
 
+  // Derive a primitive dep so the effect doesn't re-run on every session
+  // object reference change (next-auth can hand back fresh references on poll).
+  const canReadChat =
+    session?.user?.permissions?.includes("chat:read") ?? false;
+
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
@@ -81,14 +86,19 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       userChannel.bind(listener.event, listener.callback);
     }
 
-    // Subscribe to admin chat channel (for bell notifications)
-    // Uses same deferred pattern as user channel — always subscribed when Pusher is up
-    const adminChatChannel = pusher.subscribe("private-admin-chat");
+    // Subscribe to admin chat channel (for bell notifications) only when the
+    // user has chat:read — otherwise /api/pusher/auth returns 403 for this
+    // private channel.
+    const adminChatChannel = canReadChat
+      ? pusher.subscribe("private-admin-chat")
+      : null;
     adminChatChannelRef.current = adminChatChannel;
 
     // Bind deferred admin chat listeners
-    for (const listener of adminChatListenersRef.current) {
-      adminChatChannel.bind(listener.event, listener.callback);
+    if (adminChatChannel) {
+      for (const listener of adminChatListenersRef.current) {
+        adminChatChannel.bind(listener.event, listener.callback);
+      }
     }
 
     setIsReady(true);
@@ -104,15 +114,17 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       userChannel.unbind_all();
       pusher.unsubscribe(`private-user-${session.user.id}`);
 
-      adminChatChannel.unbind_all();
-      pusher.unsubscribe("private-admin-chat");
+      if (adminChatChannel) {
+        adminChatChannel.unbind_all();
+        pusher.unsubscribe("private-admin-chat");
+      }
       adminChatChannelRef.current = null;
 
       pusher.disconnect();
       pusherRef.current = null;
       userChannelRef.current = null;
     };
-  }, [status, session?.user?.id]);
+  }, [status, session?.user?.id, canReadChat]);
 
   // Subscribe to user's private channel (deferred)
   const subscribe = useCallback(
