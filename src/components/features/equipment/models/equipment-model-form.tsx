@@ -44,6 +44,7 @@ export function EquipmentModelForm({
   subCategoryBrandLinks,
 }: EquipmentModelFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const isEditing = !!model;
 
   // ID ↔ name lookup maps
@@ -228,7 +229,7 @@ export function EquipmentModelForm({
           : <Cog className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
-      isPending={isPending}
+      isPending={isPending || isUploading}
       submitLabel={isEditing ? "Update" : "Create"}
     >
       <div className="space-y-4">
@@ -313,7 +314,14 @@ export function EquipmentModelForm({
         <Field orientation="vertical">
           <FieldLabel>PDF Specification</FieldLabel>
           <FieldContent>
-            <PdfInput name="pdf_url" value={model?.pdf_url ?? null} />
+            <PdfInput
+              name="pdf_url"
+              value={model?.pdf_url ?? null}
+              feature="equipment_models"
+              permission={isEditing ? "edit" : "create"}
+              path="pdfs/equipments/"
+              onUploadingChange={setIsUploading}
+            />
           </FieldContent>
         </Field>
       </div>

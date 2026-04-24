@@ -88,12 +88,21 @@ export async function processFileField(
   entityName: string,
   existingKey?: string | null,
 ): Promise<string | null> {
-  const file = formData.get(fieldName);
+  // Direct browser-to-R2 upload already happened — caller just passed us
+  // the resulting key. This is the path PDFs (and eventually images) take
+  // to bypass Vercel's 4.5 MB serverless body limit.
+  const directKey = formData.get(`${fieldName}_key`);
+  if (typeof directKey === "string" && directKey) {
+    return directKey;
+  }
 
   // User explicitly removed the image
   if (formData.get(`${fieldName}_removed`) === "1") {
     return null;
   }
+
+  // Legacy server-side upload path (still used by image fields)
+  const file = formData.get(fieldName);
 
   // No file provided — keep existing
   if (!validateFile(file)) {

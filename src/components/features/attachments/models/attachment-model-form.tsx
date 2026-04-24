@@ -41,6 +41,7 @@ export function AttachmentModelForm({
   categoryBrandLinks,
 }: AttachmentModelFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const isEditing = !!model;
 
   // ID ↔ name lookup maps
@@ -205,7 +206,7 @@ export function AttachmentModelForm({
           : <Box className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
-      isPending={isPending}
+      isPending={isPending || isUploading}
       submitLabel={isEditing ? "Update" : "Create"}
     >
       <div className="space-y-4">
@@ -290,6 +291,10 @@ export function AttachmentModelForm({
             <PdfInput
               name="pdf_url"
               value={model?.pdf_url ?? null}
+              feature="attachment_models"
+              permission={isEditing ? "edit" : "create"}
+              path="pdfs/attachments/"
+              onUploadingChange={setIsUploading}
             />
           </FieldContent>
         </Field>

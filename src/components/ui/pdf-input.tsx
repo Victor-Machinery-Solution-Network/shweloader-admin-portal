@@ -1,14 +1,27 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { FileText, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FileText, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  buildUploadFilename,
+  uploadToR2Direct,
+} from "@/lib/api/direct-upload";
+import { requestUploadSignature } from "@/lib/actions/upload-sign";
 
 interface PdfInputProps {
   name: string;
   value?: string | null;
   onChange?: (value: string | null) => void;
+  /** RBAC feature key, e.g. "equipment_models". */
+  feature: string;
+  /** RBAC permission — "create" for new entities, "edit" when the form is an edit. */
+  permission: "create" | "edit";
+  /** R2 path prefix (must end with a slash), e.g. "pdfs/equipments/". */
+  path: string;
+  /** Called while an upload is in-flight so the parent can disable Submit. */
+  onUploadingChange?: (uploading: boolean) => void;
   maxSizeMB?: number;
   placeholder?: string;
   className?: string;
@@ -16,59 +29,102 @@ interface PdfInputProps {
 }
 
 /**
- * PDF input with drag-and-drop, click-to-upload, and filename preview.
- * Submits the File directly via FormData for R2 upload.
- * The file input uses the given `name` for form submission.
+ * PDF input with drag-and-drop, click-to-upload, and direct-to-R2 upload.
+ * The file never goes through Vercel — on selection it's uploaded to the
+ * Worker via a signed token. The server action receives only the R2 key
+ * through a hidden `<name>_key` field.
  */
 export function PdfInput({
   name,
   value: controlledValue,
   onChange,
+  feature,
+  permission,
+  path,
+  onUploadingChange,
   maxSizeMB = 50,
   placeholder = "Drag & drop a PDF here, or click to browse",
   className,
   disabled = false,
 }: PdfInputProps) {
-  const [hasNewFile, setHasNewFile] = useState(false);
+  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Show preview if we have a new file OR an existing R2 URL (that hasn't been removed)
-  const hasValue = hasNewFile || (!!controlledValue && !removed);
+  useEffect(() => {
+    onUploadingChange?.(uploading);
+  }, [uploading, onUploadingChange]);
 
-  const processFile = useCallback(
+  const hasValue =
+    uploadedKey !== null || (!!controlledValue && !removed) || uploading;
+
+  const doUpload = useCallback(
+    async (file: File) => {
+      setError(null);
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      setUploading(true);
+      setProgress(0);
+      setFileName(file.name);
+      setFileSize(file.size);
+      setRemoved(false);
+
+      try {
+        const credentials = await requestUploadSignature(
+          feature,
+          permission,
+          path,
+        );
+        const result = await uploadToR2Direct(file, credentials, {
+          filename: buildUploadFilename(file),
+          signal: ctrl.signal,
+          onProgress: (loaded, total) => setProgress(loaded / total),
+        });
+        setUploadedKey(result.key);
+        setProgress(1);
+        onChange?.(result.key);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        // Ignore user-initiated cancellations — we already cleared state
+        if (msg !== "Upload cancelled") setError(msg);
+        setUploadedKey(null);
+        setFileName(null);
+        setFileSize(null);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [feature, permission, path, onChange],
+  );
+
+  const validateAndUpload = useCallback(
     (file: File) => {
       setError(null);
 
       if (file.type !== "application/pdf") {
         setError("Please select a PDF file");
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
 
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`PDF must be smaller than ${maxSizeMB}MB`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
 
-      setFileName(file.name);
-      setFileSize(file.size);
-      setHasNewFile(true);
-      setRemoved(false);
-
-      // Set file on the input so FormData includes it
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      if (fileInputRef.current) {
-        fileInputRef.current.files = dt.files;
-      }
-
-      onChange?.(file.name);
+      void doUpload(file);
     },
-    [maxSizeMB, onChange],
+    [maxSizeMB, doUpload],
   );
 
   const handleDragOver = useCallback(
@@ -91,83 +147,97 @@ export function PdfInput({
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-
-      if (disabled) return;
-
+      if (disabled || uploading) return;
       const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      if (file) validateAndUpload(file);
     },
-    [disabled, processFile],
+    [disabled, uploading, validateAndUpload],
   );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) processFile(file);
+      if (file) validateAndUpload(file);
     },
-    [processFile],
+    [validateAndUpload],
   );
 
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      setHasNewFile(false);
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setUploadedKey(null);
       setRemoved(true);
       setFileName(null);
       setFileSize(null);
       setError(null);
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      setUploading(false);
+      setProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       onChange?.(null);
     },
     [onChange],
   );
 
-  /** Derive display name from new file, existing URL, or fallback */
   const displayName =
     fileName ??
     (controlledValue
-      ? controlledValue.split("/").pop() ?? "Uploaded PDF"
+      ? (controlledValue.split("/").pop() ?? "Uploaded PDF")
       : "Uploaded PDF");
 
-  const displaySize = fileSize
-    ? fileSize < 1024
-      ? `${fileSize} B`
-      : fileSize < 1024 * 1024
-        ? `${(fileSize / 1024).toFixed(1)} KB`
-        : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`
-    : null;
+  const displaySize =
+    fileSize !== null
+      ? fileSize < 1024
+        ? `${fileSize} B`
+        : fileSize < 1024 * 1024
+          ? `${(fileSize / 1024).toFixed(1)} KB`
+          : `${(fileSize / (1024 * 1024)).toFixed(1)} MB`
+      : null;
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* File input for FormData submission */}
       <input
         ref={fileInputRef}
         type="file"
-        name={name}
         accept="application/pdf"
         onChange={handleFileSelect}
         className="hidden"
-        disabled={disabled}
+        disabled={disabled || uploading}
       />
-      {/* Signal explicit removal to the server action */}
-      {removed && !hasNewFile && (
+
+      {/* Hidden fields the server action reads */}
+      {uploadedKey && (
+        <input type="hidden" name={`${name}_key`} value={uploadedKey} />
+      )}
+      {removed && !uploadedKey && (
         <input type="hidden" name={`${name}_removed`} value="1" />
       )}
 
       {hasValue ? (
-        /* Preview state */
         <div className="flex items-center gap-3 rounded-xl border bg-muted/50 px-4 py-3">
           <div className="rounded-lg bg-red-100 p-2 dark:bg-red-900/30">
-            <FileText className="size-5 text-red-600 dark:text-red-400" />
+            {uploading ? (
+              <Loader2 className="size-5 animate-spin text-red-600 dark:text-red-400" />
+            ) : (
+              <FileText className="size-5 text-red-600 dark:text-red-400" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">
-              PDF{displaySize ? ` · ${displaySize}` : ""}
+              {uploading
+                ? `Uploading… ${Math.round(progress * 100)}%`
+                : `PDF${displaySize ? ` · ${displaySize}` : ""}`}
             </p>
+            {uploading && (
+              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
           <Button
             type="button"
@@ -176,14 +246,16 @@ export function PdfInput({
             onClick={handleRemove}
             disabled={disabled}
             className="text-muted-foreground hover:text-destructive shrink-0"
+            aria-label={uploading ? "Cancel upload" : "Remove PDF"}
           >
             <X className="size-4" />
           </Button>
         </div>
       ) : (
-        /* Upload zone */
         <div
-          onClick={() => !disabled && fileInputRef.current?.click()}
+          onClick={() =>
+            !disabled && !uploading && fileInputRef.current?.click()
+          }
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
