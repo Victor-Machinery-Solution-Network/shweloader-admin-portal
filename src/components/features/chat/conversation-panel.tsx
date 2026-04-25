@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Headset,
   MessageSquare,
@@ -99,7 +99,8 @@ export function ConversationPanel({
   }, [session?.id]);
 
   // Auto-scroll: on session change (instant), on send, or on incoming message at bottom
-  useEffect(() => {
+  // Uses useLayoutEffect to scroll before paint, preventing visual flicker
+  useLayoutEffect(() => {
     if (messages.length === 0) return;
 
     const performScroll = () => {
