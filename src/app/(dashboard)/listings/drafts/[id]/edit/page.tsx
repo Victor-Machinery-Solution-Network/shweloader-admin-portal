@@ -22,6 +22,7 @@ import {
 import { getDraftById, getProductImages } from "@/lib/actions/listing";
 import { ListingEditor } from "@/components/features/listings/shared/listing-editor";
 import { EditorSkeleton } from "@/components/features/listings/shared/editor-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
   title: "Edit Draft",
@@ -39,7 +40,9 @@ export default function EditDraftPage({
 }) {
   return (
     <Suspense fallback={<EditorSkeleton />}>
-      <EditDraftContent params={params} />
+      <PermissionGate feature={["sale_listings", "rent_listings"]} permission="create">
+        <EditDraftContent params={params} />
+      </PermissionGate>
     </Suspense>
   );
 }
