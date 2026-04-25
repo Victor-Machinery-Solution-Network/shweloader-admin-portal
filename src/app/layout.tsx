@@ -42,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${albertSans.variable} ${abhayaLibre.variable} ${anonymousPro.variable} h-screen overflow-hidden`}>
-      <body className="antialiased h-full">
+    <html lang="en" suppressHydrationWarning className={`${albertSans.variable} ${abhayaLibre.variable} ${anonymousPro.variable}`}>
+      <body className="antialiased">
         <ThemeProvider>
           <CustomThemeProvider>
             {children}
