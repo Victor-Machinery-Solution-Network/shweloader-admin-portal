@@ -125,42 +125,6 @@ export async function processFileField(
 }
 
 /**
- * Process a file using the original filename (for carousel images, product photos, etc.)
- * Same as processFileField but uses the original filename instead of entity name.
- *
- * IMPORTANT: This does NOT delete the old file.
- */
-export async function processFileWithOriginalName(
-  formData: FormData,
-  fieldName: string,
-  r2Path: string,
-  existingKey?: string | null,
-): Promise<string | null> {
-  const file = formData.get(fieldName);
-
-  // User explicitly removed the image
-  if (formData.get(`${fieldName}_removed`) === "1") {
-    return null;
-  }
-
-  if (!validateFile(file)) {
-    return existingKey || null;
-  }
-
-  assertFileType(file);
-  assertFileSize(file);
-
-  const { blob, ext } = await convertToWebp(file);
-  const nameWithoutExt = file.name.replace(/\.[^.]+$/, "");
-  // Append timestamp when replacing an existing file to bust CDN/browser cache
-  const suffix = existingKey ? `-${Date.now()}` : "";
-  const filename = `${slugify(nameWithoutExt)}${suffix}${ext}`;
-  const result = await uploadToR2(blob, r2Path, filename);
-
-  return result.key;
-}
-
-/**
  * Rich result returned by processImageFieldRich — includes the optional
  * 400px variant key (thumb) and a blurhash string for placeholder rendering.
  *
