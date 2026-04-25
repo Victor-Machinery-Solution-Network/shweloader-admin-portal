@@ -68,6 +68,8 @@ export function MarkdownEditor({
         strike: {},
         blockquote: {},
         horizontalRule: {},
+        codeBlock: false,
+        code: false,
       }),
       Underline,
       Link.configure({
