@@ -1301,7 +1301,7 @@ export function ListingEditor({
     <form
       noValidate
       onSubmit={handleSubmit}
-      className="-m-6 flex min-h-0 flex-1 flex-col"
+      className="-m-6 flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <FormSubmittedContext value={submitted}>
         {/* ── Sticky Header ─────────────────────────────────────── */}
