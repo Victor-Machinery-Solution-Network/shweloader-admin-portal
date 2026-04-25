@@ -102,32 +102,68 @@ export function ConversationPanel({
   useEffect(() => {
     if (messages.length === 0) return;
 
-    if (isNewSessionRef.current) {
-      // New session loaded — always scroll to bottom instantly
-      isNewSessionRef.current = false;
-      // Wait for DOM layout to complete before scrolling
-      setTimeout(() => {
+    const performScroll = () => {
+      if (isNewSessionRef.current) {
+        isNewSessionRef.current = false;
         messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-      }, 50);
-      if (session?.id) {
-        onMessagesRead?.();
-        markReadAndNotify(session.id);
+        if (session?.id) {
+          onMessagesRead?.();
+          markReadAndNotify(session.id);
+        }
+      } else if (justSentRef.current) {
+        justSentRef.current = false;
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (session?.id) {
+          onMessagesRead?.();
+          markReadAndNotify(session.id);
+        }
+      } else if (isNearBottomRef.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (session?.id) {
+          onMessagesRead?.();
+          markReadAndNotify(session.id);
+        }
       }
-    } else if (justSentRef.current) {
-      // Admin just sent — always scroll to bottom
-      justSentRef.current = false;
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (session?.id) {
-        onMessagesRead?.();
-        markReadAndNotify(session.id);
+    };
+
+    if (isNewSessionRef.current || justSentRef.current) {
+      // Retry scroll until sentinel is actually in view (handles image loading delays)
+      const viewport = scrollAreaRef.current?.querySelector(
+        '[data-slot="scroll-area-viewport"]',
+      ) as HTMLElement | null;
+
+      if (!viewport) {
+        performScroll();
+        return;
       }
-    } else if (isNearBottomRef.current) {
-      // Incoming message while already at bottom — scroll to stay at bottom
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (session?.id) {
-        onMessagesRead?.();
-        markReadAndNotify(session.id);
-      }
+
+      let attempts = 0;
+      const maxAttempts = 30; // ~500ms at 60fps
+
+      const scrollAndCheck = () => {
+        performScroll();
+        attempts++;
+
+        // Check if sentinel is actually in the viewport
+        if (messagesEndRef.current) {
+          const rect = messagesEndRef.current.getBoundingClientRect();
+          const viewportRect = viewport.getBoundingClientRect();
+          const isInView =
+            rect.top >= viewportRect.top && rect.top <= viewportRect.bottom;
+
+          // If sentinel is in view or we've retried enough, we're done
+          if (isInView || attempts >= maxAttempts) {
+            return;
+          }
+        }
+
+        // Retry in next frame
+        requestAnimationFrame(scrollAndCheck);
+      };
+
+      requestAnimationFrame(scrollAndCheck);
+    } else {
+      performScroll();
     }
   }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
