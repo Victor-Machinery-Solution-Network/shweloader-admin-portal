@@ -319,7 +319,6 @@ export function EquipmentModelForm({
               value={model?.pdf_url ?? null}
               feature="equipment_models"
               permission={isEditing ? "edit" : "create"}
-              path="pdfs/equipments/"
               onUploadingChange={setIsUploading}
             />
           </FieldContent>

@@ -18,8 +18,6 @@ interface PdfInputProps {
   feature: string;
   /** RBAC permission — "create" for new entities, "edit" when the form is an edit. */
   permission: "create" | "edit";
-  /** R2 path prefix (must end with a slash), e.g. "pdfs/equipments/". */
-  path: string;
   /** Called while an upload is in-flight so the parent can disable Submit. */
   onUploadingChange?: (uploading: boolean) => void;
   maxSizeMB?: number;
@@ -28,11 +26,15 @@ interface PdfInputProps {
   disabled?: boolean;
 }
 
+/** Staging prefix every PDF lands in before the admin clicks Save. */
+const PENDING_PREFIX = "pending/";
+
 /**
  * PDF input with drag-and-drop, click-to-upload, and direct-to-R2 upload.
- * The file never goes through Vercel — on selection it's uploaded to the
- * Worker via a signed token. The server action receives only the R2 key
- * through a hidden `<name>_key` field.
+ * The file never goes through Vercel — on selection it's uploaded to R2
+ * under `pending/…` via a signed token. The server action commits the
+ * upload to its final prefix (via processFileField) after Save is clicked.
+ * Abandoned uploads auto-expire via the R2 lifecycle rule on `pending/`.
  */
 export function PdfInput({
   name,
@@ -40,7 +42,6 @@ export function PdfInput({
   onChange,
   feature,
   permission,
-  path,
   onUploadingChange,
   maxSizeMB = 50,
   placeholder = "Drag & drop a PDF here, or click to browse",
@@ -82,7 +83,7 @@ export function PdfInput({
         const credentials = await requestUploadSignature(
           feature,
           permission,
-          path,
+          PENDING_PREFIX,
         );
         const result = await uploadToR2Direct(file, credentials, {
           filename: buildUploadFilename(file),
@@ -103,7 +104,7 @@ export function PdfInput({
         setUploading(false);
       }
     },
-    [feature, permission, path, onChange],
+    [feature, permission, onChange],
   );
 
   const validateAndUpload = useCallback(
@@ -208,7 +209,7 @@ export function PdfInput({
 
       {/* Hidden fields the server action reads */}
       {uploadedKey && (
-        <input type="hidden" name={`${name}_key`} value={uploadedKey} />
+        <input type="hidden" name={`${name}_pending_key`} value={uploadedKey} />
       )}
       {removed && !uploadedKey && (
         <input type="hidden" name={`${name}_removed`} value="1" />

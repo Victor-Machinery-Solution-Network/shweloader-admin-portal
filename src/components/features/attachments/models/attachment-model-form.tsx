@@ -293,7 +293,6 @@ export function AttachmentModelForm({
               value={model?.pdf_url ?? null}
               feature="attachment_models"
               permission={isEditing ? "edit" : "create"}
-              path="pdfs/attachments/"
               onUploadingChange={setIsUploading}
             />
           </FieldContent>

@@ -92,6 +92,40 @@ export async function uploadToR2(
 }
 
 /**
+ * Move a pending upload from `pending/...` to its final content prefix.
+ * Called after an admin clicks Save — the browser has already uploaded
+ * to pending/; this commits it atomically so the final file only exists
+ * if the D1 write is about to happen.
+ *
+ * Abandoned pending uploads expire automatically via an R2 lifecycle
+ * rule on the pending/ prefix (1 day). This is server-to-server; the
+ * client never calls it directly.
+ */
+export async function commitUploadToR2(
+  pendingKey: string,
+  finalPrefix: string,
+): Promise<string> {
+  const res = await fetch(`${WORKER_URL}/upload/commit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_TOKEN}`,
+    },
+    body: JSON.stringify({ pendingKey, finalPrefix }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error || `Commit failed (${res.status})`,
+    );
+  }
+
+  const data = (await res.json()) as { key: string };
+  return data.key;
+}
+
+/**
  * Delete a file from R2 via the Cloudflare Worker.
  * Silently ignores 404s (idempotent).
  *

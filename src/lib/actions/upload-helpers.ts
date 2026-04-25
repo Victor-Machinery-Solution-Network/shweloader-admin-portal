@@ -2,6 +2,7 @@
 
 import {
   uploadToR2,
+  commitUploadToR2,
   deleteFromR2,
   slugify,
 } from "@/lib/api/r2-client";
@@ -88,9 +89,19 @@ export async function processFileField(
   entityName: string,
   existingKey?: string | null,
 ): Promise<string | null> {
-  // Direct browser-to-R2 upload already happened — caller just passed us
-  // the resulting key. This is the path PDFs (and eventually images) take
-  // to bypass Vercel's 4.5 MB serverless body limit.
+  // Browser uploaded to `pending/...` on file select; now commit it to
+  // the final content prefix. If the caller's D1 write throws after this
+  // point we have an orphan in the final prefix — the daily cleanup cron
+  // sweeps those. Abandoned forms leave files in `pending/` which the
+  // R2 lifecycle rule reaps after 1 day.
+  const pendingKey = formData.get(`${fieldName}_pending_key`);
+  if (typeof pendingKey === "string" && pendingKey) {
+    return await commitUploadToR2(pendingKey, r2Path);
+  }
+
+  // Direct browser-to-R2 upload (no commit step) — caller passed the
+  // final key. Legacy of Phase 1 before the pending/commit flow landed;
+  // kept so callers can opt in to either shape.
   const directKey = formData.get(`${fieldName}_key`);
   if (typeof directKey === "string" && directKey) {
     return directKey;
