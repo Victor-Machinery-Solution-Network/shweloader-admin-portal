@@ -249,7 +249,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 8, // 8 hours (JWT expiry, but cookie is session-based)
+    maxAge: 60 * 60 * 1, // 1 hour (JWT expiry, but cookie is session-based)
   },
 
   cookies: {
