@@ -1,20 +1,38 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
-import { Upload, X, MoveHorizontal } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Upload, X, MoveHorizontal, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { assetUrl } from '@/lib/r2-url';
 import { FocalPointModal } from '@/components/shared/focal-point-modal';
+import {
+  processImageClient,
+  buildImageFilenames,
+} from '@/lib/api/image-client';
+import { uploadToR2Direct } from '@/lib/api/direct-upload';
+import { requestUploadSignature } from '@/lib/actions/upload-sign';
 
 interface FileInfo {
   name: string;
   size: number;
 }
 
+interface UploadedKeys {
+  fullKey: string;
+  thumbKey: string;
+  blurhash: string;
+}
+
 interface ImageInputProps {
   name: string;
   value?: string | null;
   onChange?: (value: string | null) => void;
+  /** RBAC feature key, e.g. "articles". */
+  feature: string;
+  /** RBAC permission — "create" for new entities, "edit" when the form is an edit. */
+  permission: 'create' | 'edit';
+  /** Called while a file is being processed or uploaded so the parent can disable Submit. */
+  onUploadingChange?: (uploading: boolean) => void;
   accept?: string;
   maxSizeMB?: number;
   placeholder?: string;
@@ -30,20 +48,26 @@ interface ImageInputProps {
   focalPoint?: { x: number; y: number };
 }
 
+const PENDING_PREFIX = 'pending/';
+
 /**
- * Image input with drag-and-drop, click-to-upload, and preview.
- * Submits the File directly via FormData for R2 upload.
- * The file input uses the given `name` for form submission.
+ * Image input with drag-and-drop, click-to-upload, focal-point modal, and
+ * direct-to-R2 upload via the Approach 2 commit-on-save flow.
  *
- * When `onFocalPointChange` is provided a FocalPointModal opens after each
- * file selection so the user can set the crop anchor before the file is
- * committed. An "Adjust Position" overlay button also appears on hover for
- * existing images.
+ * Pipeline on file select:
+ *   validate → focal point modal (if `onFocalPointChange` is set) → resize +
+ *   WebP encode + blurhash via @jsquash WASM → direct-upload full + thumb
+ *   to `pending/...` → set `_pending_key`, `_thumb_pending_key`, `_blurhash`
+ *   hidden fields. The server's processImageFieldRich commits both keys
+ *   to the final R2 prefix when the form is submitted.
  */
 export function ImageInput({
   name,
   value: controlledValue,
   onChange,
+  feature,
+  permission,
+  onUploadingChange,
   accept = 'image/png,image/jpeg,image/gif,image/webp',
   maxSizeMB = 50,
   placeholder = 'Drop an image here or click to browse',
@@ -54,82 +78,139 @@ export function ImageInput({
   onFocalPointChange,
   focalPoint,
 }: ImageInputProps) {
-  // previewUrl: object URL for newly selected file, or existing R2 URL
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [removed, setRemoved] = useState(false);
+  const [uploaded, setUploaded] = useState<UploadedKeys | null>(null);
+
+  const [processing, setProcessing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Focal point modal state
   const [showFocalPoint, setShowFocalPoint] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingObjectUrl, setPendingObjectUrl] = useState<string | null>(null);
 
-  // Display: new file preview (blob:), or R2 key → full URL from prop
-  const displayUrl = previewUrl || (!removed ? assetUrl(controlledValue) : null) || null;
+  const busy = processing || uploading;
+  useEffect(() => {
+    onUploadingChange?.(busy);
+  }, [busy, onUploadingChange]);
 
-  // Extract filename from existing URL for consistent display
+  // Display: new file preview (blob:), or R2 key → full URL from prop
+  const displayUrl =
+    previewUrl || (!removed ? assetUrl(controlledValue) : null) || null;
+
   const urlFileName = controlledValue
     ? decodeURIComponent(controlledValue.split('/').pop() || 'image')
     : null;
 
-  /** Commit a chosen File to the form input and call onChange. */
-  const commitFile = useCallback(
-    (file: File, objectUrl: string) => {
+  /**
+   * Process the selected image (decode → resize → WebP encode → blurhash)
+   * and direct-upload the full + thumb to `pending/`. Aborts cleanly if
+   * the user cancels or replaces the file mid-flight.
+   */
+  const processAndUpload = useCallback(
+    async (file: File, objectUrl: string) => {
+      setError(null);
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
       setFileInfo({ name: file.name, size: file.size });
       setRemoved(false);
       setPreviewUrl(objectUrl);
+      setProcessing(true);
+      setProgress(0);
 
-      // Set file on the input so FormData includes it
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      if (fileInputRef.current) {
-        fileInputRef.current.files = dt.files;
+      try {
+        const processed = await processImageClient(file);
+        if (ctrl.signal.aborted) return;
+        setProcessing(false);
+
+        setUploading(true);
+        const credentials = await requestUploadSignature(
+          feature,
+          permission,
+          PENDING_PREFIX,
+        );
+        if (ctrl.signal.aborted) return;
+
+        const { fullFilename, thumbFilename } = buildImageFilenames(file);
+
+        // Upload full first (largest), report progress on it. Thumb is
+        // tiny so its progress doesn't really matter — fire it after.
+        const fullResult = await uploadToR2Direct(processed.fullBlob, credentials, {
+          filename: fullFilename,
+          signal: ctrl.signal,
+          onProgress: (loaded, total) => setProgress(loaded / total),
+        });
+        const thumbResult = await uploadToR2Direct(processed.thumbBlob, credentials, {
+          filename: thumbFilename,
+          signal: ctrl.signal,
+        });
+
+        setUploaded({
+          fullKey: fullResult.key,
+          thumbKey: thumbResult.key,
+          blurhash: processed.blurhash,
+        });
+        setProgress(1);
+        onChange?.(fullResult.key);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Upload failed';
+        if (msg !== 'Upload cancelled') setError(msg);
+        setUploaded(null);
+        setFileInfo(null);
+        setPreviewUrl(null);
+      } finally {
+        setProcessing(false);
+        setUploading(false);
       }
-
-      onChange?.(objectUrl);
     },
-    [onChange]
+    [feature, permission, onChange],
   );
 
-  const processFile = useCallback(
+  const validateAndStart = useCallback(
     (file: File) => {
       setError(null);
 
       if (!file.type.startsWith('image/')) {
         setError('Please select an image file');
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`Image must be smaller than ${maxSizeMB}MB`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
       const objectUrl = URL.createObjectURL(file);
 
       if (onFocalPointChange) {
-        // Store file and open focal point modal — commit after user chooses
+        // Show focal point modal first; upload triggers when user confirms.
         setPendingFile(file);
         setPendingObjectUrl(objectUrl);
         setShowFocalPoint(true);
       } else {
-        // Original behavior: commit immediately
-        commitFile(file, objectUrl);
+        void processAndUpload(file, objectUrl);
       }
     },
-    [maxSizeMB, onFocalPointChange, commitFile]
+    [maxSizeMB, onFocalPointChange, processAndUpload],
   );
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!disabled) setIsDragging(true);
+      if (!disabled && !busy) setIsDragging(true);
     },
-    [disabled]
+    [disabled, busy],
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -143,27 +224,26 @@ export function ImageInput({
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-
-      if (disabled) return;
-
+      if (disabled || busy) return;
       const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      if (file) validateAndStart(file);
     },
-    [disabled, processFile]
+    [disabled, busy, validateAndStart],
   );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) processFile(file);
+      if (file) validateAndStart(file);
     },
-    [processFile]
+    [validateAndStart],
   );
 
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      // Revoke object URL to free memory
+      abortRef.current?.abort();
+      abortRef.current = null;
       if (previewUrl?.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
@@ -171,13 +251,14 @@ export function ImageInput({
       setFileInfo(null);
       setRemoved(true);
       setError(null);
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setUploaded(null);
+      setProcessing(false);
+      setUploading(false);
+      setProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       onChange?.(null);
     },
-    [previewUrl, onChange]
+    [previewUrl, onChange],
   );
 
   // ── Focal point modal handlers ─────────────────────────────────────────────
@@ -185,18 +266,17 @@ export function ImageInput({
   const handleFocalPointSave = useCallback(
     (point: { x: number; y: number }) => {
       if (pendingFile && pendingObjectUrl) {
-        commitFile(pendingFile, pendingObjectUrl);
         onFocalPointChange?.(point);
+        void processAndUpload(pendingFile, pendingObjectUrl);
       }
       setPendingFile(null);
       setPendingObjectUrl(null);
       setShowFocalPoint(false);
     },
-    [pendingFile, pendingObjectUrl, commitFile, onFocalPointChange]
+    [pendingFile, pendingObjectUrl, processAndUpload, onFocalPointChange],
   );
 
   const handleFocalPointSkip = useCallback(() => {
-    // Discard the pending file — user cancelled the upload
     if (pendingObjectUrl?.startsWith('blob:')) {
       URL.revokeObjectURL(pendingObjectUrl);
     }
@@ -205,32 +285,29 @@ export function ImageInput({
     setShowFocalPoint(false);
   }, [pendingObjectUrl]);
 
-  /** Open the focal point modal for an existing (already committed) image. */
+  /** Re-open modal for an existing committed image — focal point only, no re-upload. */
   const handleAdjustPosition = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (displayUrl) {
-        // For existing images use the resolved URL (blob: or full R2 URL)
         setPendingFile(null);
         setPendingObjectUrl(displayUrl);
         setShowFocalPoint(true);
       }
     },
-    [displayUrl]
+    [displayUrl],
   );
 
-  /** When adjusting an existing image (no pending file), just update focal point. */
   const handleExistingFocalPointSave = useCallback(
     (point: { x: number; y: number }) => {
       onFocalPointChange?.(point);
       setPendingObjectUrl(null);
       setShowFocalPoint(false);
     },
-    [onFocalPointChange]
+    [onFocalPointChange],
   );
 
   const handleExistingFocalPointSkip = useCallback(() => {
-    // Close without changing anything — preserve existing focal point
     setPendingObjectUrl(null);
     setShowFocalPoint(false);
   }, []);
@@ -241,59 +318,94 @@ export function ImageInput({
       : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  /** Truncate long filenames with ellipsis in the middle, e.g. "abcdef...xyz.jpg" */
-  function truncateFilename(name: string, maxLen = 60) {
-    if (name.length <= maxLen) return name;
-    const ext = name.lastIndexOf('.') !== -1 ? name.slice(name.lastIndexOf('.')) : '';
-    const keep = maxLen - ext.length - 3; // 3 for "..."
+  function truncateFilename(filename: string, maxLen = 60) {
+    if (filename.length <= maxLen) return filename;
+    const ext =
+      filename.lastIndexOf('.') !== -1
+        ? filename.slice(filename.lastIndexOf('.'))
+        : '';
+    const keep = maxLen - ext.length - 3;
     const front = Math.ceil(keep / 2);
     const back = Math.floor(keep / 2);
-    return name.slice(0, front) + '...' + name.slice(name.length - back - ext.length);
+    return (
+      filename.slice(0, front) + '...' + filename.slice(filename.length - back - ext.length)
+    );
   }
 
-  // Which URL to pass to the focal point modal
   const focalModalUrl = pendingObjectUrl ?? '';
-  // Is this the "adjust existing" flow (no pending file to commit)?
   const isAdjustingExisting = showFocalPoint && !pendingFile;
 
   return (
     <div className={cn('space-y-2', className)}>
-      {/* File input for FormData submission */}
       <input
         ref={fileInputRef}
         type="file"
-        name={name}
         accept={accept}
         onChange={handleFileSelect}
         className="hidden"
-        disabled={disabled}
+        disabled={disabled || busy}
       />
-      {/* Signal server that user explicitly removed the existing image */}
-      {removed && !previewUrl && (
+
+      {/* Hidden fields the server's processImageFieldRich reads. */}
+      {uploaded && (
+        <>
+          <input
+            type="hidden"
+            name={`${name}_pending_key`}
+            value={uploaded.fullKey}
+          />
+          <input
+            type="hidden"
+            name={`${name}_thumb_pending_key`}
+            value={uploaded.thumbKey}
+          />
+          <input
+            type="hidden"
+            name={`${name}_blurhash`}
+            value={uploaded.blurhash}
+          />
+        </>
+      )}
+      {removed && !uploaded && (
         <input type="hidden" name={`${name}_removed`} value="1" />
       )}
 
       <div className={cn(aspectClassName, 'min-w-0')}>
         {displayUrl ? (
-          /* Preview state */
           <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border">
             <div className="group relative min-h-0 flex-1">
               <img
                 src={displayUrl}
                 alt="Selected image preview"
                 className="size-full object-cover"
-                style={focalPoint ? { objectPosition: `${focalPoint.x * 100}% ${focalPoint.y * 100}%` } : undefined}
+                style={
+                  focalPoint
+                    ? {
+                        objectPosition: `${focalPoint.x * 100}% ${focalPoint.y * 100}%`,
+                      }
+                    : undefined
+                }
               />
+              {busy && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 text-white backdrop-blur-sm">
+                  <Loader2 className="size-6 animate-spin" />
+                  <p className="text-xs font-medium">
+                    {processing
+                      ? 'Processing image…'
+                      : `Uploading… ${Math.round(progress * 100)}%`}
+                  </p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleRemove}
                 disabled={disabled}
                 className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white backdrop-blur-sm transition-colors hover:bg-black/80 disabled:opacity-50"
-                aria-label="Remove image"
+                aria-label={busy ? 'Cancel upload' : 'Remove image'}
               >
                 <X className="size-4" />
               </button>
-              {onFocalPointChange && aspectRatio && (
+              {onFocalPointChange && aspectRatio && !busy && (
                 <button
                   type="button"
                   onClick={handleAdjustPosition}
@@ -320,9 +432,8 @@ export function ImageInput({
             </div>
           </div>
         ) : (
-          /* Upload zone */
           <div
-            onClick={() => !disabled && fileInputRef.current?.click()}
+            onClick={() => !disabled && !busy && fileInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -331,7 +442,7 @@ export function ImageInput({
               isDragging
                 ? 'border-primary bg-primary/5'
                 : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50',
-              disabled && 'cursor-not-allowed opacity-50',
+              (disabled || busy) && 'cursor-not-allowed opacity-50',
             )}
           >
             <div className="rounded-full bg-muted p-2.5">
@@ -349,15 +460,20 @@ export function ImageInput({
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* Focal point modal — shown after file selection or when adjusting existing */}
       {showFocalPoint && focalModalUrl && aspectRatio && (
         <FocalPointModal
           open={showFocalPoint}
           imageUrl={focalModalUrl}
           aspectRatio={aspectRatio}
-          initialFocalPoint={isAdjustingExisting ? (focalPoint ?? { x: 0.5, y: 0.5 }) : { x: 0.5, y: 0.5 }}
-          onSave={isAdjustingExisting ? handleExistingFocalPointSave : handleFocalPointSave}
-          onSkip={isAdjustingExisting ? handleExistingFocalPointSkip : handleFocalPointSkip}
+          initialFocalPoint={
+            isAdjustingExisting ? (focalPoint ?? { x: 0.5, y: 0.5 }) : { x: 0.5, y: 0.5 }
+          }
+          onSave={
+            isAdjustingExisting ? handleExistingFocalPointSave : handleFocalPointSave
+          }
+          onSkip={
+            isAdjustingExisting ? handleExistingFocalPointSkip : handleFocalPointSkip
+          }
         />
       )}
     </div>

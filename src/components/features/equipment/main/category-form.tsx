@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { FolderOpen, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { RequiredInput } from "@/components/ui/required-input";
@@ -25,6 +25,7 @@ export function CategoryForm({
   category,
 }: CategoryFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const isEditing = !!category;
 
   function handleSubmit(formData: FormData) {
@@ -58,7 +59,7 @@ export function CategoryForm({
           : <FolderOpen className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
-      isPending={isPending}
+      isPending={isPending || isUploading}
       submitLabel={isEditing ? "Update" : "Create"}
     >
       <div className="space-y-4">
@@ -80,6 +81,9 @@ export function CategoryForm({
             <ImageInput
               name="image_url"
               value={category?.image_url}
+              feature="equipment_main_categories"
+              permission={isEditing ? "edit" : "create"}
+              onUploadingChange={setIsUploading}
             />
           </FieldContent>
         </Field>

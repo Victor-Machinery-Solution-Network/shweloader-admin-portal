@@ -61,6 +61,7 @@ export function CarouselImageGrid({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [hasFile, setHasFile] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isAdding, startAddTransition] = useTransition();
   const [newFocalPoint, setNewFocalPoint] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
   const [focalPointImage, setFocalPointImage] = useState<{
@@ -240,6 +241,9 @@ export function CarouselImageGrid({
               aspectRatio={16 / 9}
               onFocalPointChange={setNewFocalPoint}
               focalPoint={newFocalPoint}
+              feature="carousels"
+              permission="create"
+              onUploadingChange={setIsUploading}
             />
             <input type="hidden" name="focal_x" value={newFocalPoint.x} />
             <input type="hidden" name="focal_y" value={newFocalPoint.y} />
@@ -276,9 +280,9 @@ export function CarouselImageGrid({
               </Button>
               <Button
                 type="submit"
-                disabled={!hasFile || isAdding}
+                disabled={!hasFile || isAdding || isUploading}
               >
-                {isAdding ? "Uploading\u2026" : "Add Image"}
+                {isUploading ? "Uploading\u2026" : isAdding ? "Saving\u2026" : "Add Image"}
               </Button>
             </DialogFooter>
           </form>

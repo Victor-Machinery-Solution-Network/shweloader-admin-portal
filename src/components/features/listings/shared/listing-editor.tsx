@@ -556,6 +556,7 @@ export function ListingEditor({
 }: ListingEditorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const isEditing = !!listing;
   const isDraftMode = !!draft;
@@ -719,6 +720,9 @@ export function ListingEditor({
       focalY: img.focal_y ?? undefined,
     })),
   );
+  // Submit must wait for any gallery upload still in flight, otherwise
+  // the FormData would ship an item without its pendingKey.
+  const anyGalleryUploading = galleryItems.some((item) => item.uploading);
 
   // ── Price state (separate for sale / rent) ──────────────────────────────
 
@@ -1210,10 +1214,20 @@ export function ListingEditor({
       formData.set("thumbnail_focal_y", String(thumbnailFocalPoint.y));
     }
 
-    // Append product photos
+    // Append product photos. Existing items send their R2 url; newly
+    // added items send the pending keys produced by the gallery's
+    // direct-to-R2 upload — the server commits them on save.
     galleryItems.forEach((item, i) => {
       if (item.url) formData.set(`photo_url_${i}`, item.url);
-      if (item.file) formData.set(`photo_file_${i}`, item.file);
+      if (item.pendingKey) {
+        formData.set(`photo_pending_key_${i}`, item.pendingKey);
+        if (item.thumbPendingKey) {
+          formData.set(`photo_thumb_pending_key_${i}`, item.thumbPendingKey);
+        }
+        if (item.blurhash) {
+          formData.set(`photo_blurhash_${i}`, item.blurhash);
+        }
+      }
       if (item.focalX != null) formData.set(`photo_focal_x_${i}`, String(item.focalX));
       if (item.focalY != null) formData.set(`photo_focal_y_${i}`, String(item.focalY));
     });
@@ -1376,7 +1390,7 @@ export function ListingEditor({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={isPending}
+                disabled={isPending || isUploading || anyGalleryUploading}
                 onClick={() => {
                   if (isCreateMode) {
                     clearAutoSave();
@@ -1399,7 +1413,7 @@ export function ListingEditor({
                       type="submit"
                       variant="outline"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading || anyGalleryUploading}
                       onClick={() => {
                         submitActionRef.current = "save-draft";
                       }}
@@ -1423,7 +1437,7 @@ export function ListingEditor({
                         type="submit"
                         variant="outline"
                         size="sm"
-                        disabled={isPending}
+                        disabled={isPending || isUploading || anyGalleryUploading}
                         onClick={() => {
                           submitActionRef.current = "save";
                         }}
@@ -1433,7 +1447,7 @@ export function ListingEditor({
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={isPending}
+                        disabled={isPending || isUploading || anyGalleryUploading}
                         onClick={() => {
                           submitActionRef.current = "resubmit";
                         }}
@@ -1459,7 +1473,7 @@ export function ListingEditor({
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || isUploading || anyGalleryUploading}
                           onClick={() => setShowReworkDialog(true)}
                           className="gap-1.5"
                         >
@@ -1479,7 +1493,7 @@ export function ListingEditor({
                         <Button
                           type="submit"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || isUploading || anyGalleryUploading}
                           onClick={() => {
                             submitActionRef.current = "approve";
                           }}
@@ -1507,7 +1521,7 @@ export function ListingEditor({
                         type="submit"
                         variant="outline"
                         size="sm"
-                        disabled={isPending}
+                        disabled={isPending || isUploading || anyGalleryUploading}
                         onClick={() => {
                           submitActionRef.current = "save";
                         }}
@@ -1517,7 +1531,7 @@ export function ListingEditor({
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={isPending}
+                        disabled={isPending || isUploading || anyGalleryUploading}
                         onClick={() => {
                           submitActionRef.current = "approve";
                         }}
@@ -1543,7 +1557,7 @@ export function ListingEditor({
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={isPending}
+                    disabled={isPending || isUploading || anyGalleryUploading}
                     onClick={() => {
                       submitActionRef.current = "save";
                     }}
@@ -2300,6 +2314,9 @@ export function ListingEditor({
                 aspectRatio={1}
                 focalPoint={thumbnailFocalPoint ?? undefined}
                 onFocalPointChange={setThumbnailFocalPoint}
+                feature={pageType === "sale" ? "sale_listings" : "rent_listings"}
+                permission={isEditing ? "edit" : "create"}
+                onUploadingChange={setIsUploading}
               />
               {submitted && isCreateMode && !thumbnailUrl && (
                 <p className="text-destructive text-xs">
@@ -2330,6 +2347,8 @@ export function ListingEditor({
                   items={galleryItems}
                   onChange={setGalleryItems}
                   aspectRatio={4 / 3}
+                  feature={pageType === "sale" ? "sale_listings" : "rent_listings"}
+                  permission={isEditing ? "edit" : "create"}
                 />
               </Suspense>
               {submitted && isCreateMode && galleryItems.length === 0 && (
@@ -2352,7 +2371,7 @@ export function ListingEditor({
               <Button
                 type="submit"
                 size="sm"
-                disabled={isPending}
+                disabled={isPending || isUploading || anyGalleryUploading}
                 onClick={() => {
                   submitActionRef.current = isRework
                     ? "resubmit"

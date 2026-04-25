@@ -83,7 +83,9 @@ export function ArticleEditor({
 }: ArticleEditorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const isEditingArticle = !!article;
   const { data: session } = useSession();
   const currentUserName = session?.user?.name ?? "";
   const canApprove = useHasPermission("articles", "approve");
@@ -325,7 +327,7 @@ export function ArticleEditor({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  disabled={isPending}
+                  disabled={isPending || isUploading}
                   onClick={() => {
                     if (isNewArticle) {
                       // Hard navigation to fully reset form state
@@ -345,7 +347,7 @@ export function ArticleEditor({
                       type="submit"
                       variant="outline"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "draft";
                       }}
@@ -361,7 +363,7 @@ export function ArticleEditor({
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "publish";
                       }}
@@ -384,7 +386,7 @@ export function ArticleEditor({
                       type="submit"
                       variant="outline"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "draft";
                       }}
@@ -400,7 +402,7 @@ export function ArticleEditor({
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "submit-review";
                       }}
@@ -427,7 +429,7 @@ export function ArticleEditor({
                       type="submit"
                       variant="outline"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "draft";
                       }}
@@ -443,7 +445,7 @@ export function ArticleEditor({
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "resubmit";
                       }}
@@ -468,7 +470,7 @@ export function ArticleEditor({
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={isPending}
+                    disabled={isPending || isUploading}
                     onClick={() => {
                       submitActionRef.current = "save";
                     }}
@@ -490,7 +492,7 @@ export function ArticleEditor({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => setShowRework(true)}
                       className="gap-1.5"
                     >
@@ -501,7 +503,7 @@ export function ArticleEditor({
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => setIsReviewMode(false)}
                       className="gap-1.5"
                     >
@@ -511,7 +513,7 @@ export function ArticleEditor({
                     <Button
                       type="button"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={handleApprovePublish}
                       className="gap-1.5"
                     >
@@ -528,7 +530,7 @@ export function ArticleEditor({
                       type="submit"
                       size="sm"
                       variant="outline"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={() => {
                         submitActionRef.current = "save";
                       }}
@@ -544,7 +546,7 @@ export function ArticleEditor({
                     <Button
                       type="button"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || isUploading}
                       onClick={handleApprovePublish}
                       className="gap-1.5"
                     >
@@ -696,6 +698,9 @@ export function ArticleEditor({
                     aspectRatio={16 / 9}
                     focalPoint={coverFocalPoint ?? undefined}
                     onFocalPointChange={setCoverFocalPoint}
+                    feature="articles"
+                    permission={isEditingArticle ? "edit" : "create"}
+                    onUploadingChange={setIsUploading}
                   />
                   {strictValidation && !coverImage && (
                     <p className="text-destructive text-xs">Cover image is required</p>

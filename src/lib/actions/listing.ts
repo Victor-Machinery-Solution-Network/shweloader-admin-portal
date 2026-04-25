@@ -46,15 +46,19 @@ import { auditLog } from "@/lib/actions/audit";
 
 /**
  * Process product photos from FormData.
- * - `photo_url_N`: existing R2 keys to keep
- * - `photo_file_N`: new File objects to upload
- * - `photo_focal_x_N` / `photo_focal_y_N`: optional focal point (0–1)
- * Returns array of { key, focalX, focalY } in order.
+ * - `photo_url_N`: existing R2 keys to keep (edit mode)
+ * - `photo_pending_key_N` + `photo_thumb_pending_key_N` + `photo_blurhash_N`:
+ *   newly added photos that the browser already direct-uploaded to `pending/`.
+ *   Server commits these to the final prefix.
+ * - `photo_file_N`: legacy server-side upload path (kept for non-browser callers).
+ * - `photo_focal_x_N` / `photo_focal_y_N`: optional focal point (0–1).
+ * Returns array of processed photos in submitted order.
  */
 type ProcessedPhoto = {
   key: string;
-  /** Non-null only for freshly uploaded files; existing entries inherit the
-   *  thumb+blurhash already stored in product_image during syncProductImages. */
+  /** Non-null for freshly uploaded photos (committed from pending/); existing
+   *  entries inherit the thumb+blurhash already stored in product_image
+   *  during syncProductImages. */
   thumbKey: string | null;
   blurhash: string | null;
   focalX: number | null;
@@ -67,30 +71,51 @@ async function processProductPhotos(
 ): Promise<ProcessedPhoto[]> {
   const r2Path = `products/photos/${productListId}/`;
 
-  // 1. Collect all entries (preserving order)
-  type PhotoEntry = {
-    type: "url" | "file";
-    url?: string;
-    file?: File;
-    focalX: number | null;
-    focalY: number | null;
-  };
+  type PhotoEntry =
+    | { type: "url"; url: string; focalX: number | null; focalY: number | null }
+    | {
+        type: "pending";
+        pendingKey: string;
+        thumbPendingKey: string | null;
+        blurhash: string | null;
+        focalX: number | null;
+        focalY: number | null;
+      }
+    | { type: "file"; file: File; focalX: number | null; focalY: number | null };
   const entries: PhotoEntry[] = [];
   let i = 0;
 
-  while (formData.has(`photo_url_${i}`) || formData.has(`photo_file_${i}`)) {
+  while (
+    formData.has(`photo_url_${i}`) ||
+    formData.has(`photo_file_${i}`) ||
+    formData.has(`photo_pending_key_${i}`)
+  ) {
     const fxRaw = formData.get(`photo_focal_x_${i}`);
     const fyRaw = formData.get(`photo_focal_y_${i}`);
     const focalX = fxRaw != null ? parseFloat(fxRaw as string) : null;
     const focalY = fyRaw != null ? parseFloat(fyRaw as string) : null;
 
     const existingKey = formData.get(`photo_url_${i}`) as string | null;
+    const pendingKey = formData.get(`photo_pending_key_${i}`) as string | null;
+
     if (existingKey?.trim()) {
-      // Reject keys that look like URLs or contain path traversal
       if (!isR2Key(existingKey.trim())) {
         throw new Error("Invalid photo key detected");
       }
       entries.push({ type: "url", url: existingKey.trim(), focalX, focalY });
+    } else if (pendingKey?.trim()) {
+      const thumbPendingKey = formData.get(
+        `photo_thumb_pending_key_${i}`,
+      ) as string | null;
+      const blurhash = formData.get(`photo_blurhash_${i}`) as string | null;
+      entries.push({
+        type: "pending",
+        pendingKey: pendingKey.trim(),
+        thumbPendingKey: thumbPendingKey?.trim() || null,
+        blurhash: blurhash || null,
+        focalX,
+        focalY,
+      });
     } else {
       const file = formData.get(`photo_file_${i}`);
       if (file && file instanceof File && file.size > 0) {
@@ -100,23 +125,49 @@ async function processProductPhotos(
     i++;
   }
 
-  // 2. Upload all new files with index suffix to prevent filename collisions
-  //    e.g. two "front.jpg" files become "front-0.webp" and "front-1.webp"
+  // Process every entry. URLs pass through; pending uploads are committed
+  // (via tempFormData → processImageFieldRich's _pending_key branch);
+  // legacy File entries go through the sharp pipeline.
   const results = await Promise.all(
     entries.map(async (entry, idx): Promise<ProcessedPhoto | null> => {
       if (entry.type === "url") {
         return {
-          key: entry.url!,
+          key: entry.url,
           thumbKey: null,
           blurhash: null,
           focalX: entry.focalX,
           focalY: entry.focalY,
         };
       }
-      const nameWithoutExt = entry.file!.name.replace(/\.[^.]+$/, "");
+      if (entry.type === "pending") {
+        const tempFormData = new FormData();
+        tempFormData.set("photo_pending_key", entry.pendingKey);
+        if (entry.thumbPendingKey) {
+          tempFormData.set("photo_thumb_pending_key", entry.thumbPendingKey);
+        }
+        if (entry.blurhash) {
+          tempFormData.set("photo_blurhash", entry.blurhash);
+        }
+        const rich = await processImageFieldRich(
+          tempFormData,
+          "photo",
+          r2Path,
+          `photo-${idx}`,
+        );
+        if (!rich) return null;
+        return {
+          key: rich.key,
+          thumbKey: rich.thumbKey,
+          blurhash: rich.blurhash,
+          focalX: entry.focalX,
+          focalY: entry.focalY,
+        };
+      }
+      // entry.type === "file" — legacy server-side upload path
+      const nameWithoutExt = entry.file.name.replace(/\.[^.]+$/, "");
       const uniqueName = `${slugify(nameWithoutExt)}-${idx}`;
       const tempFormData = new FormData();
-      tempFormData.set("photo", entry.file!);
+      tempFormData.set("photo", entry.file);
       const rich = await processImageFieldRich(
         tempFormData,
         "photo",

@@ -41,6 +41,7 @@ export function SubCategoryForm({
   categories,
 }: SubCategoryFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
   const isEditing = !!subCategory;
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -99,7 +100,7 @@ export function SubCategoryForm({
           : <FolderOpen className="text-primary-foreground size-6" />
       }
       onSubmit={handleSubmit}
-      isPending={isPending}
+      isPending={isPending || isUploading}
       submitLabel={isEditing ? "Update" : "Create"}
     >
       <div className="space-y-4">
@@ -162,6 +163,9 @@ export function SubCategoryForm({
             <ImageInput
               name="image_url"
               value={subCategory?.image_url}
+              feature="equipment_sub_categories"
+              permission={isEditing ? "edit" : "create"}
+              onUploadingChange={setIsUploading}
             />
           </FieldContent>
         </Field>

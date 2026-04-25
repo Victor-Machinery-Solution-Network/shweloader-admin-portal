@@ -199,6 +199,27 @@ export async function processImageFieldRich(
     blurhash?: string | null;
   } | null,
 ): Promise<RichImageUploadResult | null> {
+  // Browser already decoded, resized, encoded, and direct-uploaded the
+  // pair to `pending/...`. Commit both to the final prefix; blurhash was
+  // computed client-side and ships in a hidden field. This is the path
+  // every image input uses since Phase 2 — the legacy sharp pipeline
+  // below stays only as a fallback for any caller still on FormData files.
+  const pendingFullKey = formData.get(`${fieldName}_pending_key`);
+  if (typeof pendingFullKey === "string" && pendingFullKey) {
+    const fullKey = await commitUploadToR2(pendingFullKey, r2Path);
+    const pendingThumbKey = formData.get(`${fieldName}_thumb_pending_key`);
+    let thumbKey: string | null = null;
+    if (typeof pendingThumbKey === "string" && pendingThumbKey) {
+      thumbKey = await commitUploadToR2(pendingThumbKey, r2Path);
+    }
+    const blurhashRaw = formData.get(`${fieldName}_blurhash`);
+    return {
+      key: fullKey,
+      thumbKey,
+      blurhash: typeof blurhashRaw === "string" && blurhashRaw ? blurhashRaw : null,
+    };
+  }
+
   const file = formData.get(fieldName);
 
   if (formData.get(`${fieldName}_removed`) === "1") {
