@@ -93,6 +93,18 @@ export function MarkdownEditor({
       attributes: {
         class: "outline-none",
       },
+      handlePaste: (view, event) => {
+        // Extract plain text from paste, ignore HTML formatting
+        const text = event.clipboardData?.getData("text/plain");
+        if (text) {
+          const { $from } = view.state.selection;
+          view.dispatch(
+            view.state.tr.insertText(text, $from.pos, $from.pos)
+          );
+          return true;
+        }
+        return false;
+      },
     },
   });
 
