@@ -22,6 +22,7 @@ import {
 import { getDraftById, getProductImages } from "@/lib/actions/listing";
 import { ListingEditor } from "@/components/features/listings/shared/listing-editor";
 import { EditorSkeleton } from "@/components/features/listings/shared/editor-skeleton";
+import { EditorHtmlLock } from "@/components/features/listings/shared/editor-html-lock";
 import { PermissionGate } from "@/components/shared/permission-gate";
 
 export const metadata = {
@@ -98,25 +99,28 @@ async function EditDraftContent({
     Number(settings[SETTING_KEYS.EXCHANGE_RATE]) || SYSTEM_EXCHANGE_RATE;
 
   return (
-    <ListingEditor
-      pageType="sale"
-      draft={draft}
-      existingImages={images}
-      partners={partners}
-      equipmentModels={equipmentModels}
-      attachmentModels={attachmentModels}
-      brands={brands}
-      mainCategories={mainCategories}
-      subCategories={subCategories}
-      subCategoryBrandLinks={subCategoryBrandLinks}
-      attachmentCategories={attachmentCategories}
-      categoryBrandLinks={categoryBrandLinks}
-      stateRegions={stateRegions}
-      districts={districts}
-      townships={townships}
-      conditionTypes={conditionTypes}
-      exchangeRate={exchangeRate}
-      templates={templates}
-    />
+    <div className="flex flex-1 min-h-0 flex-col">
+      <EditorHtmlLock />
+      <ListingEditor
+        pageType="sale"
+        draft={draft}
+        existingImages={images}
+        partners={partners}
+        equipmentModels={equipmentModels}
+        attachmentModels={attachmentModels}
+        brands={brands}
+        mainCategories={mainCategories}
+        subCategories={subCategories}
+        subCategoryBrandLinks={subCategoryBrandLinks}
+        attachmentCategories={attachmentCategories}
+        categoryBrandLinks={categoryBrandLinks}
+        stateRegions={stateRegions}
+        districts={districts}
+        townships={townships}
+        conditionTypes={conditionTypes}
+        exchangeRate={exchangeRate}
+        templates={templates}
+      />
+    </div>
   );
 }

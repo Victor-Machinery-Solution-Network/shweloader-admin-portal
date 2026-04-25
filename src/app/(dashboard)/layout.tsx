@@ -36,7 +36,7 @@ export default function DashboardLayout({
           Skip to main content
         </a>
         <AppSidebar />
-        <SidebarInset className="min-h-screen overflow-hidden flex flex-col">
+        <SidebarInset>
           <AppHeader />
           <main id="main-content" className="flex min-w-0 flex-1 flex-col p-6 overflow-auto">
             {children}
