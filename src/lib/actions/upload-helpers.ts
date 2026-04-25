@@ -99,14 +99,6 @@ export async function processFileField(
     return await commitUploadToR2(pendingKey, r2Path);
   }
 
-  // Direct browser-to-R2 upload (no commit step) — caller passed the
-  // final key. Legacy of Phase 1 before the pending/commit flow landed;
-  // kept so callers can opt in to either shape.
-  const directKey = formData.get(`${fieldName}_key`);
-  if (typeof directKey === "string" && directKey) {
-    return directKey;
-  }
-
   // User explicitly removed the image
   if (formData.get(`${fieldName}_removed`) === "1") {
     return null;
