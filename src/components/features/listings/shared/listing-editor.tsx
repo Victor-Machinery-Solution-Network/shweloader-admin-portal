@@ -1654,7 +1654,7 @@ export function ListingEditor({
              ────────────────────────────────────────────────────── */}
           <div
             className={cn(
-              "mx-auto max-w-2xl flex flex-col gap-6 px-6 py-8",
+              "mx-auto max-w-2xl flex flex-col gap-6 px-6 py-8 pb-4",
               currentStep !== 0 && "hidden",
             )}
           >
@@ -1869,7 +1869,7 @@ export function ListingEditor({
              ────────────────────────────────────────────────────── */}
           <div
             className={cn(
-              "mx-auto max-w-2xl flex flex-col gap-8 px-6 py-8",
+              "mx-auto max-w-2xl flex flex-col gap-8 px-6 py-8 pb-4",
               currentStep !== 1 && "hidden",
             )}
           >
@@ -2274,7 +2274,7 @@ export function ListingEditor({
              ────────────────────────────────────────────────────── */}
           <div
             className={cn(
-              "mx-auto max-w-3xl flex flex-col gap-6 px-6 py-8",
+              "mx-auto max-w-3xl flex flex-col gap-6 px-6 py-8 pb-4",
               currentStep !== 2 && "hidden",
             )}
           >
