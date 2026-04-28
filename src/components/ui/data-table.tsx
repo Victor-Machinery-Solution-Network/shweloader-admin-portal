@@ -327,6 +327,11 @@ interface DataTableProps<TData, TValue> {
   exportFileName?: string;
   /** Called when a row is clicked. Receives the row data. */
   onRowClick?: (row: TData) => void;
+  /**
+   * When true, the table fills its flex parent's height instead of using a viewport-based max-height.
+   * The parent must be a flex-col container with min-h-0 and a constrained height.
+   */
+  fillHeight?: boolean;
 }
 
 function DataTable<TData, TValue>({
@@ -348,6 +353,7 @@ function DataTable<TData, TValue>({
   enableExport = false,
   exportFileName,
   onRowClick,
+  fillHeight = false,
 }: DataTableProps<TData, TValue>) {
   "use no memo"; // TanStack Table uses a mutable table instance — React Compiler must not cache method results
   const columnTitlesRef = React.useRef(new Map<string, string>());
@@ -769,7 +775,7 @@ function DataTable<TData, TValue>({
   return (
     <ColumnTitleRegistry.Provider value={columnTitlesRef.current}>
     <DataTableContext.Provider value={{ clearSelection }}>
-      <div className="space-y-4">
+      <div className={fillHeight ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4"}>
         {/* Toolbar */}
         {(searchKeys || resolvedToolbar || enableExport || sorting.length > 0 || hasFilters) && (
           <div className="space-y-2">
@@ -849,7 +855,14 @@ function DataTable<TData, TValue>({
         )}
 
         {/* Table */}
-        <div ref={tableWrapperRef} className="max-h-[calc(100vh-300px)] overflow-auto rounded-xl border">
+        <div
+          ref={tableWrapperRef}
+          className={
+            fillHeight
+              ? "min-h-0 flex-1 overflow-auto rounded-xl border"
+              : "max-h-[calc(100vh-300px)] overflow-auto rounded-xl border"
+          }
+        >
           {enableDragSort && getRowId ? (
             <React.Suspense fallback={renderTableContent()}>
               <LazyDndTable

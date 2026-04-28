@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function UsersPage() {
   return (
-    <>
+    <div className="flex flex-1 min-h-0 flex-col">
       <PageHeader
         title="Users"
         description="Manage users and business types"
@@ -24,7 +24,7 @@ export default function UsersPage() {
           <UsersContent />
         </PermissionGate>
       </Suspense>
-    </>
+    </div>
   );
 }
 

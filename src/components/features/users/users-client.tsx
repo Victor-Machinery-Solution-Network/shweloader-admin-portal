@@ -241,8 +241,8 @@ export function UsersClient({
   );
 
   return (
-    <>
-      <Tabs defaultValue="users">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <Tabs defaultValue="users" className="flex min-h-0 flex-1 flex-col">
         <TabsList>
           <TabsTrigger value="users">
             <Users className="size-4" />
@@ -258,7 +258,7 @@ export function UsersClient({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users">
+        <TabsContent value="users" className="flex min-h-0 flex-1 flex-col">
           {users.length > 0 ? (
             <DataTable
               columns={userColumns}
@@ -273,6 +273,7 @@ export function UsersClient({
               toolbar={renderUserToolbar}
               enableExport
               exportFileName="users"
+              fillHeight
             />
           ) : (
             <EmptyState
@@ -291,7 +292,7 @@ export function UsersClient({
           )}
         </TabsContent>
 
-        <TabsContent value="business-types">
+        <TabsContent value="business-types" className="flex min-h-0 flex-1 flex-col">
           {businessTypes.length > 0 ? (
             <DataTable
               columns={businessTypeColumns}
@@ -305,6 +306,7 @@ export function UsersClient({
               toolbar={renderBTToolbar}
               enableExport
               exportFileName="business-types"
+              fillHeight
             />
           ) : (
             <EmptyState
@@ -323,7 +325,7 @@ export function UsersClient({
           )}
         </TabsContent>
 
-        <TabsContent value="blacklist">
+        <TabsContent value="blacklist" className="flex min-h-0 flex-1 flex-col">
           {blacklistEntries.length > 0 ? (
             <DataTable
               columns={blacklistColumns}
@@ -337,6 +339,7 @@ export function UsersClient({
               toolbar={renderBlacklistToolbar}
               enableExport
               exportFileName="blacklist"
+              fillHeight
             />
           ) : (
             <EmptyState
@@ -421,6 +424,6 @@ export function UsersClient({
         count={selectedForUnblacklist.length}
         isPending={isUnblacklisting}
       />
-    </>
+    </div>
   );
 }
