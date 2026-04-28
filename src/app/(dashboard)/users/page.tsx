@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function UsersPage() {
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
       <PageHeader
         title="Users"
         description="Manage users and business types"
