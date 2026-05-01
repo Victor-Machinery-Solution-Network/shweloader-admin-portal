@@ -68,7 +68,11 @@ async function processProductPhotos(
   formData: FormData,
   productListId: number,
 ): Promise<ProcessedPhoto[]> {
-  const r2Path = `products/photos/${productListId}/`;
+  // Flat prefix — the R2 worker's allowlist only accepts `products/photos/`
+  // (no subdirectory). Filenames are uniquely generated on commit, so listings
+  // don't collide. productListId is still used by callers for D1 wiring.
+  void productListId;
+  const r2Path = `products/photos/`;
 
   type PhotoEntry =
     | { type: "url"; url: string; focalX: number | null; focalY: number | null }
