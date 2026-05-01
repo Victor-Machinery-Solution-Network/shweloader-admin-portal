@@ -3,7 +3,6 @@
 
 import { useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/utils";
 import { removeFromFeatured } from "@/lib/actions/listing";
+import { ListingThumbnail } from "./listing-thumbnail";
 import type { FeaturedListingWithDetails } from "@/types/listing";
 
 function RemoveButton({ featuredIds }: { featuredIds: number[] }) {
@@ -70,13 +70,7 @@ export const featuredColumns: ColumnDef<FeaturedListingWithDetails>[] = [
       const src = assetUrl(row.original.thumbnail_url);
       return (
         <div className="flex items-center gap-3">
-          {src ? (
-            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
-              <Image src={src} alt="" fill className="object-cover" sizes="40px" />
-            </div>
-          ) : (
-            <div className="size-10 shrink-0 rounded-lg border bg-muted" />
-          )}
+          <ListingThumbnail src={src} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{row.original.model_name ?? "\u2014"}</p>
             {row.original.custom_id && (

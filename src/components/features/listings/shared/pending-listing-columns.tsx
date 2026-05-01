@@ -2,12 +2,12 @@
 
 
 import type { ColumnDef } from "@tanstack/react-table";
-import Image from "next/image";
 import { assetUrl } from "@/lib/r2-url";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { PendingListingRowActions } from "./pending-listing-row-actions";
+import { ListingThumbnail } from "./listing-thumbnail";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
@@ -37,13 +37,7 @@ function productInfoColumn<T extends ListingBase>(): ColumnDef<T> {
       const customId = (row.original as Record<string, unknown>).custom_id as string | null;
       return (
         <div className="flex items-center gap-3">
-          {src ? (
-            <div className="relative size-10 shrink-0 overflow-hidden rounded-lg border bg-muted">
-              <Image src={src} alt="" fill className="object-cover" sizes="40px" />
-            </div>
-          ) : (
-            <div className="size-10 shrink-0 rounded-lg border bg-muted" />
-          )}
+          <ListingThumbnail src={src} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{row.original.model_name ?? "\u2014"}</p>
             {customId && (
