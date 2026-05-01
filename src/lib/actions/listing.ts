@@ -338,6 +338,39 @@ function extractProductFields(formData: FormData) {
 
 const DRAFT_FOR_SALE_KEY = "__draft_for_sale";
 const DRAFT_FOR_RENT_KEY = "__draft_for_rent";
+const DRAFT_CONDITION_ID_KEY = "__draft_condition_id";
+const DRAFT_SALE_USD_PRICE_KEY = "__draft_sale_usd_price";
+const DRAFT_SALE_MMK_PRICE_KEY = "__draft_sale_mmk_price";
+const DRAFT_RENT_USD_PRICE_KEY = "__draft_rent_usd_price";
+const DRAFT_RENT_MMK_PRICE_KEY = "__draft_rent_mmk_price";
+const DRAFT_SALE_HIDE_PRICE_KEY = "__draft_sale_hide_price";
+const DRAFT_RENT_HIDE_PRICE_KEY = "__draft_rent_hide_price";
+const DRAFT_RENTAL_UNIT_KEY = "__draft_rental_unit";
+const DRAFT_SALE_DISPLAY_CURRENCY_KEY = "__draft_sale_display_currency";
+const DRAFT_RENT_DISPLAY_CURRENCY_KEY = "__draft_rent_display_currency";
+const DRAFT_SALE_USE_SYSTEM_RATE_KEY = "__draft_sale_use_system_rate";
+const DRAFT_RENT_USE_SYSTEM_RATE_KEY = "__draft_rent_use_system_rate";
+const DRAFT_STATE_REGION_ID_KEY = "__draft_state_region_id";
+const DRAFT_DISTRICT_ID_KEY = "__draft_district_id";
+
+const ALL_DRAFT_META_KEYS = new Set([
+  DRAFT_FOR_SALE_KEY,
+  DRAFT_FOR_RENT_KEY,
+  DRAFT_CONDITION_ID_KEY,
+  DRAFT_SALE_USD_PRICE_KEY,
+  DRAFT_SALE_MMK_PRICE_KEY,
+  DRAFT_RENT_USD_PRICE_KEY,
+  DRAFT_RENT_MMK_PRICE_KEY,
+  DRAFT_SALE_HIDE_PRICE_KEY,
+  DRAFT_RENT_HIDE_PRICE_KEY,
+  DRAFT_RENTAL_UNIT_KEY,
+  DRAFT_SALE_DISPLAY_CURRENCY_KEY,
+  DRAFT_RENT_DISPLAY_CURRENCY_KEY,
+  DRAFT_SALE_USE_SYSTEM_RATE_KEY,
+  DRAFT_RENT_USE_SYSTEM_RATE_KEY,
+  DRAFT_STATE_REGION_ID_KEY,
+  DRAFT_DISTRICT_ID_KEY,
+]);
 
 interface DraftMetaField {
   key: string;
@@ -347,8 +380,7 @@ interface DraftMetaField {
 
 function buildDraftCustomFields(
   customFieldsRaw: string | null,
-  forSale: boolean,
-  forRent: boolean,
+  formData: FormData,
 ): string | null {
   let fields: DraftMetaField[] = [];
 
@@ -370,21 +402,40 @@ function buildDraftCustomFields(
     }
   }
 
-  const withoutMeta = fields.filter(
-    (f) => f.key !== DRAFT_FOR_SALE_KEY && f.key !== DRAFT_FOR_RENT_KEY,
-  );
+  // Strip any existing meta entries so we can rewrite cleanly
+  const withoutMeta = fields.filter((f) => !ALL_DRAFT_META_KEYS.has(f.key));
+
+  const meta = (key: string, value: string): DraftMetaField => ({
+    key,
+    label: "__draft_meta",
+    value,
+  });
+
+  const get = (name: string) => (formData.get(name) as string | null) ?? "";
 
   withoutMeta.push(
-    {
-      key: DRAFT_FOR_SALE_KEY,
-      label: "__draft_meta",
-      value: forSale ? "1" : "0",
-    },
-    {
-      key: DRAFT_FOR_RENT_KEY,
-      label: "__draft_meta",
-      value: forRent ? "1" : "0",
-    },
+    meta(DRAFT_FOR_SALE_KEY, get("for_sale") === "1" ? "1" : "0"),
+    meta(DRAFT_FOR_RENT_KEY, get("for_rent") === "1" ? "1" : "0"),
+    meta(DRAFT_CONDITION_ID_KEY, get("condition_type_id")),
+    meta(DRAFT_SALE_USD_PRICE_KEY, get("sale_usd_price")),
+    meta(DRAFT_SALE_MMK_PRICE_KEY, get("sale_mmk_price")),
+    meta(DRAFT_RENT_USD_PRICE_KEY, get("rent_usd_price")),
+    meta(DRAFT_RENT_MMK_PRICE_KEY, get("rent_mmk_price")),
+    meta(DRAFT_SALE_HIDE_PRICE_KEY, get("sale_hide_price") === "1" ? "1" : "0"),
+    meta(DRAFT_RENT_HIDE_PRICE_KEY, get("rent_hide_price") === "1" ? "1" : "0"),
+    meta(DRAFT_RENTAL_UNIT_KEY, get("rental_unit")),
+    meta(DRAFT_SALE_DISPLAY_CURRENCY_KEY, get("sale_display_currency")),
+    meta(DRAFT_RENT_DISPLAY_CURRENCY_KEY, get("rent_display_currency")),
+    meta(
+      DRAFT_SALE_USE_SYSTEM_RATE_KEY,
+      get("sale_use_system_rate") === "1" ? "1" : "0",
+    ),
+    meta(
+      DRAFT_RENT_USE_SYSTEM_RATE_KEY,
+      get("rent_use_system_rate") === "1" ? "1" : "0",
+    ),
+    meta(DRAFT_STATE_REGION_ID_KEY, get("state_region_id")),
+    meta(DRAFT_DISTRICT_ID_KEY, get("district_id")),
   );
 
   return withoutMeta.length > 0 ? JSON.stringify(withoutMeta) : null;
@@ -1806,16 +1857,14 @@ export async function saveDraft(formData: FormData) {
       ? Number(formData.get("township_id"))
       : null;
     const description = (formData.get("description") as string)?.trim() || null;
+    const address = (formData.get("address") as string)?.trim() || null;
+    const hideAddress = formData.get("hide_address") === "1" ? 1 : 0;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
-    const forSale = formData.get("for_sale") === "1";
-    const forRent = formData.get("for_rent") === "1";
     const customFieldsRaw =
       (formData.get("custom_fields") as string)?.trim() || null;
-    const customFields = buildDraftCustomFields(
-      customFieldsRaw,
-      forSale,
-      forRent,
-    );
+    // for_sale / for_rent and other draft-only meta are persisted inside
+    // custom_fields by buildDraftCustomFields (see DRAFT_*_KEY constants).
+    const customFields = buildDraftCustomFields(customFieldsRaw, formData);
 
     const thumbFocal = parseThumbnailFocal(formData);
     const product = await productListService.create({
@@ -1824,6 +1873,8 @@ export async function saveDraft(formData: FormData) {
       attachment_model_id: productType === "attachment" ? modelId : null,
       description,
       township_id: townshipId,
+      address,
+      hide_address: hideAddress,
       hide_partner: hidePartner,
       custom_fields: customFields,
       ...thumbFocal,
@@ -1905,16 +1956,14 @@ export async function updateDraft(productListId: number, formData: FormData) {
       ? Number(formData.get("township_id"))
       : null;
     const description = (formData.get("description") as string)?.trim() || null;
+    const address = (formData.get("address") as string)?.trim() || null;
+    const hideAddress = formData.get("hide_address") === "1" ? 1 : 0;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
-    const forSale = formData.get("for_sale") === "1";
-    const forRent = formData.get("for_rent") === "1";
     const customFieldsRaw =
       (formData.get("custom_fields") as string)?.trim() || null;
-    const customFields = buildDraftCustomFields(
-      customFieldsRaw,
-      forSale,
-      forRent,
-    );
+    // for_sale / for_rent and other draft-only meta are persisted inside
+    // custom_fields by buildDraftCustomFields (see DRAFT_*_KEY constants).
+    const customFields = buildDraftCustomFields(customFieldsRaw, formData);
 
     // Handle thumbnail
     const thumbnailFields = await uploadProductThumbnail(
@@ -1930,6 +1979,8 @@ export async function updateDraft(productListId: number, formData: FormData) {
       attachment_model_id: productType === "attachment" ? modelId : null,
       description,
       township_id: townshipId,
+      address,
+      hide_address: hideAddress,
       hide_partner: hidePartner,
       custom_fields: customFields,
       ...thumbnailFields,

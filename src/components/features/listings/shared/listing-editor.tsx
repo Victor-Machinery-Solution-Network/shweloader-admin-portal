@@ -175,6 +175,39 @@ const TOTAL_STEPS = STEP_META.length;
 const AUTOSAVE_KEY = SESSION_KEYS.LISTING_AUTOSAVE;
 const DRAFT_FOR_SALE_KEY = "__draft_for_sale";
 const DRAFT_FOR_RENT_KEY = "__draft_for_rent";
+const DRAFT_CONDITION_ID_KEY = "__draft_condition_id";
+const DRAFT_SALE_USD_PRICE_KEY = "__draft_sale_usd_price";
+const DRAFT_SALE_MMK_PRICE_KEY = "__draft_sale_mmk_price";
+const DRAFT_RENT_USD_PRICE_KEY = "__draft_rent_usd_price";
+const DRAFT_RENT_MMK_PRICE_KEY = "__draft_rent_mmk_price";
+const DRAFT_SALE_HIDE_PRICE_KEY = "__draft_sale_hide_price";
+const DRAFT_RENT_HIDE_PRICE_KEY = "__draft_rent_hide_price";
+const DRAFT_RENTAL_UNIT_KEY = "__draft_rental_unit";
+const DRAFT_SALE_DISPLAY_CURRENCY_KEY = "__draft_sale_display_currency";
+const DRAFT_RENT_DISPLAY_CURRENCY_KEY = "__draft_rent_display_currency";
+const DRAFT_SALE_USE_SYSTEM_RATE_KEY = "__draft_sale_use_system_rate";
+const DRAFT_RENT_USE_SYSTEM_RATE_KEY = "__draft_rent_use_system_rate";
+const DRAFT_STATE_REGION_ID_KEY = "__draft_state_region_id";
+const DRAFT_DISTRICT_ID_KEY = "__draft_district_id";
+
+const ALL_DRAFT_META_KEYS = new Set<string>([
+  DRAFT_FOR_SALE_KEY,
+  DRAFT_FOR_RENT_KEY,
+  DRAFT_CONDITION_ID_KEY,
+  DRAFT_SALE_USD_PRICE_KEY,
+  DRAFT_SALE_MMK_PRICE_KEY,
+  DRAFT_RENT_USD_PRICE_KEY,
+  DRAFT_RENT_MMK_PRICE_KEY,
+  DRAFT_SALE_HIDE_PRICE_KEY,
+  DRAFT_RENT_HIDE_PRICE_KEY,
+  DRAFT_RENTAL_UNIT_KEY,
+  DRAFT_SALE_DISPLAY_CURRENCY_KEY,
+  DRAFT_RENT_DISPLAY_CURRENCY_KEY,
+  DRAFT_SALE_USE_SYSTEM_RATE_KEY,
+  DRAFT_RENT_USE_SYSTEM_RATE_KEY,
+  DRAFT_STATE_REGION_ID_KEY,
+  DRAFT_DISTRICT_ID_KEY,
+]);
 
 interface AutoSaveState {
   currentStep: number;
@@ -208,24 +241,82 @@ interface AutoSaveState {
   description: string;
 }
 
-function readDraftListingTypeFlags(customFields: string | null | undefined): {
+interface DraftMeta {
   forSale: boolean;
   forRent: boolean;
-} {
-  if (!customFields) return { forSale: false, forRent: false };
+  conditionId: string;
+  saleUsdPrice: string;
+  saleMmkPrice: string;
+  rentUsdPrice: string;
+  rentMmkPrice: string;
+  saleHidePrice: boolean;
+  rentHidePrice: boolean;
+  rentalUnit: string;
+  saleDisplayCurrency: string;
+  rentDisplayCurrency: string;
+  saleUseSystemRate: boolean;
+  rentUseSystemRate: boolean;
+  stateRegionId: string;
+  districtId: string;
+}
+
+const EMPTY_DRAFT_META: DraftMeta = {
+  forSale: false,
+  forRent: false,
+  conditionId: "",
+  saleUsdPrice: "",
+  saleMmkPrice: "",
+  rentUsdPrice: "",
+  rentMmkPrice: "",
+  saleHidePrice: false,
+  rentHidePrice: false,
+  rentalUnit: "",
+  saleDisplayCurrency: "",
+  rentDisplayCurrency: "",
+  saleUseSystemRate: false,
+  rentUseSystemRate: false,
+  stateRegionId: "",
+  districtId: "",
+};
+
+function readDraftMeta(customFields: string | null | undefined): DraftMeta {
+  if (!customFields) return EMPTY_DRAFT_META;
   try {
     const parsed = JSON.parse(customFields);
-    if (!Array.isArray(parsed)) return { forSale: false, forRent: false };
-
-    const forSale = parsed.some(
-      (f) => f?.key === DRAFT_FOR_SALE_KEY && f?.value === "1",
-    );
-    const forRent = parsed.some(
-      (f) => f?.key === DRAFT_FOR_RENT_KEY && f?.value === "1",
-    );
-    return { forSale, forRent };
+    if (!Array.isArray(parsed)) return EMPTY_DRAFT_META;
+    const map = new Map<string, string>();
+    for (const f of parsed) {
+      if (
+        f &&
+        typeof f === "object" &&
+        typeof f.key === "string" &&
+        typeof f.value === "string"
+      ) {
+        map.set(f.key, f.value);
+      }
+    }
+    const flag = (k: string) => map.get(k) === "1";
+    const str = (k: string) => map.get(k) ?? "";
+    return {
+      forSale: flag(DRAFT_FOR_SALE_KEY),
+      forRent: flag(DRAFT_FOR_RENT_KEY),
+      conditionId: str(DRAFT_CONDITION_ID_KEY),
+      saleUsdPrice: str(DRAFT_SALE_USD_PRICE_KEY),
+      saleMmkPrice: str(DRAFT_SALE_MMK_PRICE_KEY),
+      rentUsdPrice: str(DRAFT_RENT_USD_PRICE_KEY),
+      rentMmkPrice: str(DRAFT_RENT_MMK_PRICE_KEY),
+      saleHidePrice: flag(DRAFT_SALE_HIDE_PRICE_KEY),
+      rentHidePrice: flag(DRAFT_RENT_HIDE_PRICE_KEY),
+      rentalUnit: str(DRAFT_RENTAL_UNIT_KEY),
+      saleDisplayCurrency: str(DRAFT_SALE_DISPLAY_CURRENCY_KEY),
+      rentDisplayCurrency: str(DRAFT_RENT_DISPLAY_CURRENCY_KEY),
+      saleUseSystemRate: flag(DRAFT_SALE_USE_SYSTEM_RATE_KEY),
+      rentUseSystemRate: flag(DRAFT_RENT_USE_SYSTEM_RATE_KEY),
+      stateRegionId: str(DRAFT_STATE_REGION_ID_KEY),
+      districtId: str(DRAFT_DISTRICT_ID_KEY),
+    };
   } catch {
-    return { forSale: false, forRent: false };
+    return EMPTY_DRAFT_META;
   }
 }
 
@@ -587,8 +678,8 @@ export function ListingEditor({
   // Source data: use draft or listing for initialization
   const sourceData = draft ?? listing;
   const isCreateMode = !isEditing && !isDraftMode;
-  const draftListingFlags = useMemo(
-    () => readDraftListingTypeFlags(draft?.custom_fields),
+  const draftMeta = useMemo(
+    () => readDraftMeta(draft?.custom_fields),
     [draft?.custom_fields],
   );
 
@@ -631,13 +722,13 @@ export function ListingEditor({
   const [forSale, setForSale] = useState(() => {
     if (newListingDefault === "sale") return true;
     if (newListingDefault === "rent") return false;
-    if (isDraftMode) return draftListingFlags.forSale;
+    if (isDraftMode) return draftMeta.forSale;
     return savedState?.forSale ?? (isEditing ? pageType === "sale" : false);
   });
   const [forRent, setForRent] = useState(() => {
     if (newListingDefault === "rent") return true;
     if (newListingDefault === "sale") return false;
-    if (isDraftMode) return draftListingFlags.forRent;
+    if (isDraftMode) return draftMeta.forRent;
     return savedState?.forRent ?? (isEditing ? pageType === "rent" : false);
   });
 
@@ -666,29 +757,50 @@ export function ListingEditor({
     savedState?.selectedModel ?? sourceData?.model_name ?? "",
   );
   // ── Cascading location state ───────────────────────────────────────────
-  // Derive initial hierarchy from existing township_id in edit mode
+  // Derive initial hierarchy. Drafts persist state/district directly in
+  // custom_fields meta as a safety net in case the township-only reverse
+  // lookup misses (e.g. when only state/district was filled before saving).
   const initLocation = useMemo(() => {
-    if (!sourceData?.township_id)
-      return { stateRegionId: "", districtId: "", townshipId: "" };
+    const fromMeta = isDraftMode
+      ? {
+          stateRegionId: draftMeta.stateRegionId,
+          districtId: draftMeta.districtId,
+        }
+      : { stateRegionId: "", districtId: "" };
+
+    if (!sourceData?.township_id) {
+      return {
+        stateRegionId: fromMeta.stateRegionId,
+        districtId: fromMeta.districtId,
+        townshipId: "",
+      };
+    }
     const township = townships.find(
       (t) => t.township_id === sourceData.township_id,
     );
-    if (!township) return { stateRegionId: "", districtId: "", townshipId: "" };
+    if (!township) {
+      return {
+        stateRegionId: fromMeta.stateRegionId,
+        districtId: fromMeta.districtId,
+        townshipId: "",
+      };
+    }
     const district = districts.find(
       (d) => d.district_id === township.district_id,
     );
-    if (!district)
+    if (!district) {
       return {
-        stateRegionId: "",
-        districtId: "",
+        stateRegionId: fromMeta.stateRegionId,
+        districtId: String(township.district_id),
         townshipId: String(township.township_id),
       };
+    }
     return {
       stateRegionId: String(district.state_region_id),
       districtId: String(township.district_id),
       townshipId: String(township.township_id),
     };
-  }, [sourceData, townships, districts]);
+  }, [sourceData, townships, districts, isDraftMode, draftMeta]);
 
   const [selectedStateRegionId, setSelectedStateRegionId] = useState(
     savedState?.selectedStateRegionId ?? initLocation.stateRegionId,
@@ -730,32 +842,42 @@ export function ListingEditor({
     savedState?.saleUsdPrice ??
       (isEditing && pageType === "sale"
         ? (listing?.usd_price?.toString() ?? "")
-        : ""),
+        : isDraftMode
+          ? draftMeta.saleUsdPrice
+          : ""),
   );
   const [saleMmkPrice, setSaleMmkPrice] = useState<string>(
     savedState?.saleMmkPrice ??
       (isEditing && pageType === "sale"
         ? (listing?.mmk_price?.toString() ?? "")
-        : ""),
+        : isDraftMode
+          ? draftMeta.saleMmkPrice
+          : ""),
   );
   const [rentUsdPrice, setRentUsdPrice] = useState<string>(
     savedState?.rentUsdPrice ??
       (isEditing && pageType === "rent"
         ? (listing?.usd_price?.toString() ?? "")
-        : ""),
+        : isDraftMode
+          ? draftMeta.rentUsdPrice
+          : ""),
   );
   const [rentMmkPrice, setRentMmkPrice] = useState<string>(
     savedState?.rentMmkPrice ??
       (isEditing && pageType === "rent"
         ? (listing?.mmk_price?.toString() ?? "")
-        : ""),
+        : isDraftMode
+          ? draftMeta.rentMmkPrice
+          : ""),
   );
   // Independent rate controls per listing type
   const [saleUseSystemRate, setSaleUseSystemRate] = useState(
     savedState?.saleUseSystemRate ??
       (isEditing && pageType === "sale"
         ? listing?.use_system_rate !== 0
-        : true),
+        : isDraftMode
+          ? draftMeta.saleUseSystemRate
+          : true),
   );
   const [saleCustomRate, setSaleCustomRate] = useState<string>(
     savedState?.saleCustomRate ?? String(exchangeRate),
@@ -764,7 +886,9 @@ export function ListingEditor({
     savedState?.rentUseSystemRate ??
       (isEditing && pageType === "rent"
         ? listing?.use_system_rate !== 0
-        : true),
+        : isDraftMode
+          ? draftMeta.rentUseSystemRate
+          : true),
   );
   const [rentCustomRate, setRentCustomRate] = useState<string>(
     savedState?.rentCustomRate ?? String(exchangeRate),
@@ -773,7 +897,9 @@ export function ListingEditor({
     savedState?.rentalUnit ??
       (isEditing && pageType === "rent" && "rental_unit" in (listing ?? {})
         ? ((listing as any)?.rental_unit ?? "per_day")
-        : "per_day"),
+        : isDraftMode && draftMeta.rentalUnit
+          ? draftMeta.rentalUnit
+          : "per_day"),
   );
 
   // ── Address ─────────────────────────────────────────────────────────────
@@ -790,23 +916,35 @@ export function ListingEditor({
   );
   const [saleHidePrice, setSaleHidePrice] = useState(
     savedState?.saleHidePrice ??
-      (isEditing && pageType === "sale" ? listing?.hide_price === 1 : false),
+      (isEditing && pageType === "sale"
+        ? listing?.hide_price === 1
+        : isDraftMode
+          ? draftMeta.saleHidePrice
+          : false),
   );
   const [rentHidePrice, setRentHidePrice] = useState(
     savedState?.rentHidePrice ??
-      (isEditing && pageType === "rent" ? listing?.hide_price === 1 : false),
+      (isEditing && pageType === "rent"
+        ? listing?.hide_price === 1
+        : isDraftMode
+          ? draftMeta.rentHidePrice
+          : false),
   );
 
   // ── Display currency (controls which currency the mobile app shows) ────
   const [saleDisplayCurrency, setSaleDisplayCurrency] = useState<string>(
     savedState?.saleDisplayCurrency ??
       (listing?.display_currency as string) ??
-      "MMK",
+      (isDraftMode && draftMeta.saleDisplayCurrency
+        ? draftMeta.saleDisplayCurrency
+        : "MMK"),
   );
   const [rentDisplayCurrency, setRentDisplayCurrency] = useState<string>(
     savedState?.rentDisplayCurrency ??
       (listing?.display_currency as string) ??
-      "MMK",
+      (isDraftMode && draftMeta.rentDisplayCurrency
+        ? draftMeta.rentDisplayCurrency
+        : "MMK"),
   );
 
   const saleActiveRate = saleUseSystemRate
@@ -935,10 +1073,7 @@ export function ListingEditor({
     try {
       const parsed = JSON.parse(sourceData.custom_fields) as CustomFieldValue[];
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(
-        (field) =>
-          field.key !== DRAFT_FOR_SALE_KEY && field.key !== DRAFT_FOR_RENT_KEY,
-      );
+      return parsed.filter((field) => !ALL_DRAFT_META_KEYS.has(field.key));
     } catch {
       return [];
     }
@@ -949,7 +1084,7 @@ export function ListingEditor({
   const [conditionId, setConditionId] = useState<string>(
     savedState?.conditionId ??
       saleDefaults?.condition_type_id?.toString() ??
-      "",
+      (isDraftMode ? draftMeta.conditionId : ""),
   );
 
   // ── Description state (tracked for auto-save) ─────────────────────────
@@ -1183,6 +1318,9 @@ export function ListingEditor({
     const partnerId = partnerMap.get(selectedPartner);
     if (partnerId) formData.set("partner_id", String(partnerId));
     if (selectedTownshipId) formData.set("township_id", selectedTownshipId);
+    if (selectedStateRegionId)
+      formData.set("state_region_id", selectedStateRegionId);
+    if (selectedDistrictId) formData.set("district_id", selectedDistrictId);
     formData.set("sale_usd_price", saleUsdPrice || "");
     formData.set("sale_mmk_price", saleMmkPrice || "0");
     formData.set("rent_usd_price", rentUsdPrice || "");
@@ -1294,9 +1432,19 @@ export function ListingEditor({
         toast.success(messages[action] ?? "Success");
         if (isCreateMode) clearAutoSave();
 
-        // Redirect: new drafts go to draft edit page, everything else to list
-        if (action === "save-draft" && !isDraftMode && result.draftId) {
-          router.push(`/listings/drafts/${result.draftId}/edit`);
+        // After save-draft, land on the Drafts tab so the user sees the saved
+        // entry. When the draft is for both sale and rent, prefer the For Sale
+        // table (a single draft creates entries in both lists once submitted).
+        if (action === "save-draft") {
+          const draftsUrl = forSale
+            ? "/listings/for-sale?tab=drafts"
+            : "/listings/for-rent?tab=drafts";
+          if (isCreateMode) {
+            // Hard nav to fully reset component state
+            window.location.href = draftsUrl;
+          } else {
+            router.push(draftsUrl);
+          }
         } else if (isCreateMode) {
           // Hard navigation to fully reset component state
           window.location.href = backUrl;
