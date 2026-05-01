@@ -239,7 +239,7 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
           <div className="mx-auto max-w-3xl space-y-8 px-6 py-6">
             {/* Template Name */}
             <Field orientation="vertical">
-              <FieldLabel>
+              <FieldLabel className="pt-4">
                 Template Name <span className="text-destructive">*</span>
               </FieldLabel>
               <FieldContent>
