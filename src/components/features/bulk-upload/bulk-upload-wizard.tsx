@@ -123,7 +123,7 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
         </div>
 
         {/* ── Step Indicator ──────────────────────────────────── */}
-        <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm pb-6">
+        <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm">
           <ol className="flex items-center">
             {steps.map((step, idx) => {
               const meta = STEP_META[step];
@@ -190,7 +190,7 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
       </header>
 
       {/* ── Step Content ──────────────────────────────────────── */}
-      <div className="space-y-8 p-6">
+      <div className="space-y-8 px-6 pt-10 pb-6">
         {currentStep === "download" && (
           <StepDownloadTemplate
             config={config}
