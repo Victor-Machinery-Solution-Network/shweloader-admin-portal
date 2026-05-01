@@ -123,7 +123,7 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
         </div>
 
         {/* ── Step Indicator ──────────────────────────────────── */}
-        <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm">
+        <nav aria-label="Wizard steps" className="mx-auto mt-3 max-w-sm pb-6">
           <ol className="flex items-center">
             {steps.map((step, idx) => {
               const meta = STEP_META[step];
