@@ -241,8 +241,10 @@ async function syncProductImages(
           display_order: orderKeys[i],
           uploaded_by: uploadedBy,
           active: 1,
-          focal_x: photo.focalX,
-          focal_y: photo.focalY,
+          // product_image.focal_x / focal_y are NOT NULL — default to 0.5 (center)
+          // when the user didn't pick a focal point on this photo.
+          focal_x: photo.focalX ?? 0.5,
+          focal_y: photo.focalY ?? 0.5,
         });
       }),
     );
