@@ -176,6 +176,7 @@ export function ListingDetailView({ listing, images }: Props) {
               <div className="col-span-2 pt-1">
                 <p className="text-muted-foreground text-[11px]">Location</p>
                 <p className="text-sm font-medium mt-0.5">{locationParts.join(", ")}</p>
+                {listing.hide_address ? <p className="text-muted-foreground mt-0.5 text-[11px] italic">Address hidden from public</p> : null}
               </div>
             )}
           </div>
