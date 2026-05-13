@@ -321,6 +321,9 @@ function extractProductFields(formData: FormData) {
 
   const address = (formData.get("address") as string)?.trim() || null;
   const hideAddress = formData.get("hide_address") === "1" ? 1 : 0;
+  const hideStateRegion = formData.get("hide_state_region") === "1" ? 1 : 0;
+  const hideDistrict = formData.get("hide_district") === "1" ? 1 : 0;
+  const hideTownship = formData.get("hide_township") === "1" ? 1 : 0;
   const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
   const customFields =
     (formData.get("custom_fields") as string)?.trim() || null;
@@ -333,6 +336,9 @@ function extractProductFields(formData: FormData) {
     township_id: townshipId,
     address,
     hide_address: hideAddress,
+    hide_state_region: hideStateRegion,
+    hide_district: hideDistrict,
+    hide_township: hideTownship,
     hide_partner: hidePartner,
     custom_fields: customFields,
   };
@@ -1241,7 +1247,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at, sl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1283,7 +1289,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at, rl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1428,7 +1434,7 @@ export async function getSaleListingWithDetailsById(
     `SELECT
       sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at, sl.approved_by,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1463,7 +1469,7 @@ export async function getRentListingWithDetailsById(
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, rl.custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at, rl.approved_by,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1505,7 +1511,7 @@ export async function getListingDetail(
       sl.is_sold_out, NULL AS is_rented, NULL AS rental_unit,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.display_currency, sl.use_system_rate, sl.is_hidden,
       pl.thumbnail_url, pl.description, pl.township_id,
-      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.custom_fields,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       COALESCE(eb.name, ab.name) AS brand_name,
@@ -1564,7 +1570,7 @@ export async function getListingDetail(
       NULL AS is_sold_out, rl.is_rented, rl.rental_unit,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.display_currency, rl.use_system_rate, rl.is_hidden,
       pl.thumbnail_url, pl.description, pl.township_id,
-      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.custom_fields,
+      pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       COALESCE(eb.name, ab.name) AS brand_name,
@@ -1861,6 +1867,9 @@ export async function saveDraft(formData: FormData) {
     const description = (formData.get("description") as string)?.trim() || null;
     const address = (formData.get("address") as string)?.trim() || null;
     const hideAddress = formData.get("hide_address") === "1" ? 1 : 0;
+    const hideStateRegion = formData.get("hide_state_region") === "1" ? 1 : 0;
+    const hideDistrict = formData.get("hide_district") === "1" ? 1 : 0;
+    const hideTownship = formData.get("hide_township") === "1" ? 1 : 0;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
     const customFieldsRaw =
       (formData.get("custom_fields") as string)?.trim() || null;
@@ -1877,6 +1886,9 @@ export async function saveDraft(formData: FormData) {
       township_id: townshipId,
       address,
       hide_address: hideAddress,
+      hide_state_region: hideStateRegion,
+      hide_district: hideDistrict,
+      hide_township: hideTownship,
       hide_partner: hidePartner,
       custom_fields: customFields,
       ...thumbFocal,
@@ -1960,6 +1972,9 @@ export async function updateDraft(productListId: number, formData: FormData) {
     const description = (formData.get("description") as string)?.trim() || null;
     const address = (formData.get("address") as string)?.trim() || null;
     const hideAddress = formData.get("hide_address") === "1" ? 1 : 0;
+    const hideStateRegion = formData.get("hide_state_region") === "1" ? 1 : 0;
+    const hideDistrict = formData.get("hide_district") === "1" ? 1 : 0;
+    const hideTownship = formData.get("hide_township") === "1" ? 1 : 0;
     const hidePartner = formData.get("hide_partner") === "1" ? 1 : 0;
     const customFieldsRaw =
       (formData.get("custom_fields") as string)?.trim() || null;
@@ -1983,6 +1998,9 @@ export async function updateDraft(productListId: number, formData: FormData) {
       township_id: townshipId,
       address,
       hide_address: hideAddress,
+      hide_state_region: hideStateRegion,
+      hide_district: hideDistrict,
+      hide_township: hideTownship,
       hide_partner: hidePartner,
       custom_fields: customFields,
       ...thumbnailFields,
@@ -2276,7 +2294,7 @@ export async function getDraftListings(): Promise<DraftListingWithDetails[]> {
     `SELECT
       pl.id, pl.equipment_model_id, pl.attachment_model_id,
       pl.partner_id, pl.township_id, pl.description,
-      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.custom_fields,
+      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
       CASE
         WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment'
@@ -2310,7 +2328,7 @@ export async function getDraftById(
     `SELECT
       pl.id, pl.equipment_model_id, pl.attachment_model_id,
       pl.partner_id, pl.township_id, pl.description,
-      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.custom_fields,
+      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
       CASE
         WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment'

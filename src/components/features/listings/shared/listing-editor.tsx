@@ -30,6 +30,7 @@ import {
   ClipboardList,
   FileText,
   Handshake,
+  Eye,
   EyeOff,
   Map as MapIcon,
   Image as ImageIcon,
@@ -230,6 +231,9 @@ interface AutoSaveState {
   rentalUnit: string;
   address: string;
   hideAddress: boolean;
+  hideStateRegion: boolean;
+  hideDistrict: boolean;
+  hideTownship: boolean;
   hidePartner: boolean;
   saleHidePrice: boolean;
   rentHidePrice: boolean;
@@ -416,6 +420,31 @@ function SubSectionLabel({
       {Icon && <Icon className="size-4 text-muted-foreground" />}
       {children}
     </p>
+  );
+}
+
+function VisibilityToggle({
+  hidden,
+  onChange,
+}: {
+  hidden: boolean;
+  onChange: (hidden: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!hidden)}
+      title={hidden ? "Hidden from buyers — click to show" : "Visible to buyers — click to hide"}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+        hidden
+          ? "bg-muted text-muted-foreground hover:bg-muted/80"
+          : "text-foreground hover:bg-muted",
+      )}
+    >
+      {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      {hidden ? "Hidden" : "Visible"}
+    </button>
   );
 }
 
@@ -911,6 +940,15 @@ export function ListingEditor({
   const [hideAddress, setHideAddress] = useState(
     savedState?.hideAddress ?? sourceData?.hide_address === 1,
   );
+  const [hideStateRegion, setHideStateRegion] = useState(
+    savedState?.hideStateRegion ?? sourceData?.hide_state_region === 1,
+  );
+  const [hideDistrict, setHideDistrict] = useState(
+    savedState?.hideDistrict ?? sourceData?.hide_district === 1,
+  );
+  const [hideTownship, setHideTownship] = useState(
+    savedState?.hideTownship ?? sourceData?.hide_township === 1,
+  );
   const [hidePartner, setHidePartner] = useState(
     savedState?.hidePartner ?? sourceData?.hide_partner === 1,
   );
@@ -1116,6 +1154,9 @@ export function ListingEditor({
       rentalUnit,
       address,
       hideAddress,
+      hideStateRegion,
+      hideDistrict,
+      hideTownship,
       hidePartner,
       saleHidePrice,
       rentHidePrice,
@@ -1147,6 +1188,11 @@ export function ListingEditor({
     rentUseSystemRate,
     rentCustomRate,
     rentalUnit,
+    address,
+    hideAddress,
+    hideStateRegion,
+    hideDistrict,
+    hideTownship,
     hidePartner,
     saleHidePrice,
     rentHidePrice,
@@ -1333,6 +1379,9 @@ export function ListingEditor({
     formData.set("rental_unit", rentalUnit);
     formData.set("address", address);
     formData.set("hide_address", hideAddress ? "1" : "0");
+    formData.set("hide_state_region", hideStateRegion ? "1" : "0");
+    formData.set("hide_district", hideDistrict ? "1" : "0");
+    formData.set("hide_township", hideTownship ? "1" : "0");
     formData.set("hide_partner", hidePartner ? "1" : "0");
     formData.set("sale_display_currency", saleDisplayCurrency);
     formData.set("rent_display_currency", rentDisplayCurrency);
@@ -2100,10 +2149,16 @@ export function ListingEditor({
               <div className="flex flex-col gap-3 rounded-xl border p-4">
                 {/* State / Region */}
                 <div className="flex flex-col gap-3">
-                  <p className="flex items-center gap-1.5 text-sm font-medium">
-                    <MapIcon className="size-4 text-muted-foreground" />
-                    State / Region
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <MapIcon className="size-4 text-muted-foreground" />
+                      State / Region
+                    </p>
+                    <VisibilityToggle
+                      hidden={hideStateRegion}
+                      onChange={setHideStateRegion}
+                    />
+                  </div>
                   <Combobox
                     value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
                     defaultInputValue={
@@ -2144,10 +2199,16 @@ export function ListingEditor({
                 {/* District */}
                 {selectedStateRegionId && (
                   <div className="flex flex-col gap-3">
-                    <p className="flex items-center gap-1.5 text-sm font-medium">
-                      <MapPin className="size-4 text-muted-foreground" />
-                      District
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="flex items-center gap-1.5 text-sm font-medium">
+                        <MapPin className="size-4 text-muted-foreground" />
+                        District
+                      </p>
+                      <VisibilityToggle
+                        hidden={hideDistrict}
+                        onChange={setHideDistrict}
+                      />
+                    </div>
                     <Combobox
                       value={districtNameById.get(selectedDistrictId) ?? ""}
                       defaultInputValue={
@@ -2186,10 +2247,16 @@ export function ListingEditor({
                 {/* Township */}
                 {selectedDistrictId && (
                   <div className="flex flex-col gap-3">
-                    <p className="flex items-center gap-1.5 text-sm font-medium">
-                      <MapPin className="size-4 text-muted-foreground" />
-                      Township
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="flex items-center gap-1.5 text-sm font-medium">
+                        <MapPin className="size-4 text-muted-foreground" />
+                        Township
+                      </p>
+                      <VisibilityToggle
+                        hidden={hideTownship}
+                        onChange={setHideTownship}
+                      />
+                    </div>
                     <Combobox
                       value={
                         filteredTownships.find(
@@ -2234,18 +2301,23 @@ export function ListingEditor({
                 )}
 
                 {/* Address */}
-                <Input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Address (optional)"
-                />
-                <label className="flex items-center gap-2 cursor-pointer -mt-1">
-                  <Switch
-                    checked={hideAddress}
-                    onCheckedChange={setHideAddress}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <MapPin className="size-4 text-muted-foreground" />
+                      Address
+                    </p>
+                    <VisibilityToggle
+                      hidden={hideAddress}
+                      onChange={setHideAddress}
+                    />
+                  </div>
+                  <Input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Optional"
                   />
-                  <span className="text-xs text-muted-foreground">Hide address from buyers</span>
-                </label>
+                </div>
               </div>
             </div>
 

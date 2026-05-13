@@ -172,20 +172,23 @@ export function ListingDetailView({ listing, images }: Props) {
             </div>
             <KV label="Currency" value={listing.display_currency} />
             <KV label="System Rate" value={listing.use_system_rate ? "Yes" : "No"} />
-            {(locationParts.length > 0 || listing.address) && (
+            {(listing.address || listing.township_name || listing.district_name || listing.state_region_name) && (
               <div className="col-span-2 pt-1">
                 <p className="text-muted-foreground text-[11px]">Location</p>
-                {listing.address ? (
-                  <>
-                    <p className="text-sm font-medium mt-0.5">{listing.address}</p>
-                    {locationParts.length > 0 && (
-                      <p className="text-muted-foreground text-xs mt-0.5">{locationParts.join(", ")}</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm font-medium mt-0.5">{locationParts.join(", ")}</p>
-                )}
-                {listing.hide_address ? <p className="text-muted-foreground mt-0.5 text-[11px] italic">Address hidden from public</p> : null}
+                <div className="mt-0.5 space-y-0.5">
+                  {listing.address && (
+                    <LocationRow value={listing.address} hidden={!!listing.hide_address} primary />
+                  )}
+                  {listing.township_name && (
+                    <LocationRow value={listing.township_name} hidden={!!listing.hide_township} />
+                  )}
+                  {listing.district_name && (
+                    <LocationRow value={listing.district_name} hidden={!!listing.hide_district} />
+                  )}
+                  {listing.state_region_name && (
+                    <LocationRow value={listing.state_region_name} hidden={!!listing.hide_state_region} />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -314,6 +317,19 @@ function KV({ label, value }: { label: string; value: string }) {
       <p className="text-muted-foreground text-[11px]">{label}</p>
       <p className="text-sm font-medium">{value}</p>
     </div>
+  );
+}
+
+function LocationRow({ value, hidden, primary }: { value: string; hidden: boolean; primary?: boolean }) {
+  const sizing = primary ? "text-sm font-medium" : "text-xs";
+  const color = hidden ? "text-muted-foreground" : primary ? "text-foreground" : "text-muted-foreground";
+  return (
+    <p className={`${sizing} ${color} flex items-center gap-1.5`}>
+      <span className={hidden ? "line-through" : undefined}>{value}</span>
+      {hidden ? (
+        <span className="text-[10px] italic font-normal text-muted-foreground">(hidden)</span>
+      ) : null}
+    </p>
   );
 }
 
