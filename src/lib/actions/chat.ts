@@ -8,6 +8,7 @@ import { triggerChatEvent, triggerAdminChatEvent } from "@/lib/pusher";
 import { sendPushToUser } from "@/lib/services/push-notification";
 import { insertUserNotification } from "@/lib/services/user-notification";
 import { assetUrl } from "@/lib/r2-url";
+import { customIdSqlExpr } from "@/lib/utils/custom-id";
 import type {
   ChatSessionWithDetails,
   ChatMessageWithDetails,
@@ -161,7 +162,7 @@ export async function getChatMessages(
         ELSE NULL
       END AS listing_type,
       pl.id AS product_list_id,
-      COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
+      ${customIdSqlExpr({ saleListing: "sl_state", rentListing: "rl_state" })} AS custom_id,
       pb.name AS brand_name,
       COALESCE(sl.mmk_price, rl.mmk_price) AS mmk_price,
       COALESCE(sl.usd_price, rl.usd_price) AS usd_price,
@@ -173,6 +174,8 @@ export async function getChatMessages(
     LEFT JOIN sale_listing sl ON sl.id = cm.sale_listing_id
     LEFT JOIN rent_listing rl ON rl.id = cm.rent_listing_id
     LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
+    LEFT JOIN sale_listing sl_state ON sl_state.product_list_id = pl.id AND sl_state.deleted_at IS NULL
+    LEFT JOIN rent_listing rl_state ON rl_state.product_list_id = pl.id AND rl_state.deleted_at IS NULL
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
@@ -373,10 +376,12 @@ export async function sendMessage(
                 COALESCE(em.name, am.name) AS product_name,
                 pl.thumbnail_url AS product_thumbnail,
                 pb.name AS brand_name,
-                lst.custom_id,
+                ${customIdSqlExpr({ saleListing: "sl_state", rentListing: "rl_state" })} AS custom_id,
                 lst.mmk_price, lst.usd_price, lst.display_currency
          FROM ${table} lst
          JOIN product_list pl ON pl.id = lst.product_list_id
+         LEFT JOIN sale_listing sl_state ON sl_state.product_list_id = pl.id AND sl_state.deleted_at IS NULL
+         LEFT JOIN rent_listing rl_state ON rl_state.product_list_id = pl.id AND rl_state.deleted_at IS NULL
          LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
          LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
          LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
@@ -593,7 +598,7 @@ export async function getSessionProducts(
       COALESCE(cm.sale_listing_id, 0) AS sale_id,
       COALESCE(cm.rent_listing_id, 0) AS rent_id,
       pl.id AS product_list_id,
-      COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
+      ${customIdSqlExpr({ saleListing: "sl_state", rentListing: "rl_state" })} AS custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pl.thumbnail_url AS product_thumbnail,
       pb.name AS brand_name,
@@ -604,6 +609,8 @@ export async function getSessionProducts(
     LEFT JOIN sale_listing sl ON sl.id = cm.sale_listing_id
     LEFT JOIN rent_listing rl ON rl.id = cm.rent_listing_id
     LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
+    LEFT JOIN sale_listing sl_state ON sl_state.product_list_id = pl.id AND sl_state.deleted_at IS NULL
+    LEFT JOIN rent_listing rl_state ON rl_state.product_list_id = pl.id AND rl_state.deleted_at IS NULL
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
@@ -657,13 +664,14 @@ export async function getPickableListings(): Promise<
     `SELECT
       sl.id AS listing_id, 'sale' AS listing_type,
       pl.id AS product_list_id,
-      sl.custom_id,
+      ${customIdSqlExpr({ saleListing: "sl", rentListing: "rl_state" })} AS custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
       sl.mmk_price, sl.usd_price, sl.display_currency
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN rent_listing rl_state ON rl_state.product_list_id = pl.id AND rl_state.deleted_at IS NULL
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
@@ -677,13 +685,14 @@ export async function getPickableListings(): Promise<
     SELECT
       rl.id AS listing_id, 'rent' AS listing_type,
       pl.id AS product_list_id,
-      rl.custom_id,
+      ${customIdSqlExpr({ saleListing: "sl_state", rentListing: "rl" })} AS custom_id,
       COALESCE(em.name, am.name) AS product_name,
       pb.name AS brand_name,
       pl.thumbnail_url,
       rl.mmk_price, rl.usd_price, rl.display_currency
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN sale_listing sl_state ON sl_state.product_list_id = pl.id AND sl_state.deleted_at IS NULL
     LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
     LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
