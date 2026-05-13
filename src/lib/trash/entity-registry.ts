@@ -221,7 +221,8 @@ export function getNameColumn(entityType: TrashEntityType): string {
       return "username";
     case "sale_listing":
     case "rent_listing":
-      return "custom_id";
+      // Display ID is composed in trash.ts via a separate JOIN to product_list
+      return "product_list_id";
     case "product_list":
       return "description";
     default:

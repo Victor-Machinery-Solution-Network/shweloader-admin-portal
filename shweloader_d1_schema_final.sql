@@ -802,6 +802,7 @@ CREATE INDEX IF NOT EXISTS idx_attachment_category_brand_created_by ON attachmen
 
 CREATE TABLE IF NOT EXISTS product_list (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    custom_id_suffix TEXT,
     partner_id INTEGER,
     equipment_model_id INTEGER,
     attachment_model_id INTEGER,
@@ -844,6 +845,7 @@ CREATE INDEX IF NOT EXISTS idx_product_list_township ON product_list(township_id
 CREATE INDEX IF NOT EXISTS idx_product_list_created_by ON product_list(created_by);
 CREATE INDEX IF NOT EXISTS idx_product_list_active ON product_list(deleted_at, is_draft);
 CREATE INDEX IF NOT EXISTS idx_product_list_drafts ON product_list(created_by, is_draft, deleted_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_list_custom_id_suffix ON product_list(custom_id_suffix);
 
 -- =============================================
 -- TEMPLATE
@@ -892,7 +894,6 @@ CREATE INDEX IF NOT EXISTS idx_product_image_active_list ON product_image(produc
 
 CREATE TABLE IF NOT EXISTS sale_listing (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    custom_id TEXT,
     product_list_id INTEGER NOT NULL,
     condition_type_id INTEGER,
     mmk_price INTEGER,
@@ -933,7 +934,6 @@ CREATE INDEX IF NOT EXISTS idx_sale_listing_created_at ON sale_listing(created_a
 
 CREATE TABLE IF NOT EXISTS rent_listing (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    custom_id TEXT,
     product_list_id INTEGER NOT NULL,
     mmk_price INTEGER,
     usd_price INTEGER,

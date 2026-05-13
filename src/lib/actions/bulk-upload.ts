@@ -37,6 +37,7 @@ import { uploadToR2, slugify } from "@/lib/api/r2-client";
 import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { auditLog } from "@/lib/actions/audit";
+import { randomCustomIdSuffix } from "@/lib/utils/custom-id";
 import type {
   BulkUploadConfig,
   ParsedRow,
@@ -813,8 +814,9 @@ async function createListingRow(
   const saleDisplayCurrency = (data.sale_display_currency as string) || "MMK";
   const rentDisplayCurrency = (data.rent_display_currency as string) || "MMK";
 
-  // 1. Create product_list
+  // 1. Create product_list (with a unique custom_id_suffix)
   const { productListService } = await import("@/lib/services/listing");
+  const custom_id_suffix = await generateUniqueBulkCustomIdSuffix();
   await productListService.create({
     partner_id: partnerId,
     equipment_model_id: productType === "equipment" ? modelId : null,
@@ -824,6 +826,7 @@ async function createListingRow(
     township_id: townshipId,
     hide_partner: hidePartner ?? 0,
     custom_fields: customFields?.trim() || null,
+    custom_id_suffix,
     created_by: userId,
   });
 
@@ -852,17 +855,14 @@ async function createListingRow(
     }
   }
 
-  // 3. Generate unique listing IDs and create listings
+  // 3. Create sale/rent listing rows (custom_id is composed at read time from product_list.custom_id_suffix)
   const forSale = listingType === "sale" || listingType === "both";
   const forRent = listingType === "rent" || listingType === "both";
-  const pType = productType as "equipment" | "attachment";
 
   if (forSale) {
-    const customId = await generateBulkListingId("sale", pType);
     const { saleListingService } = await import("@/lib/services/listing");
     await saleListingService.create({
       product_list_id: productId,
-      custom_id: customId,
       condition_type_id: conditionTypeId,
       mmk_price: saleMmkPrice,
       usd_price: saleUsdPrice,
@@ -875,11 +875,9 @@ async function createListingRow(
   }
 
   if (forRent) {
-    const customId = await generateBulkListingId("rent", pType);
     const { rentListingService } = await import("@/lib/services/listing");
     await rentListingService.create({
       product_list_id: productId,
-      custom_id: customId,
       mmk_price: rentMmkPrice,
       usd_price: rentUsdPrice,
       hide_price: hidePrice ?? 0,
@@ -895,39 +893,14 @@ async function createListingRow(
 
 // ─── Listing ID Helper ───────────────────────────────────────────────────────
 
-const ID_CHARSET = "0123456789ABCDEFGHJKMNPQRSTUVWXYZ";
-
-function randomIdSuffix(length: number): string {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => ID_CHARSET[b % ID_CHARSET.length]).join("");
-}
-
-function getIdPrefix(
-  listingType: "sale" | "rent",
-  productType: "equipment" | "attachment",
-): string {
-  if (listingType === "sale" && productType === "equipment") return "SLE";
-  if (listingType === "sale" && productType === "attachment") return "SLA";
-  if (listingType === "rent" && productType === "equipment") return "RLE";
-  return "RLA";
-}
-
-async function generateBulkListingId(
-  listingType: "sale" | "rent",
-  productType: "equipment" | "attachment",
-): Promise<string> {
-  const prefix = getIdPrefix(listingType, productType);
-  const table = listingType === "sale" ? "sale_listing" : "rent_listing";
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const suffix = randomIdSuffix(6);
-    const candidate = `${prefix}-${suffix}`;
-    const existing = await d1.query<{ custom_id: string }>(
-      `SELECT custom_id FROM ${table} WHERE custom_id = ? LIMIT 1`,
+async function generateUniqueBulkCustomIdSuffix(): Promise<string> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const candidate = randomCustomIdSuffix();
+    const existing = await d1.query<{ custom_id_suffix: string }>(
+      "SELECT custom_id_suffix FROM product_list WHERE custom_id_suffix = ? LIMIT 1",
       [candidate],
     );
     if (existing.results.length === 0) return candidate;
   }
-  throw new Error("Failed to generate unique listing ID after 3 attempts");
+  throw new Error("Failed to generate unique custom_id suffix after 8 attempts");
 }

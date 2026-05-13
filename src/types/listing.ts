@@ -1,6 +1,7 @@
 /** Matches the product_list table in D1 */
 export interface ProductList {
   id: number;
+  custom_id_suffix: string | null;
   partner_id: number | null;
   equipment_model_id: number | null;
   attachment_model_id: number | null;
@@ -50,7 +51,6 @@ export interface ConditionType {
 /** Matches the sale_listing table in D1 */
 export interface SaleListing {
   id: number;
-  custom_id: string | null;
   product_list_id: number;
   condition_type_id: number | null;
   mmk_price: number | null;
@@ -77,7 +77,6 @@ export type RentalUnit = 'per_day' | 'per_month' | 'per_duty';
 /** Matches the rent_listing table in D1 */
 export interface RentListing {
   id: number;
-  custom_id: string | null;
   product_list_id: number;
   mmk_price: number | null;
   usd_price: number | null;

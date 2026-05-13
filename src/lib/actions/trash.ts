@@ -51,9 +51,33 @@ export async function saveTrashMetadata(
   );
 
   const row = result.results[0];
-  const entityName = row
+  let entityName = row
     ? String(row[nameCol] ?? `${config.displayName} #${entityId}`)
     : `${config.displayName} #${entityId}`;
+
+  // sale_listing / rent_listing: compose the displayed custom_id from product_list
+  if (entityType === "sale_listing" || entityType === "rent_listing") {
+    const composed = await d1.query<{ custom_id: string }>(
+      `SELECT (
+         CASE
+           WHEN sl.id IS NOT NULL AND rl.id IS NOT NULL THEN 'B'
+           WHEN sl.id IS NOT NULL THEN 'S'
+           ELSE 'R'
+         END
+         || 'L' ||
+         CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'E' ELSE 'A' END
+         || '-' || pl.custom_id_suffix
+       ) AS custom_id
+       FROM product_list pl
+       LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id
+       LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id
+       WHERE pl.id = ?
+       LIMIT 1`,
+      [Number(row?.product_list_id ?? 0)],
+    );
+    const composedId = composed.results[0]?.custom_id;
+    if (composedId) entityName = composedId;
+  }
 
   // Collect R2 file keys for cleanup on permanent delete
   const fileKeys: string[] = [];

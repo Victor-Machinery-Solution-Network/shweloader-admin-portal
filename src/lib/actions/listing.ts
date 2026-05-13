@@ -40,6 +40,7 @@ import {
 } from "@/lib/actions/notification";
 import { saveTrashMetadata } from "@/lib/actions/trash";
 import { auditLog } from "@/lib/actions/audit";
+import { randomCustomIdSuffix, customIdSqlExpr } from "@/lib/utils/custom-id";
 
 // ─── Helper: process product photos from form data ──────────────────────────
 
@@ -449,43 +450,18 @@ function buildDraftCustomFields(
   return withoutMeta.length > 0 ? JSON.stringify(withoutMeta) : null;
 }
 
-// ─── Helper: generate unique alphanumeric listing ID ─────────────────────────
+// ─── Helper: generate unique custom_id suffix for product_list ──────────────
 
-const ID_CHARSET = "0123456789ABCDEFGHJKMNPQRSTUVWXYZ"; // 33 chars (excludes O, I, L)
-
-function randomIdSuffix(length: number): string {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => ID_CHARSET[b % ID_CHARSET.length]).join("");
-}
-
-function getIdPrefix(
-  listingType: "sale" | "rent",
-  productType: "equipment" | "attachment",
-): string {
-  if (listingType === "sale" && productType === "equipment") return "SLE";
-  if (listingType === "sale" && productType === "attachment") return "SLA";
-  if (listingType === "rent" && productType === "equipment") return "RLE";
-  return "RLA";
-}
-
-async function generateListingId(
-  listingType: "sale" | "rent",
-  productType: "equipment" | "attachment",
-): Promise<string> {
-  const prefix = getIdPrefix(listingType, productType);
-  const table = listingType === "sale" ? "sale_listing" : "rent_listing";
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const suffix = randomIdSuffix(6);
-    const candidate = `${prefix}-${suffix}`;
-    const existing = await d1.query<{ custom_id: string }>(
-      `SELECT custom_id FROM ${table} WHERE custom_id = ? LIMIT 1`,
+async function generateUniqueCustomIdSuffix(): Promise<string> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const candidate = randomCustomIdSuffix();
+    const existing = await d1.query<{ custom_id_suffix: string }>(
+      "SELECT custom_id_suffix FROM product_list WHERE custom_id_suffix = ? LIMIT 1",
       [candidate],
     );
     if (existing.results.length === 0) return candidate;
   }
-  throw new Error("Failed to generate unique listing ID after 3 attempts");
+  throw new Error("Failed to generate unique custom_id suffix after 8 attempts");
 }
 
 // ─── Helper: create product_list and get its ID ─────────────────────────────
@@ -506,10 +482,12 @@ async function createProductAndGetId(
   created_by: number | null,
   focalPoint?: { focal_x: number; focal_y: number },
 ) {
+  const custom_id_suffix = await generateUniqueCustomIdSuffix();
   const product = await productListService.create({
     ...productFields,
     focal_x: focalPoint?.focal_x ?? 0.5,
     focal_y: focalPoint?.focal_y ?? 0.5,
+    custom_id_suffix,
     created_by,
   });
   let productId = (product as unknown as Record<string, unknown>)?.id as number;
@@ -557,9 +535,6 @@ export async function createListing(formData: FormData) {
     const productFields = extractProductFields(formData);
     const forSale = formData.get("for_sale") === "1";
     const forRent = formData.get("for_rent") === "1";
-    const productType = formData.get("product_type") as
-      | "equipment"
-      | "attachment";
 
     // Publishing options
     const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
@@ -615,7 +590,6 @@ export async function createListing(formData: FormData) {
     // 3. Create sale_listing if selected
     let saleListingId: number | null = null;
     if (forSale) {
-      const saleCustomId = await generateListingId("sale", productType);
       // Resolve approval status ID
       const saleStatusName = canApproveSale ? "Approved" : "Pending";
       const statusResult = await d1.query<{ id: number }>(
@@ -626,7 +600,6 @@ export async function createListing(formData: FormData) {
 
       const saleResult = await saleListingService.create({
         product_list_id: productId,
-        custom_id: saleCustomId,
         condition_type_id: formData.get("condition_type_id")
           ? Number(formData.get("condition_type_id"))
           : null,
@@ -660,7 +633,6 @@ export async function createListing(formData: FormData) {
     // 4. Create rent_listing if selected
     let rentListingId: number | null = null;
     if (forRent) {
-      const rentCustomId = await generateListingId("rent", productType);
       // Resolve approval status ID
       const rentStatusName = canApproveRent ? "Approved" : "Pending";
       const statusResult = await d1.query<{ id: number }>(
@@ -671,7 +643,6 @@ export async function createListing(formData: FormData) {
 
       const rentResult = await rentListingService.create({
         product_list_id: productId,
-        custom_id: rentCustomId,
         mmk_price: formData.get("rent_mmk_price")
           ? Number(formData.get("rent_mmk_price"))
           : null,
@@ -1245,7 +1216,7 @@ export async function getSaleListingsWithDetails(): Promise<
 > {
   const result = await d1.query<SaleListingWithDetails>(
     `SELECT
-      sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
+      sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
@@ -1266,6 +1237,7 @@ export async function getSaleListingsWithDetails(): Promise<
       fl.id AS featured_id
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
@@ -1288,7 +1260,7 @@ export async function getRentListingsWithDetails(): Promise<
 > {
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
-      rl.id, rl.custom_id, rl.product_list_id,
+      rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at, rl.display_order,
@@ -1308,6 +1280,7 @@ export async function getRentListingsWithDetails(): Promise<
       fl.id AS featured_id
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN partner p ON pl.partner_id = p.id
@@ -1318,7 +1291,6 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
-    LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     WHERE rl.deleted_at IS NULL AND pl.deleted_at IS NULL
       AND (sl.is_sold_out IS NULL OR sl.is_sold_out = 0)
     ORDER BY rl.display_order ASC, rl.created_at DESC`,
@@ -1334,7 +1306,16 @@ export async function getFeaturedListingsWithDetails(): Promise<
       fl.id, fl.sale_listing_id, fl.rent_listing_id, fl.display_order,
       CASE WHEN fl.sale_listing_id IS NOT NULL THEN 'sale' ELSE 'rent' END AS listing_type,
       COALESCE(pl_s.id, pl_r.id) AS product_list_id,
-      COALESCE(sl.custom_id, rl.custom_id) AS custom_id,
+      (
+        CASE
+          WHEN sl_check.id IS NOT NULL AND rl_check.id IS NOT NULL THEN 'B'
+          WHEN sl_check.id IS NOT NULL THEN 'S'
+          ELSE 'R'
+        END
+        || 'L' ||
+        CASE WHEN COALESCE(pl_s.equipment_model_id, pl_r.equipment_model_id) IS NOT NULL THEN 'E' ELSE 'A' END
+        || '-' || COALESCE(pl_s.custom_id_suffix, pl_r.custom_id_suffix)
+      ) AS custom_id,
       CASE WHEN COALESCE(pl_s.equipment_model_id, pl_r.equipment_model_id) IS NOT NULL THEN 'equipment' ELSE 'attachment' END AS product_type,
       COALESCE(em_s.name, am_s.name, em_r.name, am_r.name) AS model_name,
       COALESCE(c_s.username, c_r.username) AS partner_name,
@@ -1353,6 +1334,8 @@ export async function getFeaturedListingsWithDetails(): Promise<
     LEFT JOIN attachment_model am_r ON pl_r.attachment_model_id = am_r.model_id AND am_r.deleted_at IS NULL
     LEFT JOIN partner p_r ON pl_r.partner_id = p_r.id AND p_r.deleted_at IS NULL
     LEFT JOIN app_user c_r ON p_r.app_user_id = c_r.app_user_id AND c_r.deleted_at IS NULL
+    LEFT JOIN sale_listing sl_check ON sl_check.product_list_id = COALESCE(pl_s.id, pl_r.id) AND sl_check.deleted_at IS NULL
+    LEFT JOIN rent_listing rl_check ON rl_check.product_list_id = COALESCE(pl_s.id, pl_r.id) AND rl_check.deleted_at IS NULL
     ORDER BY fl.display_order ASC`,
   );
 
@@ -1432,7 +1415,7 @@ export async function getSaleListingWithDetailsById(
 ): Promise<SaleListingWithDetails | null> {
   const result = await d1.query<SaleListingWithDetails>(
     `SELECT
-      sl.id, sl.custom_id, sl.product_list_id, sl.condition_type_id,
+      sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at, sl.approved_by,
@@ -1448,6 +1431,7 @@ export async function getSaleListingWithDetailsById(
       approver.username AS approved_by_name
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
@@ -1468,7 +1452,7 @@ export async function getRentListingWithDetailsById(
 ): Promise<RentListingWithDetails | null> {
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
-      rl.id, rl.custom_id, rl.product_list_id,
+      rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at, rl.approved_by,
       rl.created_at,
@@ -1483,6 +1467,7 @@ export async function getRentListingWithDetailsById(
       approver.username AS approved_by_name
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN partner p ON pl.partner_id = p.id
@@ -1506,7 +1491,7 @@ export async function getListingDetail(
   const sale = await d1.query<ListingDetail>(
     `SELECT
       'sale' AS listing_type,
-      sl.id, sl.custom_id, sl.product_list_id,
+      sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id,
       sl.condition_type_id, ct.name AS condition_name,
       sl.is_sold_out, NULL AS is_rented, NULL AS rental_unit,
       sl.mmk_price, sl.usd_price, sl.hide_price, sl.display_currency, sl.use_system_rate, sl.is_hidden,
@@ -1537,6 +1522,7 @@ export async function getListingDetail(
       sl.created_at, sl.updated_at
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
+    LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
@@ -1565,7 +1551,7 @@ export async function getListingDetail(
   const rent = await d1.query<ListingDetail>(
     `SELECT
       'rent' AS listing_type,
-      rl.id, rl.custom_id, rl.product_list_id,
+      rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
       NULL AS condition_type_id, NULL AS condition_name,
       NULL AS is_sold_out, rl.is_rented, rl.rental_unit,
       rl.mmk_price, rl.usd_price, rl.hide_price, rl.display_currency, rl.use_system_rate, rl.is_hidden,
@@ -1596,6 +1582,7 @@ export async function getListingDetail(
       rl.created_at, rl.updated_at
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
+    LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
     LEFT JOIN product_brand eb ON em.brand_id = eb.brand_id
@@ -1878,6 +1865,7 @@ export async function saveDraft(formData: FormData) {
     const customFields = buildDraftCustomFields(customFieldsRaw, formData);
 
     const thumbFocal = parseThumbnailFocal(formData);
+    const custom_id_suffix = await generateUniqueCustomIdSuffix();
     const product = await productListService.create({
       partner_id: partnerId,
       equipment_model_id: productType === "equipment" ? modelId : null,
@@ -1893,6 +1881,7 @@ export async function saveDraft(formData: FormData) {
       custom_fields: customFields,
       ...thumbFocal,
       is_draft: 1,
+      custom_id_suffix,
       created_by: userId,
     });
 
@@ -2052,9 +2041,6 @@ export async function submitDraft(productListId: number, formData: FormData) {
     const productFields = extractProductFields(formData);
     const forSale = formData.get("for_sale") === "1";
     const forRent = formData.get("for_rent") === "1";
-    const productType = formData.get("product_type") as
-      | "equipment"
-      | "attachment";
     const isHidden = formData.get("is_hidden") === "1" ? 1 : 0;
     const saleHidePrice = formData.get("sale_hide_price") === "1" ? 1 : 0;
     const rentHidePrice = formData.get("rent_hide_price") === "1" ? 1 : 0;
@@ -2116,7 +2102,6 @@ export async function submitDraft(productListId: number, formData: FormData) {
     // Create sale listing
     let saleListingId: number | null = null;
     if (forSale) {
-      const saleCustomId = await generateListingId("sale", productType);
       const saleStatusName = canApproveSale ? "Approved" : "Pending";
       const statusResult = await d1.query<{ id: number }>(
         "SELECT id FROM approval_status_type WHERE status_name = ?",
@@ -2127,7 +2112,6 @@ export async function submitDraft(productListId: number, formData: FormData) {
       const saleDisplayOrder = await getNextDisplayOrder("sale_listing");
       const saleResult = await saleListingService.create({
         product_list_id: productListId,
-        custom_id: saleCustomId,
         condition_type_id: formData.get("condition_type_id")
           ? Number(formData.get("condition_type_id"))
           : null,
@@ -2162,7 +2146,6 @@ export async function submitDraft(productListId: number, formData: FormData) {
     // Create rent listing
     let rentListingId: number | null = null;
     if (forRent) {
-      const rentCustomId = await generateListingId("rent", productType);
       const rentStatusName = canApproveRent ? "Approved" : "Pending";
       const statusResult = await d1.query<{ id: number }>(
         "SELECT id FROM approval_status_type WHERE status_name = ?",
@@ -2173,7 +2156,6 @@ export async function submitDraft(productListId: number, formData: FormData) {
       const rentDisplayOrder = await getNextDisplayOrder("rent_listing");
       const rentResult = await rentListingService.create({
         product_list_id: productListId,
-        custom_id: rentCustomId,
         mmk_price: formData.get("rent_mmk_price")
           ? Number(formData.get("rent_mmk_price"))
           : null,
