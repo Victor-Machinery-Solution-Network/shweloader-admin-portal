@@ -53,6 +53,8 @@ export const ROUTES = {
   CAROUSEL_IMAGES: "/carousel-images",
   ANNOUNCEMENT_BAR: "/announcement-bar",
   PROMOTIONS: "/promotions",
+  POPUP_PROMOTIONS: "/popup-promotions",
+  POPUP_PROMOTIONS_NEW: "/popup-promotions/new",
 
   // Settings
   ADMINS: "/admins",

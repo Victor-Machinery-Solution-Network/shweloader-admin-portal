@@ -32,6 +32,7 @@ import {
   Headset,
   ClipboardList,
   Send,
+  Sparkles,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { assetUrl } from "@/lib/r2-url";
@@ -124,7 +125,11 @@ export function AppSidebar() {
     showListings || canRead("chat");
   const showUsers = canRead("users") || canRead("partners");
   const showContent =
-    showArticles || canRead("carousels") || canRead("announcements") || canRead("promotions");
+    showArticles ||
+    canRead("carousels") ||
+    canRead("announcements") ||
+    canRead("promotions") ||
+    canRead("popup_promotions");
   const showSettings =
     canRead("admin_users") ||
     canRead("roles") ||
@@ -697,6 +702,18 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(ROUTES.POPUP_PROMOTIONS)}
+                    >
+                      <Link href={ROUTES.POPUP_PROMOTIONS}>
+                        <Sparkles aria-hidden="true" />
+                        <span>Popup Promotions</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

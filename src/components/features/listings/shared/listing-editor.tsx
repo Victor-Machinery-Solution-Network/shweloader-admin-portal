@@ -30,7 +30,6 @@ import {
   ClipboardList,
   FileText,
   Handshake,
-  Eye,
   EyeOff,
   Map as MapIcon,
   Image as ImageIcon,
@@ -45,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { ImageInput } from "@/components/ui/image-input";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
@@ -431,20 +431,13 @@ function VisibilityToggle({
   onChange: (hidden: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!hidden)}
-      title={hidden ? "Hidden from buyers — click to show" : "Visible to buyers — click to hide"}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-        hidden
-          ? "bg-muted text-muted-foreground hover:bg-muted/80"
-          : "text-foreground hover:bg-muted",
-      )}
-    >
-      {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-      {hidden ? "Hidden" : "Visible"}
-    </button>
+    <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+      <Checkbox
+        checked={!hidden}
+        onCheckedChange={(v) => onChange(!v)}
+      />
+      <span className="text-xs text-muted-foreground">Show to buyers</span>
+    </label>
   );
 }
 
