@@ -172,10 +172,19 @@ export function ListingDetailView({ listing, images }: Props) {
             </div>
             <KV label="Currency" value={listing.display_currency} />
             <KV label="System Rate" value={listing.use_system_rate ? "Yes" : "No"} />
-            {locationParts.length > 0 && (
+            {(locationParts.length > 0 || listing.address) && (
               <div className="col-span-2 pt-1">
                 <p className="text-muted-foreground text-[11px]">Location</p>
-                <p className="text-sm font-medium mt-0.5">{locationParts.join(", ")}</p>
+                {listing.address ? (
+                  <>
+                    <p className="text-sm font-medium mt-0.5">{listing.address}</p>
+                    {locationParts.length > 0 && (
+                      <p className="text-muted-foreground text-xs mt-0.5">{locationParts.join(", ")}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-medium mt-0.5">{locationParts.join(", ")}</p>
+                )}
                 {listing.hide_address ? <p className="text-muted-foreground mt-0.5 text-[11px] italic">Address hidden from public</p> : null}
               </div>
             )}
