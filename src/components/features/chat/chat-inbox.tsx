@@ -82,6 +82,13 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   }, [sessions]);
   const handleSessionUpdate = useCallback(
     (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
+      // If the admin is currently viewing this session, the use-chat hook will
+      // auto-mark it as read via markReadAndNotify the moment the message arrives.
+      // Incrementing unread_admin_count here would create a stale React state
+      // that disagrees with the DB and leaves the unread badge visible until
+      // the admin navigates away and back.
+      const isCurrentlyViewing = sessionId === selectedIdRef.current;
+
       setSessions((prev) => {
         const idx = prev.findIndex((s) => s.id === sessionId);
         if (idx === -1) return prev;
@@ -89,16 +96,17 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
           ...prev[idx],
           last_message_preview: preview,
           last_message_at: at,
-          unread_admin_count: isUserMessage
-            ? prev[idx].unread_admin_count + 1
-            : prev[idx].unread_admin_count,
+          unread_admin_count:
+            isUserMessage && !isCurrentlyViewing
+              ? prev[idx].unread_admin_count + 1
+              : prev[idx].unread_admin_count,
         };
         // Move to top — most recent message goes first
         const rest = prev.filter((_, i) => i !== idx);
         return [updated, ...rest];
       });
       // Re-fetch products if a new message arrived for the selected session
-      if (sessionId === selectedIdRef.current) {
+      if (isCurrentlyViewing) {
         setProductRefreshKey((k) => k + 1);
       }
     },
