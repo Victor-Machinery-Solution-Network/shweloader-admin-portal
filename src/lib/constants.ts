@@ -109,6 +109,7 @@ export const CACHE_TAGS = {
   USERS: "users",
   BUSINESS_TYPES: "business-types",
   ANNOUNCEMENTS: "announcements",
+  POPUP_PROMOTIONS: "popup_promotions",
   PROMOTION_PUSHES: "promotion-pushes",
   ARTICLE_CATEGORIES: "article-categories",
   ARTICLES: "articles",
