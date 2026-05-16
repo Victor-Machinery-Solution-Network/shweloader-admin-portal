@@ -8,6 +8,8 @@ import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { ROUTES } from "@/lib/constants";
+import { deletePopupPromotions } from "@/lib/actions/popup-promotion";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { columns } from "./columns";
 import type { PopupPromotion } from "@/types/popup-promotion";
 
@@ -18,16 +20,13 @@ interface PopupPromotionsClientProps {
 export function PopupPromotionsClient({
   promotions,
 }: PopupPromotionsClientProps) {
+  const canDelete = useHasPermission("popup_promotions", "delete");
+  const canCreate = useHasPermission("popup_promotions", "create");
+
   const handleBulkDelete = useCallback(
     async (selected: PopupPromotion[]) => {
-      // UI-only prototype — backend not wired
-      // eslint-disable-next-line no-console
-      console.log(
-        "Bulk delete (mock):",
-        selected.map((p) => p.popup_promotion_id),
-      );
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return { success: true as const };
+      const ids = selected.map((p) => p.popup_promotion_id);
+      return deletePopupPromotions(ids);
     },
     [],
   );
@@ -41,20 +40,24 @@ export function PopupPromotionsClient({
   const renderToolbar = useCallback(
     (selected: PopupPromotion[]) => (
       <>
-        <BulkDeleteButton
-          selectedRows={selected}
-          onDelete={handleBulkDelete}
-          buildDescription={buildDescription}
-          itemLabel="promotion"
-        />
-        <Button asChild className="ml-auto">
-          <Link href={ROUTES.POPUP_PROMOTIONS_NEW}>
-            <Plus /> Create Promotion
-          </Link>
-        </Button>
+        {canDelete && (
+          <BulkDeleteButton
+            selectedRows={selected}
+            onDelete={handleBulkDelete}
+            buildDescription={buildDescription}
+            itemLabel="promotion"
+          />
+        )}
+        {canCreate && (
+          <Button asChild className="ml-auto">
+            <Link href={ROUTES.POPUP_PROMOTIONS_NEW}>
+              <Plus /> Create Promotion
+            </Link>
+          </Button>
+        )}
       </>
     ),
-    [handleBulkDelete, buildDescription],
+    [handleBulkDelete, buildDescription, canDelete, canCreate],
   );
 
   if (promotions.length === 0) {
