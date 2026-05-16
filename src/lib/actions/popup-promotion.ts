@@ -142,3 +142,123 @@ export async function createPopupPromotion(formData: FormData) {
     };
   }
 }
+
+export async function updatePopupPromotion(id: number, formData: FormData) {
+  try {
+    const payload = parseFormData(formData);
+    const error = validate(payload);
+    if (error) return { success: false, error };
+
+    const userId = await requirePermission("popup_promotions", "edit");
+
+    // Optional image swap
+    let newImageId: number | null = null;
+    let oldImageKey: string | null = null;
+    let oldThumbKey: string | null = null;
+
+    const file = formData.get("image");
+    if (file instanceof File && file.size > 0) {
+      // Look up the current image so we can delete it from R2 after the swap
+      const { results: cur } = await d1.query<{
+        image_id: number;
+        image_url: string;
+        thumb_url: string | null;
+      }>(
+        `SELECT p.image_id, i.image_url, i.thumb_url
+           FROM popup_promotion p JOIN image i ON p.image_id = i.image_id
+          WHERE p.popup_promotion_id = ?`,
+        [id],
+      );
+      if (cur.length === 0) {
+        return { success: false, error: "Popup promotion not found" };
+      }
+      oldImageKey = cur[0].image_url;
+      oldThumbKey = cur[0].thumb_url;
+
+      const entityName = slugify(payload.name) || "popup";
+      const uploaded = await processImageFieldRich(
+        formData,
+        "image",
+        "popup-promotions/",
+        entityName,
+      );
+      if (!uploaded) return { success: false, error: "Failed to upload image" };
+
+      const { results: imageRows } = await d1.query<{ image_id: number }>(
+        "INSERT INTO image (image_url, thumb_url, blurhash, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING image_id",
+        [uploaded.key, uploaded.thumbKey, uploaded.blurhash, 0.5, 0.5, userId],
+      );
+      newImageId = imageRows[0].image_id;
+    }
+
+    // Update popup_promotion row
+    const setClauses: string[] = [
+      "name = ?",
+      "cta_label = ?",
+      "trigger_type = ?",
+      "trigger_delay_seconds = ?",
+      "trigger_scroll_percent = ?",
+      "start_at = ?",
+      "end_at = ?",
+      "active = ?",
+      "updated_at = CURRENT_TIMESTAMP",
+    ];
+    const params: (string | number | boolean | null)[] = [
+      payload.name,
+      payload.ctaLabel,
+      payload.triggerType,
+      payload.triggerDelay,
+      payload.triggerScroll,
+      payload.startAt,
+      payload.endAt,
+      payload.active,
+    ];
+    if (newImageId !== null) {
+      setClauses.push("image_id = ?");
+      params.push(newImageId);
+    }
+    params.push(id);
+
+    await d1.query(
+      `UPDATE popup_promotion SET ${setClauses.join(", ")} WHERE popup_promotion_id = ?`,
+      params,
+    );
+
+    // Replace screens (DELETE-then-INSERT is the simplest correct strategy)
+    await d1.query(
+      "DELETE FROM popup_promotion_screen WHERE popup_promotion_id = ?",
+      [id],
+    );
+    for (const screen of payload.screens) {
+      await d1.query(
+        "INSERT INTO popup_promotion_screen (popup_promotion_id, screen) VALUES (?, ?)",
+        [id, screen],
+      );
+    }
+
+    // Replace linked listings
+    await d1.query(
+      "DELETE FROM popup_promotion_listing WHERE popup_promotion_id = ?",
+      [id],
+    );
+    for (const lid of payload.listingIds) {
+      await d1.query(
+        "INSERT INTO popup_promotion_listing (popup_promotion_id, product_list_id, display_order) VALUES (?, ?, '0')",
+        [id, lid],
+      );
+    }
+
+    // Best-effort cleanup of the old R2 image (after DB swap so we don't orphan)
+    if (oldImageKey) await deleteFile(oldImageKey);
+    if (oldThumbKey) await deleteFile(oldThumbKey);
+
+    invalidateTag(CACHE_TAGS.POPUP_PROMOTIONS);
+    auditLog(userId, "updated popup_promotion | id=" + id);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to update popup promotion"),
+    };
+  }
+}
