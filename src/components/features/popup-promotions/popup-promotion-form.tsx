@@ -21,6 +21,10 @@ import type {
 } from "@/types/popup-promotion";
 import { TARGET_SCREEN_LABELS } from "@/types/popup-promotion";
 import type { PopupListingOption } from "@/lib/cache";
+import {
+  createPopupPromotion,
+  updatePopupPromotion,
+} from "@/lib/actions/popup-promotion";
 
 interface PopupPromotionFormProps {
   promotion?: PopupPromotion;
@@ -92,31 +96,35 @@ export function PopupPromotionForm({
     linkedIds.includes(l.listing_id),
   );
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    // Synthesized fields (not present as native form inputs)
+    formData.set("name", name);
+    formData.set("cta_label", ctaLabel);
+    formData.set("trigger_type", triggerType);
+    formData.set("trigger_delay_seconds", String(delaySeconds));
+    formData.set("trigger_scroll_percent", String(scrollPercent));
+    formData.set("start_at", startAt);
+    formData.set("end_at", endAt);
+    formData.set("active", active ? "1" : "0");
+    formData.set("screens", targetScreens.join(","));
+    formData.set("listing_ids", linkedIds.join(","));
+
     startTransition(async () => {
-      // UI-only prototype — no backend wiring
-      // eslint-disable-next-line no-console
-      console.log("Popup Promotion form submit (mock):", {
-        name,
-        active: active ? 1 : 0,
-        image_url: imageKey,
-        cta_label: ctaLabel,
-        target_screens: targetScreens,
-        trigger_type: triggerType,
-        trigger_delay_seconds: delaySeconds,
-        trigger_scroll_percent: scrollPercent,
-        linked_listing_ids: linkedIds,
-        start_at: startAt || null,
-        end_at: endAt || null,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      toast.success(
-        isEditing
-          ? "Promotion updated (mock — no backend wired)"
-          : "Promotion created (mock — no backend wired)",
-      );
-      router.push(ROUTES.POPUP_PROMOTIONS);
+      const result = promotion
+        ? await updatePopupPromotion(promotion.popup_promotion_id, formData)
+        : await createPopupPromotion(formData);
+
+      if (result.success) {
+        toast.success(promotion ? "Promotion updated" : "Promotion created");
+        router.push(ROUTES.POPUP_PROMOTIONS);
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "Save failed");
+      }
     });
   }
 

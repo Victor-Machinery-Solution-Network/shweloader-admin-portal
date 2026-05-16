@@ -1,42 +1,43 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cacheLife } from "next/cache";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
 import { PopupPromotionForm } from "@/components/features/popup-promotions/popup-promotion-form";
-import {
-  findMockPromotion,
-  MOCK_LISTINGS,
-} from "@/components/features/popup-promotions/mock-data";
+import { getPopupListingOptions, getPopupPromotion } from "@/lib/cache";
 
 export const metadata = {
   title: "Edit Popup Promotion",
-  description: "Edit an existing popup promotion",
+  description: "Edit an in-app popup promotion",
 };
 
 export function generateStaticParams() {
   return [{ id: "0" }];
 }
 
-export default function EditPopupPromotionPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  return (
-    <Suspense fallback={<DataTableSkeleton />}>
-      <EditPopupPromotionContent params={params} />
-    </Suspense>
-  );
-}
-
-async function EditPopupPromotionContent({
+export default async function EditPopupPromotionPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const promotion = findMockPromotion(Number(id));
-  if (!promotion) notFound();
   return (
-    <PopupPromotionForm promotion={promotion} listings={MOCK_LISTINGS} />
+    <Suspense fallback={<DataTableSkeleton />}>
+      <PermissionGate feature="popup_promotions" permission="edit">
+        <Content id={Number(id)} />
+      </PermissionGate>
+    </Suspense>
   );
+}
+
+async function Content({ id }: { id: number }) {
+  "use cache";
+  cacheLife({ stale: 60, revalidate: 60, expire: 600 });
+
+  const [promo, listings] = await Promise.all([
+    getPopupPromotion(id),
+    getPopupListingOptions(),
+  ]);
+  if (!promo) notFound();
+  return <PopupPromotionForm listings={listings} promotion={promo} />;
 }
