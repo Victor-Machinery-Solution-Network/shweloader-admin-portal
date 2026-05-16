@@ -402,3 +402,91 @@ export async function getCachedPermissionsForRole(
 export function getActivityLogsData() {
   return fetchActivityLogs();
 }
+
+// Popup Promotions
+
+import type { PopupPromotion, PopupTargetScreen } from "@/types/popup-promotion";
+
+interface PopupRow {
+  popup_promotion_id: number;
+  name: string;
+  active: 0 | 1;
+  image_id: number;
+  image_url: string | null;
+  image_thumb_url: string | null;
+  cta_label: string | null;
+  trigger_type: "screen_entry" | "scroll";
+  trigger_delay_seconds: number;
+  trigger_scroll_percent: number;
+  start_at: string | null;
+  end_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  screens: string | null;          // comma-joined via GROUP_CONCAT
+  listing_ids: string | null;      // comma-joined via GROUP_CONCAT
+}
+
+function hydratePopup(row: PopupRow): PopupPromotion {
+  return {
+    popup_promotion_id: row.popup_promotion_id,
+    name: row.name,
+    active: row.active,
+    image_id: row.image_id,
+    image_url: row.image_url,
+    image_thumb_url: row.image_thumb_url,
+    cta_label: row.cta_label,
+    target_screens: (row.screens ?? "")
+      .split(",")
+      .filter(Boolean) as PopupTargetScreen[],
+    trigger_type: row.trigger_type,
+    trigger_delay_seconds: row.trigger_delay_seconds,
+    trigger_scroll_percent: row.trigger_scroll_percent,
+    linked_listing_ids: (row.listing_ids ?? "")
+      .split(",")
+      .filter(Boolean)
+      .map(Number),
+    start_at: row.start_at,
+    end_at: row.end_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    deleted_at: row.deleted_at,
+  };
+}
+
+export async function getPopupPromotions(): Promise<PopupPromotion[]> {
+  const { results } = await d1.query<PopupRow>(
+    `SELECT
+       p.*,
+       i.image_url, i.thumb_url AS image_thumb_url,
+       (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
+          WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
+       (SELECT GROUP_CONCAT(l.product_list_id) FROM popup_promotion_listing l
+          WHERE l.popup_promotion_id = p.popup_promotion_id) AS listing_ids
+     FROM popup_promotion p
+     JOIN image i ON p.image_id = i.image_id
+     WHERE p.deleted_at IS NULL
+     ORDER BY p.created_at DESC`,
+  );
+  return results.map(hydratePopup);
+}
+
+export async function getPopupPromotion(
+  id: number,
+): Promise<PopupPromotion | null> {
+  const { results } = await d1.query<PopupRow>(
+    `SELECT
+       p.*,
+       i.image_url, i.thumb_url AS image_thumb_url,
+       (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
+          WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
+       (SELECT GROUP_CONCAT(l.product_list_id) FROM popup_promotion_listing l
+          WHERE l.popup_promotion_id = p.popup_promotion_id) AS listing_ids
+     FROM popup_promotion p
+     JOIN image i ON p.image_id = i.image_id
+     WHERE p.popup_promotion_id = ? AND p.deleted_at IS NULL
+     LIMIT 1`,
+    [id],
+  );
+  return results.length > 0 ? hydratePopup(results[0]) : null;
+}
