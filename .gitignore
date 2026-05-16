@@ -46,3 +46,5 @@ next-env.d.ts
 
 # database schema
 *.sql
+!shweloader_d1_schema_final.sql
+!migrations/*.sql
