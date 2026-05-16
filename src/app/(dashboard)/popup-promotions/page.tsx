@@ -4,7 +4,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { PermissionGate } from "@/components/shared/permission-gate";
-import { getPopupPromotions } from "@/lib/cache";
+import { getPopupPromotions, getPopupListingOptions } from "@/lib/cache";
 import { PopupPromotionsClient } from "@/components/features/popup-promotions/popup-promotions-client";
 
 export const metadata = {
@@ -33,6 +33,9 @@ async function Content() {
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
   cacheTag(CACHE_TAGS.POPUP_PROMOTIONS);
 
-  const promotions = await getPopupPromotions();
-  return <PopupPromotionsClient promotions={promotions} />;
+  const [promotions, listings] = await Promise.all([
+    getPopupPromotions(),
+    getPopupListingOptions(),
+  ]);
+  return <PopupPromotionsClient promotions={promotions} listings={listings} />;
 }

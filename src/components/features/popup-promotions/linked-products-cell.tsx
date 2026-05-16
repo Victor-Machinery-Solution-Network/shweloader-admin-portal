@@ -14,12 +14,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { assetUrl } from "@/lib/r2-url";
-import { MOCK_LISTINGS } from "./mock-data";
 import type { PopupPromotion } from "@/types/popup-promotion";
 import type { PopupListingOption } from "@/lib/cache";
 
 interface LinkedProductsCellProps {
   promotion: PopupPromotion;
+  listings: PopupListingOption[];
 }
 
 function formatPrice(l: PopupListingOption): string {
@@ -28,12 +28,12 @@ function formatPrice(l: PopupListingOption): string {
   return "Price on request";
 }
 
-export function LinkedProductsCell({ promotion }: LinkedProductsCellProps) {
+export function LinkedProductsCell({ promotion, listings }: LinkedProductsCellProps) {
   const [open, setOpen] = useState(false);
   const ids = promotion.linked_listing_ids;
   const count = ids.length;
 
-  const linked = MOCK_LISTINGS.filter((l) => ids.includes(l.listing_id));
+  const linked = listings.filter((l) => ids.includes(l.listing_id));
 
   if (count === 0) {
     return (
@@ -142,8 +142,8 @@ export function LinkedProductsCell({ promotion }: LinkedProductsCellProps) {
               })}
               {linked.length < count && (
                 <li className="p-2 text-xs text-muted-foreground italic">
-                  ({count - linked.length} other product
-                  {count - linked.length === 1 ? "" : "s"} not in mock data)
+                  ({count - linked.length} linked product
+                  {count - linked.length === 1 ? "" : "s"} no longer available)
                 </li>
               )}
             </ul>

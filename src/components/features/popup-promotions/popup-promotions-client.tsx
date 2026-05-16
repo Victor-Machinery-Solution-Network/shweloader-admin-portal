@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,22 @@ import { BulkDeleteButton } from "@/components/shared/bulk-delete-button";
 import { ROUTES } from "@/lib/constants";
 import { deletePopupPromotions } from "@/lib/actions/popup-promotion";
 import { useHasPermission } from "@/hooks/use-permissions";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
 import type { PopupPromotion } from "@/types/popup-promotion";
+import type { PopupListingOption } from "@/lib/cache";
 
 interface PopupPromotionsClientProps {
   promotions: PopupPromotion[];
+  listings: PopupListingOption[];
 }
 
 export function PopupPromotionsClient({
   promotions,
+  listings,
 }: PopupPromotionsClientProps) {
   const canDelete = useHasPermission("popup_promotions", "delete");
   const canCreate = useHasPermission("popup_promotions", "create");
+  const columns = useMemo(() => getColumns(listings), [listings]);
 
   const handleBulkDelete = useCallback(
     async (selected: PopupPromotion[]) => {

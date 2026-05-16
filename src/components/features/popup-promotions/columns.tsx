@@ -14,6 +14,7 @@ import {
   TRIGGER_LABELS,
 } from "@/types/popup-promotion";
 import type { PopupPromotion } from "@/types/popup-promotion";
+import type { PopupListingOption } from "@/lib/cache";
 import { togglePopupPromotionActive } from "@/lib/actions/popup-promotion";
 import { RowActions } from "./row-actions";
 import { LinkedProductsCell } from "./linked-products-cell";
@@ -82,7 +83,10 @@ function formatScheduleRange(p: PopupPromotion) {
   return `${fmt(p.start_at)} → ${fmt(p.end_at)}`;
 }
 
-export const columns: ColumnDef<PopupPromotion>[] = [
+export function getColumns(
+  listings: PopupListingOption[],
+): ColumnDef<PopupPromotion>[] {
+  return [
   {
     id: "index",
     header: () => <span className="block text-center">No.</span>,
@@ -186,7 +190,7 @@ export const columns: ColumnDef<PopupPromotion>[] = [
     ),
     cell: ({ row }) => (
       <div className="flex justify-center">
-        <LinkedProductsCell promotion={row.original} />
+        <LinkedProductsCell promotion={row.original} listings={listings} />
       </div>
     ),
   },
@@ -214,4 +218,5 @@ export const columns: ColumnDef<PopupPromotion>[] = [
     id: "actions",
     cell: ({ row }) => <RowActions promotion={row.original} />,
   },
-];
+  ];
+}
