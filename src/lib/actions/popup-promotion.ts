@@ -69,11 +69,6 @@ export async function createPopupPromotion(formData: FormData) {
     const error = validate(payload);
     if (error) return { success: false, error };
 
-    const file = formData.get("image");
-    if (!(file instanceof File) || file.size === 0) {
-      return { success: false, error: "Popup image is required" };
-    }
-
     const created_by = await requirePermission("popup_promotions", "create");
 
     const entityName = slugify(payload.name) || "popup";
@@ -156,8 +151,9 @@ export async function updatePopupPromotion(id: number, formData: FormData) {
     let oldImageKey: string | null = null;
     let oldThumbKey: string | null = null;
 
-    const file = formData.get("image");
-    if (file instanceof File && file.size > 0) {
+    const pendingKey = formData.get("image_pending_key");
+    const hasNewImage = typeof pendingKey === "string" && pendingKey.length > 0;
+    if (hasNewImage) {
       // Look up the current image so we can delete it from R2 after the swap
       const { results: cur } = await d1.query<{
         image_id: number;

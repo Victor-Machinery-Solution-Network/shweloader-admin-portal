@@ -195,7 +195,7 @@ export function PopupPromotionForm({
               name="image"
               value={imageKey}
               onChange={setImageKey}
-              feature="promotions"
+              feature="popup_promotions"
               permission={isEditing ? "edit" : "create"}
               onUploadingChange={setIsUploading}
               aspectRatio={3 / 4}
