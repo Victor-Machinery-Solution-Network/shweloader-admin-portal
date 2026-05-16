@@ -276,6 +276,7 @@ const FEATURES = [
   { name: "rent_listings", group_name: "Marketplace", display_order: 11 },
   { name: "featured_listings", group_name: "Marketplace", display_order: 12 },
   { name: "chat", group_name: "Marketplace", display_order: 13 },
+  { name: "enquiries", group_name: "Marketplace", display_order: 14 },
   { name: "listing_templates", group_name: "Marketplace", display_order: 15 },
   { name: "condition_types", group_name: "Marketplace", display_order: 16 },
   // Users (17–20)
@@ -304,6 +305,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   featured_listings: ["create", "read", "delete"],
   condition_types: ["create", "read", "edit", "delete"],
   chat: ["read", "edit", "delete"],
+  enquiries: ["read", "edit"],
   users: ["read", "create", "edit", "delete"],
   partners: ["read", "approve"],
   blacklist: ["read", "create", "delete"],

@@ -38,6 +38,8 @@ interface UserDetailDialogProps {
   onClose: () => void;
   onBlacklist: (user: AppUser) => void;
   businessTypeMap: Map<number, BusinessTypeInfo>;
+  /** Hide Delete/Blacklist/Close footer — pure view mode for cross-feature consumers. */
+  readOnly?: boolean;
 }
 
 export function UserDetailDialog({
@@ -45,6 +47,7 @@ export function UserDetailDialog({
   onClose,
   onBlacklist,
   businessTypeMap,
+  readOnly = false,
 }: UserDetailDialogProps) {
   const canBlacklist = useHasPermission("blacklist", "create");
   const canDelete = useHasPermission("users", "delete");
@@ -168,32 +171,34 @@ export function UserDetailDialog({
           </section>
         </div>
 
-        <DialogFooter>
-          <div className="flex items-center gap-2 mr-auto">
-            {canDelete && !user.deleted_at && (
-              <Button
-                variant="destructive"
-                onClick={handleDeleteClick}
-                disabled={isLoadingImpact}
-              >
-                {isLoadingImpact ? <Spinner className="mr-1" /> : <Trash2 className="size-4" />}
-                Delete
-              </Button>
-            )}
-            {canBlacklist && !user.deleted_at && (
-              <Button
-                variant="outline"
-                onClick={() => onBlacklist(user)}
-              >
-                <Ban className="size-4" />
-                Blacklist
-              </Button>
-            )}
-          </div>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </DialogFooter>
+        {!readOnly && (
+          <DialogFooter>
+            <div className="flex items-center gap-2 mr-auto">
+              {canDelete && !user.deleted_at && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteClick}
+                  disabled={isLoadingImpact}
+                >
+                  {isLoadingImpact ? <Spinner className="mr-1" /> : <Trash2 className="size-4" />}
+                  Delete
+                </Button>
+              )}
+              {canBlacklist && !user.deleted_at && (
+                <Button
+                  variant="outline"
+                  onClick={() => onBlacklist(user)}
+                >
+                  <Ban className="size-4" />
+                  Blacklist
+                </Button>
+              )}
+            </div>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
 

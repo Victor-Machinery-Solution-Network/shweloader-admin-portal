@@ -5,9 +5,9 @@ PRAGMA foreign_keys = OFF;
 -- =============================================
 
 DROP TABLE IF EXISTS chat_attachment;
+DROP TABLE IF EXISTS chat_enquiry;
 DROP TABLE IF EXISTS chat_message;
 DROP TABLE IF EXISTS chat_session;
--- enquiry / enquiry_status_type: not yet implemented (RN app has UI but no backend endpoint)
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
 DROP TABLE IF EXISTS notification;
@@ -49,6 +49,7 @@ DROP TABLE IF EXISTS permission;
 DROP TABLE IF EXISTS feature;
 DROP TABLE IF EXISTS condition_type;
 DROP TABLE IF EXISTS article_status_type;
+DROP TABLE IF EXISTS enquiry_status_type;
 DROP TABLE IF EXISTS approval_status_type;
 DROP TABLE IF EXISTS partner_status_type;
 DROP TABLE IF EXISTS partner_type;
@@ -89,6 +90,13 @@ CREATE TABLE IF NOT EXISTS article_status_type (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_article_status_type_name ON article_status_type(status_name);
+
+CREATE TABLE IF NOT EXISTS enquiry_status_type (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    status_name TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enquiry_status_type_name ON enquiry_status_type(status_name);
 
 CREATE TABLE IF NOT EXISTS condition_type (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -358,6 +366,47 @@ CREATE TABLE IF NOT EXISTS chat_attachment (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_attachment_message ON chat_attachment(chat_message_id);
+
+-- =============================================
+-- CHAT ENQUIRY (product-inquiry tracking)
+-- =============================================
+-- One row per (chat_session, listing) pair. Populated by the worker on every
+-- chat_message INSERT that has a sale_listing_id or rent_listing_id set
+-- (regardless of sender_type). Dedup is enforced by partial unique indexes.
+
+CREATE TABLE IF NOT EXISTS chat_enquiry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_session_id INTEGER NOT NULL,
+    sale_listing_id INTEGER,
+    rent_listing_id INTEGER,
+    status_id INTEGER NOT NULL DEFAULT 1,
+    close_outcome TEXT CHECK(close_outcome IN ('won', 'lost')),
+    notes TEXT,
+    first_message_id INTEGER NOT NULL,
+    enquired_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by INTEGER,
+    FOREIGN KEY (chat_session_id)  REFERENCES chat_session(id)        ON DELETE CASCADE,
+    FOREIGN KEY (sale_listing_id)  REFERENCES sale_listing(id)        ON DELETE CASCADE,
+    FOREIGN KEY (rent_listing_id)  REFERENCES rent_listing(id)        ON DELETE CASCADE,
+    FOREIGN KEY (status_id)        REFERENCES enquiry_status_type(id) ON DELETE RESTRICT,
+    FOREIGN KEY (first_message_id) REFERENCES chat_message(id)        ON DELETE CASCADE,
+    FOREIGN KEY (updated_by)       REFERENCES admin_user(user_id)     ON DELETE SET NULL,
+    CHECK (
+        (sale_listing_id IS NOT NULL AND rent_listing_id IS NULL)
+        OR (sale_listing_id IS NULL AND rent_listing_id IS NOT NULL)
+    )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_enquiry_session_sale
+    ON chat_enquiry(chat_session_id, sale_listing_id) WHERE sale_listing_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_enquiry_session_rent
+    ON chat_enquiry(chat_session_id, rent_listing_id) WHERE rent_listing_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_chat_enquiry_status        ON chat_enquiry(status_id);
+CREATE INDEX IF NOT EXISTS idx_chat_enquiry_enquired_at   ON chat_enquiry(enquired_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_enquiry_sale_listing  ON chat_enquiry(sale_listing_id);
+CREATE INDEX IF NOT EXISTS idx_chat_enquiry_rent_listing  ON chat_enquiry(rent_listing_id);
 
 -- =============================================
 -- ADMIN ACTIVITY LOG

@@ -62,6 +62,10 @@ import {
   getChatSessionsWithDetails as fetchChatSessions,
   getTotalUnreadCount as fetchTotalUnread,
 } from "@/lib/actions/chat";
+import {
+  getEnquiriesWithDetails as fetchEnquiries,
+  getEnquiryStatusTypes as fetchEnquiryStatusTypes,
+} from "@/lib/actions/enquiry";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -367,6 +371,16 @@ export function getChatSessions() {
 
 export function getChatUnreadCount() {
   return fetchTotalUnread();
+}
+
+// Enquiries
+
+export function getEnquiries() {
+  return fetchEnquiries();
+}
+
+export function getEnquiryStatusTypes() {
+  return fetchEnquiryStatusTypes();
 }
 
 // Permissions (cached at function level — called from server actions)

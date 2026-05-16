@@ -33,12 +33,15 @@ interface PartnerReviewDialogProps {
   partner: PartnerWithDetails;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Hide approve/reject/revoke footer — pure view mode for cross-feature consumers. */
+  readOnly?: boolean;
 }
 
 export function PartnerReviewDialog({
   partner,
   open,
   onOpenChange,
+  readOnly = false,
 }: PartnerReviewDialogProps) {
   const canApprove = useHasPermission("partners", "approve");
   const [isRejecting, setIsRejecting] = useState(false);
@@ -236,6 +239,7 @@ export function PartnerReviewDialog({
           )}
         </div>
 
+        {!readOnly && (
         <DialogFooter>
           {!canApprove ? (
             /* No approve permission: Close only */
@@ -385,6 +389,7 @@ export function PartnerReviewDialog({
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

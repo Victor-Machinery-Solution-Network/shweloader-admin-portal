@@ -21,6 +21,14 @@ function generatePassword(): string {
   return Array.from(bytes, (b) => PASSWORD_CHARSET[b % PASSWORD_CHARSET.length]).join("");
 }
 
+// ─── Single-record fetch (for cross-feature consumers e.g. enquiries) ───────
+
+import type { AppUser } from "@/types/app-user";
+
+export async function getAppUserById(id: number): Promise<AppUser | null> {
+  return appUserService.getById(id);
+}
+
 // ─── Create App User ──────────────────────────────────────────────────────────
 
 export async function createAppUser(formData: FormData) {

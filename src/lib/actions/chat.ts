@@ -313,6 +313,22 @@ export async function sendMessage(
     );
     const messageId = msgResult.results[0]?.id;
 
+    // Record product enquiry if this message references a listing.
+    // INSERT OR IGNORE + partial unique indexes collapse repeat mentions of
+    // the same product within a session to a single chat_enquiry row.
+    if (messageId && (saleId || rentId)) {
+      await d1.query(
+        `INSERT OR IGNORE INTO chat_enquiry
+           (chat_session_id, sale_listing_id, rent_listing_id, first_message_id, enquired_at)
+         SELECT cm.chat_session_id, cm.sale_listing_id, cm.rent_listing_id, cm.id, cm.created_at
+         FROM chat_message cm
+         WHERE cm.id = ?
+           AND (cm.sale_listing_id IS NOT NULL OR cm.rent_listing_id IS NOT NULL)`,
+        [messageId],
+      );
+      await invalidateTag(CACHE_TAGS.ENQUIRIES);
+    }
+
     // Insert attachments
     if (hasAttachments && messageId) {
       for (const att of attachmentData!) {

@@ -42,6 +42,7 @@ export const ROUTES = {
   LISTING_TEMPLATES_NEW: "/listing-templates/new",
   CONDITION_TYPES: "/condition-types",
   CHAT: "/chat",
+  ENQUIRIES: "/enquiries",
 
   // Users
   USERS: "/users",
@@ -117,6 +118,8 @@ export const CACHE_TAGS = {
   ADMINS: "admins",
   SETTINGS: "settings",
   CHAT_SESSIONS: "chat-sessions",
+  ENQUIRIES: "enquiries",
+  ENQUIRY_STATUS_TYPES: "enquiry-status-types",
   FEATURE_PERMISSIONS: "feature-permissions",
   CUSTOM_FIELD_TEMPLATES: "custom-field-templates",
   PERMISSIONS: "permissions",
