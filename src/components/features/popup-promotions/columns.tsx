@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -14,24 +14,22 @@ import {
   TRIGGER_LABELS,
 } from "@/types/popup-promotion";
 import type { PopupPromotion } from "@/types/popup-promotion";
+import { togglePopupPromotionActive } from "@/lib/actions/popup-promotion";
 import { RowActions } from "./row-actions";
 import { LinkedProductsCell } from "./linked-products-cell";
 
 function ActiveToggle({ promotion }: { promotion: PopupPromotion }) {
   const [isPending, startTransition] = useTransition();
-  const [isActive, setIsActive] = useState(promotion.active === 1);
+  const isActive = promotion.active === 1;
 
   function handleToggle() {
     startTransition(async () => {
-      // UI-only prototype — backend not wired
-      const next = !isActive;
-      setIsActive(next);
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      toast.success(
-        next
-          ? `"${promotion.name}" activated`
-          : `"${promotion.name}" deactivated`,
-      );
+      const result = await togglePopupPromotionActive(promotion.popup_promotion_id);
+      if (result.success) {
+        toast.success(isActive ? `"${promotion.name}" deactivated` : `"${promotion.name}" activated`);
+      } else {
+        toast.error(result.error ?? "Failed to toggle status");
+      }
     });
   }
 
