@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
+import { PermissionGate } from "@/components/shared/permission-gate";
+import { getPopupPromotions } from "@/lib/cache";
 import { PopupPromotionsClient } from "@/components/features/popup-promotions/popup-promotions-client";
-import { MOCK_PROMOTIONS } from "@/components/features/popup-promotions/mock-data";
 
 export const metadata = {
   title: "Popup Promotions",
@@ -17,15 +20,19 @@ export default function PopupPromotionsPage() {
         description="In-app popup ads shown inside the mobile app on Home, Browse and Subcategory screens."
       />
       <Suspense fallback={<DataTableSkeleton />}>
-        <PopupPromotionsContent />
+        <PermissionGate feature="popup_promotions">
+          <Content />
+        </PermissionGate>
       </Suspense>
     </>
   );
 }
 
-async function PopupPromotionsContent() {
+async function Content() {
   "use cache";
-  // UI-only prototype — using mock data, no D1 calls.
-  const promotions = MOCK_PROMOTIONS;
+  cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
+  cacheTag(CACHE_TAGS.POPUP_PROMOTIONS);
+
+  const promotions = await getPopupPromotions();
   return <PopupPromotionsClient promotions={promotions} />;
 }
