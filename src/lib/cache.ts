@@ -490,3 +490,46 @@ export async function getPopupPromotion(
   );
   return results.length > 0 ? hydratePopup(results[0]) : null;
 }
+
+// Listings options for the popup-promotion picker
+
+export interface PopupListingOption {
+  listing_id: number;
+  title: string;
+  brand_name: string | null;
+  model_name: string | null;
+  thumb_url: string | null;
+  custom_id: string | null;
+  price_mmk: number | null;
+  price_usd: number | null;
+  listing_type: "sale" | "rent" | null;
+}
+
+export async function getPopupListingOptions(): Promise<PopupListingOption[]> {
+  const { results } = await d1.query<PopupListingOption>(
+    `SELECT
+       pl.id AS listing_id,
+       em.name AS title,
+       pb.name AS brand_name,
+       em.name AS model_name,
+       pl.thumbnail_url AS thumb_url,
+       pl.custom_id_suffix AS custom_id,
+       COALESCE(sl.mmk_price, rl.mmk_price) AS price_mmk,
+       COALESCE(sl.usd_price, rl.usd_price) AS price_usd,
+       CASE
+         WHEN sl.id IS NOT NULL THEN 'sale'
+         WHEN rl.id IS NOT NULL THEN 'rent'
+         ELSE NULL
+       END AS listing_type
+     FROM product_list pl
+     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+     LEFT JOIN product_brand pb ON em.brand_id = pb.brand_id
+     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id
+     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id
+     WHERE pl.deleted_at IS NULL
+       AND pl.is_draft = 0
+     ORDER BY pl.created_at DESC
+     LIMIT 500`,
+  );
+  return results;
+}
