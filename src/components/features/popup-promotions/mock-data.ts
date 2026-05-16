@@ -7,6 +7,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     active: 1,
     image_url: null,
     image_thumb_url: null,
+    image_id: 0,
     cta_label: "Shop Now",
     target_screens: ["home", "browse"],
     trigger_type: "screen_entry",
@@ -17,6 +18,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     end_at: "2026-02-10T23:59",
     created_at: "2026-01-15T10:00:00",
     updated_at: "2026-01-15T10:00:00",
+    deleted_at: null,
   },
   {
     popup_promotion_id: 2,
@@ -24,6 +26,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     active: 1,
     image_url: null,
     image_thumb_url: null,
+    image_id: 0,
     cta_label: "View Deals",
     target_screens: ["subcategory"],
     trigger_type: "scroll",
@@ -34,6 +37,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     end_at: "2026-08-31T23:59",
     created_at: "2026-04-20T10:00:00",
     updated_at: "2026-04-20T10:00:00",
+    deleted_at: null,
   },
   {
     popup_promotion_id: 3,
@@ -41,6 +45,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     active: 0,
     image_url: null,
     image_thumb_url: null,
+    image_id: 0,
     cta_label: "Learn More",
     target_screens: ["home", "browse", "subcategory"],
     trigger_type: "screen_entry",
@@ -51,6 +56,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
     end_at: null,
     created_at: "2026-03-10T10:00:00",
     updated_at: "2026-03-10T10:00:00",
+    deleted_at: null,
   },
 ];
 

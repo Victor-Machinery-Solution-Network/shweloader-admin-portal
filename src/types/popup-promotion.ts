@@ -8,7 +8,8 @@ export interface PopupPromotion {
 
   image_url: string | null;
   image_thumb_url: string | null;
-  cta_label: string;
+  image_id: number;
+  cta_label: string | null;
 
   target_screens: PopupTargetScreen[];
 
@@ -23,6 +24,7 @@ export interface PopupPromotion {
 
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface ListingOption {
