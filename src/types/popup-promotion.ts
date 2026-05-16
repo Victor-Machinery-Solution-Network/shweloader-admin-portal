@@ -27,18 +27,6 @@ export interface PopupPromotion {
   deleted_at: string | null;
 }
 
-export interface ListingOption {
-  listing_id: number;
-  title: string;
-  brand_name: string | null;
-  model_name: string | null;
-  thumb_url: string | null;
-  custom_id: string | null;
-  price_mmk: number | null;
-  price_usd: number | null;
-  listing_type: "sale" | "rent" | null;
-}
-
 export const TARGET_SCREEN_LABELS: Record<PopupTargetScreen, string> = {
   home: "Home",
   browse: "Browse",

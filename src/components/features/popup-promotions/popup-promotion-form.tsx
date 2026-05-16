@@ -18,13 +18,13 @@ import type {
   PopupPromotion,
   PopupTargetScreen,
   PopupTriggerType,
-  ListingOption,
 } from "@/types/popup-promotion";
 import { TARGET_SCREEN_LABELS } from "@/types/popup-promotion";
+import type { PopupListingOption } from "@/lib/cache";
 
 interface PopupPromotionFormProps {
   promotion?: PopupPromotion;
-  listings: ListingOption[];
+  listings: PopupListingOption[];
 }
 
 const ALL_SCREENS: PopupTargetScreen[] = ["home", "browse", "subcategory"];

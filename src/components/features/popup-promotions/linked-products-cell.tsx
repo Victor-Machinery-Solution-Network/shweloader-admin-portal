@@ -16,13 +16,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { assetUrl } from "@/lib/r2-url";
 import { MOCK_LISTINGS } from "./mock-data";
 import type { PopupPromotion } from "@/types/popup-promotion";
-import type { ListingOption } from "@/types/popup-promotion";
+import type { PopupListingOption } from "@/lib/cache";
 
 interface LinkedProductsCellProps {
   promotion: PopupPromotion;
 }
 
-function formatPrice(l: ListingOption): string {
+function formatPrice(l: PopupListingOption): string {
   if (l.price_mmk != null) return `${l.price_mmk.toLocaleString()} MMK`;
   if (l.price_usd != null) return `$${l.price_usd.toLocaleString()}`;
   return "Price on request";

@@ -1,4 +1,5 @@
-import type { PopupPromotion, ListingOption } from "@/types/popup-promotion";
+import type { PopupPromotion } from "@/types/popup-promotion";
+import type { PopupListingOption } from "@/lib/cache";
 
 export const MOCK_PROMOTIONS: PopupPromotion[] = [
   {
@@ -60,7 +61,7 @@ export const MOCK_PROMOTIONS: PopupPromotion[] = [
   },
 ];
 
-export const MOCK_LISTINGS: ListingOption[] = [
+export const MOCK_LISTINGS: PopupListingOption[] = [
   { listing_id: 101, title: "CAT 320D Excavator (2018)", brand_name: "Caterpillar", model_name: "320D", thumb_url: null, custom_id: "SLE-CAT320D", price_mmk: 280000000, price_usd: null, listing_type: "sale" },
   { listing_id: 102, title: "Komatsu PC200 (2020)", brand_name: "Komatsu", model_name: "PC200", thumb_url: null, custom_id: "SLE-KOMPC200", price_mmk: 320000000, price_usd: null, listing_type: "sale" },
   { listing_id: 103, title: "Hitachi ZX240 (2019)", brand_name: "Hitachi", model_name: "ZX240", thumb_url: null, custom_id: "SLE-HITZX240", price_mmk: 290000000, price_usd: null, listing_type: "sale" },
