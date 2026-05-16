@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/constants";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { PopupPromotionForm } from "@/components/features/popup-promotions/popup-promotion-form";
@@ -33,6 +34,7 @@ export default async function EditPopupPromotionPage({
 async function Content({ id }: { id: number }) {
   "use cache";
   cacheLife({ stale: 60, revalidate: 60, expire: 600 });
+  cacheTag(CACHE_TAGS.POPUP_PROMOTIONS);
 
   const [promo, listings] = await Promise.all([
     getPopupPromotion(id),

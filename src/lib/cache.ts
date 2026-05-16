@@ -461,8 +461,11 @@ export async function getPopupPromotions(): Promise<PopupPromotion[]> {
        i.image_url, i.thumb_url AS image_thumb_url,
        (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
           WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
-       (SELECT GROUP_CONCAT(l.product_list_id) FROM popup_promotion_listing l
-          WHERE l.popup_promotion_id = p.popup_promotion_id) AS listing_ids
+       (SELECT GROUP_CONCAT(l.product_list_id) FROM (
+          SELECT product_list_id FROM popup_promotion_listing
+          WHERE popup_promotion_id = p.popup_promotion_id
+          ORDER BY display_order, product_list_id
+        ) l) AS listing_ids
      FROM popup_promotion p
      JOIN image i ON p.image_id = i.image_id
      WHERE p.deleted_at IS NULL
@@ -480,8 +483,11 @@ export async function getPopupPromotion(
        i.image_url, i.thumb_url AS image_thumb_url,
        (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
           WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
-       (SELECT GROUP_CONCAT(l.product_list_id) FROM popup_promotion_listing l
-          WHERE l.popup_promotion_id = p.popup_promotion_id) AS listing_ids
+       (SELECT GROUP_CONCAT(l.product_list_id) FROM (
+          SELECT product_list_id FROM popup_promotion_listing
+          WHERE popup_promotion_id = p.popup_promotion_id
+          ORDER BY display_order, product_list_id
+        ) l) AS listing_ids
      FROM popup_promotion p
      JOIN image i ON p.image_id = i.image_id
      WHERE p.popup_promotion_id = ? AND p.deleted_at IS NULL
@@ -524,8 +530,10 @@ export async function getPopupListingOptions(): Promise<PopupListingOption[]> {
      FROM product_list pl
      LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
      LEFT JOIN product_brand pb ON em.brand_id = pb.brand_id
-     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id
-     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id
+     LEFT JOIN sale_listing sl
+       ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
+     LEFT JOIN rent_listing rl
+       ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
      WHERE pl.deleted_at IS NULL
        AND pl.is_draft = 0
      ORDER BY pl.created_at DESC
