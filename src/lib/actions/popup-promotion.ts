@@ -262,3 +262,63 @@ export async function updatePopupPromotion(id: number, formData: FormData) {
     };
   }
 }
+
+export async function deletePopupPromotion(id: number) {
+  try {
+    const deletedBy = await requirePermission("popup_promotions", "delete");
+    await popupPromotionService.softDelete(id, deletedBy);
+    await saveTrashMetadata("popup_promotion", id, deletedBy);
+    invalidateTag(CACHE_TAGS.POPUP_PROMOTIONS);
+    auditLog(deletedBy, "deleted popup_promotion | id=" + id);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to delete popup promotion"),
+    };
+  }
+}
+
+export async function deletePopupPromotions(ids: number[]) {
+  const deletedBy = await requirePermission("popup_promotions", "delete");
+  assertBulkLimit(ids);
+  const results = await Promise.allSettled(
+    ids.map(async (id) => {
+      await popupPromotionService.softDelete(id, deletedBy);
+      await saveTrashMetadata("popup_promotion", id, deletedBy);
+    }),
+  );
+  const errors = results
+    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+    .map((r, i) =>
+      getErrorMessage(r.reason, `Failed to delete popup promotion ${ids[i]}`),
+    );
+  const deleted = results.filter((r) => r.status === "fulfilled").length;
+  invalidateTag(CACHE_TAGS.POPUP_PROMOTIONS);
+  auditLog(deletedBy, "bulk deleted popup_promotions | count=" + deleted);
+  if (errors.length > 0) {
+    return {
+      success: false,
+      error: `Deleted ${deleted} of ${ids.length}. ${errors[0]}`,
+    };
+  }
+  return { success: true };
+}
+
+export async function togglePopupPromotionActive(id: number) {
+  try {
+    const userId = await requirePermission("popup_promotions", "edit");
+    await d1.query(
+      "UPDATE popup_promotion SET active = 1 - active, updated_at = CURRENT_TIMESTAMP WHERE popup_promotion_id = ?",
+      [id],
+    );
+    invalidateTag(CACHE_TAGS.POPUP_PROMOTIONS);
+    auditLog(userId, "toggled popup_promotion active | id=" + id);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to toggle popup promotion"),
+    };
+  }
+}

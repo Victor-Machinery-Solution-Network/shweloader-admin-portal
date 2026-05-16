@@ -95,6 +95,14 @@ export const ENTITY_REGISTRY: Record<TrashEntityType, EntityConfig> = {
     fileColumns: [],
     group: "content",
   },
+  popup_promotion: {
+    table: "popup_promotion",
+    primaryKey: "popup_promotion_id",
+    displayName: "Popup Promotion",
+    cacheTags: [CACHE_TAGS.POPUP_PROMOTIONS],
+    fileColumns: [],
+    group: "content",
+  },
   promotion_push: {
     table: "promotion_push",
     primaryKey: "promotion_push_id",

@@ -9,6 +9,7 @@ export type TrashEntityType =
   | "article"
   | "article_category"
   | "announcement"
+  | "popup_promotion"
   | "promotion_push"
   | "state_region"
   | "district"
