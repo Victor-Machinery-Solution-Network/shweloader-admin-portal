@@ -50,7 +50,7 @@ function parseFormData(formData: FormData): FormPayload {
 
 function validate(p: FormPayload): string | null {
   if (!p.name) return "Promotion name is required";
-  if (p.screens.length === 0) return "At least one target screen is required";
+  if (p.screens.length !== 1) return "Pick exactly one target screen for this promo";
   if (p.triggerType === "screen_entry" && (p.triggerDelay < 0 || p.triggerDelay > 30)) {
     return "Trigger delay must be 0–30 seconds";
   }

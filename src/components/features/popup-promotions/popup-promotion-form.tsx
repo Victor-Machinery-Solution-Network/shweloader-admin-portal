@@ -67,10 +67,11 @@ export function PopupPromotionForm({
   const [startAt, setStartAt] = useState(promotion?.start_at ?? "");
   const [endAt, setEndAt] = useState(promotion?.end_at ?? "");
 
-  function toggleScreen(screen: PopupTargetScreen) {
-    setTargetScreens((prev) =>
-      prev.includes(screen) ? prev.filter((s) => s !== screen) : [...prev, screen],
-    );
+  function selectScreen(screen: PopupTargetScreen) {
+    // Single-select: the active screen for this promo. To target multiple
+    // screens, the admin creates a separate promo per screen (cleaner mental
+    // model + each promo gets its own 2-launches-per-day budget).
+    setTargetScreens([screen]);
   }
 
   function toggleLinkedListing(id: number) {
@@ -234,19 +235,25 @@ export function PopupPromotionForm({
             2. Where to show this popup
           </h2>
           <p className="text-sm text-muted-foreground">
-            Select one or more screens. Popup will appear on every selected
-            screen.
+            Pick the screen this popup appears on. To target multiple
+            screens, create a separate promo for each.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Target screen"
+          className="flex flex-wrap gap-2"
+        >
           {ALL_SCREENS.map((screen) => {
-            const selected = targetScreens.includes(screen);
+            const selected = targetScreens[0] === screen;
             return (
               <button
                 type="button"
+                role="radio"
+                aria-checked={selected}
                 key={screen}
-                onClick={() => toggleScreen(screen)}
+                onClick={() => selectScreen(screen)}
                 className={cn(
                   "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                   selected
