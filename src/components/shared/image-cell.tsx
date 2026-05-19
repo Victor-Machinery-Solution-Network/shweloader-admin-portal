@@ -14,12 +14,18 @@ import { assetUrl } from "@/lib/r2-url";
 interface ImageCellProps {
   name: string;
   imageUrl: string | null;
+  /** Optional secondary line shown under the name (e.g. CTA label, status). */
+  subtitle?: React.ReactNode;
+  /** URL for the large preview dialog. Falls back to imageUrl when omitted —
+   *  useful if the cell shows a thumbnail but wants to preview the full size. */
+  previewUrl?: string | null;
 }
 
-export function ImageCell({ name, imageUrl }: ImageCellProps) {
+export function ImageCell({ name, imageUrl, subtitle, previewUrl }: ImageCellProps) {
   const [showPreview, setShowPreview] = useState(false);
   const initial = name.charAt(0).toUpperCase();
   const src = assetUrl(imageUrl);
+  const previewSrc = assetUrl(previewUrl ?? imageUrl);
 
   return (
     <div className="flex items-center gap-3">
@@ -45,9 +51,14 @@ export function ImageCell({ name, imageUrl }: ImageCellProps) {
         </div>
       )}
 
-      <span className="font-medium">{name}</span>
+      <div className="min-w-0">
+        <div className="truncate font-medium">{name}</div>
+        {subtitle && (
+          <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+        )}
+      </div>
 
-      {showPreview && src && (
+      {showPreview && previewSrc && (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -56,7 +67,7 @@ export function ImageCell({ name, imageUrl }: ImageCellProps) {
             </DialogHeader>
             <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted">
               <Image
-                src={src}
+                src={previewSrc}
                 alt={name}
                 fill
                 className="object-contain"

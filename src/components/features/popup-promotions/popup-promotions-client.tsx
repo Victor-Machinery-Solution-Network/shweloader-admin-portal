@@ -92,8 +92,6 @@ export function PopupPromotionsClient({
       pageSize={10}
       getRowId={(row) => row.popup_promotion_id}
       toolbar={renderToolbar}
-      enableExport
-      exportFileName="popup-promotions"
     />
   );
 }

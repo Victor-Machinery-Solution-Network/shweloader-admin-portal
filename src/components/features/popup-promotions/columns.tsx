@@ -1,14 +1,13 @@
 "use client";
 
 import { useTransition } from "react";
-import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ImageCell } from "@/components/shared/image-cell";
 import { cn } from "@/lib/utils";
-import { assetUrl } from "@/lib/r2-url";
 import {
   TARGET_SCREEN_LABELS,
   TRIGGER_LABELS,
@@ -107,34 +106,17 @@ export function getColumns(
     ),
     cell: ({ row }) => {
       const p = row.original;
-      const src = assetUrl(p.image_thumb_url ?? p.image_url);
-      const initial = p.name.charAt(0).toUpperCase();
       return (
-        <div className="flex items-center gap-3">
-          {src ? (
-            <div className="relative size-11 shrink-0 overflow-hidden rounded-lg border bg-muted">
-              <Image
-                src={src}
-                alt={p.name}
-                fill
-                className="object-cover"
-                sizes="44px"
-              />
-            </div>
-          ) : (
-            <div className="size-11 shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
-              <span className="text-sm font-medium text-muted-foreground">
-                {initial}
-              </span>
-            </div>
-          )}
-          <div className="min-w-0">
-            <div className="truncate font-medium">{p.name}</div>
-            <div className="truncate text-xs text-muted-foreground">
+        <ImageCell
+          name={p.name}
+          imageUrl={p.image_thumb_url ?? p.image_url}
+          previewUrl={p.image_url}
+          subtitle={
+            <>
               CTA: {p.cta_label || <span className="italic">not set</span>}
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       );
     },
   },
