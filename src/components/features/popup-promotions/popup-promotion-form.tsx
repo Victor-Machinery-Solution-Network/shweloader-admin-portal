@@ -48,8 +48,8 @@ export function PopupPromotionForm({
     promotion?.image_url ?? null,
   );
   const [ctaLabel, setCtaLabel] = useState(promotion?.cta_label ?? "");
-  const [targetScreens, setTargetScreens] = useState<PopupTargetScreen[]>(
-    promotion?.target_screens ?? [],
+  const [targetScreen, setTargetScreen] = useState<PopupTargetScreen | null>(
+    promotion?.target_screen ?? null,
   );
   const [triggerType, setTriggerType] = useState<PopupTriggerType>(
     promotion?.trigger_type ?? "screen_entry",
@@ -66,13 +66,6 @@ export function PopupPromotionForm({
   const [searchQuery, setSearchQuery] = useState("");
   const [startAt, setStartAt] = useState(promotion?.start_at ?? "");
   const [endAt, setEndAt] = useState(promotion?.end_at ?? "");
-
-  function selectScreen(screen: PopupTargetScreen) {
-    // Single-select: the active screen for this promo. To target multiple
-    // screens, the admin creates a separate promo per screen (cleaner mental
-    // model + each promo gets its own 2-launches-per-day budget).
-    setTargetScreens([screen]);
-  }
 
   function toggleLinkedListing(id: number) {
     setLinkedIds((prev) =>
@@ -111,7 +104,7 @@ export function PopupPromotionForm({
     formData.set("start_at", startAt);
     formData.set("end_at", endAt);
     formData.set("active", active ? "1" : "0");
-    formData.set("screens", targetScreens.join(","));
+    formData.set("screen", targetScreen ?? "");
     formData.set("listing_ids", linkedIds.join(","));
 
     startTransition(async () => {
@@ -246,14 +239,14 @@ export function PopupPromotionForm({
           className="flex flex-wrap gap-2"
         >
           {ALL_SCREENS.map((screen) => {
-            const selected = targetScreens[0] === screen;
+            const selected = targetScreen === screen;
             return (
               <button
                 type="button"
                 role="radio"
                 aria-checked={selected}
                 key={screen}
-                onClick={() => selectScreen(screen)}
+                onClick={() => setTargetScreen(screen)}
                 className={cn(
                   "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                   selected

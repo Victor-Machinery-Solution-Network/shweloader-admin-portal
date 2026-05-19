@@ -563,6 +563,7 @@ CREATE TABLE IF NOT EXISTS popup_promotion (
     name TEXT NOT NULL,
     image_id INTEGER NOT NULL,
     cta_label TEXT,
+    screen TEXT CHECK(screen IN ('home', 'browse', 'subcategory')),
     trigger_type TEXT NOT NULL CHECK(trigger_type IN ('screen_entry', 'scroll')),
     trigger_delay_seconds INTEGER NOT NULL DEFAULT 0,
     trigger_scroll_percent INTEGER NOT NULL DEFAULT 50,
@@ -581,21 +582,8 @@ CREATE INDEX IF NOT EXISTS idx_popup_promotion_active
     ON popup_promotion(active, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_popup_promotion_schedule
     ON popup_promotion(start_at, end_at);
-
--- =============================================
--- POPUP PROMOTION SCREEN
--- =============================================
-
-CREATE TABLE IF NOT EXISTS popup_promotion_screen (
-    popup_promotion_id INTEGER NOT NULL,
-    screen TEXT NOT NULL CHECK(screen IN ('home', 'browse', 'subcategory')),
-    PRIMARY KEY (popup_promotion_id, screen),
-    FOREIGN KEY (popup_promotion_id)
-        REFERENCES popup_promotion(popup_promotion_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_popup_promotion_screen_screen
-    ON popup_promotion_screen(screen);
+CREATE INDEX IF NOT EXISTS idx_popup_promotion_screen
+    ON popup_promotion(screen);
 
 -- =============================================
 -- POPUP PROMOTION LISTING

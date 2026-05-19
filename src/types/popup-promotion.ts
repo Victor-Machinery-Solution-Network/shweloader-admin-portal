@@ -11,7 +11,7 @@ export interface PopupPromotion {
   image_id: number;
   cta_label: string | null;
 
-  target_screens: PopupTargetScreen[];
+  target_screen: PopupTargetScreen;
 
   trigger_type: PopupTriggerType;
   trigger_delay_seconds: number;

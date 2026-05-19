@@ -121,26 +121,22 @@ export function getColumns(
     },
   },
   {
-    id: "target_screens",
-    accessorFn: (row) => row.target_screens.join(","),
+    id: "target_screen",
+    accessorFn: (row) => row.target_screen,
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Screens" />
+      <DataTableColumnHeader column={column} title="Screen" />
     ),
     cell: ({ row }) => {
-      const screens = row.original.target_screens;
-      if (screens.length === 0) {
+      const screen = row.original.target_screen;
+      if (!screen) {
         return (
           <span className="text-xs text-muted-foreground italic">none</span>
         );
       }
       return (
-        <div className="flex flex-wrap gap-1">
-          {screens.map((s) => (
-            <Badge key={s} variant="outline" className="font-normal">
-              {TARGET_SCREEN_LABELS[s]}
-            </Badge>
-          ))}
-        </div>
+        <Badge variant="outline" className="font-normal">
+          {TARGET_SCREEN_LABELS[screen]}
+        </Badge>
       );
     },
   },

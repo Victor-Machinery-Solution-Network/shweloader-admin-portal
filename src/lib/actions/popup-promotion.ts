@@ -27,12 +27,14 @@ interface FormPayload {
   startAt: string | null;
   endAt: string | null;
   active: 0 | 1;
-  screens: PopupTargetScreen[];
+  screen: PopupTargetScreen | null;
   listingIds: number[];
 }
 
+const VALID_SCREENS: PopupTargetScreen[] = ["home", "browse", "subcategory"];
+
 function parseFormData(formData: FormData): FormPayload {
-  const screensRaw = (formData.get("screens") as string) ?? "";
+  const screenRaw = ((formData.get("screen") as string) ?? "").trim();
   const listingsRaw = (formData.get("listing_ids") as string) ?? "";
   return {
     name: ((formData.get("name") as string) ?? "").trim(),
@@ -43,14 +45,16 @@ function parseFormData(formData: FormData): FormPayload {
     startAt: ((formData.get("start_at") as string) ?? "") || null,
     endAt: ((formData.get("end_at") as string) ?? "") || null,
     active: (formData.get("active") === "1" ? 1 : 0),
-    screens: screensRaw.split(",").filter(Boolean) as PopupTargetScreen[],
+    screen: VALID_SCREENS.includes(screenRaw as PopupTargetScreen)
+      ? (screenRaw as PopupTargetScreen)
+      : null,
     listingIds: listingsRaw.split(",").filter(Boolean).map(Number),
   };
 }
 
 function validate(p: FormPayload): string | null {
   if (!p.name) return "Promotion name is required";
-  if (p.screens.length !== 1) return "Pick exactly one target screen for this promo";
+  if (!p.screen) return "Pick a target screen for this promo";
   if (p.triggerType === "screen_entry" && (p.triggerDelay < 0 || p.triggerDelay > 30)) {
     return "Trigger delay must be 0–30 seconds";
   }
@@ -92,14 +96,15 @@ export async function createPopupPromotion(formData: FormData) {
     // Insert popup_promotion
     const { results: promoRows } = await d1.query<{ popup_promotion_id: number }>(
       `INSERT INTO popup_promotion
-        (name, image_id, cta_label, trigger_type, trigger_delay_seconds,
+        (name, image_id, cta_label, screen, trigger_type, trigger_delay_seconds,
          trigger_scroll_percent, start_at, end_at, active, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING popup_promotion_id`,
       [
         payload.name,
         imageId,
         payload.ctaLabel,
+        payload.screen,
         payload.triggerType,
         payload.triggerDelay,
         payload.triggerScroll,
@@ -110,14 +115,6 @@ export async function createPopupPromotion(formData: FormData) {
       ],
     );
     const promoId = promoRows[0].popup_promotion_id;
-
-    // Insert screens
-    for (const screen of payload.screens) {
-      await d1.query(
-        "INSERT INTO popup_promotion_screen (popup_promotion_id, screen) VALUES (?, ?)",
-        [promoId, screen],
-      );
-    }
 
     // Insert linked listings (display_order plain "0" — admin can reorder later)
     for (const lid of payload.listingIds) {
@@ -191,6 +188,7 @@ export async function updatePopupPromotion(id: number, formData: FormData) {
     const setClauses: string[] = [
       "name = ?",
       "cta_label = ?",
+      "screen = ?",
       "trigger_type = ?",
       "trigger_delay_seconds = ?",
       "trigger_scroll_percent = ?",
@@ -202,6 +200,7 @@ export async function updatePopupPromotion(id: number, formData: FormData) {
     const params: (string | number | boolean | null)[] = [
       payload.name,
       payload.ctaLabel,
+      payload.screen,
       payload.triggerType,
       payload.triggerDelay,
       payload.triggerScroll,
@@ -219,18 +218,6 @@ export async function updatePopupPromotion(id: number, formData: FormData) {
       `UPDATE popup_promotion SET ${setClauses.join(", ")} WHERE popup_promotion_id = ?`,
       params,
     );
-
-    // Replace screens (DELETE-then-INSERT is the simplest correct strategy)
-    await d1.query(
-      "DELETE FROM popup_promotion_screen WHERE popup_promotion_id = ?",
-      [id],
-    );
-    for (const screen of payload.screens) {
-      await d1.query(
-        "INSERT INTO popup_promotion_screen (popup_promotion_id, screen) VALUES (?, ?)",
-        [id, screen],
-      );
-    }
 
     // Replace linked listings
     await d1.query(

@@ -423,7 +423,7 @@ interface PopupRow {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-  screens: string | null;          // comma-joined via GROUP_CONCAT
+  screen: PopupTargetScreen | null;
   listing_ids: string | null;      // comma-joined via GROUP_CONCAT
 }
 
@@ -436,9 +436,7 @@ function hydratePopup(row: PopupRow): PopupPromotion {
     image_url: row.image_url,
     image_thumb_url: row.image_thumb_url,
     cta_label: row.cta_label,
-    target_screens: (row.screens ?? "")
-      .split(",")
-      .filter(Boolean) as PopupTargetScreen[],
+    target_screen: (row.screen ?? "home") as PopupTargetScreen,
     trigger_type: row.trigger_type,
     trigger_delay_seconds: row.trigger_delay_seconds,
     trigger_scroll_percent: row.trigger_scroll_percent,
@@ -459,8 +457,6 @@ export async function getPopupPromotions(): Promise<PopupPromotion[]> {
     `SELECT
        p.*,
        i.image_url, i.thumb_url AS image_thumb_url,
-       (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
-          WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
        (SELECT GROUP_CONCAT(l.product_list_id) FROM (
           SELECT product_list_id FROM popup_promotion_listing
           WHERE popup_promotion_id = p.popup_promotion_id
@@ -481,8 +477,6 @@ export async function getPopupPromotion(
     `SELECT
        p.*,
        i.image_url, i.thumb_url AS image_thumb_url,
-       (SELECT GROUP_CONCAT(s.screen) FROM popup_promotion_screen s
-          WHERE s.popup_promotion_id = p.popup_promotion_id) AS screens,
        (SELECT GROUP_CONCAT(l.product_list_id) FROM (
           SELECT product_list_id FROM popup_promotion_listing
           WHERE popup_promotion_id = p.popup_promotion_id
