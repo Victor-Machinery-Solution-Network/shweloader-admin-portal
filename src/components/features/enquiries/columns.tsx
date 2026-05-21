@@ -221,38 +221,55 @@ export function getEnquiryColumns(
       ),
     },
 
-    // Price (sale = lump sum, rent = "/ <unit>" suffix to differentiate)
+    // MMK Price — sale = lump sum, rent = "/ <unit>" suffix to differentiate
     {
-      id: "price",
+      accessorKey: "mmk_price",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Price" />
+        <DataTableColumnHeader column={column} title="MMK Price" />
       ),
       cell: ({ row }) => {
-        const { mmk_price, usd_price, rental_unit, product_type } = row.original;
-        if (mmk_price == null && usd_price == null) {
+        const { mmk_price, rental_unit, product_type } = row.original;
+        if (mmk_price == null) {
           return <span className="text-muted-foreground">—</span>;
         }
-        // rental_unit comes in as 'per_day', 'per_week', etc. → '/ day' for inline display.
+        // rental_unit is 'per_day', 'per_week', etc. → '/ day' inline.
         const unitSuffix =
           product_type === "rent" && rental_unit
             ? ` / ${rental_unit.replace(/^per_/, "").replace(/_/g, " ")}`
             : "";
         return (
-          <div className="tabular-nums">
-            {mmk_price != null && (
-              <p className="text-sm font-medium whitespace-nowrap">
-                {Number(mmk_price).toLocaleString()}{" "}
-                <span className="text-muted-foreground font-normal">
-                  MMK{unitSuffix}
-                </span>
-              </p>
-            )}
-            {usd_price != null && (
-              <p className="text-xs text-muted-foreground whitespace-nowrap">
-                ${Number(usd_price).toLocaleString()}{unitSuffix}
-              </p>
-            )}
-          </div>
+          <p className="text-sm font-medium tabular-nums whitespace-nowrap">
+            {Number(mmk_price).toLocaleString()}{" "}
+            <span className="text-muted-foreground font-normal">
+              MMK{unitSuffix}
+            </span>
+          </p>
+        );
+      },
+    },
+
+    // USD Price — same structure as MMK price but with $ prefix
+    {
+      accessorKey: "usd_price",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="USD Price" />
+      ),
+      cell: ({ row }) => {
+        const { usd_price, rental_unit, product_type } = row.original;
+        if (usd_price == null) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const unitSuffix =
+          product_type === "rent" && rental_unit
+            ? ` / ${rental_unit.replace(/^per_/, "").replace(/_/g, " ")}`
+            : "";
+        return (
+          <p className="text-sm font-medium tabular-nums whitespace-nowrap">
+            ${Number(usd_price).toLocaleString()}
+            <span className="text-muted-foreground font-normal">
+              {unitSuffix}
+            </span>
+          </p>
         );
       },
     },
