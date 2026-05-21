@@ -25,7 +25,7 @@ interface EnquiriesClientProps {
 
 // Excel template shape — splits stacked on-screen cells into separate sheet
 // columns and adds report-friendly formatting (Sale/Rental, formatted date,
-// composed price with rental unit).
+// MMK and USD shipped as their own columns).
 const EXPORT_COLUMNS: ExportColumn[] = [
   { key: "no", header: "No." },
   { key: "inquiry_date", header: "Inquiry Date" },
@@ -38,27 +38,32 @@ const EXPORT_COLUMNS: ExportColumn[] = [
   { key: "product_code", header: "Product Code" },
   { key: "brand", header: "Brand" },
   { key: "model", header: "Model" },
-  { key: "price", header: "Price" },
+  // MMK + USD ship as separate columns so each can be filtered/summed in
+  // Excel. The on-screen table still stacks both in one Price cell.
+  { key: "mmk_price", header: "MMK Price" },
+  { key: "usd_price", header: "USD Price" },
   { key: "partner_account", header: "Partner Account (Owner Account)" },
   { key: "partner_username", header: "Partner Username (Owner Account)" },
   { key: "status", header: "Status" },
   { key: "notes", header: "Notes" },
 ];
 
-function priceCell(e: EnquiryWithDetails): string {
-  if (e.mmk_price == null && e.usd_price == null) return "";
+// Build a "1,000,000 MMK / day" or "$500 / day" style string for one currency.
+// Returns empty string when the price is null so Excel cells stay blank.
+function formatPriceValue(
+  amount: number | null,
+  currency: "MMK" | "USD",
+  productType: string | null,
+  rentalUnit: string | null,
+): string {
+  if (amount == null) return "";
   const unitSuffix =
-    e.product_type === "rent" && e.rental_unit
-      ? ` / ${e.rental_unit.replace(/^per_/, "").replace(/_/g, " ")}`
+    productType === "rent" && rentalUnit
+      ? ` / ${rentalUnit.replace(/^per_/, "").replace(/_/g, " ")}`
       : "";
-  const parts: string[] = [];
-  if (e.mmk_price != null) {
-    parts.push(`${Number(e.mmk_price).toLocaleString()} MMK${unitSuffix}`);
-  }
-  if (e.usd_price != null) {
-    parts.push(`$${Number(e.usd_price).toLocaleString()}${unitSuffix}`);
-  }
-  return parts.join(" / ");
+  return currency === "MMK"
+    ? `${Number(amount).toLocaleString()} MMK${unitSuffix}`
+    : `$${Number(amount).toLocaleString()}${unitSuffix}`;
 }
 
 export function EnquiriesClient({
@@ -123,7 +128,18 @@ export function EnquiriesClient({
         product_code: e.product_code ?? "",
         brand: e.brand_name ?? "",
         model: e.model_name ?? "",
-        price: priceCell(e),
+        mmk_price: formatPriceValue(
+          e.mmk_price,
+          "MMK",
+          e.product_type,
+          e.rental_unit,
+        ),
+        usd_price: formatPriceValue(
+          e.usd_price,
+          "USD",
+          e.product_type,
+          e.rental_unit,
+        ),
         partner_account: e.partner_name ?? "",
         partner_username: e.partner_username ?? "",
         status: e.close_outcome
