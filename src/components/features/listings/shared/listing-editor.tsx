@@ -47,7 +47,18 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 import { ImageInput } from "@/components/ui/image-input";
-import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import dynamic from "next/dynamic";
+
+// Tiptap is ~305KB — lazy-load it so the form above stays interactive while it streams in.
+const MarkdownEditor = dynamic(
+  () => import("@/components/ui/markdown-editor").then((m) => m.MarkdownEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[200px] flex-1 animate-pulse rounded-md border bg-muted/30" />
+    ),
+  },
+);
 import { FormSubmittedContext } from "@/components/ui/required-input";
 import {
   Combobox,
@@ -918,7 +929,7 @@ export function ListingEditor({
   const [rentalUnit, setRentalUnit] = useState<string>(
     savedState?.rentalUnit ??
       (isEditing && pageType === "rent" && "rental_unit" in (listing ?? {})
-        ? ((listing as any)?.rental_unit ?? "per_day")
+        ? ((listing as { rental_unit?: string })?.rental_unit ?? "per_day")
         : isDraftMode && draftMeta.rentalUnit
           ? draftMeta.rentalUnit
           : "per_day"),

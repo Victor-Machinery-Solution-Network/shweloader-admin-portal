@@ -374,6 +374,7 @@ export function ImageInput({
         {displayUrl ? (
           <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border">
             <div className="group relative min-h-0 flex-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={displayUrl}
                 alt="Selected image preview"

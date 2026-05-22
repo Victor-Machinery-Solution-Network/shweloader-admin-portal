@@ -162,25 +162,28 @@ function applyThemeToDOM(theme: CustomTheme) {
 }
 
 export function CustomThemeProvider({ children }: { children: React.ReactNode }) {
-  const [customTheme, setCustomThemeState] = useState<CustomTheme>({});
-  const [mounted, setMounted] = useState(false);
-
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Lazy-init from localStorage during render — no useEffect needed.
+  // On the server `window` is undefined, so we return an empty theme.
+  const [customTheme, setCustomThemeState] = useState<CustomTheme>(() => {
+    if (typeof window === "undefined") return {};
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as CustomTheme;
-        setCustomThemeState(parsed);
-        applyThemeToDOM(parsed);
-      }
-    } catch {}
-    setMounted(true);
+      return stored ? (JSON.parse(stored) as CustomTheme) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Apply stored theme to DOM on mount. No setState here, so the rule is happy.
+  useEffect(() => {
+    applyThemeToDOM(customTheme);
+    // We only want to apply the initial value once; further updates go through
+    // setCustomTheme, which calls applyThemeToDOM directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-apply sidebar colors when dark/light mode changes
+  // Re-apply sidebar colors when dark/light mode toggles
   useEffect(() => {
-    if (!mounted) return;
     const observer = new MutationObserver(() => {
       applyThemeToDOM(customTheme);
     });
@@ -189,7 +192,7 @@ export function CustomThemeProvider({ children }: { children: React.ReactNode })
       attributeFilter: ["class"],
     });
     return () => observer.disconnect();
-  }, [mounted, customTheme]);
+  }, [customTheme]);
 
   const setCustomTheme = useCallback((theme: CustomTheme) => {
     setCustomThemeState(theme);

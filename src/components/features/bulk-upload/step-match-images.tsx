@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,7 +40,7 @@ export function StepMatchImages({
   onNext,
   onBack,
 }: StepMatchImagesProps) {
-  const imageFields = config.imageFields ?? [];
+  const imageFields = useMemo(() => config.imageFields ?? [], [config.imageFields]);
   const validRows = parsedRows.filter((r) => r.status === "valid");
   const batchInputRef = useRef<HTMLInputElement>(null);
   const [autoMatchResult, setAutoMatchResult] = useState<string | null>(null);

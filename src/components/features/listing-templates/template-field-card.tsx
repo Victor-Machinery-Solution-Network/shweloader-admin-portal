@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   GripVertical,
   Trash2,
@@ -69,17 +69,21 @@ export function TemplateFieldCard({
   const [isOpen, setIsOpen] = useState(defaultExpanded);
   const [optionsText, setOptionsText] = useState(field.options?.join(", ") ?? "");
 
-  // Sync optionsText when field type switches to dropdown
-  useEffect(() => {
+  // Sync optionsText when field type switches to dropdown — prev-state pattern.
+  const [prevFieldType, setPrevFieldType] = useState(field.type);
+  if (prevFieldType !== field.type) {
+    setPrevFieldType(field.type);
     if (field.type === "dropdown") {
       setOptionsText(field.options?.join(", ") ?? "");
     }
-  }, [field.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
-  // Auto-expand when validation fails and this field has an empty label
-  useEffect(() => {
+  // Auto-expand when validation fails and this field has an empty label.
+  const [prevValidationAttempt, setPrevValidationAttempt] = useState(validationAttempt);
+  if (prevValidationAttempt !== validationAttempt) {
+    setPrevValidationAttempt(validationAttempt);
     if (showLabelError) setIsOpen(true);
-  }, [validationAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   const {
     attributes,

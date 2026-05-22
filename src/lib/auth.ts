@@ -57,7 +57,7 @@ const MIN_PASSWORD_LENGTH = 8;
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
-  } catch (err) {
+  } catch {
     await new Promise((r) => setTimeout(r, 200));
     return fn();
   }

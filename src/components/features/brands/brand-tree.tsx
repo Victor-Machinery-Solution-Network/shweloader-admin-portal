@@ -162,10 +162,14 @@ export function BrandTree({
   const hasFilters = filterHook.activeFilterCount > 0;
   const hasActiveFiltering = isSearching || hasFilters;
 
-  const eqFilter =
-    (filterHook.activeFilters.equipment_category as string[]) ?? [];
-  const attFilter =
-    (filterHook.activeFilters.attachment_category as string[]) ?? [];
+  const eqFilter = useMemo(
+    () => (filterHook.activeFilters.equipment_category as string[]) ?? [],
+    [filterHook.activeFilters.equipment_category],
+  );
+  const attFilter = useMemo(
+    () => (filterHook.activeFilters.attachment_category as string[]) ?? [],
+    [filterHook.activeFilters.attachment_category],
+  );
 
   const filteredTree = useMemo(() => {
     let result = tree;
@@ -231,7 +235,8 @@ export function BrandTree({
     if (hasActiveFiltering) return;
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -240,7 +245,8 @@ export function BrandTree({
     if (hasActiveFiltering) return;
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -407,7 +413,6 @@ export function BrandTree({
               node.equipment.length > 0 || node.attachmentNames.length > 0;
 
             // Summary parts
-            const eqCount = node.brand.subCategoryIds.length;
             const attCount = node.attachmentNames.length;
             const summaryParts: string[] = [];
             if (node.equipment.length > 0) summaryParts.push(`${node.equipment.length} equipment ${node.equipment.length === 1 ? "category" : "categories"}`);

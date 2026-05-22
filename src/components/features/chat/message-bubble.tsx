@@ -51,7 +51,6 @@ export function MessageBubble({
   message,
   showAvatar = true,
   showTimestamp = true,
-  isGrouped = false,
   userLastReadAt = null,
   isLastAdminMessage = false,
 }: MessageBubbleProps) {

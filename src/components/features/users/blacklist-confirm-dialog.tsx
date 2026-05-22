@@ -34,21 +34,20 @@ export function BlacklistConfirmDialog({
   onClose,
 }: BlacklistConfirmDialogProps) {
   const [preview, setPreview] = useState<BlacklistImpactPreview | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, startLoading] = useTransition();
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!user) return;
-
-    setLoading(true);
-    getBlacklistImpactPreview(user.app_user_id)
-      .then(setPreview)
-      .catch(() => {
+    startLoading(async () => {
+      try {
+        setPreview(await getBlacklistImpactPreview(user.app_user_id));
+      } catch {
         toast.error("Failed to load impact preview");
         onClose();
-      })
-      .finally(() => setLoading(false));
+      }
+    });
   }, [user, onClose]);
 
   function handleOpenChange(open: boolean) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { buildLinkMap } from "@/lib/utils";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -68,7 +68,9 @@ export function ModelPickerDialog({
   currentModel,
   onSelect,
 }: ModelPickerDialogProps) {
-  const portalRef = useRef<HTMLDivElement>(null);
+  // Portal container element for the combobox dropdown — stored as state via
+  // callback ref so child Combobox can read it during render.
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
 
   // ── Lookup maps ──────────────────────────────────────────────────────────
   const brandMap = useMemo(() => new Map(brands.map((b) => [b.name, b.brand_id])), [brands]);
@@ -128,36 +130,39 @@ export function ModelPickerDialog({
   const [selectedCategory, setSelectedCategory] = useState(""); // sub-category for equipment, category for attachment
   const [selectedModel, setSelectedModel] = useState("");
 
-  // Pre-populate from current model when dialog opens
-  useEffect(() => {
-    if (!open) return;
-
-    if (currentModel) {
-      // Find the model and resolve its brand + category
-      if (productType === "equipment") {
-        const model = equipmentModels.find((m) => m.name === currentModel);
-        if (model) {
-          setSelectedBrand(model.brand_id ? (brandIdToName.get(model.brand_id) ?? "") : "");
-          setSelectedCategory(subCategoryIdToName.get(model.sub_category_id) ?? "");
-          setSelectedModel(currentModel);
-          return;
-        }
-      } else {
-        const model = attachmentModels.find((m) => m.name === currentModel);
-        if (model) {
-          setSelectedBrand(model.brand_id ? (brandIdToName.get(model.brand_id) ?? "") : "");
-          setSelectedCategory(attachCategoryIdToName.get(model.category_id) ?? "");
-          setSelectedModel(currentModel);
-          return;
+  // Pre-populate from current model when dialog opens — prev-state pattern so
+  // the form is ready synchronously on the open render (no flash of empty state).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      let matched = false;
+      if (currentModel) {
+        if (productType === "equipment") {
+          const model = equipmentModels.find((m) => m.name === currentModel);
+          if (model) {
+            setSelectedBrand(model.brand_id ? (brandIdToName.get(model.brand_id) ?? "") : "");
+            setSelectedCategory(subCategoryIdToName.get(model.sub_category_id) ?? "");
+            setSelectedModel(currentModel);
+            matched = true;
+          }
+        } else {
+          const model = attachmentModels.find((m) => m.name === currentModel);
+          if (model) {
+            setSelectedBrand(model.brand_id ? (brandIdToName.get(model.brand_id) ?? "") : "");
+            setSelectedCategory(attachCategoryIdToName.get(model.category_id) ?? "");
+            setSelectedModel(currentModel);
+            matched = true;
+          }
         }
       }
+      if (!matched) {
+        setSelectedBrand("");
+        setSelectedCategory("");
+        setSelectedModel("");
+      }
     }
-
-    // No current model — start fresh
-    setSelectedBrand("");
-    setSelectedCategory("");
-    setSelectedModel("");
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   // ── Filtered brand names ──────────────────────────────────────────────────
   const filteredBrandNames = useMemo(() => {
@@ -307,7 +312,7 @@ export function ModelPickerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100vh-2rem)] flex flex-col sm:max-w-md">
-        <ComboboxPortalContext value={portalRef}>
+        <ComboboxPortalContext value={portalContainer}>
           <DialogHeader className="items-center text-center">
             <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
               <Search className="text-primary-foreground size-6" />
@@ -449,7 +454,7 @@ export function ModelPickerDialog({
             </Button>
           </DialogFooter>
 
-          <div ref={portalRef} className="absolute" />
+          <div ref={setPortalContainer} className="absolute" />
         </ComboboxPortalContext>
       </DialogContent>
     </Dialog>

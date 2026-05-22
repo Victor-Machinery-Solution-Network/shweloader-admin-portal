@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Phone, Mail, Building2, MapPin, AtSign, Briefcase, Calendar, BadgeCheck } from "lucide-react";
+import { Phone, Mail, Building2, MapPin, Briefcase, Calendar, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { assetUrl } from "@/lib/r2-url";
 import { format } from "date-fns";

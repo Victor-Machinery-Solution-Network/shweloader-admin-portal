@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react";
 import {
-  Upload,
   ArrowLeft,
   ArrowRight,
   AlertCircle,

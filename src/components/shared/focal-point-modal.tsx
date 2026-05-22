@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Loader2, Move } from "lucide-react";
 import {
   Dialog,
@@ -132,8 +132,11 @@ export function FocalPointModal({
     setError(true);
   }, []);
 
-  // Reset state when modal opens with new image
-  useEffect(() => {
+  // Reset state when modal opens with a new image — prev-state pattern.
+  // We compare both `open` and `imageUrl`; any change while open should reset.
+  const [prevOpenImage, setPrevOpenImage] = useState<{ open: boolean; imageUrl: string }>({ open, imageUrl });
+  if (prevOpenImage.open !== open || prevOpenImage.imageUrl !== imageUrl) {
+    setPrevOpenImage({ open, imageUrl });
     if (open) {
       setLayout({ cropWidth: 0, cropHeight: 0, cropTop: 0, cropLeft: 0, displayWidth: 0, displayHeight: 0, overflowX: 0, overflowY: 0 });
       setError(false);
@@ -141,7 +144,7 @@ export function FocalPointModal({
       setDragging(false);
       setOffset({ x: 0, y: 0 });
     }
-  }, [open, imageUrl]);
+  }
 
   // ── Pointer drag handlers ──────────────────────────────
 
@@ -160,7 +163,7 @@ export function FocalPointModal({
         offsetY: offset.y,
       };
     },
-    [offset]
+    [offset, layout]
   );
 
   const handlePointerMove = useCallback(
@@ -175,7 +178,7 @@ export function FocalPointModal({
         y: clamp(dragStart.current.offsetY - dy, 0, overflowY),
       });
     },
-    [dragging]
+    [dragging, layout]
   );
 
   const handlePointerUp = useCallback(() => {
@@ -190,13 +193,13 @@ export function FocalPointModal({
       x: overflowX > 0 ? Math.round((offset.x / overflowX) * 100) / 100 : 0.5,
       y: overflowY > 0 ? Math.round((offset.y / overflowY) * 100) / 100 : 0.5,
     };
-  }, [offset]);
+  }, [offset, layout]);
 
   const handleReset = useCallback(() => {
     const { overflowX, overflowY } = layout;
     setOffset({ x: overflowX / 2, y: overflowY / 2 });
     setShowHint(true);
-  }, []);
+  }, [layout]);
 
   // ── Derived values for rendering ───────────────────────
 
@@ -237,7 +240,10 @@ export function FocalPointModal({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
-          {/* Image — positioned absolutely based on drag offset */}
+          {/* Image — positioned absolutely based on drag offset.
+              next/image is unsuitable: focal-point math needs imgRef for naturalWidth
+              and direct inline style positioning. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgRef}
             src={imageUrl}
@@ -337,6 +343,7 @@ export function FocalPointModal({
               className="overflow-hidden rounded-lg border border-border/50"
               style={{ aspectRatio: String(aspectRatio), maxHeight: 120 }}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
                 alt=""

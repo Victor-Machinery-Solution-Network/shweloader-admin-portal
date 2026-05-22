@@ -175,19 +175,17 @@ export function AppSidebar() {
   const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
   const [showAddListingDialog, setShowAddListingDialog] = useState(false);
 
-  // Auto-expand collapsible sections when navigating to their child routes
-  useEffect(() => {
+  // Auto-expand collapsible sections when navigating to their child routes.
+  // Track previous pathname and react during render — see
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     if (isEquipmentActive) setIsEquipmentOpen(true);
     if (isAttachmentsActive) setIsAttachmentsOpen(true);
     if (isListingsActive) setIsListingsOpen(true);
     if (isArticlesActive) setIsArticlesOpen(true);
-  }, [
-    pathname,
-    isEquipmentActive,
-    isAttachmentsActive,
-    isListingsActive,
-    isArticlesActive,
-  ]);
+  }
 
   // Predictive prefetching: when a section opens, prefetch child route bundles
   useEffect(() => {

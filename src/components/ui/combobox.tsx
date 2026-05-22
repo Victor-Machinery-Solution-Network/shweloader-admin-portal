@@ -24,8 +24,7 @@ import {
  * the dropdown will portal into that container automatically,
  * keeping it within the dialog's focus-trap without expanding the layout.
  */
-const ComboboxPortalContext =
-  React.createContext<React.RefObject<HTMLDivElement | null> | null>(null);
+const ComboboxPortalContext = React.createContext<HTMLElement | null>(null);
 
 const Combobox = ComboboxPrimitive.Root;
 

@@ -26,17 +26,26 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     ? (initialSessions.some((s) => s.id === Number(sessionParam)) ? Number(sessionParam) : initialSessions[0]?.id ?? null)
     : (initialSessions[0]?.id ?? null);
   const [selectedId, setSelectedId] = useState<number | null>(initialSelectedId);
+  // Keep a ref to the latest selectedId for external callbacks (Pusher events)
+  // that need to see the current value without re-binding when it changes.
+  // Updated in an effect rather than during render — see react-hooks/refs rule.
   const selectedIdRef = useRef(selectedId);
-  selectedIdRef.current = selectedId;
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
   const pendingSessionRef = useRef<number | null>(null);
 
-  // Update selection when URL query param changes (e.g. clicking a notification)
+  // Update selection when URL query param changes (e.g. clicking a notification).
+  // This effect coordinates state changes with server-action side effects
+  // (markReadAndNotify) and ref writes; moving the setStates to render-time would
+  // pull those side effects into render too, which is wrong.
   useEffect(() => {
     if (!sessionParam) return;
     const id = Number(sessionParam);
     if (id && sessions.some((s) => s.id === id)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedId(id);
       pendingSessionRef.current = null;
       // Mark as read in DB + notify bell, then clear badge locally
@@ -154,12 +163,16 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;
 
+  // Clear products immediately when no session is selected — prev-state pattern.
+  const [prevSelectedForProducts, setPrevSelectedForProducts] = useState(selectedId);
+  if (prevSelectedForProducts !== selectedId) {
+    setPrevSelectedForProducts(selectedId);
+    if (!selectedId) setSessionProducts([]);
+  }
+
   // Fetch products discussed for the selected session (re-fetches on new messages)
   useEffect(() => {
-    if (!selectedId) {
-      setSessionProducts([]);
-      return;
-    }
+    if (!selectedId) return;
 
     let cancelled = false;
     getSessionProducts(selectedId).then((products) => {

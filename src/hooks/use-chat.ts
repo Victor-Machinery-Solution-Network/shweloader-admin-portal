@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useCallback, useTransition } from "react";
 import { usePusher } from "@/components/providers/pusher-provider";
 import {
   getChatMessages,
@@ -26,33 +26,34 @@ export function markReadAndNotify(sessionId: number) {
 /** Hook for real-time messages in an active chat session */
 export function useChatMessages(sessionId: number | null, initialUnreadCount = 0, initialUserLastReadAt: string | null = null) {
   const [messages, setMessages] = useState<ChatMessageWithDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, startLoading] = useTransition();
   const [sessionClosed, setSessionClosed] = useState(false);
   const [userLastReadAt, setUserLastReadAt] = useState<string | null>(initialUserLastReadAt);
   const { subscribeToChannel, isReady } = usePusher();
   const mountedRef = useRef(true);
-  const initialUnreadRef = useRef(initialUnreadCount);
-  initialUnreadRef.current = initialUnreadCount;
+
+  // Reset per-session state when sessionId changes — prev-state pattern.
+  const [prevSessionId, setPrevSessionId] = useState(sessionId);
+  if (prevSessionId !== sessionId) {
+    setPrevSessionId(sessionId);
+    setSessionClosed(false);
+    setUserLastReadAt(initialUserLastReadAt);
+    if (!sessionId) setMessages([]);
+  }
 
   // Fetch messages on session change (only when sessionId changes)
   useEffect(() => {
     mountedRef.current = true;
-    setSessionClosed(false);
-    setUserLastReadAt(initialUserLastReadAt);
-    if (!sessionId) {
-      setMessages([]);
-      return;
-    }
+    if (!sessionId) return;
 
-    setIsLoading(true);
-    getChatMessages(sessionId).then((msgs) => {
-      if (!mountedRef.current) return;
-      setMessages(msgs);
-      setIsLoading(false);
+    startLoading(async () => {
+      const msgs = await getChatMessages(sessionId);
+      if (mountedRef.current) setMessages(msgs);
     });
 
-    // Mark as read only if there are unread messages
-    if (initialUnreadRef.current > 0) {
+    // Mark as read only if there are unread messages.
+    // Closure captures the latest initialUnreadCount at effect-run time.
+    if (initialUnreadCount > 0) {
       markReadAndNotify(sessionId);
     }
 
@@ -149,12 +150,18 @@ export function useTypingIndicator(sessionId: number | null) {
   const { subscribeToChannel, isReady } = usePusher();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  // Reset typing state when the session or readiness changes — prev-state pattern.
+  const [prevKey, setPrevKey] = useState({ sessionId, isReady });
+  if (prevKey.sessionId !== sessionId || prevKey.isReady !== isReady) {
+    setPrevKey({ sessionId, isReady });
     if (!sessionId || !isReady) {
       setIsTyping(false);
       setTypingUser(null);
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!sessionId || !isReady) return;
 
     const handle = subscribeToChannel(`private-chat-${sessionId}`);
 
@@ -241,14 +248,24 @@ export function useChatInbox(
   const [totalUnread, setTotalUnread] = useState(0);
   const { subscribeToChannel } = usePusher();
   const mountedRef = useRef(true);
-  const onNewSessionRef = useRef(onNewSession);
-  onNewSessionRef.current = onNewSession;
-  const onSessionUpdateRef = useRef(onSessionUpdate);
-  onSessionUpdateRef.current = onSessionUpdate;
-  const onSessionResolvedRef = useRef(onSessionResolved);
-  onSessionResolvedRef.current = onSessionResolved;
-  const onSessionReopenedRef = useRef(onSessionReopened);
-  onSessionReopenedRef.current = onSessionReopened;
+
+  // useEffectEvent gives stable handlers that always see the latest props,
+  // without re-running the Pusher subscription effect when props change.
+  // See https://react.dev/reference/react/useEffectEvent
+  const handleNewSession = useEffectEvent((session: ChatSessionWithDetails) => {
+    onNewSession?.(session);
+  });
+  const handleSessionUpdate = useEffectEvent(
+    (sessionId: number, preview: string, at: string, isUserMessage: boolean) => {
+      onSessionUpdate?.(sessionId, preview, at, isUserMessage);
+    },
+  );
+  const handleSessionResolved = useEffectEvent((sessionId: number) => {
+    onSessionResolved?.(sessionId);
+  });
+  const handleSessionReopened = useEffectEvent((sessionId: number) => {
+    onSessionReopened?.(sessionId);
+  });
 
   // Initial fetch
   useEffect(() => {
@@ -271,7 +288,7 @@ export function useChatInbox(
       // Fetch full session details and prepend to list
       getChatSessionById(sessionId).then((session) => {
         if (!mountedRef.current || !session) return;
-        onNewSessionRef.current?.(session);
+        handleNewSession(session);
       });
       getTotalUnreadCount().then((count) => {
         if (mountedRef.current) setTotalUnread(count);
@@ -298,12 +315,12 @@ export function useChatInbox(
         getChatSessionById(sessionId).then((session) => {
           if (!mountedRef.current || !session) return;
           // onNewSession will deduplicate (only adds if not already in list)
-          onNewSessionRef.current?.(session);
+          handleNewSession(session);
         });
       }
 
       // Always update preview, but pass sender type so inbox can decide on unread badge
-      onSessionUpdateRef.current?.(
+      handleSessionUpdate(
         sessionId,
         raw.lastMessagePreview as string,
         raw.lastMessageAt as string,
@@ -314,13 +331,13 @@ export function useChatInbox(
     // Listen for session resolved to update sidebar
     const unsubResolved = handle.subscribe("session-resolved", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      onSessionResolvedRef.current?.(raw.sessionId as number);
+      handleSessionResolved(raw.sessionId as number);
     });
 
     // Listen for session-reopened to update sidebar
     const unsubReopened = handle.subscribe("session-reopened", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      onSessionReopenedRef.current?.(raw.sessionId as number);
+      handleSessionReopened(raw.sessionId as number);
     });
 
     return () => {

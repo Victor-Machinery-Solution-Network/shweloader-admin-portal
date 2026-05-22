@@ -42,14 +42,14 @@ import {
 } from "@/components/ui/dialog";
 import type { Notification } from "@/types/notification";
 
-function getNotificationIcon(type: Notification["type"]) {
+function NotificationIcon({ type, className }: { type: Notification["type"]; className?: string }) {
   switch (type) {
     case "article_submitted":
     case "article_approved":
     case "article_rework":
-      return Newspaper;
+      return <Newspaper className={className} />;
     default:
-      return FileText;
+      return <FileText className={className} />;
   }
 }
 
@@ -88,7 +88,6 @@ function NotificationRow({
 }) {
   const notification = item.data;
   const isUnread = notification.is_read === 0;
-  const Icon = getNotificationIcon(notification.type);
   const accent = getNotificationAccent(notification.type);
 
   function handleClick() {
@@ -110,7 +109,7 @@ function NotificationRow({
       }}
     >
       <div className={cn("mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md", accent)}>
-        <Icon className="size-3.5" />
+        <NotificationIcon type={notification.type} className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

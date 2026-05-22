@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ export interface SelectedListing {
 }
 
 /** A raw listing row from the API */
-interface ListingRow extends SelectedListing {}
+type ListingRow = SelectedListing;
 
 /** A merged product row for the "All" tab — groups sale + rent under one productListId */
 interface MergedProduct {
@@ -63,31 +63,34 @@ export function ProductPickerModal({
   onSelect,
 }: ProductPickerModalProps) {
   const [listings, setListings] = useState<ListingRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, startLoading] = useTransition();
   const [hasFetched, setHasFetched] = useState(false);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TabFilter>("all");
 
-  // Fetch once on first open
+  // Fetch once on first open. Wrapped in startTransition so the loading state
+  // doesn't block the dialog from rendering immediately.
   useEffect(() => {
     if (!open || hasFetched) return;
-    setIsLoading(true);
-    getPickableListings()
-      .then((data) => setListings(data))
-      .catch(() => setListings([]))
-      .finally(() => {
-        setIsLoading(false);
-        setHasFetched(true);
-      });
+    startLoading(async () => {
+      try {
+        setListings(await getPickableListings());
+      } catch {
+        setListings([]);
+      }
+      setHasFetched(true);
+    });
   }, [open, hasFetched]);
 
-  // Reset search and tab on close
-  useEffect(() => {
+  // Reset search and tab on close — prev-state pattern.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) {
       setSearch("");
       setTab("all");
     }
-  }, [open]);
+  }
 
   // Merge listings by productListId for the "All" tab
   const mergedProducts = useMemo(() => {

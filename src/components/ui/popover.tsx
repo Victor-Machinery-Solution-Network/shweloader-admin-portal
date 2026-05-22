@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
  * Provide this context with a ref to an element *inside* the Dialog so that
  * PopoverContent portals there instead of document.body.
  */
-const PopoverPortalContext = React.createContext<React.RefObject<HTMLElement | null> | null>(null);
+const PopoverPortalContext = React.createContext<HTMLElement | null>(null);
 
 function Popover({
   ...props
@@ -31,10 +31,10 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
-  const portalRef = React.useContext(PopoverPortalContext);
+  const portalContainer = React.useContext(PopoverPortalContext);
 
   return (
-    <PopoverPrimitive.Portal container={portalRef?.current ?? undefined}>
+    <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

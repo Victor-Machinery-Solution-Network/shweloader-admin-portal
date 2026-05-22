@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { assetUrl } from "@/lib/r2-url";
 import type { ListingDetail, ProductImage } from "@/types/listing";
 import type { CustomFieldValue } from "@/types/custom-field";
@@ -64,7 +63,6 @@ export function ListingDetailView({ listing, images }: Props) {
     categoryParts.push(listing.attachment_category_name);
   }
 
-  const locationParts = [listing.township_name, listing.district_name, listing.state_region_name].filter(Boolean);
   const pdfSrc = assetUrl(listing.pdf_url);
 
   return (

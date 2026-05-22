@@ -53,9 +53,13 @@ export function useDragReorder<T extends { display_order: string }>(
   // when cache revalidation returns stale/old-order data.
   const pendingReorders = useRef(0);
 
-  // Sync local state when server data changes (after create/delete/revalidation)
+  // Sync local state when server data changes (after create/delete/revalidation).
+  // We can't use the prev-state-during-render pattern because we need to read
+  // pendingReorders.current — which itself is a ref-during-render violation.
+  // The effect-based sync is correct for "skip if optimistic updates pending".
   useEffect(() => {
     if (pendingReorders.current > 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setData(serverData);
   }, [serverData]);
 

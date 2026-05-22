@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CYCLE = ["light", "dark", "system"] as const;
 
+// SSR-safe "is hydrated" signal — no useEffect, no flash, returns false on server
+// and true after hydration. See https://react.dev/reference/react/useSyncExternalStore
+const subscribeNoop = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribeNoop, getSnapshot, getServerSnapshot);
 
   const next = CYCLE[(CYCLE.indexOf(theme as (typeof CYCLE)[number]) + 1) % CYCLE.length];
 

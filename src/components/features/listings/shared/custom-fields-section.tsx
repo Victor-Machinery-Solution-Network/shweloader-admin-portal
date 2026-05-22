@@ -216,7 +216,6 @@ export function CustomFieldsSection({
   // ─── Render ─────────────────────────────────────────────────────────
 
   const templateNames = templates.map((t) => t.name);
-  const hasRows = fields.length > 0 || customRows.length > 0;
 
   return (
     <>

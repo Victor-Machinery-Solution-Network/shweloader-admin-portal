@@ -66,6 +66,10 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Capture ref Maps for cleanup — the Map references are stable for the
+    // lifetime of the component, so subscribeToChannel mutations remain visible.
+    const channels = channelsRef.current;
+
     const pusher = new PusherClient(key, {
       cluster,
       authEndpoint: "/api/pusher/auth",
@@ -101,15 +105,27 @@ export function PusherProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setIsReady(true);
+    // Track readiness via Pusher's own connection events — fires when the
+    // WebSocket actually opens. More accurate than signalling readiness as
+    // soon as we've called subscribe(), and lets us react to drop/reconnect.
+    const handleConnected = () => setIsReady(true);
+    const handleDisconnected = () => setIsReady(false);
+    pusher.connection.bind("connected", handleConnected);
+    pusher.connection.bind("disconnected", handleDisconnected);
+    pusher.connection.bind("unavailable", handleDisconnected);
+    pusher.connection.bind("failed", handleDisconnected);
 
     return () => {
       setIsReady(false);
-      for (const [name, entry] of channelsRef.current) {
+      pusher.connection.unbind("connected", handleConnected);
+      pusher.connection.unbind("disconnected", handleDisconnected);
+      pusher.connection.unbind("unavailable", handleDisconnected);
+      pusher.connection.unbind("failed", handleDisconnected);
+      for (const [name, entry] of channels) {
         entry.channel.unbind_all();
         pusher.unsubscribe(name);
       }
-      channelsRef.current.clear();
+      channels.clear();
 
       userChannel.unbind_all();
       pusher.unsubscribe(`private-user-${session.user.id}`);

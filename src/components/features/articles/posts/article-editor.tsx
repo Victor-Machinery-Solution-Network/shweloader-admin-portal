@@ -20,7 +20,18 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ImageInput } from "@/components/ui/image-input";
-import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import dynamic from "next/dynamic";
+
+// Tiptap is ~305KB — lazy-load it so the form above stays interactive while it streams in.
+const MarkdownEditor = dynamic(
+  () => import("@/components/ui/markdown-editor").then((m) => m.MarkdownEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[200px] flex-1 animate-pulse rounded-md border bg-muted/30" />
+    ),
+  },
+);
 import { FormSubmittedContext, RequiredInput } from "@/components/ui/required-input";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
@@ -90,8 +101,16 @@ export function ArticleEditor({
   const currentUserName = session?.user?.name ?? "";
   const canApprove = useHasPermission("articles", "approve");
 
-  // Submission action ref: set by button onClick before form onSubmit fires
-  const submitActionRef = useRef<"draft" | "publish" | "save" | "submit-review" | "resubmit">("save");
+  // Submission action: set by button onClick BEFORE form onSubmit fires.
+  // We keep both a ref (for synchronous access in onSubmit) and state (for the
+  // pending-spinner label in render), since the rule forbids reading refs in render.
+  type SubmitAction = "draft" | "publish" | "save" | "submit-review" | "resubmit";
+  const submitActionRef = useRef<SubmitAction>("save");
+  const [submitAction, setSubmitAction] = useState<SubmitAction>("save");
+  const setAction = (a: SubmitAction) => {
+    submitActionRef.current = a;
+    setSubmitAction(a);
+  };
   // Tracks whether a non-draft submission was attempted (for mandatory field indicators)
   const [strictValidation, setStrictValidation] = useState(false);
 
@@ -349,10 +368,10 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "draft";
+                        setAction("draft");
                       }}
                     >
-                      {isPending && submitActionRef.current === "draft" ? (
+                      {isPending && submitAction === "draft" ? (
                         <>
                           <Spinner className="mr-1" /> Saving{"\u2026"}
                         </>
@@ -365,10 +384,10 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "publish";
+                        setAction("publish");
                       }}
                     >
-                      {isPending && submitActionRef.current === "publish" ? (
+                      {isPending && submitAction === "publish" ? (
                         <>
                           <Spinner className="mr-1" /> Publishing{"\u2026"}
                         </>
@@ -388,10 +407,10 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "draft";
+                        setAction("draft");
                       }}
                     >
-                      {isPending && submitActionRef.current === "draft" ? (
+                      {isPending && submitAction === "draft" ? (
                         <>
                           <Spinner className="mr-1" /> Saving{"\u2026"}
                         </>
@@ -404,11 +423,11 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "submit-review";
+                        setAction("submit-review");
                       }}
                       className="gap-1.5"
                     >
-                      {isPending && submitActionRef.current === "submit-review" ? (
+                      {isPending && submitAction === "submit-review" ? (
                         <>
                           <Spinner className="mr-1" /> Submitting{"\u2026"}
                         </>
@@ -431,10 +450,10 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "draft";
+                        setAction("draft");
                       }}
                     >
-                      {isPending && submitActionRef.current === "draft" ? (
+                      {isPending && submitAction === "draft" ? (
                         <>
                           <Spinner className="mr-1" /> Saving{"\u2026"}
                         </>
@@ -447,11 +466,11 @@ export function ArticleEditor({
                       size="sm"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "resubmit";
+                        setAction("resubmit");
                       }}
                       className="gap-1.5"
                     >
-                      {isPending && submitActionRef.current === "resubmit" ? (
+                      {isPending && submitAction === "resubmit" ? (
                         <>
                           <Spinner className="mr-1" /> Resubmitting{"\u2026"}
                         </>
@@ -472,7 +491,7 @@ export function ArticleEditor({
                     size="sm"
                     disabled={isPending || isUploading}
                     onClick={() => {
-                      submitActionRef.current = "save";
+                      setAction("save");
                     }}
                   >
                     {isPending ? (
@@ -532,10 +551,10 @@ export function ArticleEditor({
                       variant="outline"
                       disabled={isPending || isUploading}
                       onClick={() => {
-                        submitActionRef.current = "save";
+                        setAction("save");
                       }}
                     >
-                      {isPending && submitActionRef.current === "save" ? (
+                      {isPending && submitAction === "save" ? (
                         <>
                           <Spinner className="mr-1" /> Saving{"\u2026"}
                         </>

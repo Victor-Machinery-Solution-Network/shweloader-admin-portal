@@ -14,7 +14,6 @@ import { invalidateTag } from "@/lib/cache-invalidation";
 import { getLastDisplayOrder, getNextDisplayOrder } from "@/lib/actions/reorder";
 import { nKeysBetween } from "@/lib/utils/display-order";
 import {
-  processFileField,
   processImageFieldRich,
   deleteFile,
   cleanupOldFile,

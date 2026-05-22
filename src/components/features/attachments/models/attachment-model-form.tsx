@@ -45,14 +45,22 @@ export function AttachmentModelForm({
   const isEditing = !!model;
 
   // ID ↔ name lookup maps
-  const categoryMap = new Map(
-    categories.map((c) => [c.name, c.category_id]),
+  const categoryMap = useMemo(
+    () => new Map(categories.map((c) => [c.name, c.category_id])),
+    [categories],
   );
-  const categoryIdToName = new Map(
-    categories.map((c) => [c.category_id, c.name]),
+  const categoryIdToName = useMemo(
+    () => new Map(categories.map((c) => [c.category_id, c.name])),
+    [categories],
   );
-  const brandMap = new Map(brands.map((b) => [b.name, b.brand_id]));
-  const brandIdToName = new Map(brands.map((b) => [b.brand_id, b.name]));
+  const brandMap = useMemo(
+    () => new Map(brands.map((b) => [b.name, b.brand_id])),
+    [brands],
+  );
+  const brandIdToName = useMemo(
+    () => new Map(brands.map((b) => [b.brand_id, b.name])),
+    [brands],
+  );
 
   // Build bi-directional link sets: categoryId → Set<brandId>, brandId → Set<categoryId>
   const brandsByCategory = useMemo(() => {

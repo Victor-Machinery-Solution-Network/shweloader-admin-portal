@@ -76,8 +76,12 @@ export function useNotifications() {
   const { permissions } = usePermissions();
   const canReadChat = permissions.includes("chat:read");
   const mountedRef = useRef(true);
+  // Keep a ref to the latest pathname for Pusher callbacks that read it
+  // without re-binding subscriptions on every navigation.
   const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   const isOnChatPage = pathname.startsWith("/chat");
 
@@ -126,9 +130,11 @@ export function useNotifications() {
     }, 400);
   }, [canReadChat]);
 
-  // Mark alerts as read when on chat page; refresh when leaving
+  // Mark alerts as read when on chat page; refresh when leaving.
+  // Effect-shaped because the false branch triggers async refreshes + timer.
   useEffect(() => {
     if (isOnChatPage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChatAlerts((prev) => prev.map((a) => ({ ...a, unreadCount: 0 })));
     } else {
       // Refresh when leaving — fetch immediately + again after delay for markSessionRead to complete

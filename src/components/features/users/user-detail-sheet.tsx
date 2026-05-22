@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { Handshake } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -26,10 +26,14 @@ export function UserDetailSheet({
   onClose,
   businessTypeMap,
 }: UserDetailSheetProps) {
-  // Keep last user data visible during close animation
-  const prevRef = useRef<AppUser | null>(null);
-  if (user) prevRef.current = user;
-  const data = user ?? prevRef.current;
+  // Keep last user data visible during close animation. We store the last
+  // non-null user as state and update it during render via the prev-state
+  // pattern — refs read/written in render are flagged by react-hooks/refs.
+  const [previousUser, setPreviousUser] = useState<AppUser | null>(user);
+  if (user && user !== previousUser) {
+    setPreviousUser(user);
+  }
+  const data = user ?? previousUser;
 
   const verified = data?.is_verified === 1;
   const businessTypeInfo = data?.business_type_id

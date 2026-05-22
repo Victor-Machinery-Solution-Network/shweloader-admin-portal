@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,14 +45,20 @@ export function FormDialog({
   className,
 }: FormDialogProps) {
   const [submitted, setSubmitted] = useState(false);
-  const portalRef = useRef<HTMLDivElement>(null);
+  // Portal container element exposed to nested Popover/Combobox via context.
+  // Stored as state (via callback ref) so consumers can read it during render
+  // without a ref-during-render violation.
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
 
   // Reset submitted state when dialog closes programmatically (e.g. after successful save).
   // Radix Dialog's onOpenChange only fires for user-initiated closes (overlay/Escape),
-  // not when the parent changes the `open` prop directly.
-  useEffect(() => {
+  // not when the parent changes the `open` prop directly. We track the previous `open`
+  // and reset during render — see https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) setSubmitted(false);
-  }, [open]);
+  }
 
   return (
     <Dialog
@@ -71,8 +77,8 @@ export function FormDialog({
           className,
         )}
       >
-        <PopoverPortalContext value={portalRef}>
-        <ComboboxPortalContext value={portalRef}>
+        <PopoverPortalContext value={portalContainer}>
+        <ComboboxPortalContext value={portalContainer}>
           <DialogHeader className="items-center text-center">
             {icon && (
               <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
@@ -117,7 +123,7 @@ export function FormDialog({
           </form>
           {/* Portal target for nested popovers (Combobox, etc.).
               Absolutely positioned so it doesn't affect form layout. */}
-          <div ref={portalRef} className="absolute" />
+          <div ref={setPortalContainer} className="absolute" />
         </ComboboxPortalContext>
         </PopoverPortalContext>
       </DialogContent>

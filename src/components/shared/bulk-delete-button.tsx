@@ -24,26 +24,39 @@ export function BulkDeleteButton<TData>({
 }: BulkDeleteButtonProps<TData>) {
   const [showDialog, setShowDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [description, setDescription] = useState('');
   const { clearSelection } = useDataTable();
 
   const count = selectedRows.length;
   const plural = count === 1 ? itemLabel : `${itemLabel}s`;
 
-  useEffect(() => {
-    if (count === 0) {
-      setDescription('');
-      return;
-    }
+  // Default (sync) description — computed during render, no effect needed.
+  const defaultDescription =
+    count === 0
+      ? ''
+      : `This will permanently delete ${count} ${plural}. This action cannot be undone.`;
 
-    if (buildDescription) {
-      buildDescription(selectedRows).then(setDescription);
-    } else {
-      setDescription(
-        `This will permanently delete ${count} ${plural}. This action cannot be undone.`,
-      );
-    }
-  }, [count, buildDescription, selectedRows, plural]);
+  // Async description (when a buildDescription is provided). We tag the result
+  // with the selectedRows reference it was computed for, so stale async results
+  // are automatically discarded during render.
+  const [asyncDescription, setAsyncDescription] = useState<
+    { rows: TData[]; value: string } | null
+  >(null);
+
+  const description =
+    asyncDescription && asyncDescription.rows === selectedRows
+      ? asyncDescription.value
+      : defaultDescription;
+
+  useEffect(() => {
+    if (!buildDescription || count === 0) return;
+    let cancelled = false;
+    buildDescription(selectedRows).then((value) => {
+      if (!cancelled) setAsyncDescription({ rows: selectedRows, value });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [count, buildDescription, selectedRows]);
 
   if (count === 0) return null;
 

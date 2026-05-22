@@ -31,7 +31,8 @@ export function LoginForm({ reason }: { reason?: string }) {
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
-  const [isNavigating, setIsNavigating] = useState(false);
+  // Derived directly from action state — no state, no effect, no flash
+  const isNavigating = state?.success ?? false;
   const passwordRef = useRef<HTMLInputElement>(null);
   const turnstileRef = useRef<HTMLInputElement>(null);
   const turnstileWidgetRef = useRef<TurnstileHandle>(null);
@@ -64,7 +65,6 @@ export function LoginForm({ reason }: { reason?: string }) {
   // On error, show toast and refocus password field
   useEffect(() => {
     if (state?.success) {
-      setIsNavigating(true);
       router.push(ROUTES.DASHBOARD);
       return;
     }

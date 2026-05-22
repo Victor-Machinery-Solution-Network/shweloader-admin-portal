@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  type ColumnDef,
   flexRender,
   type Table as TanstackTable,
 } from "@tanstack/react-table";

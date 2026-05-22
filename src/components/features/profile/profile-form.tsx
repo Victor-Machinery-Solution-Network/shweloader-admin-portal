@@ -59,7 +59,7 @@ interface ProfileData {
 }
 
 export function ProfileForm() {
-  const { data: session, update: updateSession } = useSession();
+  const { update: updateSession } = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

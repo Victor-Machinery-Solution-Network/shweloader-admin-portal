@@ -118,6 +118,7 @@ function SortableImageCard({
       )}
     >
       <div className="relative aspect-square w-full">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={preview}
           alt=""

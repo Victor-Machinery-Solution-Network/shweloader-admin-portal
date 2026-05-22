@@ -48,7 +48,7 @@ export function CarouselImageGrid({
   initialImages,
 }: CarouselImageGridProps) {
   const canCreate = useHasPermission("carousels", "create");
-  const { data: images, setData: setImages, handleReorder } = useDragReorder(
+  const { data: images, handleReorder } = useDragReorder(
     initialImages,
     {
       getRowId: (img) => img.image_id,

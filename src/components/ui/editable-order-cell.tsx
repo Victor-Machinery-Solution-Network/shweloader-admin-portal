@@ -25,10 +25,14 @@ export function EditableOrderCell({
   // so commit() would run with the user's typed value instead of being cancelled.
   const cancelledRef = useRef(false);
 
-  // Sync display value when position changes externally (after reorder)
-  useEffect(() => {
+  // Sync display value when position changes externally (after reorder).
+  // Track previous position and reset during render — see
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [prevPosition, setPrevPosition] = useState(safePosition);
+  if (prevPosition !== safePosition) {
+    setPrevPosition(safePosition);
     if (!isEditing) setValue(String(safePosition));
-  }, [safePosition, isEditing]);
+  }
 
   // Auto-focus and select on edit
   useEffect(() => {
