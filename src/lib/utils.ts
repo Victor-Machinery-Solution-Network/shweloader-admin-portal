@@ -40,7 +40,7 @@ export function timeAgo(dateStr: string): string {
 
 /**
  * Calculate estimated read time in minutes from content.
- * Strips markdown/HTML syntax before counting words. Assumes ~200 words/minute.
+ * Strips markdown/HTML syntax before counting words. Assumes ~200 words per minute.
  */
 export function calculateReadTime(content: string | null): number {
   if (!content?.trim()) return 1;
