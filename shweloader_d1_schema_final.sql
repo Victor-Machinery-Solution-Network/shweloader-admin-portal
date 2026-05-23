@@ -483,6 +483,8 @@ CREATE TABLE IF NOT EXISTS article (
     publish_date TIMESTAMP,
     author_name TEXT,
     cover_image_url TEXT,
+    cover_thumb_url TEXT,
+    cover_blurhash TEXT,
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     estimated_read_time INTEGER,
@@ -510,6 +512,8 @@ CREATE INDEX IF NOT EXISTS idx_article_deleted_at ON article(deleted_at);
 CREATE TABLE IF NOT EXISTS image (
     image_id INTEGER PRIMARY KEY AUTOINCREMENT,
     image_url TEXT NOT NULL,
+    thumb_url TEXT,
+    blurhash TEXT,
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     uploaded_by INTEGER,
@@ -907,6 +911,8 @@ CREATE TABLE IF NOT EXISTS product_list (
     custom_fields TEXT,
     description TEXT,
     thumbnail_url TEXT,
+    thumbnail_sm_url TEXT,
+    thumbnail_blurhash TEXT,
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     township_id INTEGER,
@@ -972,6 +978,8 @@ CREATE TABLE IF NOT EXISTS product_image (
     image_id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_list_id INTEGER NOT NULL,
     url TEXT NOT NULL,
+    thumb_url TEXT,
+    blurhash TEXT,
     focal_x REAL NOT NULL DEFAULT 0.5,
     focal_y REAL NOT NULL DEFAULT 0.5,
     display_order TEXT DEFAULT '0',
@@ -1112,6 +1120,32 @@ CREATE TABLE IF NOT EXISTS notification (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notification_recipient ON notification(recipient_id, is_read, created_at DESC);
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- USER NOTIFICATION (mobile app inbox)
+-- ════════════════════════════════════════════════════════════════════════════
+-- Per-user notification inbox used by the mobile app. Separate from
+-- `notification` (which is the admin inbox keyed by admin_user). Written by
+-- the admin portal via src/lib/services/user-notification.ts and read by the
+-- mobile worker (cloudflare-worker-app-rest-api-dev/src/routes/notifications.ts).
+
+CREATE TABLE IF NOT EXISTS user_notification (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_user_id    INTEGER NOT NULL,
+    type           TEXT NOT NULL CHECK(type IN ('chat_reply', 'promotion', 'partner_approved', 'partner_rejected')),
+    title          TEXT NOT NULL,
+    body           TEXT,
+    image_url      TEXT,
+    reference_type TEXT,
+    reference_id   INTEGER,
+    action_url     TEXT,
+    is_read        INTEGER NOT NULL DEFAULT 0 CHECK(is_read IN (0, 1)),
+    read_at        TIMESTAMP,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notification_inbox ON user_notification(app_user_id, is_read, created_at DESC);
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- SAVED ITEM / BOOKMARKS (mobile app)
