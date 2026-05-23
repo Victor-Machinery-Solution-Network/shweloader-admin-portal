@@ -187,6 +187,10 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   }, [selectedId, productRefreshKey]);
 
   function handleSelect(id: number) {
+    // Sync the ref synchronously here so any Pusher event firing between the
+    // click and the effect-commit phase sees the correct selected session.
+    // The effect on line 33 keeps it in sync for non-click selection changes.
+    selectedIdRef.current = id;
     setSelectedId(id);
     // Clear unread badge locally and mark as read in DB + notify bell
     const session = sessions.find((s) => s.id === id);

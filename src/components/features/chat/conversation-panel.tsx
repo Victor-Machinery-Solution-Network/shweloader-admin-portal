@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import {
   Headset,
   MessageSquare,
@@ -90,13 +90,34 @@ export function ConversationPanel({
   const prevSessionIdRef = useRef<number | null>(null);
   const isNewSessionRef = useRef(false);
 
+  // Track the last message ID we marked as read, so the layout-effect path
+  // and the IntersectionObserver path don't double-call markReadAndNotify
+  // (they coordinate via the same watermark).
+  const lastMarkedMessageIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (session?.id && session.id !== prevSessionIdRef.current) {
       prevSessionIdRef.current = session.id;
       isNewSessionRef.current = true;
       isNearBottomRef.current = true;
+      // Reset watermark when switching sessions so the new session gets marked.
+      lastMarkedMessageIdRef.current = null;
     }
   }, [session?.id]);
+
+  // Idempotent "mark this session read up through the latest message we've
+  // rendered". Called from both the auto-scroll layout-effect and the
+  // IntersectionObserver; the watermark gate makes redundant calls a no-op.
+  // Wrapped in useEffectEvent so the IntersectionObserver always sees the
+  // latest closure values without re-creating the observer.
+  const maybeMarkRead = useEffectEvent(() => {
+    if (!session?.id) return;
+    const lastMsgId = messages.length > 0 ? messages[messages.length - 1].id : null;
+    if (lastMsgId === null || lastMsgId === lastMarkedMessageIdRef.current) return;
+    lastMarkedMessageIdRef.current = lastMsgId;
+    onMessagesRead?.();
+    markReadAndNotify(session.id);
+  });
 
   // Auto-scroll: on session change (instant), on send, or on incoming message at bottom
   // Uses useLayoutEffect to scroll before paint, preventing visual flicker
@@ -107,23 +128,14 @@ export function ConversationPanel({
       if (isNewSessionRef.current) {
         isNewSessionRef.current = false;
         messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-        if (session?.id) {
-          onMessagesRead?.();
-          markReadAndNotify(session.id);
-        }
+        maybeMarkRead();
       } else if (justSentRef.current) {
         justSentRef.current = false;
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        if (session?.id) {
-          onMessagesRead?.();
-          markReadAndNotify(session.id);
-        }
+        maybeMarkRead();
       } else if (isNearBottomRef.current) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        if (session?.id) {
-          onMessagesRead?.();
-          markReadAndNotify(session.id);
-        }
+        maybeMarkRead();
       }
     };
 
@@ -166,12 +178,9 @@ export function ConversationPanel({
     } else {
       performScroll();
     }
-  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   // IntersectionObserver on the bottom sentinel — when visible, user has seen latest messages
-  const onMessagesReadRef = useRef(onMessagesRead);
-  onMessagesReadRef.current = onMessagesRead;
-
   useEffect(() => {
     const sentinel = messagesEndRef.current;
     const scrollRoot = scrollAreaRef.current;
@@ -184,9 +193,8 @@ export function ConversationPanel({
     const observer = new IntersectionObserver(
       ([entry]) => {
         isNearBottomRef.current = entry.isIntersecting;
-        if (entry.isIntersecting && session?.id) {
-          onMessagesReadRef.current?.();
-          markReadAndNotify(session.id);
+        if (entry.isIntersecting) {
+          maybeMarkRead();
         }
       },
       { root: viewport, threshold: 0.1 },

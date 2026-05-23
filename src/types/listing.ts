@@ -60,6 +60,8 @@ export interface SaleListing {
   is_sold_out: number;
   display_currency: string;
   use_system_rate: number;
+  /** Per-listing USD→MMK rate, used when use_system_rate = 0. NULL when system rate is in effect. */
+  rate_to_usd: number | null;
   approved_by: number | null;
   approved_at: string | null;
   rejection_reason: string | null;
@@ -85,6 +87,8 @@ export interface RentListing {
   is_rented: number;
   display_currency: string;
   use_system_rate: number;
+  /** Per-listing USD→MMK rate, used when use_system_rate = 0. NULL when system rate is in effect. */
+  rate_to_usd: number | null;
   rental_unit: RentalUnit;
   approved_by: number | null;
   approved_at: string | null;
@@ -123,6 +127,8 @@ export interface SaleListingWithDetails {
   is_sold_out: number;
   display_currency: string;
   use_system_rate: number;
+  /** Per-listing USD→MMK rate, used when use_system_rate = 0. NULL when system rate is in effect. */
+  rate_to_usd: number | null;
   approve_status_id: number | null;
   rejection_reason: string | null;
   created_at: string;
@@ -179,6 +185,8 @@ export interface RentListingWithDetails {
   is_rented: number;
   display_currency: string;
   use_system_rate: number;
+  /** Per-listing USD→MMK rate, used when use_system_rate = 0. NULL when system rate is in effect. */
+  rate_to_usd: number | null;
   rental_unit: RentalUnit;
   approve_status_id: number | null;
   rejection_reason: string | null;
@@ -310,6 +318,8 @@ export interface ListingDetail {
   hide_price: number;
   display_currency: string;
   use_system_rate: number;
+  /** Per-listing USD→MMK rate, used when use_system_rate = 0. NULL when system rate is in effect. */
+  rate_to_usd: number | null;
   is_hidden: number;
   // Product info
   thumbnail_url: string | null;

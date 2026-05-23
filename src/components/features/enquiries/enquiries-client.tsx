@@ -24,8 +24,10 @@ interface EnquiriesClientProps {
 }
 
 // Excel template shape — splits stacked on-screen cells into separate sheet
-// columns and adds report-friendly formatting (Sale/Rental, formatted date,
-// MMK and USD shipped as their own columns).
+// columns and adds report-friendly formatting (Sale/Rental, formatted date).
+// MMK Price / USD Price are emitted as raw numbers (not formatted strings)
+// so Excel can SUM/FILTER them. The rental unit (per_day / per_week / etc) is
+// shipped as its own column when applicable.
 const EXPORT_COLUMNS: ExportColumn[] = [
   { key: "no", header: "No." },
   { key: "inquiry_date", header: "Inquiry Date" },
@@ -35,11 +37,10 @@ const EXPORT_COLUMNS: ExportColumn[] = [
   { key: "email", header: "Email" },
   { key: "location", header: "Location" },
   { key: "product_type", header: "Product Type" },
+  { key: "rental_unit", header: "Rental Unit" },
   { key: "product_code", header: "Product Code" },
   { key: "brand", header: "Brand" },
   { key: "model", header: "Model" },
-  // MMK + USD ship as separate columns so each can be filtered/summed in
-  // Excel. The on-screen table still stacks both in one Price cell.
   { key: "mmk_price", header: "MMK Price" },
   { key: "usd_price", header: "USD Price" },
   { key: "partner_account", header: "Partner Account (Owner Account)" },
@@ -48,22 +49,14 @@ const EXPORT_COLUMNS: ExportColumn[] = [
   { key: "notes", header: "Notes" },
 ];
 
-// Build a "1,000,000 MMK / day" or "$500 / day" style string for one currency.
-// Returns empty string when the price is null so Excel cells stay blank.
-function formatPriceValue(
-  amount: number | null,
-  currency: "MMK" | "USD",
+// Format the rental_unit value for export ("per_day" → "per day"). Blank for
+// sale enquiries or when the unit is missing.
+function formatRentalUnit(
   productType: string | null,
   rentalUnit: string | null,
 ): string {
-  if (amount == null) return "";
-  const unitSuffix =
-    productType === "rent" && rentalUnit
-      ? ` / ${rentalUnit.replace(/^per_/, "").replace(/_/g, " ")}`
-      : "";
-  return currency === "MMK"
-    ? `${Number(amount).toLocaleString()} MMK${unitSuffix}`
-    : `$${Number(amount).toLocaleString()}${unitSuffix}`;
+  if (productType !== "rent" || !rentalUnit) return "";
+  return rentalUnit.replace(/^per_/, "").replace(/_/g, " ");
 }
 
 export function EnquiriesClient({
@@ -125,21 +118,14 @@ export function EnquiriesClient({
         email: e.user_email ?? "",
         location: e.user_location ?? "",
         product_type: e.product_type === "sale" ? "Sale" : "Rental",
+        rental_unit: formatRentalUnit(e.product_type, e.rental_unit),
         product_code: e.product_code ?? "",
         brand: e.brand_name ?? "",
         model: e.model_name ?? "",
-        mmk_price: formatPriceValue(
-          e.mmk_price,
-          "MMK",
-          e.product_type,
-          e.rental_unit,
-        ),
-        usd_price: formatPriceValue(
-          e.usd_price,
-          "USD",
-          e.product_type,
-          e.rental_unit,
-        ),
+        // Raw numbers so Excel treats these as numeric (SUM / FILTER work).
+        // Empty string stays blank in the cell.
+        mmk_price: e.mmk_price ?? "",
+        usd_price: e.usd_price ?? "",
         partner_account: e.partner_name ?? "",
         partner_username: e.partner_username ?? "",
         status: e.close_outcome

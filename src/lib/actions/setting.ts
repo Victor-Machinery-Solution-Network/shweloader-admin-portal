@@ -31,6 +31,19 @@ export async function updateSettings(
   try {
     const updatedBy = await requirePermission("app_settings", "edit");
 
+    // Validate exchange rate BEFORE persisting any setting. Otherwise a bad
+    // value (0, NaN, negative, non-numeric) lands in app_setting and every
+    // listing editor that loads after will see rate=0, computing mmk_price=0.
+    if (SETTING_KEYS.EXCHANGE_RATE in settings) {
+      const newRate = Number(settings[SETTING_KEYS.EXCHANGE_RATE]);
+      if (!Number.isFinite(newRate) || newRate <= 0) {
+        return {
+          success: false,
+          error: "Exchange rate must be a positive number",
+        };
+      }
+    }
+
     await Promise.all(
       Object.entries(settings).map(([key, value]) =>
         d1.query(
@@ -45,34 +58,33 @@ export async function updateSettings(
       ),
     );
 
-    // If exchange rate changed, batch-recalculate MMK prices for system-rate listings
+    // If exchange rate changed, batch-recalculate MMK prices for system-rate listings.
+    // (Validation above guarantees newRate > 0.)
     if (SETTING_KEYS.EXCHANGE_RATE in settings) {
       const newRate = Number(settings[SETTING_KEYS.EXCHANGE_RATE]);
-      if (newRate > 0) {
-        await Promise.all([
-          d1.query(
-            `UPDATE sale_listing
-             SET mmk_price = CAST(usd_price * ? AS INTEGER),
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE use_system_rate = 1
-               AND usd_price IS NOT NULL
-               AND deleted_at IS NULL`,
-            [newRate],
-          ),
-          d1.query(
-            `UPDATE rent_listing
-             SET mmk_price = CAST(usd_price * ? AS INTEGER),
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE use_system_rate = 1
-               AND usd_price IS NOT NULL
-               AND deleted_at IS NULL`,
-            [newRate],
-          ),
-        ]);
-        invalidateTag(CACHE_TAGS.SALE_LISTINGS);
-        invalidateTag(CACHE_TAGS.RENT_LISTINGS);
-        invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
-      }
+      await Promise.all([
+        d1.query(
+          `UPDATE sale_listing
+           SET mmk_price = CAST(usd_price * ? AS INTEGER),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE use_system_rate = 1
+             AND usd_price IS NOT NULL
+             AND deleted_at IS NULL`,
+          [newRate],
+        ),
+        d1.query(
+          `UPDATE rent_listing
+           SET mmk_price = CAST(usd_price * ? AS INTEGER),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE use_system_rate = 1
+             AND usd_price IS NOT NULL
+             AND deleted_at IS NULL`,
+          [newRate],
+        ),
+      ]);
+      invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+      invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+      invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
     }
 
     invalidateTag(CACHE_TAGS.SETTINGS);

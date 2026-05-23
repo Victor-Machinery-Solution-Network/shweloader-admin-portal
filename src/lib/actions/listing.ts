@@ -344,6 +344,30 @@ function extractProductFields(formData: FormData) {
   };
 }
 
+/**
+ * Resolve the per-listing exchange rate to persist on a sale_listing /
+ * rent_listing row. When the admin chose "use system rate" we store NULL —
+ * the live system rate (app_setting.exchange_rate) is the source of truth.
+ * When the admin entered a custom rate, we validate it (positive finite) and
+ * store it. A bad custom rate is a hard error — without this, listings end up
+ * with mmk_price=0 silently.
+ */
+function resolveRateToUsd(
+  formData: FormData,
+  fieldName: string,
+  useSystemRate: 0 | 1,
+): number | null {
+  if (useSystemRate === 1) return null;
+  const raw = formData.get(fieldName);
+  const rate = raw == null || raw === "" ? NaN : Number(raw);
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error(
+      `Custom exchange rate must be a positive number when "use system rate" is off`,
+    );
+  }
+  return rate;
+}
+
 const DRAFT_FOR_SALE_KEY = "__draft_for_sale";
 const DRAFT_FOR_RENT_KEY = "__draft_for_rent";
 const DRAFT_CONDITION_ID_KEY = "__draft_condition_id";
@@ -597,6 +621,8 @@ export async function createListing(formData: FormData) {
       );
       const saleApproveStatusId = statusResult.results[0]?.id ?? null;
 
+      const saleUseSystemRate: 0 | 1 =
+        formData.get("sale_use_system_rate") === "0" ? 0 : 1;
       const saleResult = await saleListingService.create({
         product_list_id: productId,
         condition_type_id: formData.get("condition_type_id")
@@ -613,8 +639,8 @@ export async function createListing(formData: FormData) {
         is_sold_out: 0,
         display_currency:
           (formData.get("sale_display_currency") as string) || "MMK",
-        use_system_rate:
-          formData.get("sale_use_system_rate") === "0" ? 0 : 1,
+        use_system_rate: saleUseSystemRate,
+        rate_to_usd: resolveRateToUsd(formData, "sale_rate_to_usd", saleUseSystemRate),
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? created_by : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -640,6 +666,8 @@ export async function createListing(formData: FormData) {
       );
       const rentApproveStatusId = statusResult.results[0]?.id ?? null;
 
+      const rentUseSystemRate: 0 | 1 =
+        formData.get("rent_use_system_rate") === "0" ? 0 : 1;
       const rentResult = await rentListingService.create({
         product_list_id: productId,
         mmk_price: formData.get("rent_mmk_price")
@@ -653,8 +681,8 @@ export async function createListing(formData: FormData) {
         is_rented: 0,
         display_currency:
           (formData.get("rent_display_currency") as string) || "MMK",
-        use_system_rate:
-          formData.get("rent_use_system_rate") === "0" ? 0 : 1,
+        use_system_rate: rentUseSystemRate,
+        rate_to_usd: resolveRateToUsd(formData, "rent_rate_to_usd", rentUseSystemRate),
         rental_unit:
           (formData.get("rental_unit") as RentalUnit) || "per_day",
         approve_status_id: rentApproveStatusId,
@@ -774,6 +802,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     });
 
     // 3. Update sale_listing
+    const saleUseSystemRate: 0 | 1 =
+      formData.get("sale_use_system_rate") === "0" ? 0 : 1;
     await saleListingService.update(saleId, {
       condition_type_id: formData.get("condition_type_id")
         ? Number(formData.get("condition_type_id"))
@@ -788,8 +818,8 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
       display_currency:
         (formData.get("sale_display_currency") as string) || "MMK",
-      use_system_rate:
-        formData.get("sale_use_system_rate") === "0" ? 0 : 1,
+      use_system_rate: saleUseSystemRate,
+      rate_to_usd: resolveRateToUsd(formData, "sale_rate_to_usd", saleUseSystemRate),
     });
 
     // 4. Sync product photos
@@ -897,6 +927,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     });
 
     // 3. Update rent_listing
+    const rentUseSystemRate: 0 | 1 =
+      formData.get("rent_use_system_rate") === "0" ? 0 : 1;
     await rentListingService.update(rentId, {
       mmk_price: formData.get("rent_mmk_price")
         ? Number(formData.get("rent_mmk_price"))
@@ -908,8 +940,8 @@ export async function updateRentListing(rentId: number, formData: FormData) {
       is_hidden: formData.get("is_hidden") === "1" ? 1 : 0,
       display_currency:
         (formData.get("rent_display_currency") as string) || "MMK",
-      use_system_rate:
-        formData.get("rent_use_system_rate") === "0" ? 0 : 1,
+      use_system_rate: rentUseSystemRate,
+      rate_to_usd: resolveRateToUsd(formData, "rent_rate_to_usd", rentUseSystemRate),
       rental_unit:
         (formData.get("rental_unit") as RentalUnit) || "per_day",
     });
@@ -1217,7 +1249,7 @@ export async function getSaleListingsWithDetails(): Promise<
     `SELECT
       sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, sl.rate_to_usd, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at,
       sl.created_at, sl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1260,7 +1292,7 @@ export async function getRentListingsWithDetails(): Promise<
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rate_to_usd, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at,
       rl.created_at, rl.display_order,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1416,7 +1448,7 @@ export async function getSaleListingWithDetailsById(
     `SELECT
       sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id, sl.condition_type_id,
       ct.name AS condition_name,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.is_hidden, sl.is_sold_out, sl.display_currency, sl.use_system_rate, sl.rate_to_usd, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       sl.approve_status_id, sl.rejection_reason, sl.approved_at, sl.approved_by,
       sl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1452,7 +1484,7 @@ export async function getRentListingWithDetailsById(
   const result = await d1.query<RentListingWithDetails>(
     `SELECT
       rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.is_hidden, rl.is_rented, rl.display_currency, rl.use_system_rate, rl.rate_to_usd, rl.rental_unit, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township,
       rl.approve_status_id, rl.rejection_reason, rl.approved_at, rl.approved_by,
       rl.created_at,
       pl.thumbnail_url, pl.description, pl.township_id,
@@ -1493,7 +1525,7 @@ export async function getListingDetail(
       sl.id, ${customIdSqlExpr()} AS custom_id, sl.product_list_id,
       sl.condition_type_id, ct.name AS condition_name,
       sl.is_sold_out, NULL AS is_rented, NULL AS rental_unit,
-      sl.mmk_price, sl.usd_price, sl.hide_price, sl.display_currency, sl.use_system_rate, sl.is_hidden,
+      sl.mmk_price, sl.usd_price, sl.hide_price, sl.display_currency, sl.use_system_rate, sl.rate_to_usd, sl.is_hidden,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
@@ -1553,7 +1585,7 @@ export async function getListingDetail(
       rl.id, ${customIdSqlExpr()} AS custom_id, rl.product_list_id,
       NULL AS condition_type_id, NULL AS condition_name,
       NULL AS is_sold_out, rl.is_rented, rl.rental_unit,
-      rl.mmk_price, rl.usd_price, rl.hide_price, rl.display_currency, rl.use_system_rate, rl.is_hidden,
+      rl.mmk_price, rl.usd_price, rl.hide_price, rl.display_currency, rl.use_system_rate, rl.rate_to_usd, rl.is_hidden,
       pl.thumbnail_url, pl.description, pl.township_id,
       pl.equipment_model_id, pl.attachment_model_id, pl.partner_id, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
       COALESCE(em.name, am.name) AS model_name,
@@ -2109,6 +2141,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
       const saleApproveStatusId = statusResult.results[0]?.id ?? null;
 
       const saleDisplayOrder = await getNextDisplayOrder("sale_listing");
+      const saleUseSystemRate: 0 | 1 =
+        formData.get("sale_use_system_rate") === "0" ? 0 : 1;
       const saleResult = await saleListingService.create({
         product_list_id: productListId,
         condition_type_id: formData.get("condition_type_id")
@@ -2125,8 +2159,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         is_sold_out: 0,
         display_currency:
           (formData.get("sale_display_currency") as string) || "MMK",
-        use_system_rate:
-          formData.get("sale_use_system_rate") === "0" ? 0 : 1,
+        use_system_rate: saleUseSystemRate,
+        rate_to_usd: resolveRateToUsd(formData, "sale_rate_to_usd", saleUseSystemRate),
         approve_status_id: saleApproveStatusId,
         approved_by: canApproveSale ? userId : null,
         approved_at: canApproveSale ? new Date().toISOString() : null,
@@ -2153,6 +2187,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
       const rentApproveStatusId = statusResult.results[0]?.id ?? null;
 
       const rentDisplayOrder = await getNextDisplayOrder("rent_listing");
+      const rentUseSystemRate: 0 | 1 =
+        formData.get("rent_use_system_rate") === "0" ? 0 : 1;
       const rentResult = await rentListingService.create({
         product_list_id: productListId,
         mmk_price: formData.get("rent_mmk_price")
@@ -2166,8 +2202,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
         is_rented: 0,
         display_currency:
           (formData.get("rent_display_currency") as string) || "MMK",
-        use_system_rate:
-          formData.get("rent_use_system_rate") === "0" ? 0 : 1,
+        use_system_rate: rentUseSystemRate,
+        rate_to_usd: resolveRateToUsd(formData, "rent_rate_to_usd", rentUseSystemRate),
         rental_unit:
           (formData.get("rental_unit") as RentalUnit) || "per_day",
         approve_status_id: rentApproveStatusId,

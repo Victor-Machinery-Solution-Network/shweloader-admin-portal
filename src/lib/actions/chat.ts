@@ -23,6 +23,8 @@ import type {
 export async function getChatSessionsWithDetails(): Promise<
   ChatSessionWithDetails[]
 > {
+  await requirePermission("chat", "read");
+
   const result = await d1.query<ChatSessionWithDetails>(
     `SELECT
       cs.id, cs.app_user_id, cs.status,
@@ -256,6 +258,8 @@ export async function getUnreadChatSessions(): Promise<
 export async function getRecentChatSessions(): Promise<
   { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
 > {
+  await requirePermission("chat", "read");
+
   const result = await d1.query<{
     id: number;
     user_name: string;

@@ -913,7 +913,10 @@ export function ListingEditor({
           : true),
   );
   const [saleCustomRate, setSaleCustomRate] = useState<string>(
-    savedState?.saleCustomRate ?? String(exchangeRate),
+    savedState?.saleCustomRate ??
+      (isEditing && pageType === "sale" && listing?.rate_to_usd != null
+        ? String(listing.rate_to_usd)
+        : String(exchangeRate)),
   );
   const [rentUseSystemRate, setRentUseSystemRate] = useState(
     savedState?.rentUseSystemRate ??
@@ -924,7 +927,10 @@ export function ListingEditor({
           : true),
   );
   const [rentCustomRate, setRentCustomRate] = useState<string>(
-    savedState?.rentCustomRate ?? String(exchangeRate),
+    savedState?.rentCustomRate ??
+      (isEditing && pageType === "rent" && listing?.rate_to_usd != null
+        ? String(listing.rate_to_usd)
+        : String(exchangeRate)),
   );
   const [rentalUnit, setRentalUnit] = useState<string>(
     savedState?.rentalUnit ??
@@ -1349,6 +1355,24 @@ export function ListingEditor({
         toast.error("Please enter a rental price");
         return;
       }
+      // Validate per-listing custom rate when "use system rate" is off — a
+      // missing/zero/negative rate would silently save mmk_price=0.
+      if (forSale && !saleUseSystemRate) {
+        const r = parseFloat(saleCustomRate);
+        if (!Number.isFinite(r) || r <= 0) {
+          setCurrentStep(1);
+          toast.error("Sale custom exchange rate must be a positive number");
+          return;
+        }
+      }
+      if (forRent && !rentUseSystemRate) {
+        const r = parseFloat(rentCustomRate);
+        if (!Number.isFinite(r) || r <= 0) {
+          setCurrentStep(1);
+          toast.error("Rent custom exchange rate must be a positive number");
+          return;
+        }
+      }
       if (isCreateMode && !thumbnailUrl) {
         setCurrentStep(2);
         toast.error("Please upload a thumbnail image");
@@ -1391,6 +1415,16 @@ export function ListingEditor({
     formData.set("rent_display_currency", rentDisplayCurrency);
     formData.set("sale_use_system_rate", saleUseSystemRate ? "1" : "0");
     formData.set("rent_use_system_rate", rentUseSystemRate ? "1" : "0");
+    // Per-listing custom rate: only submitted when the admin chose NOT to use
+    // the system rate. Empty string = clear stored rate (system rate takes over).
+    formData.set(
+      "sale_rate_to_usd",
+      forSale && !saleUseSystemRate ? saleCustomRate.trim() : "",
+    );
+    formData.set(
+      "rent_rate_to_usd",
+      forRent && !rentUseSystemRate ? rentCustomRate.trim() : "",
+    );
     formData.set("add_to_featured", "0");
     if (forSale && conditionId) {
       formData.set("condition_type_id", conditionId);

@@ -30,7 +30,6 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   const [sessionClosed, setSessionClosed] = useState(false);
   const [userLastReadAt, setUserLastReadAt] = useState<string | null>(initialUserLastReadAt);
   const { subscribeToChannel, isReady } = usePusher();
-  const mountedRef = useRef(true);
 
   // Reset per-session state when sessionId changes — prev-state pattern.
   const [prevSessionId, setPrevSessionId] = useState(sessionId);
@@ -41,14 +40,17 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
     if (!sessionId) setMessages([]);
   }
 
-  // Fetch messages on session change (only when sessionId changes)
+  // Fetch messages on session change (only when sessionId changes).
+  // We use a per-effect `cancelled` flag instead of a shared mountedRef so that
+  // rapid session switches (A → B) don't let A's pending fetch overwrite B's
+  // messages — each effect run has its own cancellation token.
   useEffect(() => {
-    mountedRef.current = true;
     if (!sessionId) return;
+    let cancelled = false;
 
     startLoading(async () => {
       const msgs = await getChatMessages(sessionId);
-      if (mountedRef.current) setMessages(msgs);
+      if (!cancelled) setMessages(msgs);
     });
 
     // Mark as read only if there are unread messages.
@@ -58,7 +60,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
     }
 
     return () => {
-      mountedRef.current = false;
+      cancelled = true;
     };
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
