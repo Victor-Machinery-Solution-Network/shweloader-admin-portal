@@ -513,13 +513,14 @@ async function createProductAndGetId(
     custom_id_suffix,
     created_by,
   });
-  let productId = (product as unknown as Record<string, unknown>)?.id as number;
-  if (!productId) {
-    const lastRow = await d1.query<{ id: number }>(
-      "SELECT id FROM product_list ORDER BY id DESC LIMIT 1",
-    );
-    productId = lastRow.results[0]?.id;
-  }
+  const productId = (product as unknown as Record<string, unknown>)?.id as
+    | number
+    | undefined;
+  // No SELECT MAX(id) fallback — under concurrent product creation the
+  // fallback can return a different product's id and silently wire images
+  // / listings to the wrong product_list. If create() doesn't return the
+  // row, that's a worker-API contract bug that should surface here.
+  if (!productId) throw new Error("Failed to create product list — no id returned");
   return productId;
 }
 
@@ -648,10 +649,10 @@ export async function createListing(formData: FormData) {
       });
       saleListingId = (saleResult as unknown as { id: number })?.id ?? null;
       if (!saleListingId) {
-        const lastRow = await d1.query<{ id: number }>(
-          "SELECT id FROM sale_listing ORDER BY id DESC LIMIT 1",
-        );
-        saleListingId = lastRow.results[0]?.id ?? null;
+        // No SELECT MAX(id) fallback — under concurrent listing creation it
+        // can return another listing's id and silently wire images/featured
+        // to the wrong row. Fail loud if the worker didn't return the id.
+        throw new Error("Failed to create sale listing — no id returned");
       }
     }
 
@@ -692,10 +693,8 @@ export async function createListing(formData: FormData) {
       });
       rentListingId = (rentResult as unknown as { id: number })?.id ?? null;
       if (!rentListingId) {
-        const lastRow = await d1.query<{ id: number }>(
-          "SELECT id FROM rent_listing ORDER BY id DESC LIMIT 1",
-        );
-        rentListingId = lastRow.results[0]?.id ?? null;
+        // No SELECT MAX(id) fallback — see sale listing creation above.
+        throw new Error("Failed to create rent listing — no id returned");
       }
     }
 
@@ -1872,6 +1871,24 @@ export async function requestReworkRent(id: number, reason?: string) {
 export async function resubmitSaleListing(id: number) {
   try {
     const userId = await requirePermission("sale_listings", "edit");
+    // Only allow resubmit from Rework. An already-Pending or Approved listing
+    // shouldn't be force-reset to Pending — that would strip approved_at,
+    // re-fire reviewer notifications, and bypass the approval state machine.
+    const current = await d1.query<{ status_name: string | null }>(
+      `SELECT ast.status_name FROM sale_listing sl
+       LEFT JOIN approval_status_type ast ON ast.id = sl.approve_status_id
+       WHERE sl.id = ?`,
+      [id],
+    );
+    const currentStatus = current.results[0]?.status_name;
+    if (!currentStatus) return { success: false, error: "Listing not found" };
+    if (currentStatus !== "Rework") {
+      return {
+        success: false,
+        error: `Cannot resubmit — listing is currently ${currentStatus}`,
+      };
+    }
+
     await d1.query(
       `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Pending'), rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id],
@@ -1902,6 +1919,22 @@ export async function resubmitSaleListing(id: number) {
 export async function resubmitRentListing(id: number) {
   try {
     const userId = await requirePermission("rent_listings", "edit");
+    // Only allow resubmit from Rework — see resubmitSaleListing for rationale.
+    const current = await d1.query<{ status_name: string | null }>(
+      `SELECT ast.status_name FROM rent_listing rl
+       LEFT JOIN approval_status_type ast ON ast.id = rl.approve_status_id
+       WHERE rl.id = ?`,
+      [id],
+    );
+    const currentStatus = current.results[0]?.status_name;
+    if (!currentStatus) return { success: false, error: "Listing not found" };
+    if (currentStatus !== "Rework") {
+      return {
+        success: false,
+        error: `Cannot resubmit — listing is currently ${currentStatus}`,
+      };
+    }
+
     await d1.query(
       `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Pending'), rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id],
@@ -1984,13 +2017,12 @@ export async function saveDraft(formData: FormData) {
       created_by: userId,
     });
 
-    let productId = (product as unknown as Record<string, unknown>)
-      ?.id as number;
+    const productId = (product as unknown as Record<string, unknown>)
+      ?.id as number | undefined;
     if (!productId) {
-      const lastRow = await d1.query<{ id: number }>(
-        "SELECT id FROM product_list ORDER BY id DESC LIMIT 1",
-      );
-      productId = lastRow.results[0]?.id;
+      // See createProductAndGetId — no SELECT MAX(id) fallback. Concurrent
+      // draft creates would race and attach files to the wrong product_list.
+      throw new Error("Failed to create product list — no id returned");
     }
 
     // Upload thumbnail if provided
@@ -2237,10 +2269,10 @@ export async function submitDraft(productListId: number, formData: FormData) {
       });
       saleListingId = (saleResult as unknown as { id: number })?.id ?? null;
       if (!saleListingId) {
-        const lastRow = await d1.query<{ id: number }>(
-          "SELECT id FROM sale_listing ORDER BY id DESC LIMIT 1",
-        );
-        saleListingId = lastRow.results[0]?.id ?? null;
+        // No SELECT MAX(id) fallback — under concurrent listing creation it
+        // can return another listing's id and silently wire images/featured
+        // to the wrong row. Fail loud if the worker didn't return the id.
+        throw new Error("Failed to create sale listing — no id returned");
       }
     }
 
@@ -2282,10 +2314,8 @@ export async function submitDraft(productListId: number, formData: FormData) {
       });
       rentListingId = (rentResult as unknown as { id: number })?.id ?? null;
       if (!rentListingId) {
-        const lastRow = await d1.query<{ id: number }>(
-          "SELECT id FROM rent_listing ORDER BY id DESC LIMIT 1",
-        );
-        rentListingId = lastRow.results[0]?.id ?? null;
+        // No SELECT MAX(id) fallback — see sale listing creation above.
+        throw new Error("Failed to create rent listing — no id returned");
       }
     }
 

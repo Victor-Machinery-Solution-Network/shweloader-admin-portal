@@ -54,7 +54,17 @@ export async function sendBroadcast(
     const tokens = result.results.map((r) => r.token);
     if (tokens.length === 0) break;
 
-    await sendToTokens(tokens, payload);
+    // Wrap per-batch so a network/quota failure in one batch doesn't break
+    // the loop and skip every remaining batch. An announcement to 5000 users
+    // should not stop at 500 because of a transient FCM hiccup.
+    try {
+      await sendToTokens(tokens, payload);
+    } catch (error) {
+      console.error(
+        `[push] sendBroadcast batch starting at offset ${offset} failed:`,
+        error,
+      );
+    }
     offset += BATCH_SIZE;
 
     if (tokens.length < BATCH_SIZE) break;

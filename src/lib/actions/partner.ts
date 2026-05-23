@@ -78,6 +78,16 @@ export async function approvePartner(id: number) {
       return { success: false, error: "Approved status type not found" };
     }
 
+    // Idempotent no-op if already Approved — avoids re-stamping reviewed_at,
+    // re-firing partner_approved push, and inserting a duplicate notification.
+    const current = await d1.query<{ status_id: number | null }>(
+      "SELECT status_id FROM partner WHERE id = ? LIMIT 1",
+      [id],
+    );
+    if (current.results[0]?.status_id === statusId) {
+      return { success: true };
+    }
+
     await partnerService.update(id, {
       status_id: statusId,
       reviewed_at: new Date().toISOString(),
@@ -131,6 +141,15 @@ export async function rejectPartner(id: number, reason: string) {
     const statusId = statusResult.results[0]?.id;
     if (!statusId) {
       return { success: false, error: "Rejected status type not found" };
+    }
+
+    // Idempotent no-op if already Rejected.
+    const current = await d1.query<{ status_id: number | null }>(
+      "SELECT status_id FROM partner WHERE id = ? LIMIT 1",
+      [id],
+    );
+    if (current.results[0]?.status_id === statusId) {
+      return { success: true };
     }
 
     await partnerService.update(id, {

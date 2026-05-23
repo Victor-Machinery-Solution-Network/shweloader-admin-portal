@@ -562,12 +562,32 @@ export async function emptyTrash(group?: TrashGroup) {
  * Does NOT require RBAC — caller must verify cron secret.
  */
 export async function purgeExpiredTrash(): Promise<{ deleted: number; errors: number }> {
+  // Cap each invocation so a backlogged DB doesn't push the Vercel function
+  // past its timeout (leaving us in an inconsistent partial state). The next
+  // daily cron picks up the remainder.
+  const PURGE_BATCH_LIMIT = 200;
+
+  // Verify the source row is STILL soft-deleted before purging. Without this,
+  // a row that was restored (deleted_at = NULL) but whose trash_metadata
+  // entry hadn't been cleaned up would get hard-deleted by the cron. Same
+  // guard as emptyTrash.
+  const softDeleteCheck = Object.entries(ENTITY_REGISTRY)
+    .map(
+      ([type, config]) =>
+        `(tm.entity_type = '${type}' AND EXISTS (SELECT 1 FROM ${config.table} WHERE ${config.primaryKey} = tm.entity_id AND deleted_at IS NOT NULL))`,
+    )
+    .join("\n        OR ");
+
   const expired = await d1.query<{
     entity_type: TrashEntityType;
     entity_id: number;
   }>(
-    `SELECT entity_type, entity_id FROM trash_metadata WHERE expires_at <= ?`,
-    [new Date().toISOString()],
+    `SELECT tm.entity_type, tm.entity_id
+       FROM trash_metadata tm
+      WHERE tm.expires_at <= ?
+        AND (${softDeleteCheck})
+      LIMIT ?`,
+    [new Date().toISOString(), PURGE_BATCH_LIMIT],
   );
 
   if (expired.results.length === 0) return { deleted: 0, errors: 0 };

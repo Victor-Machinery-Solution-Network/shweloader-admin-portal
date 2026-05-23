@@ -3,6 +3,8 @@
 import { articleService } from "@/lib/services/article";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
+import { auth } from "@/lib/auth";
+import { getCachedPermissionsForRole } from "@/lib/cache";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { CACHE_TAGS } from "@/lib/constants";
 import { calculateReadTime } from "@/lib/utils";
@@ -201,6 +203,20 @@ export async function updateArticleStatus(id: number, statusId: number) {
       await requirePermission("articles", "approve");
 
       // Publishing: set approved_by, approved_at, and publish_date if not already set
+    } else if (
+      existing?.status_name === "Published" ||
+      existing?.status_name === "Hidden"
+    ) {
+      // Downgrading away from Published/Hidden (e.g. → Draft / Pending Review)
+      // ALSO requires approve permission. Previously an editor with only
+      // articles:edit could call updateArticleStatus(id, draftStatusId) on a
+      // Published article and effectively un-publish it.
+      await requirePermission("articles", "approve");
+    }
+
+    if (statusName === "Published") {
+      // (publishing-specific UPDATE branch — kept as a separate block so we
+      // only fall through to the generic UPDATE below when not publishing.)
       await d1.query(
         `UPDATE article
          SET article_status_type_id = ?,
@@ -327,6 +343,35 @@ export async function requestArticleRework(id: number, reason?: string) {
 export async function submitForReview(id: number) {
   try {
     const userId = await requirePermission("articles", "edit");
+
+    // Only the article's author may submit it for review, AND only when it's
+    // currently a Draft or in Rework. Previously any editor could call this
+    // with any article ID — including pulling a Published article back into
+    // Pending Review. Approvers (articles:approve) bypass both checks since
+    // they have broader authority anyway.
+    const existing = await getArticleById(id);
+    if (!existing) {
+      return { success: false, error: "Article not found" };
+    }
+    // Check approve permission via cached role lookup (avoids a second
+    // requirePermission call which would throw on lack of permission rather
+    // than letting us conditionally branch).
+    const session = await auth();
+    const roleId = session?.user?.role_id ?? 0;
+    const perms = roleId ? await getCachedPermissionsForRole(roleId) : [];
+    const canApprove = perms.includes("articles:approve");
+    if (!canApprove) {
+      if (existing.created_by !== userId) {
+        return { success: false, error: "You can only submit your own articles for review" };
+      }
+      if (existing.status_name !== "Draft" && existing.status_name !== "Rework") {
+        return {
+          success: false,
+          error: `Cannot submit for review — article is currently ${existing.status_name}`,
+        };
+      }
+    }
+
     const statusResult = await d1.query<{ id: number }>(
       `SELECT id FROM article_status_type WHERE status_name = 'Pending Review' LIMIT 1`,
     );

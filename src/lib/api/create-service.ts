@@ -130,6 +130,13 @@ function buildSelectSql(
   }
 
   if (params.sort_by) {
+    // Defense-in-depth: `sort_by` is interpolated into SQL, so even though
+    // every current caller passes a hardcoded column name, validate against
+    // a safe-identifier pattern in case a future caller forgets and passes
+    // user input. SQLite identifiers: letter/underscore start + alnum/_.
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(params.sort_by)) {
+      throw new Error(`Invalid sort_by column name: ${params.sort_by}`);
+    }
     sql += ` ORDER BY ${params.sort_by} ${params.order === "desc" ? "DESC" : "ASC"}`;
   }
 
