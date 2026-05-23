@@ -311,7 +311,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ),
           );
           const row = dbUser.results[0];
-          refreshSucceeded = true;
 
           // Deactivated, soft-deleted, or completely missing — force logout.
           // Previously a missing row was treated as transient (silently kept
@@ -324,6 +323,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.avatar_url = null;
             return token;
           }
+
+          // First query succeeded with a valid row — mark refreshed so the
+          // next refresh waits the full interval. If the permissions query
+          // below fails, the catch handler runs but refreshed_at is still
+          // updated (we synced active+role; missing only permissions is OK
+          // to retry on the NEXT 5-min cycle, not immediately).
+          refreshSucceeded = true;
 
           {
             // Sync profile fields in case they were changed
