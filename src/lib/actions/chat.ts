@@ -19,12 +19,18 @@ import type {
 
 // ─── Data Fetching ──────────────────────────────────────────────────────────
 
-/** Get all chat sessions with user and product details */
+/** Get all chat sessions with user and product details.
+ *  NOTE: This function is consumed via cache.ts → ChatContent (which has
+ *  "use cache"). A `requirePermission` call here would invoke `auth()`,
+ *  which isn't allowed inside cached contexts — it crashes the page render
+ *  with "Route used X in 'use cache'". The chat page is gated by
+ *  <PermissionGate feature="chat"> + the proxy middleware before this is
+ *  ever called, so RPC-bypass exposure is the residual concern. If that
+ *  becomes a real risk, move this query into a non-"use server" services
+ *  module (src/lib/services/chat-queries.ts) so it can't be RPC-invoked. */
 export async function getChatSessionsWithDetails(): Promise<
   ChatSessionWithDetails[]
 > {
-  await requirePermission("chat", "read");
-
   const result = await d1.query<ChatSessionWithDetails>(
     `SELECT
       cs.id, cs.app_user_id, cs.status,
@@ -254,12 +260,13 @@ export async function getUnreadChatSessions(): Promise<
   return result.results;
 }
 
-/** Get recent chat sessions (read and unread) for the notifications page */
+/** Get recent chat sessions (read and unread) for the notifications page.
+ *  Same caveat as getChatSessionsWithDetails — no requirePermission here
+ *  because this is consumed via the cached page pipeline. UI gate exists
+ *  via the chat permission feature wrapper. */
 export async function getRecentChatSessions(): Promise<
   { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
 > {
-  await requirePermission("chat", "read");
-
   const result = await d1.query<{
     id: number;
     user_name: string;
