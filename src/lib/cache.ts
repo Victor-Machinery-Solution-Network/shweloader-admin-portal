@@ -58,10 +58,8 @@ import {
   getCustomFieldTemplates as fetchCustomFieldTemplates,
   getCustomFieldTemplateById as fetchCustomFieldTemplateById,
 } from "@/lib/actions/custom-field-template";
-import {
-  getChatSessionsWithDetails as fetchChatSessions,
-  getTotalUnreadCount as fetchTotalUnread,
-} from "@/lib/actions/chat";
+import { getChatSessionsWithDetails as fetchChatSessions } from "@/lib/services/chat-queries";
+import { getTotalUnreadCount as fetchTotalUnread } from "@/lib/actions/chat";
 import {
   getEnquiriesWithDetails as fetchEnquiries,
   getEnquiryStatusTypes as fetchEnquiryStatusTypes,
