@@ -62,13 +62,22 @@ export function ExportExcelButton({
       };
 
       // Data rows
+      // Sanitize formula-prefix characters on STRING values to prevent CSV/Excel
+      // formula injection. If a stored field (partner name, custom field value,
+      // notes) starts with `=`/`+`/`-`/`@`/tab/CR, Excel evaluates it as a
+      // formula when the file is opened — which can fetch external URLs,
+      // execute DDE commands, etc. Numeric values pass through untouched so
+      // SUM/FILTER still work.
+      const sanitizeForExcel = (val: unknown): unknown => {
+        if (val === null || val === undefined) return "";
+        if (typeof val !== "string") return val;
+        return /^[=+\-@\t\r]/.test(val) ? `'${val}` : val;
+      };
+
       for (const row of data) {
         const values: Record<string, unknown> = {};
         for (const col of columns) {
-          const val = row[col.key];
-          // Normalize values for Excel
-          values[col.key] =
-            val === null || val === undefined ? "" : val;
+          values[col.key] = sanitizeForExcel(row[col.key]);
         }
         sheet.addRow(values);
       }

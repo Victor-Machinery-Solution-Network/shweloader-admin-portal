@@ -42,6 +42,11 @@ export async function updateStateRegion(id: number, formData: FormData) {
   const type = formData.get("type") as string;
 
   if (!name) return { success: false, error: "Name is required" };
+  // Mirror the allowlist used in createStateRegion — update was previously
+  // missing this and would accept any string into the type column.
+  if (!["state", "region", "union_territory"].includes(type)) {
+    return { success: false, error: "Invalid type" };
+  }
 
   const validType = type as StateRegion["type"];
 

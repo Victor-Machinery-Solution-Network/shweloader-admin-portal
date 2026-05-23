@@ -166,12 +166,13 @@ export async function createBrand(formData: FormData) {
 
   try {
     const created_by = await requirePermission("brands", "create");
-    await brandService.create({
+    // Use the row returned by create — a SELECT-by-name after INSERT can race
+    // with a concurrent insert of the same name and return the wrong id.
+    const createdBrand = await brandService.create({
       name: name.trim(),
       created_by,
     });
 
-    // Fetch the newly created brand to get its ID
     const parsedCategoryIds = categoryIdsRaw
       ? (JSON.parse(categoryIdsRaw) as number[])
       : [];
@@ -180,11 +181,8 @@ export async function createBrand(formData: FormData) {
       : [];
 
     if (parsedCategoryIds.length > 0 || parsedSubCategoryIds.length > 0) {
-      const brandResult = await d1.query<{ brand_id: number }>(
-        "SELECT brand_id FROM product_brand WHERE name = ? AND deleted_at IS NULL",
-        [name.trim()],
-      );
-      const brandId = brandResult.results[0]?.brand_id;
+      const brandId = (createdBrand as unknown as { brand_id: number })
+        ?.brand_id;
 
       if (brandId) {
         // Sync attachment category links

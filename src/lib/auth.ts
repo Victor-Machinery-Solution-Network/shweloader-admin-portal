@@ -296,6 +296,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const REFRESH_MS = 5 * 60 * 1000;
       const lastRefresh = (token.refreshed_at as number) ?? 0;
       if (token.user_id && Date.now() - lastRefresh > REFRESH_MS) {
+        let refreshSucceeded = false;
         try {
           const dbUser = await withRetry(() =>
             d1.query<{
@@ -303,15 +304,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               role_id: number | null;
               username: string;
               avatar_url: string | null;
+              deleted_at: string | null;
             }>(
-              "SELECT active, role_id, username, avatar_url FROM admin_user WHERE user_id = ? LIMIT 1",
+              "SELECT active, role_id, username, avatar_url, deleted_at FROM admin_user WHERE user_id = ? LIMIT 1",
               [token.user_id as string],
             ),
           );
           const row = dbUser.results[0];
+          refreshSucceeded = true;
 
-          if (row && !row.active) {
-            // Confirmed deactivation — clear identity to force logout
+          // Deactivated, soft-deleted, or completely missing — force logout.
+          // Previously a missing row was treated as transient (silently kept
+          // the session), which left hard-deleted admins authenticated.
+          if (!row || !row.active || row.deleted_at != null) {
             token.user_id = undefined;
             token.username = undefined;
             token.role_id = null;
@@ -320,13 +325,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return token;
           }
 
-          // If !row, treat as a transient empty response: keep the existing
-          // session and try again on the next refresh cycle.
-          if (!row) {
-            console.warn(
-              "[auth:jwt] refresh returned no row, keeping existing session",
-            );
-          } else {
+          {
             // Sync profile fields in case they were changed
             token.role_id = row.role_id;
             token.username = row.username;
@@ -354,7 +353,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // On refresh failure (after retry), keep existing token data — don't break the session
           console.error("[auth:jwt] periodic refresh failed:", error);
         }
-        token.refreshed_at = Date.now();
+        // Only mark as refreshed on success. Otherwise a refresh-failure during
+        // a D1 outage would defer the next attempt by another 5 min per error —
+        // meaning a role demotion that coincided with a blip could stay live for
+        // a full extra refresh cycle.
+        if (refreshSucceeded) {
+          token.refreshed_at = Date.now();
+        }
       }
 
       return token;

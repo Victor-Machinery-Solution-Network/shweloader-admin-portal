@@ -1205,6 +1205,18 @@ export async function addToFeatured(type: "sale" | "rent", listingId: number) {
       getLastDisplayOrder("featured_listing"),
     ]);
 
+    // De-dupe: a double-click / re-submit shouldn't create two featured rows
+    // for the same listing.
+    const existing = await d1.query<{ id: number }>(
+      type === "sale"
+        ? "SELECT id FROM featured_listing WHERE sale_listing_id = ? LIMIT 1"
+        : "SELECT id FROM featured_listing WHERE rent_listing_id = ? LIMIT 1",
+      [listingId],
+    );
+    if (existing.results.length > 0) {
+      return { success: true }; // idempotent — already featured
+    }
+
     await featuredListingService.create({
       sale_listing_id: type === "sale" ? listingId : null,
       rent_listing_id: type === "rent" ? listingId : null,
@@ -1646,6 +1658,25 @@ export async function getListingDetail(
 export async function approveListingSale(id: number) {
   try {
     const userId = await requirePermission("sale_listings", "approve");
+    // Pre-read current status so we can skip if already Approved (avoids
+    // re-stamping approved_at, clearing rejection_reason, and re-notifying).
+    const current = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+      status_name: string | null;
+    }>(
+      `SELECT sl.product_list_id, sl.created_by, ast.status_name
+       FROM sale_listing sl
+       LEFT JOIN approval_status_type ast ON ast.id = sl.approve_status_id
+       WHERE sl.id = ?`,
+      [id],
+    );
+    const row = current.results[0];
+    if (!row) return { success: false, error: "Listing not found" };
+    if (row.status_name === "Approved") {
+      return { success: true }; // already approved — idempotent no-op
+    }
+
     await d1.query(
       `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, id],
@@ -1654,14 +1685,7 @@ export async function approveListingSale(id: number) {
     auditLog(userId, "approved sale listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{
-      product_list_id: number;
-      created_by: number | null;
-    }>("SELECT product_list_id, created_by FROM sale_listing WHERE id = ?", [
-      id,
-    ]);
-    const row = listing.results[0];
-    if (row?.created_by) {
+    if (row.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
       notifyListingApproved(
         id,
@@ -1684,6 +1708,23 @@ export async function approveListingSale(id: number) {
 export async function requestReworkSale(id: number, reason?: string) {
   try {
     const userId = await requirePermission("sale_listings", "approve");
+    const current = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+      status_name: string | null;
+    }>(
+      `SELECT sl.product_list_id, sl.created_by, ast.status_name
+       FROM sale_listing sl
+       LEFT JOIN approval_status_type ast ON ast.id = sl.approve_status_id
+       WHERE sl.id = ?`,
+      [id],
+    );
+    const guardRow = current.results[0];
+    if (!guardRow) return { success: false, error: "Listing not found" };
+    if (guardRow.status_name === "Rework") {
+      return { success: true }; // already in Rework — idempotent
+    }
+
     await d1.query(
       `UPDATE sale_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rework'), rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [reason || null, id],
@@ -1723,6 +1764,23 @@ export async function requestReworkSale(id: number, reason?: string) {
 export async function approveListingRent(id: number) {
   try {
     const userId = await requirePermission("rent_listings", "approve");
+    const current = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+      status_name: string | null;
+    }>(
+      `SELECT rl.product_list_id, rl.created_by, ast.status_name
+       FROM rent_listing rl
+       LEFT JOIN approval_status_type ast ON ast.id = rl.approve_status_id
+       WHERE rl.id = ?`,
+      [id],
+    );
+    const row = current.results[0];
+    if (!row) return { success: false, error: "Listing not found" };
+    if (row.status_name === "Approved") {
+      return { success: true }; // already approved — idempotent no-op
+    }
+
     await d1.query(
       `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Approved'), approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [userId, id],
@@ -1731,14 +1789,7 @@ export async function approveListingRent(id: number) {
     auditLog(userId, "approved rent listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
-    const listing = await d1.query<{
-      product_list_id: number;
-      created_by: number | null;
-    }>("SELECT product_list_id, created_by FROM rent_listing WHERE id = ?", [
-      id,
-    ]);
-    const row = listing.results[0];
-    if (row?.created_by) {
+    if (row.created_by) {
       const modelName = await getModelNameForProduct(row.product_list_id);
       notifyListingApproved(
         id,
@@ -1761,6 +1812,23 @@ export async function approveListingRent(id: number) {
 export async function requestReworkRent(id: number, reason?: string) {
   try {
     const userId = await requirePermission("rent_listings", "approve");
+    const current = await d1.query<{
+      product_list_id: number;
+      created_by: number | null;
+      status_name: string | null;
+    }>(
+      `SELECT rl.product_list_id, rl.created_by, ast.status_name
+       FROM rent_listing rl
+       LEFT JOIN approval_status_type ast ON ast.id = rl.approve_status_id
+       WHERE rl.id = ?`,
+      [id],
+    );
+    const guardRow = current.results[0];
+    if (!guardRow) return { success: false, error: "Listing not found" };
+    if (guardRow.status_name === "Rework") {
+      return { success: true }; // already in Rework — idempotent
+    }
+
     await d1.query(
       `UPDATE rent_listing SET approve_status_id = (SELECT id FROM approval_status_type WHERE status_name = 'Rework'), rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [reason || null, id],

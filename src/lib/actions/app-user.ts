@@ -62,8 +62,14 @@ export async function createAppUser(formData: FormData) {
   try {
     const actorId = await requirePermission("users", "create");
 
-    // Resolve business type ID — create an unlisted type if "Other" was specified
-    let resolvedBtId: number = businessTypeId ? Number(businessTypeId) : 0;
+    // Resolve business type ID — create an unlisted type if "Other" was specified.
+    // Reject malformed values: Number("") and Number("0") both yield 0, and
+    // Number("abc") yields NaN — none of those are valid FKs.
+    let resolvedBtId: number = 0;
+    if (businessTypeId) {
+      const parsed = Number(businessTypeId);
+      if (Number.isFinite(parsed) && parsed > 0) resolvedBtId = parsed;
+    }
 
     if (businessTypeOther?.trim()) {
       const otherName = businessTypeOther.trim();
@@ -176,8 +182,14 @@ export async function updateAppUser(userId: number, formData: FormData) {
     );
     const priorVerified = prior.results[0]?.is_verified ?? 0;
 
-    // Resolve business type ID — create an unlisted type if "Other" was specified
-    let resolvedBtId: number = businessTypeId ? Number(businessTypeId) : 0;
+    // Resolve business type ID — create an unlisted type if "Other" was specified.
+    // Reject malformed values: Number("") and Number("0") both yield 0, and
+    // Number("abc") yields NaN — none of those are valid FKs.
+    let resolvedBtId: number = 0;
+    if (businessTypeId) {
+      const parsed = Number(businessTypeId);
+      if (Number.isFinite(parsed) && parsed > 0) resolvedBtId = parsed;
+    }
 
     if (businessTypeOther?.trim()) {
       const otherName = businessTypeOther.trim();

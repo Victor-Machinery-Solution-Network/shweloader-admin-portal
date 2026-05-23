@@ -20,7 +20,14 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
 
-export function LoginForm({ reason }: { reason?: string }) {
+export function LoginForm({
+  reason,
+  turnstileDisabled = false,
+}: {
+  reason?: string;
+  /** Set by server component from a SERVER-ONLY env var (not NEXT_PUBLIC). */
+  turnstileDisabled?: boolean;
+}) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState<
     LoginState | undefined,
@@ -170,7 +177,11 @@ export function LoginForm({ reason }: { reason?: string }) {
             </div>
 
             {/* Turnstile */}
-            <TurnstileWidget ref={turnstileWidgetRef} onTokenChange={handleTurnstileToken} />
+            <TurnstileWidget
+              ref={turnstileWidgetRef}
+              onTokenChange={handleTurnstileToken}
+              disabled={turnstileDisabled}
+            />
             <input ref={turnstileRef} type="hidden" name="cf-turnstile-response" />
 
             {/* Submit */}

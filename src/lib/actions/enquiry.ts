@@ -102,9 +102,20 @@ export async function updateEnquiryStatus(
   try {
     const adminId = await requirePermission("enquiries", "edit");
 
-    // close_outcome only meaningful when status='Closed' (id=3). Clear it
+    // Validate statusId against the live enquiry_status_type table so an
+    // arbitrary integer can't be written as a dangling FK.
+    const validStatus = await d1.query<{ id: number; status_name: string }>(
+      "SELECT id, status_name FROM enquiry_status_type WHERE id = ? LIMIT 1",
+      [statusId],
+    );
+    const statusRow = validStatus.results[0];
+    if (!statusRow) {
+      return { success: false, error: "Invalid enquiry status" };
+    }
+
+    // close_outcome is only meaningful for the Closed status. Clear it
     // otherwise so the data stays clean.
-    const outcome = statusId === 3 ? closeOutcome : null;
+    const outcome = statusRow.status_name === "Closed" ? closeOutcome : null;
 
     await d1.query(
       `UPDATE chat_enquiry

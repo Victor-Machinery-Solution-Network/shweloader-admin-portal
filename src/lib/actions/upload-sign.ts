@@ -30,6 +30,18 @@ export async function requestUploadSignature(
 ): Promise<UploadCredentials> {
   await requirePermission(feature, permission);
 
+  // Defense-in-depth: only the `pending/` prefix is a legitimate destination
+  // for browser-initiated uploads. The Worker should also enforce this, but
+  // checking here keeps the admin portal from sending crafted requests in
+  // the first place. Reject path traversal, absolute paths, or alternate
+  // prefixes that could overwrite committed assets.
+  if (path !== "pending/" && !path.startsWith("pending/")) {
+    throw new Error("Upload path must be within the pending/ prefix");
+  }
+  if (path.includes("..") || path.startsWith("/")) {
+    throw new Error("Invalid upload path");
+  }
+
   const res = await fetch(`${WORKER_URL}/upload/sign`, {
     method: "POST",
     headers: {

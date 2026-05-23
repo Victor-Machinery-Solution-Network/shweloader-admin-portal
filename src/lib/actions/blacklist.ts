@@ -121,10 +121,13 @@ export async function blacklistUser(appUserId: number, reason: string) {
 
     const now = new Date().toISOString();
 
-    // 2. Create blacklist entry
+    // 2. Create blacklist entry — pin created_at to the same JS ISO string
+    // as deleted_at below so unblacklistUsers can match them later. Without
+    // this they're in different formats (T vs space, ms+Z vs none) and the
+    // unblacklist restore silently no-ops, leaving the user in soft-delete.
     await d1.query(
-      `INSERT INTO blacklist (app_user_id, phone, email, company_name, reason, blacklisted_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO blacklist (app_user_id, phone, email, company_name, reason, blacklisted_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         targetUser.app_user_id,
         targetUser.phone,
@@ -132,6 +135,7 @@ export async function blacklistUser(appUserId: number, reason: string) {
         targetUser.company_name,
         reason.trim(),
         adminId,
+        now,
       ],
     );
 

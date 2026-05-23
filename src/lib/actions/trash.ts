@@ -489,8 +489,18 @@ export async function emptyTrash(group?: TrashGroup) {
   try {
     const userId = await requirePermission("trash", "delete");
 
-    // Get all items to delete
-    let sql = `SELECT entity_type, entity_id FROM trash_metadata`;
+    // Only purge rows whose source row is STILL soft-deleted. Without this,
+    // a row that was restored (deleted_at = NULL) but whose trash_metadata
+    // entry hadn't been cleaned up would get hard-deleted — killing a live
+    // row racing against restore. Same pattern used in getTrashPageData.
+    const softDeleteCheck = Object.entries(ENTITY_REGISTRY)
+      .map(
+        ([type, config]) =>
+          `(tm.entity_type = '${type}' AND EXISTS (SELECT 1 FROM ${config.table} WHERE ${config.primaryKey} = tm.entity_id AND deleted_at IS NOT NULL))`,
+      )
+      .join("\n        OR ");
+
+    let sql = `SELECT tm.entity_type, tm.entity_id FROM trash_metadata tm WHERE (${softDeleteCheck})`;
     const params: string[] = [];
 
     if (group && group !== "all") {
@@ -499,7 +509,7 @@ export async function emptyTrash(group?: TrashGroup) {
         .map(([type]) => type);
       if (types.length === 0) return { success: true };
       const placeholders = types.map(() => "?").join(", ");
-      sql += ` WHERE entity_type IN (${placeholders})`;
+      sql += ` AND tm.entity_type IN (${placeholders})`;
       params.push(...types);
     }
 

@@ -50,8 +50,12 @@ export async function loginAction(
   const turnstileToken = formData.get("cf-turnstile-response") as string | null;
   const ip = await getClientIp();
 
-  // Verify Turnstile token first (skip when explicitly disabled for dev/testing)
-  const turnstileDisabled = process.env.NEXT_PUBLIC_DISABLE_TURNSTILE === "true";
+  // Verify Turnstile token first (skip when explicitly disabled for dev/testing).
+  // Use a SERVER-ONLY env var here — NEXT_PUBLIC_* values are baked into the
+  // client bundle and visible to anyone inspecting the JS. Build-time mistakes
+  // shipping NEXT_PUBLIC_DISABLE_TURNSTILE=true would silently disable the
+  // check in production.
+  const turnstileDisabled = process.env.DISABLE_TURNSTILE === "true";
   if (!turnstileDisabled && (!turnstileToken || !(await verifyTurnstile(turnstileToken)))) {
     return { error: "Security verification failed. Please try again." };
   }

@@ -110,9 +110,30 @@ export async function updateAdmin(userId: number, formData: FormData) {
   try {
     const actorId = await requirePermission("admin_users", "edit");
 
-    // Prevent assigning the Super Admin role via form manipulation
+    // Prevent assigning the Super Admin role via form manipulation.
     if (Number(roleId) === SUPER_ADMIN_ROLE_ID) {
       return { success: false, error: "Cannot assign the Super Admin role" };
+    }
+
+    // Prevent editing the Super Admin account itself (incl. password reset).
+    // Without this, any admin with `admin_users:edit` could call
+    // updateAdmin(SUPER_ADMIN_USER_ID, { password: "new" }) and take it over.
+    const targetRow = await d1.query<{ role_id: number | null }>(
+      "SELECT role_id FROM admin_user WHERE user_id = ? LIMIT 1",
+      [userId],
+    );
+    if (targetRow.results[0]?.role_id === SUPER_ADMIN_ROLE_ID) {
+      return { success: false, error: "Cannot edit the Super Admin account" };
+    }
+
+    // Prevent self-edits of role and password. An admin shouldn't be able to
+    // sideways-promote themselves into a different role, and shouldn't reset
+    // their own password through this admin form (use /profile for that).
+    if (actorId === userId) {
+      return {
+        success: false,
+        error: "Use your profile page to edit your own account",
+      };
     }
 
     const updateData: Record<string, string | number | null> = {
@@ -189,6 +210,9 @@ export async function deleteAdmin(userId: number) {
     }
     await adminUserService.softDelete(userId, deletedBy);
     await saveTrashMetadata("admin_user", userId, deletedBy);
+    // Force the deleted admin to sign out immediately — otherwise their JWT
+    // works for up to another 5 min until the next refresh-from-DB cycle.
+    triggerNotification(userId, "session-revoked", { reason: "account_deleted" });
     invalidateTag(CACHE_TAGS.ADMINS);
     auditLog(deletedBy, "deleted admin | id=" + userId);
     return { success: true };
@@ -208,6 +232,8 @@ export async function deleteAdmins(ids: number[]) {
       if (id === PRIMARY_ADMIN_ID) throw new Error("Cannot delete the primary admin");
       await adminUserService.softDelete(id, deletedBy);
       await saveTrashMetadata("admin_user", id, deletedBy);
+      // Revoke session for each deleted admin (see deleteAdmin above).
+      triggerNotification(id, "session-revoked", { reason: "account_deleted" });
     }),
   );
 

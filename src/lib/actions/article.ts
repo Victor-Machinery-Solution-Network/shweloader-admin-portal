@@ -194,10 +194,11 @@ export async function updateArticleStatus(id: number, statusId: number) {
     const statusName = statusResult.results[0]?.status_name;
 
     if (statusName === "Published") {
-      // Publishing a pending article requires approve permission
-      if (existing?.status_name === "Pending Review") {
-        await requirePermission("articles", "approve");
-      }
+      // Publishing ALWAYS requires approve permission, regardless of the
+      // previous status. Previously the check was only fired when going
+      // Pending Review → Published, which let an editor with only
+      // articles:edit publish their own Drafts or Reworks directly.
+      await requirePermission("articles", "approve");
 
       // Publishing: set approved_by, approved_at, and publish_date if not already set
       await d1.query(

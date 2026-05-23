@@ -417,6 +417,19 @@ export async function processBulkImportWithImages(
 }
 
 /** Upload a file to R2 for bulk import. Returns the R2 key. */
+// Allowed MIME types per field type. PDFs accepted for spec-sheet uploads;
+// everything else must be an image we can re-encode to webp via sharp.
+const ALLOWED_BULK_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+]);
+const MAX_BULK_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+
 async function uploadBulkFile(
   file: File,
   r2Path: string,
@@ -424,6 +437,17 @@ async function uploadBulkFile(
   config: BulkUploadConfig,
 ): Promise<string | null> {
   try {
+    if (!ALLOWED_BULK_MIME.has(file.type)) {
+      throw new Error(
+        `Unsupported file type "${file.type || "unknown"}" — accepted: PDF, JPEG, PNG, WEBP, GIF, HEIC/HEIF`,
+      );
+    }
+    if (file.size > MAX_BULK_FILE_BYTES) {
+      throw new Error(
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB); max 20 MB`,
+      );
+    }
+
     const isPdf = file.type === "application/pdf";
     let blob: Blob;
     let ext: string;
@@ -473,6 +497,20 @@ async function processRow(
   imageUrls?: Record<string, string | string[]>,
 ): Promise<number> {
   const config = getBulkUploadConfig(entityKey);
+
+  // Re-validate server-side. processBulkImport filters by row.status === "valid",
+  // but that flag was set by a previous client-server round-trip — the client
+  // could have tampered with the array. We don't trust it.
+  const cellErrors = config.columns
+    .map((col) => validateCell(row.data[col.field], col, row.rowIndex, lookups))
+    .filter((err): err is NonNullable<typeof err> => err !== null);
+  if (cellErrors.length > 0) {
+    throw new Error(
+      `Row ${row.rowIndex} failed server validation: ${cellErrors
+        .map((e) => e.message)
+        .join("; ")}`,
+    );
+  }
 
   // Resolve all values to DB-ready format
   const resolved: Record<string, unknown> = {};
@@ -813,10 +851,14 @@ async function createListingRow(
   const saleDisplayCurrency = (data.sale_display_currency as string) || "MMK";
   const rentDisplayCurrency = (data.rent_display_currency as string) || "MMK";
 
-  // 1. Create product_list (with a unique custom_id_suffix)
+  // 1. Create product_list (with a unique custom_id_suffix).
+  // The service returns the inserted row with its id — we MUST use that.
+  // The previous `SELECT id FROM product_list ORDER BY id DESC LIMIT 1`
+  // approach races under Promise.allSettled batches: concurrent inserts can
+  // each read the same "latest" id, attaching images to the wrong product.
   const { productListService } = await import("@/lib/services/listing");
   const custom_id_suffix = await generateUniqueBulkCustomIdSuffix();
-  await productListService.create({
+  const createdProduct = await productListService.create({
     partner_id: partnerId,
     equipment_model_id: productType === "equipment" ? modelId : null,
     attachment_model_id: productType === "attachment" ? modelId : null,
@@ -828,11 +870,7 @@ async function createListingRow(
     custom_id_suffix,
     created_by: userId,
   });
-
-  const plResult = await d1.query<{ id: number }>(
-    "SELECT id FROM product_list ORDER BY id DESC LIMIT 1",
-  );
-  const productId = plResult.results[0]?.id;
+  const productId = (createdProduct as unknown as { id: number })?.id;
   if (!productId) throw new Error("Failed to create product list");
 
   // 2. Insert product images if provided

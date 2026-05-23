@@ -31,6 +31,20 @@ export async function updateSettings(
   try {
     const updatedBy = await requirePermission("app_settings", "edit");
 
+    // Allowlist: only known setting keys may be written. Without this, an
+    // admin (or a tampered request) could inject arbitrary keys into
+    // app_setting that downstream code might later read as config.
+    const allowedKeys = new Set<string>(Object.values(SETTING_KEYS));
+    const unknownKeys = Object.keys(settings).filter(
+      (key) => !allowedKeys.has(key),
+    );
+    if (unknownKeys.length > 0) {
+      return {
+        success: false,
+        error: `Unknown setting key${unknownKeys.length > 1 ? "s" : ""}: ${unknownKeys.join(", ")}`,
+      };
+    }
+
     // Validate exchange rate BEFORE persisting any setting. Otherwise a bad
     // value (0, NaN, negative, non-numeric) lands in app_setting and every
     // listing editor that loads after will see rate=0, computing mmk_price=0.
