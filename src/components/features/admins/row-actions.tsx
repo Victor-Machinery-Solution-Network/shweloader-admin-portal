@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { RowActions } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
@@ -20,11 +21,16 @@ interface AdminRowActionsProps {
 export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
   const canEdit = useHasPermission("admin_users", "edit");
   const canDelete = useHasPermission("admin_users", "delete");
+  const { data: session } = useSession();
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isPrimaryAdmin = admin.user_id === PRIMARY_ADMIN_ID;
+  // Server-side updateAdmin rejects edits where the actor is the target
+  // ("Use your profile page to edit your own account"). Mirror that gate in
+  // the UI so the buttons aren't clickable just to error out.
+  const isSelf = Number(session?.user?.id) === admin.user_id;
 
   function handleDelete() {
     startTransition(async () => {
@@ -45,7 +51,7 @@ export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
             label: "Edit" as const,
             icon: Pencil,
             onClick: () => setShowEdit(true),
-            disabled: isPrimaryAdmin,
+            disabled: isPrimaryAdmin || isSelf,
           },
         ]
       : []),
@@ -56,7 +62,7 @@ export function AdminRowActions({ admin, roles }: AdminRowActionsProps) {
             icon: Trash2,
             onClick: () => setShowDelete(true),
             variant: "destructive" as const,
-            disabled: isPrimaryAdmin,
+            disabled: isPrimaryAdmin || isSelf,
             separatorBefore: true,
           },
         ]
