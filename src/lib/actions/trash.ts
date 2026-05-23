@@ -101,6 +101,32 @@ export async function saveTrashMetadata(
     }
   }
 
+  // For popup_promotion, the linked image lives in a SEPARATE `image` table
+  // (1:1 via image_id with ON DELETE RESTRICT). Capture both the R2 keys
+  // (so the file gets cleaned up on permanent delete) and the image_id
+  // (so doPermanentDelete can DELETE the orphaned image row).
+  // The base SELECT above doesn't include image_id (it only fetches the
+  // name column + config.fileColumns), so do a dedicated lookup here.
+  const relatedData: Record<string, unknown> = { ...(options?.relatedData ?? {}) };
+  if (entityType === "popup_promotion") {
+    const ppRow = await d1.query<{
+      image_id: number | null;
+      image_url: string | null;
+      thumb_url: string | null;
+    }>(
+      `SELECT pp.image_id, i.image_url, i.thumb_url
+         FROM popup_promotion pp
+         LEFT JOIN image i ON i.image_id = pp.image_id
+        WHERE pp.popup_promotion_id = ?
+        LIMIT 1`,
+      [entityId],
+    );
+    const pp = ppRow.results[0];
+    if (pp?.image_url) fileKeys.push(pp.image_url);
+    if (pp?.thumb_url) fileKeys.push(pp.thumb_url);
+    if (pp?.image_id) relatedData.image_id = pp.image_id;
+  }
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + TRASH_RETENTION_DAYS);
 
@@ -114,7 +140,7 @@ export async function saveTrashMetadata(
       config.table,
       entityName.slice(0, 200),
       fileKeys.length > 0 ? JSON.stringify(fileKeys) : null,
-      options?.relatedData ? JSON.stringify(options.relatedData) : null,
+      Object.keys(relatedData).length > 0 ? JSON.stringify(relatedData) : null,
       options?.batchId ?? null,
       deletedBy,
       expiresAt.toISOString(),
@@ -360,14 +386,20 @@ export async function restoreItems(
 async function doPermanentDelete(entityType: TrashEntityType, entityId: number) {
   const config = ENTITY_REGISTRY[entityType];
 
-  // Get file keys from trash_metadata for R2 cleanup
-  const meta = await d1.query<{ file_keys: string | null }>(
-    `SELECT file_keys FROM trash_metadata WHERE entity_type = ? AND entity_id = ? LIMIT 1`,
+  // Get file keys + related_data from trash_metadata for R2 + DB cleanup
+  const meta = await d1.query<{
+    file_keys: string | null;
+    related_data: string | null;
+  }>(
+    `SELECT file_keys, related_data FROM trash_metadata WHERE entity_type = ? AND entity_id = ? LIMIT 1`,
     [entityType, entityId],
   );
   const fileKeys: string[] = meta.results[0]?.file_keys
     ? JSON.parse(meta.results[0].file_keys)
     : [];
+  const relatedData: Record<string, unknown> = meta.results[0]?.related_data
+    ? JSON.parse(meta.results[0].related_data)
+    : {};
 
   // For product_list, also delete child rows (product_image, sale_listing, rent_listing)
   if (entityType === "product_list") {
@@ -418,6 +450,14 @@ async function doPermanentDelete(entityType: TrashEntityType, entityId: number) 
     `DELETE FROM ${config.table} WHERE ${config.primaryKey} = ?`,
     [entityId],
   );
+
+  // For popup_promotion, also delete the orphaned `image` row.
+  // The FK image_id → image(image_id) is ON DELETE RESTRICT, so this MUST
+  // happen AFTER the popup_promotion row is gone. Without this, the image
+  // table accumulates dead rows pointing at now-deleted R2 keys.
+  if (entityType === "popup_promotion" && typeof relatedData.image_id === "number") {
+    await d1.query("DELETE FROM image WHERE image_id = ?", [relatedData.image_id]);
+  }
 
   // Clean up trash_metadata
   await d1.query(

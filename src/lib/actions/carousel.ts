@@ -106,6 +106,19 @@ export async function removeCarouselImage(
     await deleteFile(imageKey);
     if (thumbKey) await deleteFile(thumbKey);
 
+    // Delete the `image` table row IFF no other carousel_image still references
+    // it. carousel_image is many-to-many, so an image could in principle be
+    // linked to multiple carousels — only orphan if this was the last link.
+    // Without this cleanup, the image table accumulates dead rows pointing at
+    // now-deleted R2 keys.
+    const refs = await d1.query<{ cnt: number }>(
+      "SELECT COUNT(*) AS cnt FROM carousel_image WHERE image_id = ?",
+      [imageId],
+    );
+    if ((refs.results[0]?.cnt ?? 0) === 0) {
+      await d1.query("DELETE FROM image WHERE image_id = ?", [imageId]);
+    }
+
     invalidateTag(CACHE_TAGS.CAROUSELS);
     auditLog(userId, "removed carousel image | carousel=" + carouselId + " | image=" + imageId);
     return { success: true };
