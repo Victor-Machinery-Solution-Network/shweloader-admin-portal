@@ -31,11 +31,22 @@ export async function addCarouselImage(
   formData: FormData,
 ) {
   try {
+    // ImageInput uploads to R2 from the browser and ships a hidden
+    // `image_pending_key` field; the legacy path sends a raw `image` File.
+    // Accept either, and only hard-fail if neither is present.
     const file = formData.get("image");
-    if (!(file instanceof File) || file.size === 0) {
+    const pendingKey = formData.get("image_pending_key");
+    const hasFile = file instanceof File && file.size > 0;
+    const hasPending = typeof pendingKey === "string" && pendingKey.length > 0;
+    if (!hasFile && !hasPending) {
       return { success: false, error: "Image file is required" };
     }
-    const entityName = slugify(file.name.replace(/\.[^.]+$/, "")) || "carousel";
+
+    const entityName =
+      hasFile && file instanceof File
+        ? slugify(file.name.replace(/\.[^.]+$/, "")) || "carousel"
+        : "carousel";
+
     const uploaded = await processImageFieldRich(
       formData,
       "image",

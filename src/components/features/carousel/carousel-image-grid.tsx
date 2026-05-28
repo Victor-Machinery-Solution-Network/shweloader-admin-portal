@@ -231,7 +231,7 @@ export function CarouselImageGrid({
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAddImage} className="space-y-4">
+          <form onSubmit={handleAddImage} className="space-y-4 min-w-0">
             <ImageInput
               name="image"
               onChange={(val) => setHasFile(!!val)}
