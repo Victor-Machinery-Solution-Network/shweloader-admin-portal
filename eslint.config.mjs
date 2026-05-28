@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Next.js-generated typed-routes / cache-life declarations
     "types/routes.d.ts",
     "types/cache-life.d.ts",
+    // Husky hook scripts (shell, not JS/TS)
+    ".husky/**",
   ]),
 ]);
 
