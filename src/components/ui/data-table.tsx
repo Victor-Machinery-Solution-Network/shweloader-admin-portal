@@ -672,6 +672,10 @@ function DataTable<TData, TValue>({
                   !isPinned &&
                   header.column.columnDef.maxSize !== undefined &&
                   header.column.columnDef.maxSize < 150;
+                const minSize =
+                  !isPinned && !hasFixedSize
+                    ? header.column.columnDef.minSize
+                    : undefined;
                 const isLast = headerIdx === headerGroup.headers.length - 1;
                 return (
                   <TableHead
@@ -683,6 +687,7 @@ function DataTable<TData, TValue>({
                         width: header.column.getSize(),
                         padding: headerIdx === 0 ? "1rem" : "0 0.25rem",
                       }),
+                      ...(minSize !== undefined && { minWidth: minSize }),
                       ...(isLast && !isPinned && { paddingRight: "1rem" }),
                       ...stickyStyle,
                     }}
@@ -715,6 +720,10 @@ function DataTable<TData, TValue>({
                 !isPinned &&
                 cell.column.columnDef.maxSize !== undefined &&
                 cell.column.columnDef.maxSize < 150;
+              const minSize =
+                !isPinned && !hasFixedSize
+                  ? cell.column.columnDef.minSize
+                  : undefined;
               const isLast = cellIdx === visibleCells.length - 1;
               return (
                 <TableCell
@@ -732,6 +741,7 @@ function DataTable<TData, TValue>({
                       width: cell.column.getSize(),
                       padding: cellIdx === 0 ? "1rem" : "0 0.25rem",
                     }),
+                    ...(minSize !== undefined && { minWidth: minSize }),
                     ...(isLast && !isPinned && { paddingRight: "1rem" }),
                     ...stickyStyle,
                   }}
@@ -859,8 +869,8 @@ function DataTable<TData, TValue>({
           ref={tableWrapperRef}
           className={
             fillHeight
-              ? "min-h-0 flex-1 overflow-auto rounded-xl border"
-              : "max-h-[calc(100vh-300px)] overflow-auto rounded-xl border"
+              ? "table-scroll min-h-0 flex-1 overflow-auto rounded-xl border"
+              : "table-scroll max-h-[calc(100vh-300px)] overflow-auto rounded-xl border"
           }
         >
           {enableDragSort && getRowId ? (

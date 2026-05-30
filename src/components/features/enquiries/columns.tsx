@@ -103,6 +103,7 @@ export function getEnquiryColumns(
           </a>
         </div>
       ),
+      minSize: 150,
     },
 
     // Email
@@ -126,6 +127,7 @@ export function getEnquiryColumns(
           </div>
         );
       },
+      minSize: 200,
     },
 
     // Location
@@ -144,6 +146,7 @@ export function getEnquiryColumns(
           </div>
         );
       },
+      minSize: 180,
     },
 
     // Product Type
@@ -168,6 +171,7 @@ export function getEnquiryColumns(
           </Badge>
         );
       },
+      minSize: 120,
     },
 
     // Product Code (clickable → listing detail)
@@ -190,6 +194,7 @@ export function getEnquiryColumns(
           </Link>
         );
       },
+      minSize: 130,
     },
 
     // Brand
@@ -206,6 +211,7 @@ export function getEnquiryColumns(
           <span className="text-muted-foreground text-sm">—</span>
         );
       },
+      minSize: 130,
     },
 
     // Model
@@ -219,6 +225,7 @@ export function getEnquiryColumns(
           {row.original.model_name ?? "—"}
         </span>
       ),
+      minSize: 180,
     },
 
     // Price (sale = lump sum, rent = "/ <unit>" suffix to differentiate)
@@ -255,6 +262,7 @@ export function getEnquiryColumns(
           </div>
         );
       },
+      minSize: 170,
     },
 
     // Partner (Owner) — stacked partner_username + partner_name (click opens PartnerReviewDialog)
@@ -298,6 +306,7 @@ export function getEnquiryColumns(
         if (!value?.length) return true;
         return value.includes(row.original.status_name);
       },
+      minSize: 150,
     },
 
     // Notes (preview / indicator)
@@ -325,6 +334,7 @@ export function getEnquiryColumns(
           </TooltipProvider>
         );
       },
+      minSize: 180,
     },
 
     // Row actions

@@ -4,6 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getCustomFieldTemplateById } from "@/lib/cache";
 import { TemplateEditor } from "@/components/features/listing-templates/template-editor";
+import { EditorHtmlLock } from "@/components/features/listings/shared/editor-html-lock";
 import { PermissionGate } from "@/components/shared/permission-gate";
 import { EditorSkeleton } from "../../new/skeleton";
 
@@ -39,5 +40,10 @@ async function EditTemplateContent({
 
   if (!template) notFound();
 
-  return <TemplateEditor template={template} />;
+  return (
+    <div className="flex flex-1 min-h-0 flex-col">
+      <EditorHtmlLock />
+      <TemplateEditor template={template} />
+    </div>
+  );
 }
