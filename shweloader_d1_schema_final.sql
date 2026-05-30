@@ -1212,8 +1212,13 @@ CREATE TABLE IF NOT EXISTS app_feedback (
     message      TEXT NOT NULL,
     platform     TEXT CHECK (platform IS NULL OR platform IN ('android', 'ios')),
     app_version  TEXT,
+    -- Salted SHA-256 of the submitter's IP (never the raw IP). Used by the
+    -- app worker for anti-spam: per-IP hourly cap + duplicate suppression.
+    ip_hash      TEXT,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_app_feedback_created ON app_feedback(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_app_feedback_user    ON app_feedback(app_user_id);
+-- Supports the anti-spam hourly-count and duplicate-message lookups.
+CREATE INDEX IF NOT EXISTS idx_app_feedback_ip      ON app_feedback(ip_hash, created_at);
