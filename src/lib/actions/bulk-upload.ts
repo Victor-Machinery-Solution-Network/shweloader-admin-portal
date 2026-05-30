@@ -650,8 +650,9 @@ async function createStateRegionRow(
   userId: number,
 ): Promise<number> {
   const name = String(data.name).trim();
+  const name_my = String(data.name_my).trim();
   const type = String(data.type) as "state" | "region" | "union_territory";
-  await stateRegionService.create({ name, type, created_by: userId });
+  await stateRegionService.create({ name, name_my, type, created_by: userId });
 
   const result = await d1.query<{ state_region_id: number }>(
     "SELECT state_region_id FROM state_region WHERE name = ?",
@@ -665,9 +666,11 @@ async function createDistrictRow(
   userId: number,
 ): Promise<number> {
   const name = String(data.name).trim();
+  const name_my = String(data.name_my).trim();
   const stateRegionId = data.state_region_id as number;
   await districtService.create({
     name,
+    name_my,
     state_region_id: stateRegionId,
     created_by: userId,
   });
@@ -684,9 +687,11 @@ async function createTownshipRow(
   userId: number,
 ): Promise<number> {
   const name = String(data.name).trim();
+  const name_my = String(data.name_my).trim();
   const districtId = data.district_id as number;
   await townshipService.create({
     name,
+    name_my,
     district_id: districtId,
     created_by: userId,
   });
