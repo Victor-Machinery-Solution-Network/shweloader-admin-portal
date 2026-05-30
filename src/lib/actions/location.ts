@@ -17,9 +17,11 @@ import type { StateRegion, DistrictWithParent, TownshipWithParents } from "@/typ
 
 export async function createStateRegion(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const type = formData.get("type") as string;
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
   if (!["state", "region", "union_territory"].includes(type)) {
     return { success: false, error: "Invalid type" };
   }
@@ -28,7 +30,7 @@ export async function createStateRegion(formData: FormData) {
 
   try {
     const created_by = await requirePermission("locations", "create");
-    await stateRegionService.create({ name, type: validType, created_by });
+    await stateRegionService.create({ name, name_my, type: validType, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(created_by, "created state/region | name=" + name);
     return { success: true };
@@ -39,9 +41,11 @@ export async function createStateRegion(formData: FormData) {
 
 export async function updateStateRegion(id: number, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const type = formData.get("type") as string;
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
   // Mirror the allowlist used in createStateRegion — update was previously
   // missing this and would accept any string into the type column.
   if (!["state", "region", "union_territory"].includes(type)) {
@@ -52,7 +56,7 @@ export async function updateStateRegion(id: number, formData: FormData) {
 
   try {
     const userId = await requirePermission("locations", "edit");
-    await stateRegionService.update(id, { name, type: validType });
+    await stateRegionService.update(id, { name, name_my, type: validType });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(userId, "updated state/region | id=" + id);
     return { success: true };
@@ -78,14 +82,16 @@ export async function deleteStateRegion(id: number) {
 
 export async function createDistrict(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const state_region_id = Number(formData.get("state_region_id"));
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
   if (!state_region_id) return { success: false, error: "State/Region is required" };
 
   try {
     const created_by = await requirePermission("locations", "create");
-    await districtService.create({ name, state_region_id, created_by });
+    await districtService.create({ name, name_my, state_region_id, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(created_by, "created district | name=" + name);
     return { success: true };
@@ -96,13 +102,15 @@ export async function createDistrict(formData: FormData) {
 
 export async function updateDistrict(id: number, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const state_region_id = Number(formData.get("state_region_id"));
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
 
   try {
     const userId = await requirePermission("locations", "edit");
-    await districtService.update(id, { name, state_region_id });
+    await districtService.update(id, { name, name_my, state_region_id });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(userId, "updated district | id=" + id);
     return { success: true };
@@ -128,14 +136,16 @@ export async function deleteDistrict(id: number) {
 
 export async function createTownship(formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const district_id = Number(formData.get("district_id"));
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
   if (!district_id) return { success: false, error: "District is required" };
 
   try {
     const created_by = await requirePermission("locations", "create");
-    await townshipService.create({ name, district_id, created_by });
+    await townshipService.create({ name, name_my, district_id, created_by });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(created_by, "created township | name=" + name);
     return { success: true };
@@ -146,13 +156,15 @@ export async function createTownship(formData: FormData) {
 
 export async function updateTownship(id: number, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
+  const name_my = (formData.get("name_my") as string)?.trim();
   const district_id = Number(formData.get("district_id"));
 
   if (!name) return { success: false, error: "Name is required" };
+  if (!name_my) return { success: false, error: "Burmese name is required" };
 
   try {
     const userId = await requirePermission("locations", "edit");
-    await townshipService.update(id, { name, district_id });
+    await townshipService.update(id, { name, name_my, district_id });
     invalidateTag(CACHE_TAGS.LOCATIONS);
     auditLog(userId, "updated township | id=" + id);
     return { success: true };
@@ -179,7 +191,7 @@ export async function deleteTownship(id: number) {
 export async function getTownshipsWithParents(): Promise<TownshipWithParents[]> {
   const result = await d1.query<TownshipWithParents>(
     `SELECT
-      t.township_id, t.name, t.district_id, t.created_at,
+      t.township_id, t.name, t.name_my, t.district_id, t.created_at,
       d.name AS district_name,
       sr.state_region_id, sr.name AS state_region_name, sr.type AS state_region_type
     FROM township t
@@ -196,7 +208,7 @@ export async function getTownshipsWithParents(): Promise<TownshipWithParents[]> 
 export async function getDistrictsWithParents(): Promise<DistrictWithParent[]> {
   const result = await d1.query<DistrictWithParent>(
     `SELECT
-      d.district_id, d.name, d.state_region_id, d.created_at,
+      d.district_id, d.name, d.name_my, d.state_region_id, d.created_at,
       sr.name AS state_region_name
     FROM district d
     JOIN state_region sr ON d.state_region_id = sr.state_region_id
@@ -247,14 +259,14 @@ export async function getLocationsPageData() {
   const { results } = await d1.query<LocationsPageRaw>(`
     SELECT
       (SELECT json_group_array(json_object(
-        'state_region_id', sr.state_region_id, 'name', sr.name,
+        'state_region_id', sr.state_region_id, 'name', sr.name, 'name_my', sr.name_my,
         'type', sr.type, 'created_by', sr.created_by, 'created_at', sr.created_at,
         'deleted_at', null, 'deleted_by', null
       )) FROM (SELECT * FROM state_region WHERE deleted_at IS NULL ORDER BY name) sr
       ) AS state_regions,
 
       (SELECT json_group_array(json_object(
-        'district_id', d.district_id, 'name', d.name,
+        'district_id', d.district_id, 'name', d.name, 'name_my', d.name_my,
         'state_region_id', d.state_region_id,
         'created_by', d.created_by, 'created_at', d.created_at,
         'deleted_at', null, 'deleted_by', null
@@ -262,7 +274,7 @@ export async function getLocationsPageData() {
       ) AS districts,
 
       (SELECT json_group_array(json_object(
-        'district_id', d.district_id, 'name', d.name,
+        'district_id', d.district_id, 'name', d.name, 'name_my', d.name_my,
         'state_region_id', d.state_region_id,
         'state_region_name', sr.name, 'created_at', d.created_at
       )) FROM district d
@@ -272,7 +284,7 @@ export async function getLocationsPageData() {
       ) AS districts_with_parents,
 
       (SELECT json_group_array(json_object(
-        'township_id', t.township_id, 'name', t.name,
+        'township_id', t.township_id, 'name', t.name, 'name_my', t.name_my,
         'district_id', t.district_id, 'district_name', d.name,
         'state_region_id', sr.state_region_id,
         'state_region_name', sr.name, 'state_region_type', sr.type,

@@ -1,6 +1,7 @@
 export interface StateRegion {
   state_region_id: number;
   name: string;
+  name_my: string | null;
   type: "state" | "region" | "union_territory";
   created_by: number | null;
   created_at: string;
@@ -11,6 +12,7 @@ export interface StateRegion {
 export interface District {
   district_id: number;
   name: string;
+  name_my: string | null;
   state_region_id: number;
   created_by: number | null;
   created_at: string;
@@ -21,6 +23,7 @@ export interface District {
 export interface Township {
   township_id: number;
   name: string;
+  name_my: string | null;
   district_id: number;
   created_by: number | null;
   created_at: string;
@@ -32,6 +35,7 @@ export interface Township {
 export interface DistrictWithParent {
   district_id: number;
   name: string;
+  name_my: string | null;
   state_region_id: number;
   state_region_name: string;
   created_at: string;
@@ -41,6 +45,7 @@ export interface DistrictWithParent {
 export interface TownshipWithParents {
   township_id: number;
   name: string;
+  name_my: string | null;
   district_id: number;
   district_name: string;
   state_region_id: number;

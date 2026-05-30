@@ -672,6 +672,7 @@ CREATE INDEX IF NOT EXISTS idx_app_setting_updated_by ON app_setting(updated_by)
 CREATE TABLE IF NOT EXISTS state_region (
     state_region_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_my TEXT,
     type TEXT NOT NULL CHECK(type IN ('state', 'region', 'union_territory')),
     created_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -692,6 +693,7 @@ CREATE INDEX IF NOT EXISTS idx_state_region_created_by ON state_region(created_b
 CREATE TABLE IF NOT EXISTS district (
     district_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_my TEXT,
     state_region_id INTEGER NOT NULL,
     created_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -713,6 +715,7 @@ CREATE INDEX IF NOT EXISTS idx_district_created_by ON district(created_by);
 CREATE TABLE IF NOT EXISTS township (
     township_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_my TEXT,
     district_id INTEGER NOT NULL,
     created_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

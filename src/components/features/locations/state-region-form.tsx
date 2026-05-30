@@ -99,6 +99,19 @@ export function StateRegionForm({
         </Field>
 
         <Field orientation="vertical">
+          <FieldLabel>Burmese Name</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="name_my"
+              placeholder="e.g. ရန်ကုန်တိုင်း"
+              defaultValue={stateRegion?.name_my ?? ""}
+              errorMessage="Burmese name is required"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+
+        <Field orientation="vertical">
           <FieldLabel>Type</FieldLabel>
           <FieldContent>
             <Combobox

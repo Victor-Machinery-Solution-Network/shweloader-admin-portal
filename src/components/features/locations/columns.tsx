@@ -28,6 +28,17 @@ export function getColumns(
       ),
     },
     {
+      accessorKey: "name_my",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Burmese Name" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">
+          {(row.getValue("name_my") as string | null) || "—"}
+        </span>
+      ),
+    },
+    {
       accessorKey: "district_name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="District" />

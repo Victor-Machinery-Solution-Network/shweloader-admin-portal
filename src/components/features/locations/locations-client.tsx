@@ -357,7 +357,7 @@ export function LocationsClient({
             <DataTable
               columns={srColumns}
               data={stateRegions}
-              searchKeys={["name"]}
+              searchKeys={["name", "name_my"]}
               searchPlaceholder="Search state/regions..."
               filterConfig={srFilterConfig}
               filterStorageKey="locations-sr-filters"
@@ -405,7 +405,7 @@ export function LocationsClient({
             <DataTable
               columns={districtColumns}
               data={districtsWithParents}
-              searchKeys={["name", "state_region_name"]}
+              searchKeys={["name", "name_my", "state_region_name"]}
               searchPlaceholder="Search districts or state/regions..."
               filterConfig={districtFilterConfig}
               filterStorageKey="locations-district-filters"
@@ -453,7 +453,7 @@ export function LocationsClient({
             <DataTable
               columns={townshipColumns}
               data={townships}
-              searchKeys={["name", "district_name", "state_region_name"]}
+              searchKeys={["name", "name_my", "district_name", "state_region_name"]}
               searchPlaceholder="Search townships, districts, or states..."
               filterConfig={townshipFilterConfig}
               filterStorageKey="locations-township-filters"

@@ -137,6 +137,19 @@ export function DistrictForm({
             />
           </FieldContent>
         </Field>
+
+        <Field orientation="vertical">
+          <FieldLabel>Burmese Name</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="name_my"
+              placeholder="e.g. ရန်ကုန်အရှေ့ပိုင်း"
+              defaultValue={district?.name_my ?? ""}
+              errorMessage="Burmese name is required"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
       </div>
     </FormDialog>
   );
