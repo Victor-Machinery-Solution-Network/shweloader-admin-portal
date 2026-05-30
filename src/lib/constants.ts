@@ -56,6 +56,7 @@ export const ROUTES = {
   PROMOTIONS: "/promotions",
   POPUP_PROMOTIONS: "/popup-promotions",
   POPUP_PROMOTIONS_NEW: "/popup-promotions/new",
+  FEEDBACK: "/feedback",
 
   // Settings
   ADMINS: "/admins",
@@ -121,6 +122,7 @@ export const CACHE_TAGS = {
   CHAT_SESSIONS: "chat-sessions",
   ENQUIRIES: "enquiries",
   ENQUIRY_STATUS_TYPES: "enquiry-status-types",
+  FEEDBACK: "feedback",
   FEATURE_PERMISSIONS: "feature-permissions",
   CUSTOM_FIELD_TEMPLATES: "custom-field-templates",
   PERMISSIONS: "permissions",

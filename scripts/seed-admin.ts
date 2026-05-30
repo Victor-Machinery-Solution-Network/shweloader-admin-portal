@@ -291,6 +291,7 @@ const FEATURES = [
   { name: "carousels", group_name: "Content", display_order: 24 },
   { name: "promotions", group_name: "Content", display_order: 25 },
   { name: "popup_promotions", group_name: "Content", display_order: 26 },
+  { name: "feedback", group_name: "Content", display_order: 27 },
   // Administration (26–29)
   { name: "admin_users", group_name: "Administration", display_order: 26 },
   { name: "roles", group_name: "Administration", display_order: 27 },
@@ -314,6 +315,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   app_settings: ["read", "edit"],
   promotions: ["read", "create", "delete"],
   popup_promotions: ["create", "read", "edit", "delete"],
+  feedback: ["read", "delete"],
   trash: ["read", "restore", "delete"],
 };
 

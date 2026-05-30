@@ -54,6 +54,7 @@ DROP TABLE IF EXISTS approval_status_type;
 DROP TABLE IF EXISTS partner_status_type;
 DROP TABLE IF EXISTS partner_type;
 DROP TABLE IF EXISTS device_token;
+DROP TABLE IF EXISTS app_feedback;
 
 PRAGMA foreign_keys = ON;
 
@@ -1202,3 +1203,17 @@ CREATE TABLE device_token (
 CREATE UNIQUE INDEX idx_device_token_token ON device_token(token);
 CREATE INDEX idx_device_token_user ON device_token(app_user_id);
 CREATE INDEX idx_device_token_device ON device_token(device_id);
+
+
+-- ─── App Feedback (Help & Support) ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_feedback (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    app_user_id  INTEGER,                 -- nullable: anonymous feedback allowed
+    message      TEXT NOT NULL,
+    platform     TEXT CHECK (platform IS NULL OR platform IN ('android', 'ios')),
+    app_version  TEXT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_feedback_created ON app_feedback(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_app_feedback_user    ON app_feedback(app_user_id);

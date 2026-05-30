@@ -21,6 +21,7 @@ import {
   MapPin,
   ShoppingCart,
   MessageSquare,
+  MessageSquareText,
   Handshake,
   FileText,
   FileSpreadsheet,
@@ -129,7 +130,8 @@ export function AppSidebar() {
     canRead("carousels") ||
     canRead("announcements") ||
     canRead("promotions") ||
-    canRead("popup_promotions");
+    canRead("popup_promotions") ||
+    canRead("feedback");
   const showSettings =
     canRead("admin_users") ||
     canRead("roles") ||
@@ -726,6 +728,20 @@ export function AppSidebar() {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+
+                  {canRead("feedback") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === ROUTES.FEEDBACK}
+                      >
+                        <Link href={ROUTES.FEEDBACK}>
+                          <MessageSquareText aria-hidden="true" />
+                          <span>Feedback</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

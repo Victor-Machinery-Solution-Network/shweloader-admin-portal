@@ -64,6 +64,7 @@ import {
   getEnquiriesWithDetails as fetchEnquiries,
   getEnquiryStatusTypes as fetchEnquiryStatusTypes,
 } from "@/lib/actions/enquiry";
+import { getFeedbackWithDetails as fetchFeedback } from "@/lib/actions/feedback";
 
 // ---------------------------------------------------------------------------
 // Data-fetching layer — plain functions, no caching here.
@@ -379,6 +380,14 @@ export function getEnquiries() {
 
 export function getEnquiryStatusTypes() {
   return fetchEnquiryStatusTypes();
+}
+
+// Feedback
+
+export async function getFeedback() {
+  "use cache";
+  cacheTag(CACHE_TAGS.FEEDBACK);
+  return fetchFeedback();
 }
 
 // Permissions (cached at function level — called from server actions)
