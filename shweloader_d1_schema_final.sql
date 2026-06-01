@@ -1213,7 +1213,7 @@ CREATE TABLE IF NOT EXISTS app_feedback (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     app_user_id  INTEGER,                 -- nullable: anonymous feedback allowed
     message      TEXT NOT NULL,
-    platform     TEXT CHECK (platform IS NULL OR platform IN ('android', 'ios')),
+    platform     TEXT CHECK (platform IS NULL OR platform IN ('android', 'ios', 'web')),
     app_version  TEXT,
     -- Salted SHA-256 of the submitter's IP (never the raw IP). Used by the
     -- app worker for anti-spam: per-IP hourly cap + duplicate suppression.
