@@ -80,7 +80,13 @@ export function EquipmentModelForm({
     () => subCategories.map((sc) => sc.name),
     [subCategories],
   );
-  const allBrandNames = useMemo(() => brands.map((b) => b.name), [brands]);
+  // Brands that belong to at least one equipment sub-category — i.e. brands that
+  // actually have equipment. Attachment-only brands are excluded so they never
+  // show in the equipment model form's brand dropdown.
+  const equipmentBrandNames = useMemo(() => {
+    const linkedBrandIds = new Set(subCategoryBrandLinks.map((l) => l.brand_id));
+    return brands.filter((b) => linkedBrandIds.has(b.brand_id)).map((b) => b.name);
+  }, [brands, subCategoryBrandLinks]);
 
   // Default values for edit mode
   const defaultSubCategoryName = model
@@ -137,15 +143,15 @@ export function EquipmentModelForm({
 
 
   const filteredBrandNames = useMemo(() => {
-    if (!selectedSubCategory) return allBrandNames;
+    if (!selectedSubCategory) return equipmentBrandNames;
     const subCatId = subCategoryMap.get(selectedSubCategory);
-    if (!subCatId) return allBrandNames;
+    if (!subCatId) return equipmentBrandNames;
     const linkedBrandIds = brandsBySubCategory.get(subCatId);
     if (!linkedBrandIds) return [];
     return brands
       .filter((b) => linkedBrandIds.has(b.brand_id))
       .map((b) => b.name);
-  }, [selectedSubCategory, allBrandNames, subCategoryMap, brandsBySubCategory, brands]);
+  }, [selectedSubCategory, equipmentBrandNames, subCategoryMap, brandsBySubCategory, brands]);
 
   const handleSubCategoryChange = (val: string | null) => {
     const newSubCat = val ?? "";

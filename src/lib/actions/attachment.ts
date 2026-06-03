@@ -206,11 +206,11 @@ export async function getAttachmentModelsPageData() {
       )) FROM (SELECT * FROM attachment_category WHERE deleted_at IS NULL ORDER BY display_order) ac
       ) AS categories,
 
+      -- Only brand_id + name are consumed on this page (dropdown, table name
+      -- lookup, brand filter); skip the other columns to keep the payload small.
       (SELECT json_group_array(json_object(
-        'brand_id', b.brand_id, 'name', b.name,
-        'created_by', b.created_by, 'created_at', b.created_at,
-        'updated_at', b.updated_at
-      )) FROM (SELECT * FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
+        'brand_id', b.brand_id, 'name', b.name
+      )) FROM (SELECT brand_id, name FROM product_brand WHERE deleted_at IS NULL ORDER BY name) b
       ) AS brands,
 
       (SELECT json_group_array(json_object(

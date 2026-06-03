@@ -94,7 +94,13 @@ export function AttachmentModelForm({
     () => categories.map((c) => c.name),
     [categories],
   );
-  const allBrandNames = useMemo(() => brands.map((b) => b.name), [brands]);
+  // Brands that belong to at least one attachment category — i.e. brands that
+  // actually have attachments. Equipment-only brands are excluded so they never
+  // show in the attachment model form's brand dropdown.
+  const attachmentBrandNames = useMemo(() => {
+    const linkedBrandIds = new Set(categoryBrandLinks.map((l) => l.brand_id));
+    return brands.filter((b) => linkedBrandIds.has(b.brand_id)).map((b) => b.name);
+  }, [brands, categoryBrandLinks]);
 
   // Default values for edit mode
   const defaultCategoryName = model
@@ -122,15 +128,15 @@ export function AttachmentModelForm({
   }, [selectedBrand, allCategoryNames, brandMap, categoriesByBrand, categories]);
 
   const filteredBrandNames = useMemo(() => {
-    if (!selectedCategory) return allBrandNames;
+    if (!selectedCategory) return attachmentBrandNames;
     const catId = categoryMap.get(selectedCategory);
-    if (!catId) return allBrandNames;
+    if (!catId) return attachmentBrandNames;
     const linkedBrandIds = brandsByCategory.get(catId);
     if (!linkedBrandIds) return [];
     return brands
       .filter((b) => linkedBrandIds.has(b.brand_id))
       .map((b) => b.name);
-  }, [selectedCategory, allBrandNames, categoryMap, brandsByCategory, brands]);
+  }, [selectedCategory, attachmentBrandNames, categoryMap, brandsByCategory, brands]);
 
   const handleCategoryChange = (val: string | null) => {
     const newCat = val ?? "";
