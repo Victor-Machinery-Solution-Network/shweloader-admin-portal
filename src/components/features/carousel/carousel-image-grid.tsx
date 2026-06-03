@@ -60,15 +60,19 @@ export function CarouselImageGrid({
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
-  const [hasFile, setHasFile] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [hasDesktop, setHasDesktop] = useState(false);
+  const [hasMobile, setHasMobile] = useState(false);
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
   const [isAdding, startAddTransition] = useTransition();
-  const [newFocalPoint, setNewFocalPoint] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
+  const [desktopFocal, setDesktopFocal] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
+  const [mobileFocal, setMobileFocal] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
   const [focalPointImage, setFocalPointImage] = useState<{
     imageId: number;
     imageUrl: string;
     focalX: number;
     focalY: number;
+    ratio: number;
   } | null>(null);
 
   const sensors = useSensors(
@@ -92,9 +96,11 @@ export function CarouselImageGrid({
   );
 
   function openAddDialog() {
-    setHasFile(false);
+    setHasDesktop(false);
+    setHasMobile(false);
     setLinkUrl("");
-    setNewFocalPoint({ x: 0.5, y: 0.5 });
+    setDesktopFocal({ x: 0.5, y: 0.5 });
+    setMobileFocal({ x: 0.5, y: 0.5 });
     setShowAddDialog(true);
   }
 
@@ -137,13 +143,24 @@ export function CarouselImageGrid({
                     key={image.image_id}
                     image={image}
                     index={index + 1}
-                    onAdjustPosition={() =>
-                      setFocalPointImage({
-                        imageId: image.image_id,
-                        imageUrl: image.image_url,
-                        focalX: image.focal_x ?? 0.5,
-                        focalY: image.focal_y ?? 0.5,
-                      })
+                    onAdjustPosition={(which) =>
+                      setFocalPointImage(
+                        which === "mobile"
+                          ? {
+                              imageId: image.mobile_image_id,
+                              imageUrl: image.mobile_image_url,
+                              focalX: image.mobile_focal_x ?? 0.5,
+                              focalY: image.mobile_focal_y ?? 0.5,
+                              ratio: 16 / 9,
+                            }
+                          : {
+                              imageId: image.image_id,
+                              imageUrl: image.image_url,
+                              focalX: image.focal_x ?? 0.5,
+                              focalY: image.focal_y ?? 0.5,
+                              ratio: 21 / 9,
+                            },
+                      )
                     }
                   />
                 ))}
@@ -202,7 +219,7 @@ export function CarouselImageGrid({
       <FocalPointModal
         open={focalPointImage !== null}
         imageUrl={assetUrl(focalPointImage?.imageUrl ?? "") ?? ""}
-        aspectRatio={16 / 9}
+        aspectRatio={focalPointImage?.ratio ?? 16 / 9}
         initialFocalPoint={
           focalPointImage
             ? { x: focalPointImage.focalX, y: focalPointImage.focalY }
@@ -223,30 +240,61 @@ export function CarouselImageGrid({
 
       {/* ── Add Image Dialog ─────────────────────────────────────── */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Image</DialogTitle>
             <DialogDescription>
-              Upload an image to the &ldquo;{carouselName}&rdquo; carousel.
+              Upload a desktop (21:9) and a mobile (16:9) image for the
+              &ldquo;{carouselName}&rdquo; carousel. Both are required.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleAddImage} className="space-y-4 min-w-0">
-            <ImageInput
-              name="image"
-              onChange={(val) => setHasFile(!!val)}
-              accept="image/jpeg,image/png,image/webp"
-              placeholder="Drag & drop an image here, or click to browse"
-              disabled={isAdding}
-              aspectRatio={16 / 9}
-              onFocalPointChange={setNewFocalPoint}
-              focalPoint={newFocalPoint}
-              feature="carousels"
-              permission="create"
-              onUploadingChange={setIsUploading}
-            />
-            <input type="hidden" name="focal_x" value={newFocalPoint.x} />
-            <input type="hidden" name="focal_y" value={newFocalPoint.y} />
+            {/* Desktop · 21:9 */}
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">
+                Desktop &middot; 21:9{" "}
+                <span className="text-destructive">*</span>
+              </p>
+              <ImageInput
+                name="image"
+                onChange={(val) => setHasDesktop(!!val)}
+                accept="image/jpeg,image/png,image/webp"
+                placeholder="Drag & drop the 21:9 desktop image"
+                disabled={isAdding}
+                aspectRatio={21 / 9}
+                onFocalPointChange={setDesktopFocal}
+                focalPoint={desktopFocal}
+                feature="carousels"
+                permission="create"
+                onUploadingChange={setUploadingDesktop}
+              />
+              <input type="hidden" name="focal_x" value={desktopFocal.x} />
+              <input type="hidden" name="focal_y" value={desktopFocal.y} />
+            </div>
+
+            {/* Mobile · 16:9 */}
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">
+                Mobile &middot; 16:9{" "}
+                <span className="text-destructive">*</span>
+              </p>
+              <ImageInput
+                name="mobile_image"
+                onChange={(val) => setHasMobile(!!val)}
+                accept="image/jpeg,image/png,image/webp"
+                placeholder="Drag & drop the 16:9 mobile image"
+                disabled={isAdding}
+                aspectRatio={16 / 9}
+                onFocalPointChange={setMobileFocal}
+                focalPoint={mobileFocal}
+                feature="carousels"
+                permission="create"
+                onUploadingChange={setUploadingMobile}
+              />
+              <input type="hidden" name="mobile_focal_x" value={mobileFocal.x} />
+              <input type="hidden" name="mobile_focal_y" value={mobileFocal.y} />
+            </div>
 
             <Field orientation="vertical">
               <FieldLabel>
@@ -280,9 +328,19 @@ export function CarouselImageGrid({
               </Button>
               <Button
                 type="submit"
-                disabled={!hasFile || isAdding || isUploading}
+                disabled={
+                  !hasDesktop ||
+                  !hasMobile ||
+                  isAdding ||
+                  uploadingDesktop ||
+                  uploadingMobile
+                }
               >
-                {isUploading ? "Uploading\u2026" : isAdding ? "Saving\u2026" : "Add Image"}
+                {uploadingDesktop || uploadingMobile
+                  ? "Uploading\u2026"
+                  : isAdding
+                    ? "Saving\u2026"
+                    : "Add Image"}
               </Button>
             </DialogFooter>
           </form>

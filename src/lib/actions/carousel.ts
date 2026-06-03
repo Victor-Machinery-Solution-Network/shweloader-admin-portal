@@ -11,16 +11,19 @@ import {
   processImageFieldRich,
   deleteFile,
 } from "@/lib/actions/upload-helpers";
-import { slugify } from "@/lib/api/r2-client";
 import type { CarouselImageWithDetails } from "@/types/carousel";
 
 // ─── Carousel Image Actions ─────────────────────────────────────────────────
 
 export async function getAllCarouselImages(): Promise<CarouselImageWithDetails[]> {
   const { results } = await d1.query<CarouselImageWithDetails>(
-    `SELECT ci.*, i.image_url, i.thumb_url, i.blurhash, i.focal_x, i.focal_y
+    `SELECT ci.*,
+       i.image_url, i.thumb_url, i.blurhash, i.focal_x, i.focal_y,
+       mi.image_url AS mobile_image_url, mi.thumb_url AS mobile_thumb_url,
+       mi.blurhash AS mobile_blurhash, mi.focal_x AS mobile_focal_x, mi.focal_y AS mobile_focal_y
      FROM carousel_image ci
      JOIN image i ON ci.image_id = i.image_id
+     JOIN image mi ON ci.mobile_image_id = mi.image_id
      ORDER BY ci.carousel_id ASC, ci.display_order ASC, ci.added_at ASC`,
   );
   return results;
@@ -31,59 +34,61 @@ export async function addCarouselImage(
   formData: FormData,
 ) {
   try {
-    // ImageInput uploads to R2 from the browser and ships a hidden
-    // `image_pending_key` field; the legacy path sends a raw `image` File.
-    // Accept either, and only hard-fail if neither is present.
-    const file = formData.get("image");
-    const pendingKey = formData.get("image_pending_key");
-    const hasFile = file instanceof File && file.size > 0;
-    const hasPending = typeof pendingKey === "string" && pendingKey.length > 0;
-    if (!hasFile && !hasPending) {
-      return { success: false, error: "Image file is required" };
-    }
+    const added_by = await requirePermission("carousels", "create");
 
-    const entityName =
-      hasFile && file instanceof File
-        ? slugify(file.name.replace(/\.[^.]+$/, "")) || "carousel"
-        : "carousel";
-
-    const uploaded = await processImageFieldRich(
+    // Two required images per slide: desktop (21:9, field `image`) and mobile
+    // (16:9, field `mobile_image`). ImageInput direct-uploads to R2 and ships
+    // `<name>_pending_key`; processImageFieldRich commits each to its final key.
+    const desktop = await processImageFieldRich(
       formData,
       "image",
       "carousels/",
-      entityName,
+      "carousel",
     );
-
-    if (!uploaded) {
-      return { success: false, error: "Image file is required" };
+    const mobile = await processImageFieldRich(
+      formData,
+      "mobile_image",
+      "carousels/",
+      "carousel-mobile",
+    );
+    if (!desktop || !mobile) {
+      return {
+        success: false,
+        error: "Both desktop (21:9) and mobile (16:9) images are required",
+      };
     }
 
     const linkUrl = (formData.get("link_url") as string) || null;
-    const focalX = parseFloat(formData.get("focal_x") as string) || 0.5;
-    const focalY = parseFloat(formData.get("focal_y") as string) || 0.5;
+    const dFocalX = parseFloat(formData.get("focal_x") as string) || 0.5;
+    const dFocalY = parseFloat(formData.get("focal_y") as string) || 0.5;
+    const mFocalX = parseFloat(formData.get("mobile_focal_x") as string) || 0.5;
+    const mFocalY = parseFloat(formData.get("mobile_focal_y") as string) || 0.5;
 
-    // Parallel: get user, create image record, and get next display_order
-    const [added_by, { results: imageRows }, nextOrder] =
+    // Insert both image rows + resolve display order in parallel.
+    const [{ results: dRows }, { results: mRows }, nextOrder] =
       await Promise.all([
-        requirePermission("carousels", "create"),
         d1.query<{ image_id: number }>(
           "INSERT INTO image (image_url, thumb_url, blurhash, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING image_id",
-          [uploaded.key, uploaded.thumbKey, uploaded.blurhash, focalX, focalY, null],
+          [desktop.key, desktop.thumbKey, desktop.blurhash, dFocalX, dFocalY, added_by],
+        ),
+        d1.query<{ image_id: number }>(
+          "INSERT INTO image (image_url, thumb_url, blurhash, focal_x, focal_y, uploaded_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING image_id",
+          [mobile.key, mobile.thumbKey, mobile.blurhash, mFocalX, mFocalY, added_by],
         ),
         getLastDisplayOrder("carousel_image", "carousel_id", carouselId),
       ]);
 
-    const imageId = imageRows[0].image_id;
+    const imageId = dRows[0].image_id;
+    const mobileImageId = mRows[0].image_id;
 
-    // Create the junction record
     await d1.query(
-      `INSERT INTO carousel_image (carousel_id, image_id, display_order, added_by, active, link_url)
-       VALUES (?, ?, ?, ?, 1, ?)`,
-      [carouselId, imageId, nextOrder, added_by, linkUrl],
+      `INSERT INTO carousel_image (carousel_id, image_id, mobile_image_id, display_order, added_by, active, link_url)
+       VALUES (?, ?, ?, ?, ?, 1, ?)`,
+      [carouselId, imageId, mobileImageId, nextOrder, added_by, linkUrl],
     );
 
     invalidateTag(CACHE_TAGS.CAROUSELS);
-    auditLog(added_by, "added carousel image | carousel=" + carouselId);
+    auditLog(added_by, "added carousel image (dual) | carousel=" + carouselId);
     return { success: true };
   } catch (error) {
     return {
@@ -99,35 +104,46 @@ export async function removeCarouselImage(
 ) {
   try {
     const userId = await requirePermission("carousels", "delete");
-    // Get image keys for R2 cleanup
-    const { results } = await d1.query<{ image_url: string; thumb_url: string | null }>(
-      "SELECT image_url, thumb_url FROM image WHERE image_id = ?",
-      [imageId],
-    );
-    const imageKey = results[0]?.image_url;
-    const thumbKey = results[0]?.thumb_url;
 
-    // Delete junction record
+    // A slide now owns TWO image rows (desktop image_id + mobile_image_id).
+    // Resolve the paired mobile image so we clean up both.
+    const { results: junction } = await d1.query<{ mobile_image_id: number | null }>(
+      "SELECT mobile_image_id FROM carousel_image WHERE carousel_id = ? AND image_id = ?",
+      [carouselId, imageId],
+    );
+    const mobileImageId = junction[0]?.mobile_image_id ?? null;
+    const ids = [imageId, ...(mobileImageId ? [mobileImageId] : [])];
+
+    // Gather R2 keys for both image rows.
+    const placeholders = ids.map(() => "?").join(",");
+    const { results: imgs } = await d1.query<{
+      image_id: number;
+      image_url: string;
+      thumb_url: string | null;
+    }>(
+      `SELECT image_id, image_url, thumb_url FROM image WHERE image_id IN (${placeholders})`,
+      ids,
+    );
+
+    // Delete the junction record first (removes both references atomically).
     await d1.query(
       "DELETE FROM carousel_image WHERE carousel_id = ? AND image_id = ?",
       [carouselId, imageId],
     );
 
-    // Delete from R2 (both full + thumb variant if present)
-    await deleteFile(imageKey);
-    if (thumbKey) await deleteFile(thumbKey);
-
-    // Delete the `image` table row IFF no other carousel_image still references
-    // it. carousel_image is many-to-many, so an image could in principle be
-    // linked to multiple carousels — only orphan if this was the last link.
-    // Without this cleanup, the image table accumulates dead rows pointing at
-    // now-deleted R2 keys.
-    const refs = await d1.query<{ cnt: number }>(
-      "SELECT COUNT(*) AS cnt FROM carousel_image WHERE image_id = ?",
-      [imageId],
-    );
-    if ((refs.results[0]?.cnt ?? 0) === 0) {
-      await d1.query("DELETE FROM image WHERE image_id = ?", [imageId]);
+    // For each image row: drop its R2 objects, then orphan-clean the row IFF no
+    // other slide still references it as a desktop (image_id) OR mobile
+    // (mobile_image_id) image.
+    for (const img of imgs) {
+      await deleteFile(img.image_url);
+      if (img.thumb_url) await deleteFile(img.thumb_url);
+      const refs = await d1.query<{ cnt: number }>(
+        "SELECT (SELECT COUNT(*) FROM carousel_image WHERE image_id = ?) + (SELECT COUNT(*) FROM carousel_image WHERE mobile_image_id = ?) AS cnt",
+        [img.image_id, img.image_id],
+      );
+      if ((refs.results[0]?.cnt ?? 0) === 0) {
+        await d1.query("DELETE FROM image WHERE image_id = ?", [img.image_id]);
+      }
     }
 
     invalidateTag(CACHE_TAGS.CAROUSELS);

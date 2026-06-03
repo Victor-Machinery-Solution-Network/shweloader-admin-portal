@@ -543,7 +543,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_carousel_name ON carousel(name);
 
 CREATE TABLE IF NOT EXISTS carousel_image (
     carousel_id INTEGER NOT NULL,
-    image_id INTEGER NOT NULL,
+    image_id INTEGER NOT NULL,          -- desktop 21:9
+    mobile_image_id INTEGER NOT NULL,   -- mobile 16:9
     display_order TEXT DEFAULT '0',
     added_by INTEGER,
     active INTEGER DEFAULT 1,
@@ -552,11 +553,13 @@ CREATE TABLE IF NOT EXISTS carousel_image (
     PRIMARY KEY (carousel_id, image_id),
     FOREIGN KEY (carousel_id) REFERENCES carousel(carousel_id) ON DELETE CASCADE,
     FOREIGN KEY (image_id) REFERENCES image(image_id) ON DELETE RESTRICT,
+    FOREIGN KEY (mobile_image_id) REFERENCES image(image_id) ON DELETE RESTRICT,
     FOREIGN KEY (added_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_carousel_image_carousel ON carousel_image(carousel_id);
 CREATE INDEX IF NOT EXISTS idx_carousel_image_image ON carousel_image(image_id);
+CREATE INDEX IF NOT EXISTS idx_carousel_image_mobile ON carousel_image(mobile_image_id);
 CREATE INDEX IF NOT EXISTS idx_carousel_image_active_order ON carousel_image(active, display_order);
 
 -- =============================================

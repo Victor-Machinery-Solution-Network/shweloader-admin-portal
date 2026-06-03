@@ -10,7 +10,8 @@ import {
   EyeOff,
   Link,
   ExternalLink,
-  Move,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
@@ -36,7 +37,7 @@ import type { CarouselImageWithDetails } from "@/types/carousel";
 interface CarouselImageCardProps {
   image: CarouselImageWithDetails;
   index: number;
-  onAdjustPosition?: () => void;
+  onAdjustPosition?: (which: "desktop" | "mobile") => void;
 }
 
 export function CarouselImageCard({ image, index, onAdjustPosition }: CarouselImageCardProps) {
@@ -206,14 +207,30 @@ export function CarouselImageCard({ image, index, onAdjustPosition }: CarouselIm
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        aria-label="Adjust image position"
+                        aria-label="Adjust desktop position"
                         className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-black/70"
-                        onClick={onAdjustPosition}
+                        onClick={() => onAdjustPosition("desktop")}
                       >
-                        <Move aria-hidden="true" className="size-4" />
+                        <Monitor aria-hidden="true" className="size-4" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Adjust position</TooltipContent>
+                    <TooltipContent>Adjust desktop crop (21:9)</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {canEdit && onAdjustPosition && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Adjust mobile position"
+                        className="rounded bg-black/50 p-1 text-white backdrop-blur-sm hover:bg-black/70"
+                        onClick={() => onAdjustPosition("mobile")}
+                      >
+                        <Smartphone aria-hidden="true" className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Adjust mobile crop (16:9)</TooltipContent>
                   </Tooltip>
                 )}
 
