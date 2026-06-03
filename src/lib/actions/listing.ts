@@ -40,6 +40,54 @@ import {
 import { saveTrashMetadata } from "@/lib/actions/trash";
 import { auditLog } from "@/lib/actions/audit";
 import { randomCustomIdSuffix, customIdSqlExpr } from "@/lib/utils/custom-id";
+import { revalidatePublicSite } from "@/lib/revalidate-public";
+import { waitUntil } from "@vercel/functions";
+
+// ─── Helper: surgically revalidate a public product-detail page ──────────────
+
+/**
+ * Bust the public `/product/...` page for a listing (public cache tag
+ * `listing:<product_list_id>`, see public-web getListing). Pass `productListId`
+ * directly when it's already in scope (update/delete paths), or a sale/rent
+ * listing id + table to resolve it (toggles/approvals, which only hold the
+ * listing id).
+ *
+ * Fire-and-forget like `auditLog`: callers don't `await` it, and the whole
+ * thing (including the id lookup) is wrapped in `waitUntil` so the Vercel
+ * container stays alive until it lands — admin-save latency is unchanged.
+ * Never throws; a failed bust just falls back to the page's TTL.
+ *
+ * The broad browse/featured collections are handled separately by the
+ * `invalidateTag(SALE/RENT_LISTINGS)` choke-point; this only adds the one
+ * affected detail page so other product pages stay warm.
+ */
+function revalidatePublicProduct(
+  ref:
+    | { productListId: number | null | undefined }
+    | { table: "sale_listing" | "rent_listing"; listingId: number },
+): void {
+  const run = (async () => {
+    try {
+      let pid: number | null | undefined =
+        "productListId" in ref ? ref.productListId : null;
+      if (pid == null && "table" in ref) {
+        const r = await d1.query<{ product_list_id: number }>(
+          `SELECT product_list_id FROM ${ref.table} WHERE id = ?`,
+          [ref.listingId],
+        );
+        pid = r.results[0]?.product_list_id;
+      }
+      if (pid != null) revalidatePublicSite(["listing:" + pid]);
+    } catch (e) {
+      console.error("[revalidate] product-page bust failed:", e);
+    }
+  })();
+  try {
+    waitUntil(run);
+  } catch {
+    /* not on Vercel — promise still runs */
+  }
+}
 
 // ─── Helper: process product photos from form data ──────────────────────────
 
@@ -829,6 +877,7 @@ export async function updateSaleListing(saleId: number, formData: FormData) {
     await cleanupProductThumbnail(existingRow, thumbnailFields);
 
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ productListId });
     auditLog(userId, "updated sale listing | id=" + saleId);
     return { success: true };
   } catch (error) {
@@ -875,6 +924,7 @@ export async function deleteSaleListing(saleId: number) {
     }
 
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ productListId });
     auditLog(deletedBy, "deleted sale listing | id=" + saleId);
     return { success: true };
   } catch (error) {
@@ -953,6 +1003,7 @@ export async function updateRentListing(rentId: number, formData: FormData) {
     await cleanupProductThumbnail(existingRow, thumbnailFields);
 
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ productListId });
     auditLog(userId, "updated rent listing | id=" + rentId);
     return { success: true };
   } catch (error) {
@@ -999,6 +1050,7 @@ export async function deleteRentListing(rentId: number) {
     }
 
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ productListId });
     auditLog(deletedBy, "deleted rent listing | id=" + rentId);
     return { success: true };
   } catch (error) {
@@ -1021,6 +1073,7 @@ async function deleteListings(
   const deletedBy = await requirePermission(feature, "delete");
   assertBulkLimit(ids);
 
+  const affectedProductIds: number[] = [];
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       const existing = await d1.query<{ product_list_id: number }>(
@@ -1029,6 +1082,7 @@ async function deleteListings(
       );
       if (existing.results.length === 0) return;
       const productListId = existing.results[0]?.product_list_id;
+      if (productListId) affectedProductIds.push(productListId);
 
       await service.softDelete(id, deletedBy);
       const batchId = crypto.randomUUID();
@@ -1053,6 +1107,9 @@ async function deleteListings(
     .map((r, i) => getErrorMessage(r.reason, `Failed to delete listing ${ids[i]}`));
   const deleted = results.filter((r) => r.status === "fulfilled").length;
   invalidateTag(cacheTag);
+  if (affectedProductIds.length) {
+    revalidatePublicSite(affectedProductIds.map((p) => "listing:" + p));
+  }
   auditLog(deletedBy, "bulk deleted " + type + " listings | count=" + deleted);
 
   if (errors.length > 0) {
@@ -1083,6 +1140,7 @@ export async function toggleSaleHidden(id: number) {
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await saleListingService.update(id, { is_hidden: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ table: "sale_listing", listingId: id });
     auditLog(userId, "toggled sale listing hidden | id=" + id);
     return { success: true, is_hidden: newVal };
   } catch (error) {
@@ -1103,6 +1161,7 @@ export async function toggleRentHidden(id: number) {
     const newVal = current.results[0]?.is_hidden === 1 ? 0 : 1;
     await rentListingService.update(id, { is_hidden: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ table: "rent_listing", listingId: id });
     auditLog(userId, "toggled rent listing hidden | id=" + id);
     return { success: true, is_hidden: newVal };
   } catch (error) {
@@ -1123,6 +1182,7 @@ export async function toggleSoldOut(id: number) {
     const newVal = current.results[0]?.is_sold_out === 1 ? 0 : 1;
     await saleListingService.update(id, { is_sold_out: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ table: "sale_listing", listingId: id });
     auditLog(userId, "toggled sale listing sold out | id=" + id);
     return { success: true, is_sold_out: newVal };
   } catch (error) {
@@ -1143,6 +1203,7 @@ export async function toggleSaleHidePrice(id: number) {
     const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
     await saleListingService.update(id, { hide_price: newVal });
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ table: "sale_listing", listingId: id });
     auditLog(userId, "toggled sale listing hide price | id=" + id);
     return { success: true, hide_price: newVal };
   } catch (error) {
@@ -1163,6 +1224,7 @@ export async function toggleIsRented(id: number) {
     const newVal = current.results[0]?.is_rented === 1 ? 0 : 1;
     await rentListingService.update(id, { is_rented: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ table: "rent_listing", listingId: id });
     auditLog(userId, "toggled rent listing rented | id=" + id);
     return { success: true, is_rented: newVal };
   } catch (error) {
@@ -1183,6 +1245,7 @@ export async function toggleRentHidePrice(id: number) {
     const newVal = current.results[0]?.hide_price === 1 ? 0 : 1;
     await rentListingService.update(id, { hide_price: newVal });
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ table: "rent_listing", listingId: id });
     auditLog(userId, "toggled rent listing hide price | id=" + id);
     return { success: true, hide_price: newVal };
   } catch (error) {
@@ -1681,6 +1744,7 @@ export async function approveListingSale(id: number) {
       [userId, id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ productListId: row.product_list_id });
     auditLog(userId, "approved sale listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
@@ -1729,6 +1793,7 @@ export async function requestReworkSale(id: number, reason?: string) {
       [reason || null, id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ productListId: guardRow.product_list_id });
     auditLog(userId, "requested rework for sale listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
@@ -1785,6 +1850,7 @@ export async function approveListingRent(id: number) {
       [userId, id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ productListId: row.product_list_id });
     auditLog(userId, "approved rent listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
@@ -1833,6 +1899,7 @@ export async function requestReworkRent(id: number, reason?: string) {
       [reason || null, id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ productListId: guardRow.product_list_id });
     auditLog(userId, "requested rework for rent listing | id=" + id);
 
     // Notify the creator (fire-and-forget)
@@ -1894,6 +1961,7 @@ export async function resubmitSaleListing(id: number) {
       [id],
     );
     invalidateTag(CACHE_TAGS.SALE_LISTINGS);
+    revalidatePublicProduct({ table: "sale_listing", listingId: id });
     auditLog(userId, "resubmitted sale listing | id=" + id);
 
     // Notify approvers (fire-and-forget)
@@ -1940,6 +2008,7 @@ export async function resubmitRentListing(id: number) {
       [id],
     );
     invalidateTag(CACHE_TAGS.RENT_LISTINGS);
+    revalidatePublicProduct({ table: "rent_listing", listingId: id });
     auditLog(userId, "resubmitted rent listing | id=" + id);
 
     // Notify approvers (fire-and-forget)

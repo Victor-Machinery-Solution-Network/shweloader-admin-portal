@@ -1,5 +1,6 @@
 import { updateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/constants";
+import { revalidatePublicSite } from "@/lib/revalidate-public";
 
 type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
 
@@ -58,11 +59,44 @@ const CACHE_DEPENDENTS: Partial<Record<CacheTag, CacheTag[]>> = {
 };
 
 /**
+ * Map an admin cache tag → the PUBLIC web app's cache tag, for entities the
+ * public site renders. Tags absent here are admin-only (users, roles,
+ * enquiries, popup promotions, …) and never trigger a public revalidation.
+ *
+ * This is collection-level only. A single product/article DETAIL page is busted
+ * surgically by its `listing:<id>` / `blog:<id>` tag from the listing/article
+ * actions (see actions/listing.ts, actions/article.ts) — not here, because this
+ * choke-point only receives tag enums, not row ids.
+ */
+const PUBLIC_TAG_FOR: Partial<Record<CacheTag, string>> = {
+  [CACHE_TAGS.BRANDS]: "brands",
+  [CACHE_TAGS.LOCATIONS]: "locations",
+  [CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES]: "categories",
+  [CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES]: "categories",
+  [CACHE_TAGS.EQUIPMENT_MODELS]: "categories",
+  [CACHE_TAGS.ATTACHMENT_CATEGORIES]: "categories",
+  [CACHE_TAGS.ATTACHMENT_MODELS]: "categories",
+  [CACHE_TAGS.CONDITION_TYPES]: "categories",
+  [CACHE_TAGS.SALE_LISTINGS]: "listings",
+  [CACHE_TAGS.RENT_LISTINGS]: "listings",
+  [CACHE_TAGS.FEATURED_LISTINGS]: "featured-listings",
+  [CACHE_TAGS.ARTICLES]: "blogs",
+  [CACHE_TAGS.ARTICLE_CATEGORIES]: "blog-categories",
+  [CACHE_TAGS.ANNOUNCEMENTS]: "announcements",
+  [CACHE_TAGS.CAROUSELS]: "carousel",
+};
+
+/**
  * Invalidate one or more cache tags plus all their dependents (recursive).
  * Uses a Set to deduplicate — safe against circular references.
  *
- * Uses updateTag (Server Action API) for immediate cache expiration
- * with read-your-own-writes semantics + Router Cache invalidation.
+ * Two layers fire from the resolved tag set:
+ *  1. The PUBLIC web app's cache, via a fire-and-forget webhook (mapped tags).
+ *  2. This admin app's OWN cache, via updateTag (read-your-own-writes).
+ *
+ * The public revalidation runs FIRST and independently: updateTag is a
+ * Server-Action-only API that can throw outside that context (e.g. the daily
+ * cron purge Route Handler), so we must not let it gate the public bust.
  */
 export function invalidateTag(...tags: CacheTag[]) {
   const all = new Set<CacheTag>();
@@ -74,5 +108,18 @@ export function invalidateTag(...tags: CacheTag[]) {
   }
 
   for (const tag of tags) resolve(tag);
+
+  // 1. Bust the public site (collection-level) for any public-facing tags.
+  //    Fire-and-forget; no-ops when no public tags map or the env is unset.
+  const publicTags = [
+    ...new Set(
+      [...all]
+        .map((t) => PUBLIC_TAG_FOR[t])
+        .filter((t): t is string => Boolean(t)),
+    ),
+  ];
+  revalidatePublicSite(publicTags);
+
+  // 2. Bust this admin app's own cache.
   for (const tag of all) updateTag(tag);
 }
