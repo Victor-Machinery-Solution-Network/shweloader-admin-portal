@@ -554,20 +554,42 @@ async function createProductAndGetId(
   focalPoint?: { focal_x: number; focal_y: number },
 ) {
   const custom_id_suffix = await generateUniqueCustomIdSuffix();
-  const product = await productListService.create({
-    ...productFields,
-    focal_x: focalPoint?.focal_x ?? 0.5,
-    focal_y: focalPoint?.focal_y ?? 0.5,
-    custom_id_suffix,
-    created_by,
-  });
-  const productId = (product as unknown as Record<string, unknown>)?.id as
-    | number
-    | undefined;
-  // No SELECT MAX(id) fallback — under concurrent product creation the
-  // fallback can return a different product's id and silently wire images
-  // / listings to the wrong product_list. If create() doesn't return the
-  // row, that's a worker-API contract bug that should surface here.
+  // Use raw INSERT ... RETURNING id (not productListService.create) — the REST
+  // worker echoes the input payload without the auto-generated `id`, so we'd
+  // never get one back. RETURNING id is atomic and concurrency-safe. Can be
+  // reverted to productListService.create() once the worker's POST handler
+  // also uses RETURNING * (admin-portal-api repo).
+  const { results } = await d1.query<{ id: number }>(
+    `INSERT INTO product_list (
+       partner_id, equipment_model_id, attachment_model_id,
+       description, township_id, address,
+       hide_address, hide_state_region, hide_district, hide_township, hide_partner,
+       custom_fields, thumbnail_url,
+       focal_x, focal_y,
+       custom_id_suffix, created_by
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     RETURNING id`,
+    [
+      productFields.partner_id,
+      productFields.equipment_model_id,
+      productFields.attachment_model_id,
+      productFields.description,
+      productFields.township_id,
+      productFields.address,
+      productFields.hide_address,
+      productFields.hide_state_region,
+      productFields.hide_district,
+      productFields.hide_township,
+      productFields.hide_partner,
+      productFields.custom_fields,
+      productFields.thumbnail_url ?? null,
+      focalPoint?.focal_x ?? 0.5,
+      focalPoint?.focal_y ?? 0.5,
+      custom_id_suffix,
+      created_by,
+    ],
+  );
+  const productId = results[0]?.id;
   if (!productId) throw new Error("Failed to create product list — no id returned");
   return productId;
 }
@@ -799,6 +821,7 @@ export async function createListing(formData: FormData) {
     auditLog(created_by, "created listing | product=" + productId + " | type=" + (forSale && forRent ? "sale+rent" : forSale ? "sale" : "rent"));
     return { success: true };
   } catch (error) {
+    console.error("[createListing] failed:", error);
     // Clean up any R2 files that were uploaded before the failure
     await Promise.allSettled(uploadedKeys.map((key) => deleteFile(key)));
     return {
