@@ -25,7 +25,7 @@ interface LinkedProductsCellProps {
 function formatPrice(l: PopupListingOption): string {
   if (l.price_mmk != null) return `${l.price_mmk.toLocaleString()} MMK`;
   if (l.price_usd != null) return `$${l.price_usd.toLocaleString()}`;
-  return "Price on request";
+  return "Price on enquiry";
 }
 
 export function LinkedProductsCell({ promotion, listings }: LinkedProductsCellProps) {

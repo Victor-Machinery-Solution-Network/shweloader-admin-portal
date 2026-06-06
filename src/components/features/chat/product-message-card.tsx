@@ -31,7 +31,7 @@ function formatPrice(
   if (usdPrice != null) {
     return `$${usdPrice.toLocaleString()}`;
   }
-  return "Price on request";
+  return "Price on enquiry";
 }
 
 export function ProductMessageCard({

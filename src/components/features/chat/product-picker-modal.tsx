@@ -52,7 +52,7 @@ function formatPrice(
   price: number | null,
   displayCurrency: string | null,
 ): string {
-  if (price == null) return "Price on request";
+  if (price == null) return "Price on enquiry";
   if (displayCurrency === "USD") return `$${price.toLocaleString()}`;
   return `${price.toLocaleString()} MMK`;
 }
