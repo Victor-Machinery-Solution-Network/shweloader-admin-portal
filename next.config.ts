@@ -15,10 +15,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // R2 asset domains (prod `asset.` + staging) all live under shweloader.com.mm.
-    // Wildcard so the optimizer works in every env (matches the public web app).
+    // Explicit R2 asset hosts only (prod + staging). NOT a wildcard: a broad
+    // `**.shweloader.com.mm` would let the image optimizer proxy-fetch from the
+    // authenticated API subdomains (api./app-api.) too — an SSRF surface.
     remotePatterns: [
-      { protocol: "https", hostname: "**.shweloader.com.mm" },
+      { protocol: "https", hostname: "asset.shweloader.com.mm" },
+      { protocol: "https", hostname: "asset-staging.shweloader.com.mm" },
     ],
   },
   cacheComponents: true,
