@@ -11,11 +11,14 @@ DROP TABLE IF EXISTS chat_session;
 DROP TABLE IF EXISTS trash_metadata;
 DROP TABLE IF EXISTS saved_item;
 DROP TABLE IF EXISTS notification;
+DROP TABLE IF EXISTS user_notification;
 DROP TABLE IF EXISTS featured_listing;
 DROP TABLE IF EXISTS rent_listing;
 DROP TABLE IF EXISTS sale_listing;
 DROP TABLE IF EXISTS product_image;
 DROP TABLE IF EXISTS custom_field_template;
+DROP TABLE IF EXISTS popup_promotion_listing;
+DROP TABLE IF EXISTS popup_promotion;
 DROP TABLE IF EXISTS product_list;
 DROP TABLE IF EXISTS attachment_category_brand;
 DROP TABLE IF EXISTS attachment_model;
@@ -582,6 +585,7 @@ CREATE TABLE IF NOT EXISTS popup_promotion (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP,
+    deleted_by INTEGER,
     FOREIGN KEY (image_id) REFERENCES image(image_id) ON DELETE RESTRICT,
     FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
 );
