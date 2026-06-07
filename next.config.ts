@@ -15,11 +15,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // R2 asset domains (prod `asset.` + staging) all live under shweloader.com.mm.
+    // Wildcard so the optimizer works in every env (matches the public web app).
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "asset-staging.shweloader.com.mm",
-      },
+      { protocol: "https", hostname: "**.shweloader.com.mm" },
     ],
   },
   cacheComponents: true,
