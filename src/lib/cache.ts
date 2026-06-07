@@ -135,7 +135,10 @@ export function getPartnersWithDetails() {
 
 export async function getUsers() {
   const result = await d1.query<AppUser>(
-    `SELECT c.*,
+    // Explicit columns (no password_hash — it must never leave the DB layer).
+    `SELECT c.app_user_id, c.username, c.full_name, c.email, c.phone, c.is_verified,
+       c.company_name, c.address, c.business_type_id, c.created_at, c.updated_at,
+       c.deleted_at, c.deleted_by, c.last_login_at, c.township_id,
       CASE WHEN p.id IS NOT NULL AND pst.status_name = 'Approved' THEN 1 ELSE 0 END AS is_approved_partner
     FROM app_user c
     LEFT JOIN partner p ON c.app_user_id = p.app_user_id
@@ -183,7 +186,6 @@ export async function getUsersPageData() {
       (SELECT json_group_array(json_object(
         'app_user_id', t.app_user_id, 'username', t.username,
         'full_name', t.full_name, 'email', t.email,
-        'password_hash', t.password_hash,
         'phone', t.phone, 'is_verified', t.is_verified,
         'company_name', t.company_name, 'address', t.address,
         'business_type_id', t.business_type_id,

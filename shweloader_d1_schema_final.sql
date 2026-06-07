@@ -1232,3 +1232,27 @@ CREATE INDEX IF NOT EXISTS idx_app_feedback_created ON app_feedback(created_at D
 CREATE INDEX IF NOT EXISTS idx_app_feedback_user    ON app_feedback(app_user_id);
 -- Supports the anti-spam hourly-count and duplicate-message lookups.
 CREATE INDEX IF NOT EXISTS idx_app_feedback_ip      ON app_feedback(ip_hash, created_at);
+
+-- =============================================
+-- PERFORMANCE INDEXES (query optimization, 2026-06-07)
+-- Eliminate temp-sorts / full scans on hot read paths and cut D1 rows_read.
+-- Spec: docs/superpowers/specs/2026-06-07-db-query-optimization-design.md
+-- =============================================
+
+-- Admin list sorts (was: TEMP B-TREE on created_at)
+CREATE INDEX IF NOT EXISTS idx_app_user_deleted_created ON app_user(deleted_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blacklist_created ON blacklist(created_at DESC);
+
+-- Catalog taxonomy admin loaders (was: full SCAN; now SEARCH live rows in name order)
+CREATE INDEX IF NOT EXISTS idx_equipment_model_deleted_name ON equipment_model(deleted_at, name);
+CREATE INDEX IF NOT EXISTS idx_attachment_model_deleted_name ON attachment_model(deleted_at, name);
+CREATE INDEX IF NOT EXISTS idx_product_brand_deleted_name ON product_brand(deleted_at, name);
+CREATE INDEX IF NOT EXISTS idx_equipment_sub_category_deleted_name ON equipment_sub_category(deleted_at, name);
+
+-- Price-sorted browse (was: TEMP B-TREE). Partial composite over the active-listing
+-- set so the status filter + price sort are served by one index. ACTIVATION REQUIRES
+-- the app-api ORDER BY to be "<price> ASC NULLS LAST" (see spec / listings.ts).
+CREATE INDEX IF NOT EXISTS idx_sale_listing_active_mmk ON sale_listing(approve_status_id, mmk_price) WHERE deleted_at IS NULL AND is_hidden = 0;
+CREATE INDEX IF NOT EXISTS idx_sale_listing_active_usd ON sale_listing(approve_status_id, usd_price) WHERE deleted_at IS NULL AND is_hidden = 0;
+CREATE INDEX IF NOT EXISTS idx_rent_listing_active_mmk ON rent_listing(approve_status_id, mmk_price) WHERE deleted_at IS NULL AND is_hidden = 0;
+CREATE INDEX IF NOT EXISTS idx_rent_listing_active_usd ON rent_listing(approve_status_id, usd_price) WHERE deleted_at IS NULL AND is_hidden = 0;
