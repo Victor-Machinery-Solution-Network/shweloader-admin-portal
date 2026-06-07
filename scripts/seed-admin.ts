@@ -21,9 +21,9 @@ import bcrypt from "bcryptjs";
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const ADMIN_EMAIL = "admin@shweloader.com";
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "admin123!"; // Change this after first login
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@shweloader.com";
+const ADMIN_USERNAME = process.env.SEED_ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "admin123!"; // override via SEED_ADMIN_PASSWORD; change after first login
 const BCRYPT_ROUNDS = 12;
 
 const D1_BASE_URL =
