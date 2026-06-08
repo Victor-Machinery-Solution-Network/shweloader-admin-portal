@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapPin, ChevronDown, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   Combobox,
   ComboboxInput,
@@ -11,15 +9,7 @@ import {
   ComboboxItem,
   ComboboxEmpty,
   ComboboxCollection,
-  ComboboxPortalContext,
 } from "@/components/ui/combobox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import type { StateRegion, District, Township } from "@/types/location";
 
 export interface TownshipOption {
@@ -57,11 +47,7 @@ export function TownshipSearchPicker({
   disabled,
   error,
 }: TownshipSearchPickerProps) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(
-    null,
-  );
 
   const options = useMemo<TownshipOption[]>(() => {
     const stateById = new Map(stateRegions.map((s) => [s.state_region_id, s]));
@@ -96,134 +82,67 @@ export function TownshipSearchPicker({
 
   const useMy = MY_SCRIPT.test(query);
 
-  const filtered = useMemo(() => {
-    const tokens = query
+  const getOptionLabel = (opt: TownshipOption) =>
+    `${opt.primary}, ${opt.secondary}`;
+
+  const filterOption = (opt: TownshipOption, inputValue: string) => {
+    const tokens = inputValue
       .normalize("NFC")
       .trim()
       .toLowerCase()
       .split(/\s+/)
       .filter(Boolean);
-    if (tokens.length === 0) return options;
-    return options.filter((o) =>
-      tokens.every((tok) => o.searchHay.includes(tok)),
-    );
-  }, [options, query]);
-
-  const getOptionLabel = (opt: TownshipOption) =>
-    `${opt.primary}, ${opt.secondary}`;
+    if (tokens.length === 0) return true;
+    return tokens.every((tok) => opt.searchHay.includes(tok));
+  };
 
   const handleComboboxValueChange = (opt: TownshipOption | null) => {
     if (!opt) {
       onSelect(null);
+      setQuery("");
       return;
     }
 
     onSelect(opt);
-    setOpen(false);
     setQuery("");
   };
 
   return (
-    <>
-      <div className="relative">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setOpen(true)}
-          className={cn(
-            "flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent py-1 pl-3 text-sm shadow-xs transition-[color,box-shadow] outline-none",
-            "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            selected ? "pr-9" : "pr-3",
-            error && "border-destructive ring-[3px] ring-destructive/20",
-          )}
-        >
-          <MapPin className="size-4 shrink-0 text-muted-foreground" />
-          <span
-            className={cn(
-              "flex-1 truncate text-left",
-              !selected && "text-muted-foreground",
+    <Combobox
+      value={selected}
+      onValueChange={handleComboboxValueChange}
+      items={options}
+      itemToStringLabel={getOptionLabel}
+      itemToStringValue={(opt) => opt.townshipId}
+      isItemEqualToValue={(a, b) => a.townshipId === b.townshipId}
+      filter={filterOption}
+      onInputValueChange={setQuery}
+    >
+      <ComboboxInput
+        placeholder="Select location"
+        showClear={!!selected}
+        disabled={disabled}
+        aria-invalid={error}
+      />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxEmpty>No township found</ComboboxEmpty>
+          <ComboboxCollection>
+            {(o: TownshipOption) => (
+              <ComboboxItem key={o.townshipId} value={o}>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">
+                    {useMy ? o.primaryMy : o.primary}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {useMy ? o.secondaryMy : o.secondary}
+                  </span>
+                </span>
+              </ComboboxItem>
             )}
-          >
-            {selected
-              ? `${selected.primary}, ${selected.secondary}`
-              : "Select location"}
-          </span>
-          {!selected && (
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-          )}
-        </button>
-        {selected && (
-          <button
-            type="button"
-            aria-label="Clear location"
-            disabled={disabled}
-            onClick={() => onSelect(null)}
-            className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      <Dialog
-        open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (!v) setQuery("");
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <ComboboxPortalContext value={portalContainer}>
-            <DialogHeader className="items-center text-center">
-              <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
-                <MapPin className="text-primary-foreground size-6" />
-              </div>
-              <DialogTitle className="text-xl">Find Township</DialogTitle>
-              <DialogDescription>
-                Search by township, district, or state — English or Burmese.
-              </DialogDescription>
-            </DialogHeader>
-
-            <Combobox
-              value={selected}
-              onValueChange={handleComboboxValueChange}
-              items={filtered}
-              itemToStringLabel={getOptionLabel}
-              itemToStringValue={(opt) => opt.townshipId}
-              isItemEqualToValue={(a, b) => a.townshipId === b.townshipId}
-              filter={null}
-              onInputValueChange={setQuery}
-            >
-              <ComboboxInput
-                placeholder="Search township..."
-                showClear={!!selected}
-              />
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxEmpty>No township found</ComboboxEmpty>
-                  <ComboboxCollection>
-                    {(o: TownshipOption) => (
-                      <ComboboxItem key={o.townshipId} value={o}>
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate">
-                            {useMy ? o.primaryMy : o.primary}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {useMy ? o.secondaryMy : o.secondary}
-                          </span>
-                        </span>
-                      </ComboboxItem>
-                    )}
-                  </ComboboxCollection>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-
-            <div ref={setPortalContainer} className="absolute" />
-          </ComboboxPortalContext>
-        </DialogContent>
-      </Dialog>
-    </>
+          </ComboboxCollection>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }

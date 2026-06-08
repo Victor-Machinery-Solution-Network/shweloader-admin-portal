@@ -456,6 +456,32 @@ function VisibilityToggle({
   );
 }
 
+function isValidPriceInput(value: string) {
+  if (!value.trim()) return false;
+  const price = Number(value);
+  return Number.isFinite(price) && price >= 0;
+}
+
+function isZeroPriceInput(value: string) {
+  if (!value.trim()) return false;
+  const price = Number(value);
+  return Number.isFinite(price) && price === 0;
+}
+
+function areBothPricesZero(usdPrice: string, mmkPrice: string) {
+  return isZeroPriceInput(usdPrice) && isZeroPriceInput(mmkPrice);
+}
+
+function convertUsdToMmkForInput(usd: string, rate: number): string {
+  if (usd.trim() === "0") return "0";
+  return convertUsdToMmk(usd, rate);
+}
+
+function convertMmkToUsdForInput(mmk: string, rate: number): string {
+  if (mmk.trim() === "0") return "0";
+  return convertMmkToUsd(mmk, rate);
+}
+
 function PricingCard({
   icon,
   label,
@@ -493,8 +519,6 @@ function PricingCard({
   onHidePriceChange: (v: boolean) => void;
   error?: string;
 }) {
-  const [showRateSettings, setShowRateSettings] = useState(false);
-
   return (
     <div className="flex flex-col gap-3">
       <SubSectionLabel icon={icon}>
@@ -566,21 +590,11 @@ function PricingCard({
 
       {/* Rate + Display currency — compact row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-        {/* Exchange rate pill (click to configure) */}
-        <button
-          type="button"
-          onClick={() => setShowRateSettings(!showRateSettings)}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors",
-            showRateSettings
-              ? "border-foreground/20 bg-foreground/5 text-foreground"
-              : "text-muted-foreground hover:border-foreground/20 hover:text-foreground",
-          )}
-        >
+        {/* Exchange rate pill */}
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-foreground/20 bg-foreground/5 px-2.5 py-1 font-medium text-foreground">
           <ArrowUpDown className="size-3" />
           <span>1 USD = {activeRate.toLocaleString()} MMK</span>
-          <Pencil className="size-2.5 opacity-50" />
-        </button>
+        </div>
 
         {/* Display currency */}
         <div className="ml-auto flex items-center gap-1.5">
@@ -605,45 +619,46 @@ function PricingCard({
         </div>
       </div>
 
-      {/* Rate settings (expandable) */}
-      {showRateSettings && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="inline-flex rounded-full border bg-background p-0.5">
-            {[
-              {
-                label: `System (${systemRate.toLocaleString()})`,
-                value: "system",
-              },
-              { label: "Custom", value: "custom" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onToggleSystemRate(opt.value === "system")}
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-medium transition-all",
-                  (useSystemRate ? "system" : "custom") === opt.value
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {!useSystemRate && (
-            <Input
-              type="number"
-              placeholder="Enter rate"
-              value={customRate}
-              onChange={(e) => onCustomRateChange(e.target.value)}
-              onWheel={(e) => e.currentTarget.blur()}
-              autoComplete="off"
-              className="h-7 w-28 text-xs"
-            />
-          )}
+      {/* Rate settings */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3 py-2.5 text-sm">
+        <div className="inline-flex rounded-full border bg-background p-0.5">
+          {[
+            {
+              label: `System Rate (${systemRate.toLocaleString()})`,
+              value: "system",
+            },
+            {
+              label: "Custom Rate (Refer price in MMK)",
+              value: "custom",
+            },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onToggleSystemRate(opt.value === "system")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-all",
+                (useSystemRate ? "system" : "custom") === opt.value
+                  ? "bg-foreground text-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
-      )}
+        {!useSystemRate && (
+          <Input
+            type="number"
+            placeholder="Enter rate"
+            value={customRate}
+            onChange={(e) => onCustomRateChange(e.target.value)}
+            onWheel={(e) => e.currentTarget.blur()}
+            autoComplete="off"
+            className="h-7 w-28 text-xs"
+          />
+        )}
+      </div>
 
       {/* Hide price toggle */}
       <label className="flex items-center justify-between rounded-lg border px-4 py-2.5">
@@ -927,7 +942,7 @@ export function ListingEditor({
         ? listing?.use_system_rate !== 0
         : isDraftMode
           ? draftMeta.saleUseSystemRate
-          : true),
+          : false),
   );
   const [saleCustomRate, setSaleCustomRate] = useState<string>(
     savedState?.saleCustomRate ??
@@ -941,7 +956,7 @@ export function ListingEditor({
         ? listing?.use_system_rate !== 0
         : isDraftMode
           ? draftMeta.rentUseSystemRate
-          : true),
+          : false),
   );
   const [rentCustomRate, setRentCustomRate] = useState<string>(
     savedState?.rentCustomRate ??
@@ -1011,6 +1026,8 @@ export function ListingEditor({
         ? draftMeta.rentDisplayCurrency
         : "MMK"),
   );
+  const saleAutoHidePriceRef = useRef(false);
+  const rentAutoHidePriceRef = useRef(false);
 
   const saleActiveRate = saleUseSystemRate
     ? exchangeRate
@@ -1020,27 +1037,47 @@ export function ListingEditor({
     : parseFloat(rentCustomRate) || 0;
 
   const convertSaleUsdToMmk = (usd: string) =>
-    convertUsdToMmk(usd, saleActiveRate);
+    convertUsdToMmkForInput(usd, saleActiveRate);
   const convertSaleMmkToUsd = (mmk: string) =>
-    convertMmkToUsd(mmk, saleActiveRate);
+    convertMmkToUsdForInput(mmk, saleActiveRate);
   const convertRentUsdToMmk = (usd: string) =>
-    convertUsdToMmk(usd, rentActiveRate);
+    convertUsdToMmkForInput(usd, rentActiveRate);
   const convertRentMmkToUsd = (mmk: string) =>
-    convertMmkToUsd(mmk, rentActiveRate);
+    convertMmkToUsdForInput(mmk, rentActiveRate);
 
   // Recalculate sale MMK when sale rate changes
   useEffect(() => {
-    const mmk = convertUsdToMmk(saleUsdPrice, saleActiveRate);
+    const mmk = convertUsdToMmkForInput(saleUsdPrice, saleActiveRate);
     if (mmk) setSaleMmkPrice(mmk);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleActiveRate]);
 
   // Recalculate rent MMK when rent rate changes
   useEffect(() => {
-    const mmk = convertUsdToMmk(rentUsdPrice, rentActiveRate);
+    const mmk = convertUsdToMmkForInput(rentUsdPrice, rentActiveRate);
     if (mmk) setRentMmkPrice(mmk);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rentActiveRate]);
+
+  useEffect(() => {
+    if (areBothPricesZero(saleUsdPrice, saleMmkPrice)) {
+      saleAutoHidePriceRef.current = true;
+      setSaleHidePrice(true);
+    } else if (saleAutoHidePriceRef.current) {
+      saleAutoHidePriceRef.current = false;
+      setSaleHidePrice(false);
+    }
+  }, [saleUsdPrice, saleMmkPrice]);
+
+  useEffect(() => {
+    if (areBothPricesZero(rentUsdPrice, rentMmkPrice)) {
+      rentAutoHidePriceRef.current = true;
+      setRentHidePrice(true);
+    } else if (rentAutoHidePriceRef.current) {
+      rentAutoHidePriceRef.current = false;
+      setRentHidePrice(false);
+    }
+  }, [rentUsdPrice, rentMmkPrice]);
 
   // ── Lookup maps ─────────────────────────────────────────────────────────
 
@@ -1191,9 +1228,9 @@ export function ListingEditor({
     (isEditing || forSale || forRent) &&
     (!conditionRequired || !!conditionId);
   const salePriceValid =
-    !forSale || (!!saleUsdPrice && parseFloat(saleUsdPrice) > 0);
+    !forSale || isValidPriceInput(saleUsdPrice);
   const rentPriceValid =
-    !forRent || (!!rentUsdPrice && parseFloat(rentUsdPrice) > 0);
+    !forRent || isValidPriceInput(rentUsdPrice);
   const step1Valid =
     !!partnerMap.get(selectedPartner) && salePriceValid && rentPriceValid;
 
@@ -1306,12 +1343,12 @@ export function ListingEditor({
         toast.error("Please select a partner");
         return;
       }
-      if (forSale && (!saleUsdPrice || parseFloat(saleUsdPrice) <= 0)) {
+      if (forSale && !isValidPriceInput(saleUsdPrice)) {
         setCurrentStep(1);
         toast.error("Please enter a sale price");
         return;
       }
-      if (forRent && (!rentUsdPrice || parseFloat(rentUsdPrice) <= 0)) {
+      if (forRent && !isValidPriceInput(rentUsdPrice)) {
         setCurrentStep(1);
         toast.error("Please enter a rental price");
         return;
@@ -2240,7 +2277,10 @@ export function ListingEditor({
                     displayCurrency={saleDisplayCurrency}
                     onDisplayCurrencyChange={setSaleDisplayCurrency}
                     hidePrice={saleHidePrice}
-                    onHidePriceChange={setSaleHidePrice}
+                    onHidePriceChange={(v) => {
+                      saleAutoHidePriceRef.current = false;
+                      setSaleHidePrice(v);
+                    }}
                   />
                 ) : (
                   <div className="flex flex-col gap-6">
@@ -2266,7 +2306,10 @@ export function ListingEditor({
                       displayCurrency={rentDisplayCurrency}
                       onDisplayCurrencyChange={setRentDisplayCurrency}
                       hidePrice={rentHidePrice}
-                      onHidePriceChange={setRentHidePrice}
+                      onHidePriceChange={(v) => {
+                        rentAutoHidePriceRef.current = false;
+                        setRentHidePrice(v);
+                      }}
                     />
                     <Field>
                       <FieldLabel>Rental Unit</FieldLabel>
@@ -2313,7 +2356,10 @@ export function ListingEditor({
                       displayCurrency={saleDisplayCurrency}
                       onDisplayCurrencyChange={setSaleDisplayCurrency}
                       hidePrice={saleHidePrice}
-                      onHidePriceChange={setSaleHidePrice}
+                      onHidePriceChange={(v) => {
+                        saleAutoHidePriceRef.current = false;
+                        setSaleHidePrice(v);
+                      }}
                       error={
                         step1Attempted && !salePriceValid
                           ? "Please enter a sale price"
@@ -2345,7 +2391,10 @@ export function ListingEditor({
                         displayCurrency={rentDisplayCurrency}
                         onDisplayCurrencyChange={setRentDisplayCurrency}
                         hidePrice={rentHidePrice}
-                        onHidePriceChange={setRentHidePrice}
+                        onHidePriceChange={(v) => {
+                          rentAutoHidePriceRef.current = false;
+                          setRentHidePrice(v);
+                        }}
                         error={
                           step1Attempted && !rentPriceValid
                             ? "Please enter a rental price"

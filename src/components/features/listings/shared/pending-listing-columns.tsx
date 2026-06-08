@@ -22,7 +22,13 @@ type ListingBase = {
   product_type: string;
   mmk_price: number | null;
   usd_price: number | null;
+  use_system_rate: number;
 };
+
+function hasPositivePrice(value: number | null | undefined) {
+  const price = Number(value ?? 0);
+  return Number.isFinite(price) && price > 0;
+}
 
 // --- Shared column helpers ---
 
@@ -91,12 +97,18 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
       <DataTableColumnHeader column={column} title="Price" />
     ),
     cell: ({ row }) => {
-      const { mmk_price, usd_price } = row.original;
-      const hasMmk = mmk_price != null;
-      const hasUsd = usd_price != null;
+      const { mmk_price, usd_price, use_system_rate } = row.original;
+      const hasMmk = hasPositivePrice(mmk_price);
+      const hasUsd = hasPositivePrice(usd_price);
+      const rateLabel =
+        use_system_rate === 0 ? "Custom Rate" : "System Rate";
 
       if (!hasMmk && !hasUsd) {
-        return <span className="text-muted-foreground">{"\u2014"}</span>;
+        return (
+          <span className="text-muted-foreground text-xs">
+            Check with Supplier
+          </span>
+        );
       }
 
       return (
@@ -109,7 +121,7 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
           )}
           {hasUsd && (
             <p className="text-xs text-muted-foreground">
-              ${Number(usd_price).toLocaleString()}
+              ${Number(usd_price).toLocaleString()} ({rateLabel})
             </p>
           )}
         </div>

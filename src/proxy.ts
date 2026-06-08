@@ -5,11 +5,12 @@ export const config = {
     /*
      * Match all request paths except:
      * - api/auth (Auth.js endpoints must be publicly accessible)
+     * - api/settings/exchange-rate (read-only header badge value)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public assets (images, etc.)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
+    "/((?!api/auth|api/settings/exchange-rate|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)",
   ],
 };

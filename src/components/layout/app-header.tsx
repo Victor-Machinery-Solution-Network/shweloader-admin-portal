@@ -4,6 +4,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { User, Bell, LogOut, Palette } from "lucide-react";
@@ -20,12 +21,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/lib/actions/auth-actions";
-import { ROUTES } from "@/lib/constants";
+import { ROUTES, SYSTEM_EXCHANGE_RATE } from "@/lib/constants";
 import { assetUrl } from "@/lib/r2-url";
 
 export function AppHeader() {
   const router = useRouter();
   const { data: session } = useSession();
+  const [exchangeRate, setExchangeRate] = useState(SYSTEM_EXCHANGE_RATE);
 
   const userName = session?.user?.name ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
@@ -37,11 +39,38 @@ export function AppHeader() {
     .toUpperCase()
     .slice(0, 2);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadExchangeRate() {
+      try {
+        const response = await fetch("/api/settings/exchange-rate");
+        if (!response.ok) return;
+        const data = (await response.json()) as { exchangeRate?: number };
+        if (!cancelled && data.exchangeRate && data.exchangeRate > 0) {
+          setExchangeRate(data.exchangeRate);
+        }
+      } catch {
+        // Keep the built-in fallback rate if the live setting cannot load.
+      }
+    }
+
+    loadExchangeRate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" />
       <div className="flex flex-1 items-center justify-end">
         <div className="flex items-center gap-2">
+          <div className="hidden items-center rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium tabular-nums text-muted-foreground sm:flex">
+            1 USD = {exchangeRate.toLocaleString()} MMK{" "}
+            <span className="ml-1">(System Rate)</span>
+          </div>
           <ThemeToggle />
           <NotificationBell />
           <DropdownMenu>
