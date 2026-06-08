@@ -2145,7 +2145,7 @@ export function ListingEditor({
                 </span>
               </SubSectionLabel>
 
-              <div className="flex flex-col gap-3 rounded-xl border p-4">
+              <div className="flex flex-col gap-6 rounded-xl border p-4">
                 {/* Township (single search picker) */}
                 <div className="flex flex-col gap-3">
                   <p className="flex items-center gap-1.5 text-sm font-medium">
