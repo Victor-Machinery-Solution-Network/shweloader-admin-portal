@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,12 +118,6 @@ export function CustomFieldsSection({
 }: CustomFieldsSectionProps) {
   // Template/existing fields (with proper types from template definition)
   const [fields, setFields] = useState<CustomFieldValue[]>(initialValues);
-  // Preselect the template the listing's saved fields came from (display only —
-  // we do NOT re-apply it, which would overwrite the restored values). Falls
-  // back to "Custom" when fields exist but match no template; "" on a fresh form.
-  const [selectedTemplate, setSelectedTemplate] = useState(() =>
-    inferTemplateLabel(initialValues, templates),
-  );
   const [confirmSwitch, setConfirmSwitch] = useState<{
     template: CustomFieldTemplateWithFields;
     lostFields: string[];
@@ -138,6 +132,24 @@ export function CustomFieldsSection({
   const [customRows, setCustomRows] = useState<CustomRow[]>([
     { id: crypto.randomUUID(), label: "", value: "" },
   ]);
+
+  // The template label shown in the picker, derived live from the current fields
+  // (template fields + labeled ad-hoc rows) — the same merged set that gets
+  // saved. So it updates as you edit: removing a template field flips it to
+  // "Custom" immediately, no save/refresh needed. "" on a fresh form.
+  const selectedTemplate = useMemo(() => {
+    const merged: CustomFieldValue[] = [...fields];
+    for (const r of customRows) {
+      if (!r.label.trim()) continue;
+      merged.push({
+        key: generateKey(r.label, merged.map((v) => v.key)),
+        label: r.label.trim(),
+        type: "text",
+        value: r.value,
+      });
+    }
+    return inferTemplateLabel(merged, templates);
+  }, [fields, customRows, templates]);
 
   // ─── Merge & report ─────────────────────────────────────────────────
 
@@ -166,10 +178,7 @@ export function CustomFieldsSection({
   // ─── Template selection ─────────────────────────────────────────────
 
   function handleTemplateSelect(templateName: string | null) {
-    if (!templateName) {
-      setSelectedTemplate("");
-      return;
-    }
+    if (!templateName) return;
 
     const template = templates.find((t) => t.name === templateName);
     if (!template) return;
@@ -191,7 +200,6 @@ export function CustomFieldsSection({
 
   function applyTemplate(template: CustomFieldTemplateWithFields) {
     const newFields = fieldsFromTemplate(template, fields);
-    setSelectedTemplate(template.name);
 
     const optMap: Record<string, string[]> = {};
     for (const def of template.fields) {
@@ -271,10 +279,10 @@ export function CustomFieldsSection({
               onValueChange={handleTemplateSelect}
               items={comboItems}
             >
-              <ComboboxInput
-                placeholder="Apply a template..."
-                showClear={!!selectedTemplate}
-              />
+              {/* No clear (×): the label is derived from the current fields, so
+                  "clearing" has no meaning — change templates by selecting
+                  another, or remove the fields. */}
+              <ComboboxInput placeholder="Apply a template..." />
               <ComboboxContent>
                 <ComboboxList>
                   <ComboboxEmpty>No templates found</ComboboxEmpty>
