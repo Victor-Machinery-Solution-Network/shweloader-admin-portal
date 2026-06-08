@@ -1072,27 +1072,6 @@ export function ListingEditor({
     [partnerMap],
   );
 
-  // ── Location label lookups (for the "Show to buyers" toggle rows) ──
-  const stateRegionLabel = useMemo(
-    () =>
-      stateRegions.find(
-        (s) => String(s.state_region_id) === selectedStateRegionId,
-      )?.name ?? "",
-    [stateRegions, selectedStateRegionId],
-  );
-  const districtLabel = useMemo(
-    () =>
-      districts.find((d) => String(d.district_id) === selectedDistrictId)
-        ?.name ?? "",
-    [districts, selectedDistrictId],
-  );
-  const townshipLabel = useMemo(
-    () =>
-      townships.find((t) => String(t.township_id) === selectedTownshipId)
-        ?.name ?? "",
-    [townships, selectedTownshipId],
-  );
-
   // ── Custom fields state ────────────────────────────────────────────────
 
   const [customFieldValues, setCustomFieldValues] = useState<
@@ -2182,49 +2161,31 @@ export function ListingEditor({
                   />
 
                   {selectedTownshipId && (
-                    <div className="flex flex-col gap-2 rounded-lg bg-muted/30 p-3">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Show to buyers
-                      </p>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate text-sm">
-                          State / Region
-                          <span className="text-muted-foreground">
-                            {" \u2014 "}
-                            {stateRegionLabel}
-                          </span>
-                        </span>
-                        <VisibilityToggle
-                          hidden={hideStateRegion}
-                          onChange={setHideStateRegion}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Show to buyers:
+                      </span>
+                      <label className="inline-flex cursor-pointer select-none items-center gap-1.5">
+                        <Checkbox
+                          checked={!hideStateRegion}
+                          onCheckedChange={(v) => setHideStateRegion(!v)}
                         />
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate text-sm">
-                          District
-                          <span className="text-muted-foreground">
-                            {" \u2014 "}
-                            {districtLabel}
-                          </span>
-                        </span>
-                        <VisibilityToggle
-                          hidden={hideDistrict}
-                          onChange={setHideDistrict}
+                        <span className="text-sm">State / Region</span>
+                      </label>
+                      <label className="inline-flex cursor-pointer select-none items-center gap-1.5">
+                        <Checkbox
+                          checked={!hideDistrict}
+                          onCheckedChange={(v) => setHideDistrict(!v)}
                         />
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate text-sm">
-                          Township
-                          <span className="text-muted-foreground">
-                            {" \u2014 "}
-                            {townshipLabel}
-                          </span>
-                        </span>
-                        <VisibilityToggle
-                          hidden={hideTownship}
-                          onChange={setHideTownship}
+                        <span className="text-sm">District</span>
+                      </label>
+                      <label className="inline-flex cursor-pointer select-none items-center gap-1.5">
+                        <Checkbox
+                          checked={!hideTownship}
+                          onCheckedChange={(v) => setHideTownship(!v)}
                         />
-                      </div>
+                        <span className="text-sm">Township</span>
+                      </label>
                     </div>
                   )}
                 </div>
