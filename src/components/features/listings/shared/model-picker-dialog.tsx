@@ -15,6 +15,7 @@ import {
   ComboboxCollection,
 } from "@/components/ui/combobox";
 import { ComboboxPortalContext } from "@/components/ui/combobox";
+import { SubCategoryCombobox } from "@/components/features/equipment/sub-category-combobox";
 import {
   Dialog,
   DialogContent,
@@ -199,39 +200,6 @@ export function ModelPickerDialog({
     }
   }, [selectedBrand, productType, allSubCategoryNames, allAttachCategoryNames, brandMap, subCategoriesByBrand, subCategories, attachCategoriesByBrand, attachmentCategories]);
 
-  // ── Sub-categories rendered like the Model CRUD page (equipment only) ──────
-  // Per client preference, the sub-category dropdown mirrors the equipment Model
-  // form: a flat list (so Base UI's built-in query filter works) where each row
-  // shows the sub-category name with its main category as muted text underneath,
-  // instead of group headers.
-
-  // Map each sub-category name to its main category label.
-  const subCategoryGroupLabel = useMemo(() => {
-    const mainCatIdToName = new Map(mainCategories.map((mc) => [mc.category_id, mc.name]));
-    const map = new Map<string, string>();
-    for (const sc of subCategories) {
-      map.set(sc.name, mainCatIdToName.get(sc.category_id) ?? "Other");
-    }
-    return map;
-  }, [subCategories, mainCategories]);
-
-  // Flat sub-category names, ordered so same-main-category items sit together,
-  // filtered to the selected brand's linked sub-categories.
-  const orderedSubCategoryNames = useMemo(() => {
-    if (productType !== "equipment") return null;
-    const filteredSet = new Set(filteredCategoryNames);
-    const groups = new Map<string, string[]>();
-    for (const sc of subCategories) {
-      if (!filteredSet.has(sc.name)) continue;
-      const groupName = subCategoryGroupLabel.get(sc.name) ?? "Other";
-      if (!groups.has(groupName)) groups.set(groupName, []);
-      groups.get(groupName)!.push(sc.name);
-    }
-    const result: string[] = [];
-    for (const items of groups.values()) result.push(...items);
-    return result;
-  }, [productType, filteredCategoryNames, subCategories, subCategoryGroupLabel]);
-
   // ── Filtered models (always populated — filters narrow progressively) ─────
   const filteredModelNames = useMemo(() => {
     const brandId = selectedBrand ? brandMap.get(selectedBrand) : null;
@@ -370,34 +338,14 @@ export function ModelPickerDialog({
             <Field orientation="vertical">
               <FieldLabel>{categoryLabel}</FieldLabel>
               <FieldContent>
-                {productType === "equipment" && orderedSubCategoryNames ? (
-                  <Combobox
+                {productType === "equipment" ? (
+                  <SubCategoryCombobox
                     value={selectedCategory}
                     onValueChange={handleCategoryChange}
-                    items={orderedSubCategoryNames}
-                  >
-                    <ComboboxInput
-                      placeholder="Search sub category…"
-                      showClear={!!selectedCategory}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                        <ComboboxCollection>
-                          {(name: string) => (
-                            <ComboboxItem key={name} value={name}>
-                              <span className="flex flex-col">
-                                <span>{name}</span>
-                                <span className="text-muted-foreground text-xs">
-                                  {subCategoryGroupLabel.get(name)}
-                                </span>
-                              </span>
-                            </ComboboxItem>
-                          )}
-                        </ComboboxCollection>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                    subCategories={subCategories}
+                    mainCategories={mainCategories}
+                    allowedNames={filteredCategoryNames}
+                  />
                 ) : (
                   <Combobox
                     value={selectedCategory}

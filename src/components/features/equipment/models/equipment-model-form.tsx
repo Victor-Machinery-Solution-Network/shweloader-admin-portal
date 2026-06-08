@@ -17,6 +17,7 @@ import {
   ComboboxCollection,
 } from "@/components/ui/combobox";
 import { FormDialog } from "@/components/shared/form-dialog";
+import { SubCategoryCombobox } from "@/components/features/equipment/sub-category-combobox";
 import {
   createEquipmentModel,
   updateEquipmentModel,
@@ -112,35 +113,6 @@ export function EquipmentModelForm({
       .filter((sc) => linkedSubCatIds.has(sc.sub_category_id))
       .map((sc) => sc.name);
   }, [selectedBrand, allSubCategoryNames, brandMap, subCategoriesByBrand, subCategories]);
-
-  // Map each sub-category name to its main category group label
-  const subCategoryGroupLabel = useMemo(() => {
-    const mainCatIdToName = new Map(
-      mainCategories.map((mc) => [mc.category_id, mc.name]),
-    );
-    const map = new Map<string, string>();
-    for (const sc of subCategories) {
-      map.set(sc.name, mainCatIdToName.get(sc.category_id) ?? "Other");
-    }
-    return map;
-  }, [subCategories, mainCategories]);
-
-  // Build ordered items list grouped by main category (for ComboboxCollection rendering)
-  const orderedSubCategoryNames = useMemo(() => {
-    const filteredSet = new Set(filteredSubCategoryNames);
-    const groups = new Map<string, string[]>();
-    for (const sc of subCategories) {
-      if (!filteredSet.has(sc.name)) continue;
-      const groupName = subCategoryGroupLabel.get(sc.name) ?? "Other";
-      if (!groups.has(groupName)) groups.set(groupName, []);
-      groups.get(groupName)!.push(sc.name);
-    }
-    // Flatten in group order
-    const result: string[] = [];
-    for (const items of groups.values()) result.push(...items);
-    return result;
-  }, [filteredSubCategoryNames, subCategories, subCategoryGroupLabel]);
-
 
   const filteredBrandNames = useMemo(() => {
     if (!selectedSubCategory) return equipmentBrandNames;
@@ -287,31 +259,13 @@ export function EquipmentModelForm({
           <FieldLabel>Sub Category</FieldLabel>
           <FieldContent>
             <div className="space-y-1">
-              <Combobox
+              <SubCategoryCombobox
                 value={selectedSubCategory}
                 onValueChange={handleSubCategoryChange}
-                items={orderedSubCategoryNames}
-              >
-                <ComboboxInput
-                  placeholder="Search sub category…"
-                  showClear={!!selectedSubCategory}
-                />
-                <ComboboxContent>
-                  <ComboboxList>
-                    <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                    <ComboboxCollection>
-                      {(name) => (
-                        <ComboboxItem key={name} value={name}>
-                          <span className="flex flex-col">
-                            <span>{name}</span>
-                            <span className="text-muted-foreground text-xs">{subCategoryGroupLabel.get(name)}</span>
-                          </span>
-                        </ComboboxItem>
-                      )}
-                    </ComboboxCollection>
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                subCategories={subCategories}
+                mainCategories={mainCategories}
+                allowedNames={filteredSubCategoryNames}
+              />
               <FieldError show={!selectedSubCategory} message="Please select a sub category" />
             </div>
           </FieldContent>
