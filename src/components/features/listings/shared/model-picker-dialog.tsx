@@ -202,19 +202,24 @@ export function ModelPickerDialog({
   }, [selectedBrand, productType, allSubCategoryNames, allAttachCategoryNames, brandMap, subCategoriesByBrand, subCategories, attachCategoriesByBrand, attachmentCategories]);
 
   // ── Grouped sub-categories by main category (equipment only) ──────────────
+  // Shape: [{ value: mainCategoryName, items: subCategoryName[] }]. This is Base
+  // UI's grouped-`items` format (each entry carries its own `items` array), so
+  // the combobox's built-in query filter narrows items *within* each group as
+  // the user types. Rendering items statically instead bypasses that filter —
+  // which is the bug this replaces (typing didn't filter the sub-category list).
   const groupedSubCategories = useMemo(() => {
     if (productType !== "equipment") return null;
     const mainCatIdToName = new Map(mainCategories.map((mc) => [mc.category_id, mc.name]));
     const filteredSet = new Set(filteredCategoryNames);
-    const groups = new Map<string, { name: string; id: number }[]>();
+    const groups = new Map<string, string[]>();
 
     for (const sc of subCategories) {
       if (!filteredSet.has(sc.name)) continue;
       const groupName = mainCatIdToName.get(sc.category_id) ?? "Other";
       if (!groups.has(groupName)) groups.set(groupName, []);
-      groups.get(groupName)!.push({ name: sc.name, id: sc.sub_category_id });
+      groups.get(groupName)!.push(sc.name);
     }
-    return groups;
+    return Array.from(groups.entries()).map(([value, items]) => ({ value, items }));
   }, [productType, filteredCategoryNames, subCategories, mainCategories]);
 
   // ── Filtered models (always populated — filters narrow progressively) ─────
@@ -359,7 +364,7 @@ export function ModelPickerDialog({
                   <Combobox
                     value={selectedCategory}
                     onValueChange={handleCategoryChange}
-                    items={filteredCategoryNames}
+                    items={groupedSubCategories}
                   >
                     <ComboboxInput
                       placeholder="Search sub category…"
@@ -368,18 +373,20 @@ export function ModelPickerDialog({
                     <ComboboxContent>
                       <ComboboxList>
                         <ComboboxEmpty>No sub category found</ComboboxEmpty>
-                        {Array.from(groupedSubCategories.entries()).map(
-                          ([groupName, items]) => (
-                            <ComboboxGroup key={groupName}>
-                              <ComboboxLabel>{groupName}</ComboboxLabel>
-                              {items.map((item) => (
-                                <ComboboxItem key={item.id} value={item.name}>
-                                  {item.name}
-                                </ComboboxItem>
-                              ))}
+                        <ComboboxCollection>
+                          {(group: { value: string; items: string[] }) => (
+                            <ComboboxGroup key={group.value} items={group.items}>
+                              <ComboboxLabel>{group.value}</ComboboxLabel>
+                              <ComboboxCollection>
+                                {(name: string) => (
+                                  <ComboboxItem key={name} value={name}>
+                                    {name}
+                                  </ComboboxItem>
+                                )}
+                              </ComboboxCollection>
                             </ComboboxGroup>
-                          ),
-                        )}
+                          )}
+                        </ComboboxCollection>
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
