@@ -5,12 +5,18 @@ import { MapPin, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Command,
-  CommandDialog,
   CommandInput,
   CommandList,
   CommandEmpty,
   CommandItem,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import type { StateRegion, District, Township } from "@/types/location";
 
 export interface TownshipOption {
@@ -140,16 +146,25 @@ export function TownshipSearchPicker({
         )}
       </div>
 
-      <CommandDialog
+      <Dialog
         open={open}
         onOpenChange={(v) => {
           setOpen(v);
           if (!v) setQuery("");
         }}
-        title="Select township"
-        description="Search by township, district, or state — English or Burmese"
       >
-        <Command shouldFilter={false}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center text-center">
+            <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
+              <MapPin className="text-primary-foreground size-6" />
+            </div>
+            <DialogTitle className="text-xl">Find Township</DialogTitle>
+            <DialogDescription>
+              Search by township, district, or state — English or Burmese.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Command shouldFilter={false}>
           <CommandInput
             value={query}
             onValueChange={setQuery}
@@ -182,8 +197,9 @@ export function TownshipSearchPicker({
               );
             })}
           </CommandList>
-        </Command>
-      </CommandDialog>
+          </Command>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
