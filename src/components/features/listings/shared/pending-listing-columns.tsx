@@ -105,7 +105,7 @@ function priceColumn<T extends ListingBase>(): ColumnDef<T> {
 
       if (!hasMmk && !hasUsd) {
         return (
-          <span className="text-muted-foreground text-xs">
+          <span className="text-foreground text-xs font-medium">
             Check with Supplier
           </span>
         );

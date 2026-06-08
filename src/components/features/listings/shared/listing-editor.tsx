@@ -527,35 +527,6 @@ function PricingCard({
 
       {/* Currency inputs — side by side */}
       <div className="grid grid-cols-2 gap-3">
-        {/* USD */}
-        <div
-          className={cn(
-            "group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10",
-            error && "border-destructive",
-          )}
-        >
-          <div className="flex items-center gap-3 px-3 py-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
-              $
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
-                USD
-              </p>
-              <input
-                type="number"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={usdPrice}
-                onChange={(e) => onUsdChange(e.target.value)}
-                onWheel={(e) => e.currentTarget.blur()}
-                autoComplete="off"
-                className="placeholder:text-muted-foreground/25 w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* MMK */}
         <div
           className={cn(
@@ -577,6 +548,35 @@ function PricingCard({
                 placeholder="0"
                 value={mmkPrice}
                 onChange={(e) => onMmkChange(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                autoComplete="off"
+                className="placeholder:text-muted-foreground/25 w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* USD */}
+        <div
+          className={cn(
+            "group rounded-xl border bg-background transition-colors focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/10",
+            error && "border-destructive",
+          )}
+        >
+          <div className="flex items-center gap-3 px-3 py-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-bold text-emerald-600">
+              $
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide">
+                USD
+              </p>
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={usdPrice}
+                onChange={(e) => onUsdChange(e.target.value)}
                 onWheel={(e) => e.currentTarget.blur()}
                 autoComplete="off"
                 className="placeholder:text-muted-foreground/25 w-full min-w-0 bg-transparent text-lg font-semibold tabular-nums outline-none"

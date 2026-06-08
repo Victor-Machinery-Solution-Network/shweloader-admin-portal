@@ -33,6 +33,7 @@ import type { ListingDetail, ProductImage } from "@/types/listing";
 import type { CustomFieldValue } from "@/types/custom-field";
 
 function fmtPrice(v: number | null) { return v == null ? "—" : v.toLocaleString(); }
+function hasPositivePrice(v: number | null) { return Number(v ?? 0) > 0; }
 function fmtDate(s: string | null) { if (!s) return "—"; try { return format(new Date(s), "d MMM yyyy"); } catch { return s; } }
 function fmtDateTime(s: string | null) { if (!s) return "—"; try { return format(new Date(s), "d MMM yyyy, h:mm a"); } catch { return s; } }
 
@@ -49,6 +50,9 @@ export function ListingDetailView({ listing, images }: Props) {
 
   const gallery = images.length > 0 ? images : null;
   const activeImage = gallery ? assetUrl(gallery[idx]?.url) : assetUrl(listing.thumbnail_url);
+  const hasMmkPrice = hasPositivePrice(listing.mmk_price);
+  const hasUsdPrice = hasPositivePrice(listing.usd_price);
+  const shouldCheckWithSupplier = !hasMmkPrice && !hasUsdPrice;
 
   // Parse custom fields (array of { key, label, type, value })
   const customFields: CustomFieldValue[] = listing.custom_fields
@@ -134,10 +138,16 @@ export function ListingDetailView({ listing, images }: Props) {
 
           {/* Price */}
           <div className="mt-3">
-            <p className="text-2xl font-bold tabular-nums tracking-tight">
-              {fmtPrice(listing.mmk_price)} <span className="text-muted-foreground text-sm font-normal">MMK</span>
-            </p>
-            {listing.usd_price != null && (
+            {shouldCheckWithSupplier ? (
+              <p className="text-2xl font-bold tracking-tight">
+                Price <span className="text-muted-foreground text-sm font-normal">(Check with Supplier)</span>
+              </p>
+            ) : (
+              <p className="text-2xl font-bold tabular-nums tracking-tight">
+                {fmtPrice(listing.mmk_price)} <span className="text-muted-foreground text-sm font-normal">MMK</span>
+              </p>
+            )}
+            {hasUsdPrice && (
               <p className="text-muted-foreground text-xs tabular-nums">≈ ${fmtPrice(listing.usd_price)} USD{listing.use_system_rate ? " (system rate)" : ""}</p>
             )}
             {listing.hide_price ? <p className="text-muted-foreground mt-0.5 text-[11px] italic">Price hidden from public</p> : null}
