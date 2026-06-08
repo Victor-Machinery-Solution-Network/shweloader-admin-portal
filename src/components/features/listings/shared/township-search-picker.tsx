@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import { MapPin, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandItem,
-} from "@/components/ui/command";
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxCollection,
+  ComboboxPortalContext,
+} from "@/components/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +59,9 @@ export function TownshipSearchPicker({
 }: TownshipSearchPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
 
   const options = useMemo<TownshipOption[]>(() => {
     const stateById = new Map(stateRegions.map((s) => [s.state_region_id, s]));
@@ -102,6 +108,20 @@ export function TownshipSearchPicker({
       tokens.every((tok) => o.searchHay.includes(tok)),
     );
   }, [options, query]);
+
+  const getOptionLabel = (opt: TownshipOption) =>
+    `${opt.primary}, ${opt.secondary}`;
+
+  const handleComboboxValueChange = (opt: TownshipOption | null) => {
+    if (!opt) {
+      onSelect(null);
+      return;
+    }
+
+    onSelect(opt);
+    setOpen(false);
+    setQuery("");
+  };
 
   return (
     <>
@@ -154,50 +174,54 @@ export function TownshipSearchPicker({
         }}
       >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader className="items-center text-center">
-            <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
-              <MapPin className="text-primary-foreground size-6" />
-            </div>
-            <DialogTitle className="text-xl">Find Township</DialogTitle>
-            <DialogDescription>
-              Search by township, district, or state — English or Burmese.
-            </DialogDescription>
-          </DialogHeader>
+          <ComboboxPortalContext value={portalContainer}>
+            <DialogHeader className="items-center text-center">
+              <div className="bg-primary mx-auto flex size-12 items-center justify-center rounded-full">
+                <MapPin className="text-primary-foreground size-6" />
+              </div>
+              <DialogTitle className="text-xl">Find Township</DialogTitle>
+              <DialogDescription>
+                Search by township, district, or state — English or Burmese.
+              </DialogDescription>
+            </DialogHeader>
 
-          <Command shouldFilter={false}>
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Search township…"
-          />
-          <CommandList>
-            <CommandEmpty>No matches</CommandEmpty>
-            {filtered.map((o) => {
-              const isActive = o.townshipId === value;
-              return (
-                <CommandItem
-                  key={o.townshipId}
-                  value={o.townshipId}
-                  data-checked={isActive ? "true" : undefined}
-                  onSelect={() => {
-                    onSelect(o);
-                    setOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm">
-                      {useMy ? o.primaryMy : o.primary}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {useMy ? o.secondaryMy : o.secondary}
-                    </span>
-                  </div>
-                </CommandItem>
-              );
-            })}
-          </CommandList>
-          </Command>
+            <Combobox
+              value={selected}
+              onValueChange={handleComboboxValueChange}
+              items={filtered}
+              itemToStringLabel={getOptionLabel}
+              itemToStringValue={(opt) => opt.townshipId}
+              isItemEqualToValue={(a, b) => a.townshipId === b.townshipId}
+              filter={null}
+              onInputValueChange={setQuery}
+            >
+              <ComboboxInput
+                placeholder="Search township..."
+                showClear={!!selected}
+              />
+              <ComboboxContent>
+                <ComboboxList>
+                  <ComboboxEmpty>No township found</ComboboxEmpty>
+                  <ComboboxCollection>
+                    {(o: TownshipOption) => (
+                      <ComboboxItem key={o.townshipId} value={o}>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate">
+                            {useMy ? o.primaryMy : o.primary}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {useMy ? o.secondaryMy : o.secondary}
+                          </span>
+                        </span>
+                      </ComboboxItem>
+                    )}
+                  </ComboboxCollection>
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+
+            <div ref={setPortalContainer} className="absolute" />
+          </ComboboxPortalContext>
         </DialogContent>
       </Dialog>
     </>
