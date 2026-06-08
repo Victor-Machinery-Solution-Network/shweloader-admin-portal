@@ -39,7 +39,7 @@ interface AddPartnerDialogProps {
 /** User contact line: email / phone / company, each with a leading icon. */
 function UserMeta({ user }: { user: AppUser }) {
   return (
-    <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-6 text-xs">
+    <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
       <span className="flex items-center gap-1">
         <Mail className="size-3 shrink-0" />
         {user.email}
@@ -185,13 +185,17 @@ export function AddPartnerDialog({
                     onClick={() => setSelectedUser(user)}
                     className="hover:bg-muted w-full rounded-lg border px-3 py-2.5 text-left transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <Handshake className="text-muted-foreground size-4 shrink-0" />
-                      <span className="text-sm font-medium">
-                        {user.username}
-                      </span>
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+                        <Handshake className="size-3.5 text-emerald-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block truncate text-sm font-medium">
+                          {user.username}
+                        </span>
+                        <UserMeta user={user} />
+                      </div>
                     </div>
-                    <UserMeta user={user} />
                   </button>
                 ))
               )}
@@ -200,13 +204,17 @@ export function AddPartnerDialog({
         ) : (
           <div className="space-y-4">
             <div className="rounded-lg border px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <Handshake className="text-muted-foreground size-4 shrink-0" />
-                <span className="text-sm font-medium">
-                  {selectedUser.username}
-                </span>
+              <div className="flex items-start gap-2.5">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+                  <Handshake className="size-3.5 text-emerald-500" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-medium">
+                    {selectedUser.username}
+                  </span>
+                  <UserMeta user={selectedUser} />
+                </div>
               </div>
-              <UserMeta user={selectedUser} />
             </div>
 
             <div className="space-y-1.5">
