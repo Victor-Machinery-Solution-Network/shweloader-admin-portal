@@ -199,32 +199,33 @@ export async function rejectPartner(id: number, reason: string) {
 // ─── Admin-initiated promotion ───────────────────────────────────────────────
 
 /**
- * Search users eligible to be promoted to partner: any non-deleted user who is
- * NOT already an approved partner (mirrors the Add-to-Blacklist search). Used by
- * the Partners page "Add Partner" dialog.
+ * Users eligible to be promoted to partner: any non-deleted user who is NOT
+ * already an approved partner. With no (or a <2-char) query it returns the most
+ * recent eligible users so the "Add Partner" dialog can show a browsable list
+ * without the admin having to type; a 2+ char query filters by
+ * name/email/phone/company. Used by the Partners page "Add Partner" dialog.
  */
 export async function searchUsersForPartner(query: string) {
   try {
     await requirePermission("partners", "approve");
 
-    if (!query.trim() || query.trim().length < 2) {
-      return { success: true, data: [] as AppUser[] };
-    }
+    const trimmed = query.trim();
+    const hasQuery = trimmed.length >= 2;
+    const term = `%${trimmed}%`;
 
-    const term = `%${query.trim()}%`;
     const result = await d1.query<AppUser>(
       `SELECT c.*, 0 AS is_approved_partner
        FROM app_user c
        WHERE c.deleted_at IS NULL
-         AND (c.username LIKE ? OR c.email LIKE ? OR c.phone LIKE ? OR c.company_name LIKE ?)
+         ${hasQuery ? "AND (c.username LIKE ? OR c.email LIKE ? OR c.phone LIKE ? OR c.company_name LIKE ?)" : ""}
          AND NOT EXISTS (
            SELECT 1 FROM partner p
            JOIN partner_status_type pst ON p.status_id = pst.id
            WHERE p.app_user_id = c.app_user_id AND pst.status_name = 'Approved'
          )
-       ORDER BY c.username ASC
+       ORDER BY ${hasQuery ? "c.username ASC" : "c.created_at DESC"}
        LIMIT 20`,
-      [term, term, term, term],
+      hasQuery ? [term, term, term, term] : [],
     );
 
     return { success: true, data: result.results };

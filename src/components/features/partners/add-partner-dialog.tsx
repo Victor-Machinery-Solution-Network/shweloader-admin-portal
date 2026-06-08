@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Search, Handshake, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -36,8 +36,9 @@ interface AddPartnerDialogProps {
 
 /**
  * Admin-initiated "promote an existing user to Partner" flow. Two phases in one
- * dialog: (1) search & pick a user who isn't already an approved partner, then
- * (2) choose a required partner type and confirm. Instant-approves via
+ * dialog: (1) browse/search a list of users who aren't already approved partners
+ * (the list loads on open so the admin can just pick — typing only filters),
+ * then (2) choose a required partner type and confirm. Instant-approves via
  * promoteUserToPartner.
  */
 export function AddPartnerDialog({
@@ -47,36 +48,40 @@ export function AddPartnerDialog({
 }: AddPartnerDialogProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AppUser[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [isSearching, startSearch] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [partnerTypeId, setPartnerTypeId] = useState("");
   const [isPromoting, startPromote] = useTransition();
 
-  function handleSearch() {
-    if (query.trim().length < 2) return;
-    startSearch(async () => {
-      const result = await searchUsersForPartner(query);
-      if (result.success) {
-        setResults(result.data);
-        setHasSearched(true);
-      } else {
-        toast.error(result.error ?? "Failed to search users");
-      }
-    });
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSearch();
-    }
-  }
+  // Load the eligible-user list whenever the search phase is showing — once on
+  // open (empty query → recent users), then debounced as the admin types.
+  useEffect(() => {
+    if (!open || selectedUser) return;
+    let active = true;
+    const handle = setTimeout(
+      async () => {
+        setIsLoading(true);
+        const result = await searchUsersForPartner(query);
+        if (!active) return;
+        setIsLoading(false);
+        if (result.success) {
+          setResults(result.data);
+        } else {
+          toast.error(result.error ?? "Failed to load users");
+        }
+      },
+      query.trim() ? 250 : 0,
+    );
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+  }, [open, selectedUser, query]);
 
   function reset() {
     setQuery("");
     setResults([]);
-    setHasSearched(false);
+    setIsLoading(false);
     setSelectedUser(null);
     setPartnerTypeId("");
   }
@@ -115,39 +120,34 @@ export function AddPartnerDialog({
           <DialogDescription>
             {selectedUser
               ? "Choose a partner type to approve this user as a partner."
-              : "Search for a user by name, phone, email, or company."}
+              : "Pick a user to promote, or search by name, phone, email, or company."}
           </DialogDescription>
         </DialogHeader>
 
         {!selectedUser ? (
           <>
-            <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search users..."
+                placeholder="Search users…"
+                className="pl-8"
                 autoFocus
               />
-              <Button
-                onClick={handleSearch}
-                disabled={query.trim().length < 2 || isSearching}
-                size="icon"
-                className="shrink-0"
-              >
-                {isSearching ? <Spinner /> : <Search className="size-4" />}
-              </Button>
             </div>
 
-            {hasSearched && results.length === 0 && (
-              <p className="text-muted-foreground py-4 text-center text-sm">
-                No eligible users found.
-              </p>
-            )}
-
-            {results.length > 0 && (
-              <div className="max-h-64 space-y-1.5 overflow-y-auto overscroll-contain">
-                {results.map((user) => (
+            <div className="max-h-72 min-h-32 space-y-1.5 overflow-y-auto overscroll-contain">
+              {isLoading && results.length === 0 ? (
+                <div className="flex justify-center py-8">
+                  <Spinner />
+                </div>
+              ) : results.length === 0 ? (
+                <p className="text-muted-foreground py-8 text-center text-sm">
+                  No eligible users found.
+                </p>
+              ) : (
+                results.map((user) => (
                   <button
                     key={user.app_user_id}
                     type="button"
@@ -156,7 +156,9 @@ export function AddPartnerDialog({
                   >
                     <div className="flex items-center gap-2">
                       <Handshake className="text-muted-foreground size-4 shrink-0" />
-                      <span className="text-sm font-medium">{user.username}</span>
+                      <span className="text-sm font-medium">
+                        {user.username}
+                      </span>
                     </div>
                     <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 pl-6 text-xs">
                       <span>{user.email}</span>
@@ -164,9 +166,9 @@ export function AddPartnerDialog({
                       {user.company_name && <span>{user.company_name}</span>}
                     </div>
                   </button>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </>
         ) : (
           <div className="space-y-4">
@@ -212,6 +214,7 @@ export function AddPartnerDialog({
               variant="outline"
               onClick={() => {
                 setSelectedUser(null);
+                setQuery("");
                 setPartnerTypeId("");
               }}
               disabled={isPromoting}
