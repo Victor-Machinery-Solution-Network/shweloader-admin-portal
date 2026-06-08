@@ -71,6 +71,38 @@ interface CustomRow {
   value: string;
 }
 
+// ─── Template inference ───────────────────────────────────────────────────
+
+/** Shown in the picker when saved custom fields exist but match no template
+ *  (ad-hoc-only fields, or the original template was deleted) — keeps the edit
+ *  form from rendering a blank selector. */
+const CUSTOM_TEMPLATE_LABEL = "Custom";
+
+/**
+ * Infer which template a listing's saved custom fields came from, to preselect
+ * the edit-form picker. A listing built from a template always *contains* that
+ * template's fields (the admin can only add ad-hoc rows on top), so a template
+ * matches when all of its field keys are present; the most specific (largest)
+ * matching template wins. Returns "" when there are no custom fields (a fresh
+ * form), or the "Custom" label when fields exist but match no template.
+ */
+function inferTemplateLabel(
+  values: CustomFieldValue[],
+  templates: CustomFieldTemplateWithFields[],
+): string {
+  if (values.length === 0) return "";
+  const keys = new Set(values.map((v) => v.key));
+  let best = "";
+  let bestSize = 0;
+  for (const t of templates) {
+    if (t.fields.length > bestSize && t.fields.every((f) => keys.has(f.key))) {
+      best = t.name;
+      bestSize = t.fields.length;
+    }
+  }
+  return best || CUSTOM_TEMPLATE_LABEL;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 interface CustomFieldsSectionProps {
@@ -86,7 +118,12 @@ export function CustomFieldsSection({
 }: CustomFieldsSectionProps) {
   // Template/existing fields (with proper types from template definition)
   const [fields, setFields] = useState<CustomFieldValue[]>(initialValues);
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  // Preselect the template the listing's saved fields came from (display only —
+  // we do NOT re-apply it, which would overwrite the restored values). Falls
+  // back to "Custom" when fields exist but match no template; "" on a fresh form.
+  const [selectedTemplate, setSelectedTemplate] = useState(() =>
+    inferTemplateLabel(initialValues, templates),
+  );
   const [confirmSwitch, setConfirmSwitch] = useState<{
     template: CustomFieldTemplateWithFields;
     lostFields: string[];
@@ -216,6 +253,12 @@ export function CustomFieldsSection({
   // ─── Render ─────────────────────────────────────────────────────────
 
   const templateNames = templates.map((t) => t.name);
+  // Expose the "Custom" sentinel in the list only while it's the active value,
+  // so the combobox can render it without offering it as a normal apply choice.
+  const comboItems =
+    selectedTemplate === CUSTOM_TEMPLATE_LABEL
+      ? [...templateNames, CUSTOM_TEMPLATE_LABEL]
+      : templateNames;
 
   return (
     <>
@@ -226,7 +269,7 @@ export function CustomFieldsSection({
             <Combobox
               value={selectedTemplate}
               onValueChange={handleTemplateSelect}
-              items={templateNames}
+              items={comboItems}
             >
               <ComboboxInput
                 placeholder="Apply a template..."
