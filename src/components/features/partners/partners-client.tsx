@@ -11,13 +11,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components
 import { allColumns, approvedColumns, pendingColumns, rejectedColumns } from "./columns";
 import { AddPartnerDialog } from "./add-partner-dialog";
 import type { PartnerWithDetails } from "@/types/partner";
+import type { AppUser } from "@/types/app-user";
 
 interface PartnersClientProps {
   partners: PartnerWithDetails[];
   partnerTypes: { id: number; name: string }[];
+  initialUsers: AppUser[];
 }
 
-export function PartnersClient({ partners, partnerTypes }: PartnersClientProps) {
+export function PartnersClient({
+  partners,
+  partnerTypes,
+  initialUsers,
+}: PartnersClientProps) {
   const canApprove = useHasPermission("partners", "approve");
   const [showAddPartner, setShowAddPartner] = useState(false);
 
@@ -219,6 +225,7 @@ export function PartnersClient({ partners, partnerTypes }: PartnersClientProps) 
         open={showAddPartner}
         onOpenChange={setShowAddPartner}
         partnerTypes={partnerTypes}
+        initialUsers={initialUsers}
       />
     </>
   );

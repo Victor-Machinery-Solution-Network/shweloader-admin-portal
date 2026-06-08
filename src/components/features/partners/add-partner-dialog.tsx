@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { Search, Handshake, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Handshake, ArrowLeft, Mail, Phone, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
@@ -32,12 +32,38 @@ interface AddPartnerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   partnerTypes: { id: number; name: string }[];
+  /** Server-prefetched list of eligible (non-approved) users, shown instantly. */
+  initialUsers: AppUser[];
+}
+
+/** User contact line: email / phone / company, each with a leading icon. */
+function UserMeta({ user }: { user: AppUser }) {
+  return (
+    <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-6 text-xs">
+      <span className="flex items-center gap-1">
+        <Mail className="size-3 shrink-0" />
+        {user.email}
+      </span>
+      {user.phone && (
+        <span className="flex items-center gap-1">
+          <Phone className="size-3 shrink-0" />
+          {user.phone}
+        </span>
+      )}
+      {user.company_name && (
+        <span className="flex items-center gap-1">
+          <Building2 className="size-3 shrink-0" />
+          {user.company_name}
+        </span>
+      )}
+    </div>
+  );
 }
 
 /**
  * Admin-initiated "promote an existing user to Partner" flow. Two phases in one
  * dialog: (1) browse/search a list of users who aren't already approved partners
- * (the list loads on open so the admin can just pick — typing only filters),
+ * (the list is server-prefetched so it shows instantly — typing only filters),
  * then (2) choose a required partner type and confirm. Instant-approves via
  * promoteUserToPartner.
  */
@@ -45,42 +71,47 @@ export function AddPartnerDialog({
   open,
   onOpenChange,
   partnerTypes,
+  initialUsers,
 }: AddPartnerDialogProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<AppUser[]>([]);
+  const [searchResults, setSearchResults] = useState<AppUser[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [partnerTypeId, setPartnerTypeId] = useState("");
-  const [isPromoting, startPromote] = useTransition();
+  const [isPromoting, setIsPromoting] = useState(false);
 
-  // Load the eligible-user list whenever the search phase is showing — once on
-  // open (empty query → recent users), then debounced as the admin types.
+  // Empty/short query → the server-prefetched list (no round-trip, derived). A
+  // 2+ char query is fetched live (debounced) and shown instead.
+  const isSearching = query.trim().length >= 2;
+  const displayedUsers = isSearching ? (searchResults ?? []) : initialUsers;
+  // Spinner while a search is pending (no results yet for this query, or fetch
+  // in flight). setState stays inside the async callback to avoid cascading
+  // renders from synchronous setState in the effect body.
+  const showSpinner = isSearching && (searchResults === null || isLoading);
+
   useEffect(() => {
-    if (!open || selectedUser) return;
+    if (!open || selectedUser || !isSearching) return;
     let active = true;
-    const handle = setTimeout(
-      async () => {
-        setIsLoading(true);
-        const result = await searchUsersForPartner(query);
-        if (!active) return;
-        setIsLoading(false);
-        if (result.success) {
-          setResults(result.data);
-        } else {
-          toast.error(result.error ?? "Failed to load users");
-        }
-      },
-      query.trim() ? 250 : 0,
-    );
+    const handle = setTimeout(async () => {
+      setIsLoading(true);
+      const result = await searchUsersForPartner(query);
+      if (!active) return;
+      setIsLoading(false);
+      if (result.success) {
+        setSearchResults(result.data);
+      } else {
+        toast.error(result.error ?? "Failed to load users");
+      }
+    }, 250);
     return () => {
       active = false;
       clearTimeout(handle);
     };
-  }, [open, selectedUser, query]);
+  }, [open, selectedUser, isSearching, query]);
 
   function reset() {
     setQuery("");
-    setResults([]);
+    setSearchResults(null);
     setIsLoading(false);
     setSelectedUser(null);
     setPartnerTypeId("");
@@ -95,21 +126,21 @@ export function AddPartnerDialog({
     }
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!selectedUser || !partnerTypeId) return;
-    startPromote(async () => {
-      const result = await promoteUserToPartner(
-        selectedUser.app_user_id,
-        Number(partnerTypeId),
-      );
-      if (result.success) {
-        toast.success(`${selectedUser.username} is now a partner`);
-        reset();
-        onOpenChange(false);
-      } else {
-        toast.error(result.error ?? "Failed to add partner");
-      }
-    });
+    setIsPromoting(true);
+    const result = await promoteUserToPartner(
+      selectedUser.app_user_id,
+      Number(partnerTypeId),
+    );
+    setIsPromoting(false);
+    if (result.success) {
+      toast.success(`${selectedUser.username} is now a partner`);
+      reset();
+      onOpenChange(false);
+    } else {
+      toast.error(result.error ?? "Failed to add partner");
+    }
   }
 
   return (
@@ -138,16 +169,16 @@ export function AddPartnerDialog({
             </div>
 
             <div className="max-h-72 min-h-32 space-y-1.5 overflow-y-auto overscroll-contain">
-              {isLoading && results.length === 0 ? (
+              {showSpinner && displayedUsers.length === 0 ? (
                 <div className="flex justify-center py-8">
                   <Spinner />
                 </div>
-              ) : results.length === 0 ? (
+              ) : displayedUsers.length === 0 ? (
                 <p className="text-muted-foreground py-8 text-center text-sm">
                   No eligible users found.
                 </p>
               ) : (
-                results.map((user) => (
+                displayedUsers.map((user) => (
                   <button
                     key={user.app_user_id}
                     type="button"
@@ -160,11 +191,7 @@ export function AddPartnerDialog({
                         {user.username}
                       </span>
                     </div>
-                    <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 pl-6 text-xs">
-                      <span>{user.email}</span>
-                      {user.phone && <span>{user.phone}</span>}
-                      {user.company_name && <span>{user.company_name}</span>}
-                    </div>
+                    <UserMeta user={user} />
                   </button>
                 ))
               )}
@@ -179,13 +206,7 @@ export function AddPartnerDialog({
                   {selectedUser.username}
                 </span>
               </div>
-              <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 pl-6 text-xs">
-                <span>{selectedUser.email}</span>
-                {selectedUser.phone && <span>{selectedUser.phone}</span>}
-                {selectedUser.company_name && (
-                  <span>{selectedUser.company_name}</span>
-                )}
-              </div>
+              <UserMeta user={selectedUser} />
             </div>
 
             <div className="space-y-1.5">

@@ -138,6 +138,27 @@ export async function getPartnerTypes(): Promise<{ id: number; name: string }[]>
   return results;
 }
 
+/**
+ * Recent users eligible to be promoted to partner (not already an approved
+ * partner). Prefetched server-side so the "Add Partner" dialog shows its list
+ * instantly; the dialog's search action handles narrowing beyond this set.
+ */
+export async function getPromotableUsers(): Promise<AppUser[]> {
+  const { results } = await d1.query<AppUser>(
+    `SELECT c.*, 0 AS is_approved_partner
+     FROM app_user c
+     WHERE c.deleted_at IS NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM partner p
+         JOIN partner_status_type pst ON p.status_id = pst.id
+         WHERE p.app_user_id = c.app_user_id AND pst.status_name = 'Approved'
+       )
+     ORDER BY c.created_at DESC
+     LIMIT 20`,
+  );
+  return results;
+}
+
 // Users, announcements, articles
 
 export async function getUsers() {
