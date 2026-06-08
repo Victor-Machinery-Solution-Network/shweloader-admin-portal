@@ -29,10 +29,10 @@ export function PartnerTypesClient({ partnerTypes }: PartnerTypesClientProps) {
     const totalLinked = Object.values(counts).reduce((a, b) => a + b, 0);
 
     const names = selected.map((pt) => `"${pt.name}"`).join(", ");
-    let msg = `${selected.length === 1 ? names : `${selected.length} partner types (${names})`} will be permanently deleted.`;
+    let msg = `${selected.length === 1 ? names : `${selected.length} partner types (${names})`} will be moved to the trash.`;
 
     if (totalLinked > 0) {
-      msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "partner" : "partners"} using ${selected.length === 1 ? "this type" : "these types"}, so the delete may be blocked.`;
+      msg += ` There ${totalLinked === 1 ? "is" : "are"} ${totalLinked} ${totalLinked === 1 ? "partner" : "partners"} using ${selected.length === 1 ? "this type" : "these types"}.`;
     }
 
     return msg;

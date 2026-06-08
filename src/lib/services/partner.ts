@@ -9,6 +9,7 @@ export const partnerService = createService<Partner>("partner", {
 
 export const partnerTypeService = createService<PartnerType>("partner_type", {
   primaryKey: "id",
+  softDelete: true,
 });
 
 export const partnerStatusTypeService = createService<PartnerStatusType>(

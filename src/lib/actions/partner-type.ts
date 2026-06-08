@@ -4,6 +4,7 @@ import { partnerTypeService } from "@/lib/services/partner";
 import { d1 } from "@/lib/api/d1-client";
 import { getErrorMessage, requirePermission, assertBulkLimit } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { saveTrashMetadata } from "@/lib/actions/trash";
 import { CACHE_TAGS } from "@/lib/constants";
 import { auditLog } from "@/lib/actions/audit";
 
@@ -62,10 +63,11 @@ export async function updatePartnerType(id: number, formData: FormData) {
 
 export async function deletePartnerType(id: number) {
   try {
-    const userId = await requirePermission("partners", "delete");
-    await partnerTypeService.delete(id);
+    const deletedBy = await requirePermission("partners", "delete");
+    await partnerTypeService.softDelete(id, deletedBy);
+    await saveTrashMetadata("partner_type", id, deletedBy);
     invalidatePartnerTypes();
-    auditLog(userId, "deleted partner type | id=" + id);
+    auditLog(deletedBy, "deleted partner type | id=" + id);
     return { success: true };
   } catch (error) {
     return {
@@ -78,9 +80,11 @@ export async function deletePartnerType(id: number) {
 // ─── Linked Count Helper ─────────────────────────────────────────────────────
 
 /**
- * Count partners referencing each partner type. Used to warn before delete.
- * Counts ALL referencing rows (including soft-deleted) because the DB FK is
- * `ON DELETE RESTRICT` — a soft-deleted partner still blocks a hard delete.
+ * Count active partners referencing each partner type. Shown as an
+ * informational warning before delete. Soft-delete itself is not FK-blocked
+ * (it's an UPDATE, not a DELETE), but a type that's actively in use shouldn't
+ * be removed from the picker without the admin knowing. (A later *permanent*
+ * delete from Trash would hit the FK `ON DELETE RESTRICT` and be rejected.)
  */
 export async function getPartnerCountByType(
   partnerTypeIds: number[],
@@ -89,7 +93,7 @@ export async function getPartnerCountByType(
 
   const placeholders = partnerTypeIds.map(() => "?").join(",");
   const result = await d1.query<{ partner_type_id: number; count: number }>(
-    `SELECT partner_type_id, COUNT(*) as count FROM partner WHERE partner_type_id IN (${placeholders}) GROUP BY partner_type_id`,
+    `SELECT partner_type_id, COUNT(*) as count FROM partner WHERE partner_type_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY partner_type_id`,
     partnerTypeIds,
   );
 
@@ -104,10 +108,13 @@ export async function getPartnerCountByType(
 // ─── Bulk Delete ─────────────────────────────────────────────────────────────
 
 export async function deletePartnerTypes(ids: number[]) {
-  const userId = await requirePermission("partners", "delete");
+  const deletedBy = await requirePermission("partners", "delete");
   assertBulkLimit(ids);
   const results = await Promise.allSettled(
-    ids.map((id) => partnerTypeService.delete(id)),
+    ids.map(async (id) => {
+      await partnerTypeService.softDelete(id, deletedBy);
+      await saveTrashMetadata("partner_type", id, deletedBy);
+    }),
   );
 
   const errors = results
@@ -118,7 +125,7 @@ export async function deletePartnerTypes(ids: number[]) {
   const deleted = results.filter((r) => r.status === "fulfilled").length;
 
   invalidatePartnerTypes();
-  auditLog(userId, "bulk deleted partner types | count=" + deleted);
+  auditLog(deletedBy, "bulk deleted partner types | count=" + deleted);
 
   if (errors.length > 0) {
     return {

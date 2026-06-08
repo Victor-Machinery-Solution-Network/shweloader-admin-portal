@@ -16,6 +16,7 @@ export type TrashEntityType =
   | "township"
   | "custom_field_template"
   | "business_type"
+  | "partner_type"
   | "app_user"
   | "admin_user"
   | "role"

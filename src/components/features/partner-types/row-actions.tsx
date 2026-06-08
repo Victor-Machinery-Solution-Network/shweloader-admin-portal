@@ -51,8 +51,8 @@ export function RowActions({ partnerType }: RowActionsProps) {
 
   const deleteDescription =
     linkedCount !== null && linkedCount > 0
-      ? <><strong>&ldquo;{partnerType.name}&rdquo;</strong> will be permanently deleted.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "partner" : "partners"} using this type, so the delete may be blocked.</>
-      : <><strong>&ldquo;{partnerType.name}&rdquo;</strong> will be permanently deleted.<br />This action cannot be undone.</>;
+      ? <><strong>&ldquo;{partnerType.name}&rdquo;</strong> will be moved to the trash.<br />There {linkedCount === 1 ? "is" : "are"} <strong>{linkedCount}</strong> {linkedCount === 1 ? "partner" : "partners"} using this type.</>
+      : <><strong>&ldquo;{partnerType.name}&rdquo;</strong> will be moved to the trash.<br />You can restore it within 30 days.</>;
 
   if (!canEdit && !canDelete) return null;
 

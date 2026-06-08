@@ -151,6 +151,14 @@ export const ENTITY_REGISTRY: Record<TrashEntityType, EntityConfig> = {
     fileColumns: [],
     group: "system",
   },
+  partner_type: {
+    table: "partner_type",
+    primaryKey: "id",
+    displayName: "Partner Type",
+    cacheTags: [CACHE_TAGS.PARTNER_TYPES, CACHE_TAGS.PARTNERS],
+    fileColumns: [],
+    group: "system",
+  },
   app_user: {
     table: "app_user",
     primaryKey: "app_user_id",
