@@ -76,7 +76,7 @@ interface CustomRow {
 /** Shown in the picker when saved custom fields exist but match no template
  *  (ad-hoc-only fields, or the original template was deleted) — keeps the edit
  *  form from rendering a blank selector. */
-const CUSTOM_TEMPLATE_LABEL = "Custom";
+const CUSTOM_TEMPLATE_LABEL = "Custom Fields";
 
 /**
  * Infer which template a listing's saved custom fields came from, to preselect
