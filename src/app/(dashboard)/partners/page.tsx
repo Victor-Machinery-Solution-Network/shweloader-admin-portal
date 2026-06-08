@@ -10,6 +10,8 @@ import {
   getPromotableUsers,
 } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
+import { PartnersTabs } from "@/components/features/partners/partners-tabs";
+import { PartnerTypesClient } from "@/components/features/partner-types/partner-types-client";
 
 
 export const metadata = {
@@ -36,7 +38,7 @@ export default function PartnersPage() {
 async function PartnersContent() {
   "use cache";
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
-  cacheTag(CACHE_TAGS.PARTNERS);
+  cacheTag(CACHE_TAGS.PARTNERS, CACHE_TAGS.PARTNER_TYPES);
 
   const [partners, partnerTypes, promotableUsers] = await Promise.all([
     getPartnersWithDetails(),
@@ -45,10 +47,15 @@ async function PartnersContent() {
   ]);
 
   return (
-    <PartnersClient
-      partners={partners}
-      partnerTypes={partnerTypes}
-      initialUsers={promotableUsers}
+    <PartnersTabs
+      partnersSlot={
+        <PartnersClient
+          partners={partners}
+          partnerTypes={partnerTypes}
+          initialUsers={promotableUsers}
+        />
+      }
+      partnerTypesSlot={<PartnerTypesClient partnerTypes={partnerTypes} />}
     />
   );
 }

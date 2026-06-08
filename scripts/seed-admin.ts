@@ -309,7 +309,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   chat: ["read", "edit", "delete"],
   enquiries: ["read", "edit"],
   users: ["read", "create", "edit", "delete"],
-  partners: ["read", "approve"],
+  partners: ["read", "approve", "create", "edit", "delete"],
   blacklist: ["read", "create", "delete"],
   articles: ["create", "read", "edit", "delete", "approve"],
   app_settings: ["read", "edit"],

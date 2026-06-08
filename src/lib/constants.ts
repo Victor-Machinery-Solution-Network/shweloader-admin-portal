@@ -104,6 +104,7 @@ export const CACHE_TAGS = {
   ATTACHMENT_MODELS: "attachment-models",
   BLACKLIST: "blacklist",
   PARTNERS: "partners",
+  PARTNER_TYPES: "partner-types",
   SALE_LISTINGS: "sale-listings",
   RENT_LISTINGS: "rent-listings",
   FEATURED_LISTINGS: "featured-listings",
