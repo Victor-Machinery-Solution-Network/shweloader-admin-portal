@@ -131,6 +131,13 @@ export function getPartnersWithDetails() {
   return fetchPartnersWithDetails();
 }
 
+export async function getPartnerTypes(): Promise<{ id: number; name: string }[]> {
+  const { results } = await d1.query<{ id: number; name: string }>(
+    "SELECT id, name FROM partner_type ORDER BY name ASC",
+  );
+  return results;
+}
+
 // Users, announcements, articles
 
 export async function getUsers() {

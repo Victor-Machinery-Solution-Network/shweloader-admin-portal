@@ -4,7 +4,7 @@ import { CACHE_TAGS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import { PermissionGate } from "@/components/shared/permission-gate";
-import { getPartnersWithDetails } from "@/lib/cache";
+import { getPartnersWithDetails, getPartnerTypes } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
 
 
@@ -34,7 +34,10 @@ async function PartnersContent() {
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
   cacheTag(CACHE_TAGS.PARTNERS);
 
-  const partners = await getPartnersWithDetails();
+  const [partners, partnerTypes] = await Promise.all([
+    getPartnersWithDetails(),
+    getPartnerTypes(),
+  ]);
 
-  return <PartnersClient partners={partners} />;
+  return <PartnersClient partners={partners} partnerTypes={partnerTypes} />;
 }

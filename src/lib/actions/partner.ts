@@ -9,6 +9,7 @@ import { auditLog } from "@/lib/actions/audit";
 import { insertUserNotification } from "@/lib/services/user-notification";
 import { sendPushToUser } from "@/lib/services/push-notification";
 import type { PartnerWithDetails } from "@/types/partner";
+import type { AppUser } from "@/types/app-user";
 
 // ─── Partner Queries ─────────────────────────────────────────────────────────
 
@@ -191,6 +192,146 @@ export async function rejectPartner(id: number, reason: string) {
     return {
       success: false,
       error: getErrorMessage(error, "Failed to reject partner"),
+    };
+  }
+}
+
+// ─── Admin-initiated promotion ───────────────────────────────────────────────
+
+/**
+ * Search users eligible to be promoted to partner: any non-deleted user who is
+ * NOT already an approved partner (mirrors the Add-to-Blacklist search). Used by
+ * the Partners page "Add Partner" dialog.
+ */
+export async function searchUsersForPartner(query: string) {
+  try {
+    await requirePermission("partners", "approve");
+
+    if (!query.trim() || query.trim().length < 2) {
+      return { success: true, data: [] as AppUser[] };
+    }
+
+    const term = `%${query.trim()}%`;
+    const result = await d1.query<AppUser>(
+      `SELECT c.*, 0 AS is_approved_partner
+       FROM app_user c
+       WHERE c.deleted_at IS NULL
+         AND (c.username LIKE ? OR c.email LIKE ? OR c.phone LIKE ? OR c.company_name LIKE ?)
+         AND NOT EXISTS (
+           SELECT 1 FROM partner p
+           JOIN partner_status_type pst ON p.status_id = pst.id
+           WHERE p.app_user_id = c.app_user_id AND pst.status_name = 'Approved'
+         )
+       ORDER BY c.username ASC
+       LIMIT 20`,
+      [term, term, term, term],
+    );
+
+    return { success: true, data: result.results };
+  } catch (error) {
+    return {
+      success: false,
+      data: [] as AppUser[],
+      error: getErrorMessage(error, "Failed to search users"),
+    };
+  }
+}
+
+/**
+ * Admin-initiated promotion of an existing user to an approved partner. Instant
+ * approve (no review step), exactly like the Add-User toggle. Upserts the
+ * partner row so a user with a prior pending/rejected/soft-deleted application
+ * is reused rather than duplicated. Reuses the same partner_approved
+ * notification as approvePartner().
+ */
+export async function promoteUserToPartner(
+  appUserId: number,
+  partnerTypeId: number,
+) {
+  try {
+    const [reviewed_by, statusResult] = await Promise.all([
+      requirePermission("partners", "approve"),
+      d1.query<{ id: number }>(
+        "SELECT id FROM partner_status_type WHERE status_name = ?",
+        ["Approved"],
+      ),
+    ]);
+    const statusId = statusResult.results[0]?.id;
+    if (!statusId) {
+      return { success: false, error: "Approved status type not found" };
+    }
+
+    // Reuse an existing partner row (any status, including soft-deleted) so we
+    // never create a duplicate partner record for the same user.
+    const existing = await d1.query<{
+      id: number;
+      status_id: number | null;
+      deleted_at: string | null;
+    }>(
+      "SELECT id, status_id, deleted_at FROM partner WHERE app_user_id = ? ORDER BY id DESC LIMIT 1",
+      [appUserId],
+    );
+    const existingRow = existing.results[0];
+
+    // Idempotent no-op if already an active approved partner.
+    if (
+      existingRow &&
+      existingRow.status_id === statusId &&
+      existingRow.deleted_at === null
+    ) {
+      return { success: true };
+    }
+
+    const now = new Date().toISOString();
+    let partnerId: number;
+
+    if (existingRow) {
+      if (existingRow.deleted_at !== null) {
+        await partnerService.restore(existingRow.id);
+      }
+      await partnerService.update(existingRow.id, {
+        partner_type_id: partnerTypeId,
+        status_id: statusId,
+        reviewed_at: now,
+        reviewed_by,
+        rejection_reason: null,
+      });
+      partnerId = existingRow.id;
+    } else {
+      const created = await partnerService.create({
+        app_user_id: appUserId,
+        partner_type_id: partnerTypeId,
+        status_id: statusId,
+        reviewed_at: now,
+        reviewed_by,
+      });
+      partnerId = created.id;
+    }
+
+    await insertUserNotification({
+      app_user_id: appUserId,
+      type: "partner_approved",
+      title: "Partner application approved",
+      body: null,
+      reference_type: "partner",
+      reference_id: partnerId,
+    });
+    sendPushToUser(appUserId, {
+      type: "partner_approved",
+      title: "Shwe Loader",
+      body: "Your partner application has been approved.",
+      referenceId: String(partnerId),
+      referenceType: "partner",
+    }).catch(() => {});
+
+    invalidateTag(CACHE_TAGS.PARTNERS);
+    invalidateTag(CACHE_TAGS.USERS);
+    auditLog(reviewed_by, "promoted user to partner | app_user_id=" + appUserId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to promote user to partner"),
     };
   }
 }

@@ -1,19 +1,31 @@
 "use client";
 
-import { useMemo } from "react";
-import { LayoutList, Handshake, Clock, ShieldX } from "lucide-react";
+import { useMemo, useState } from "react";
+import { LayoutList, Handshake, Clock, ShieldX, Plus } from "lucide-react";
+import { useHasPermission } from "@/hooks/use-permissions";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import type { FilterConfig } from "@/types/data-table-filters";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { allColumns, approvedColumns, pendingColumns, rejectedColumns } from "./columns";
+import { AddPartnerDialog } from "./add-partner-dialog";
 import type { PartnerWithDetails } from "@/types/partner";
 
 interface PartnersClientProps {
   partners: PartnerWithDetails[];
+  partnerTypes: { id: number; name: string }[];
 }
 
-export function PartnersClient({ partners }: PartnersClientProps) {
+export function PartnersClient({ partners, partnerTypes }: PartnersClientProps) {
+  const canApprove = useHasPermission("partners", "approve");
+  const [showAddPartner, setShowAddPartner] = useState(false);
+
+  const addPartnerButton = canApprove ? (
+    <Button onClick={() => setShowAddPartner(true)} className="ml-auto">
+      <Plus /> Add Partner
+    </Button>
+  ) : undefined;
   const approvedPartners = useMemo(
     () => partners.filter((p) => p.status_name?.toLowerCase() === "approved"),
     [partners],
@@ -115,6 +127,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               pageSize={10}
               enableExport
               exportFileName="partners-all"
+              toolbar={addPartnerButton}
             />
           ) : (
             <EmptyState
@@ -122,6 +135,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               title="No partners yet"
               description="Partner applications will appear here."
               fullPage={false}
+              action={addPartnerButton}
             />
           )}
         </TabsContent>
@@ -139,6 +153,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               pageSize={10}
               enableExport
               exportFileName="partners-approved"
+              toolbar={addPartnerButton}
             />
           ) : (
             <EmptyState
@@ -146,6 +161,7 @@ export function PartnersClient({ partners }: PartnersClientProps) {
               title="No approved partners yet"
               description="Approved partners will appear here."
               fullPage={false}
+              action={addPartnerButton}
             />
           )}
         </TabsContent>
@@ -198,6 +214,12 @@ export function PartnersClient({ partners }: PartnersClientProps) {
           )}
         </TabsContent>
       </Tabs>
+
+      <AddPartnerDialog
+        open={showAddPartner}
+        onOpenChange={setShowAddPartner}
+        partnerTypes={partnerTypes}
+      />
     </>
   );
 }
