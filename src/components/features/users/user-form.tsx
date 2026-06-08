@@ -7,6 +7,13 @@ import { FieldError, RequiredInput } from "@/components/ui/required-input";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import {
   Combobox,
@@ -26,6 +33,7 @@ interface UserFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessTypes: BusinessType[];
+  partnerTypes: { id: number; name: string }[];
   stateRegions: StateRegion[];
   districts: District[];
   townships: Township[];
@@ -36,6 +44,7 @@ export function UserForm({
   open,
   onOpenChange,
   businessTypes,
+  partnerTypes,
   stateRegions,
   districts,
   townships,
@@ -56,6 +65,7 @@ export function UserForm({
   const [selectedBT, setSelectedBT] = useState("");
   const isOther = selectedBT === OTHER_OPTION;
   const [isPartner, setIsPartner] = useState(false);
+  const [partnerTypeId, setPartnerTypeId] = useState("");
 
   // Cascading location state
   const [selectedStateRegionId, setSelectedStateRegionId] = useState("");
@@ -118,6 +128,13 @@ export function UserForm({
     }
     formData.set("township_id", selectedTownshipId);
     formData.set("is_approved_partner", isPartner ? "1" : "0");
+    if (isPartner) {
+      if (!partnerTypeId) {
+        toast.error("Partner type is required for an approved partner");
+        return;
+      }
+      formData.set("partner_type_id", partnerTypeId);
+    }
     startTransition(async () => {
       const result = await createAppUser(formData);
 
@@ -126,6 +143,7 @@ export function UserForm({
         onOpenChange(false);
         setSelectedBT("");
         setIsPartner(false);
+        setPartnerTypeId("");
         setSelectedStateRegionId("");
         setSelectedDistrictId("");
         setSelectedTownshipId("");
@@ -395,6 +413,28 @@ export function UserForm({
             onCheckedChange={setIsPartner}
           />
         </div>
+
+        {/* Partner type — required when Approved Partner is on */}
+        {isPartner && (
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label htmlFor="user-partner-type">
+              Partner Type <span className="text-destructive">*</span>
+            </Label>
+            <Select value={partnerTypeId} onValueChange={setPartnerTypeId}>
+              <SelectTrigger id="user-partner-type" className="w-full">
+                <SelectValue placeholder="Select a partner type" />
+              </SelectTrigger>
+              <SelectContent>
+                {partnerTypes.map((pt) => (
+                  <SelectItem key={pt.id} value={String(pt.id)}>
+                    {pt.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError show={isPartner && !partnerTypeId} message="Partner type is required" />
+          </div>
+        )}
       </div>
     </FormDialog>
   );

@@ -42,6 +42,10 @@ export async function createAppUser(formData: FormData) {
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
   const townshipId = formData.get("township_id") as string;
   const isApprovedPartner = formData.get("is_approved_partner") === "1";
+  const partnerTypeId =
+    isApprovedPartner && formData.get("partner_type_id")
+      ? Number(formData.get("partner_type_id"))
+      : null;
 
   if (!username?.trim()) {
     return { success: false, error: "Username is required" };
@@ -57,6 +61,15 @@ export async function createAppUser(formData: FormData) {
   }
   if (!townshipId) {
     return { success: false, error: "Location is required" };
+  }
+  if (
+    isApprovedPartner &&
+    (partnerTypeId === null || !Number.isFinite(partnerTypeId) || partnerTypeId <= 0)
+  ) {
+    return {
+      success: false,
+      error: "Partner type is required for an approved partner",
+    };
   }
 
   try {
@@ -123,7 +136,7 @@ export async function createAppUser(formData: FormData) {
       if (approvedStatusId) {
         await partnerService.create({
           app_user_id: newUserId,
-          partner_type_id: null,
+          partner_type_id: partnerTypeId,
           status_id: approvedStatusId,
           reviewed_at: new Date().toISOString(),
           reviewed_by: actorId,

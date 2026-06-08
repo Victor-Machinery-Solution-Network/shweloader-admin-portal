@@ -38,6 +38,7 @@ interface UsersClientProps {
   stateRegions: StateRegion[];
   districts: District[];
   townships: Township[];
+  partnerTypes: { id: number; name: string }[];
 }
 
 export function UsersClient({
@@ -48,6 +49,7 @@ export function UsersClient({
   stateRegions = [],
   districts = [],
   townships = [],
+  partnerTypes = [],
 }: UsersClientProps) {
   // Permissions
   const canCreateUser = useHasPermission("users", "create");
@@ -365,6 +367,7 @@ export function UsersClient({
           open={showCreateUser}
           onOpenChange={setShowCreateUser}
           businessTypes={listedBusinessTypes}
+          partnerTypes={partnerTypes}
           stateRegions={stateRegions}
           districts={districts}
           townships={townships}
