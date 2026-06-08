@@ -116,6 +116,10 @@ import type {
 import { assetUrl } from "@/lib/r2-url";
 import { CustomFieldsSection } from "./custom-fields-section";
 import { ModelPickerDialog } from "./model-picker-dialog";
+import {
+  TownshipSearchPicker,
+  type TownshipOption,
+} from "./township-search-picker";
 
 const LazySortableImageGallery = lazy(() =>
   import("@/components/shared/sortable-image-gallery").then((mod) => ({
@@ -845,6 +849,19 @@ export function ListingEditor({
     savedState?.selectedTownshipId ?? initLocation.townshipId,
   );
 
+  // Picking one township derives its district + state/region.
+  const handleTownshipPick = (opt: TownshipOption | null) => {
+    if (!opt) {
+      setSelectedTownshipId("");
+      setSelectedDistrictId("");
+      setSelectedStateRegionId("");
+      return;
+    }
+    setSelectedStateRegionId(opt.stateRegionId);
+    setSelectedDistrictId(opt.districtId);
+    setSelectedTownshipId(opt.townshipId);
+  };
+
   // Sync partner label when partners load after initial render
   useEffect(() => {
     if (initPartnerLabel) setSelectedPartner(initPartnerLabel);
@@ -1055,60 +1072,25 @@ export function ListingEditor({
     [partnerMap],
   );
 
-  // ── Cascading location lookups ──────────────────────────────────────
-  const stateRegionNames = useMemo(
-    () => stateRegions.map((sr) => sr.name),
-    [stateRegions],
-  );
-  const stateRegionIdByName = useMemo(
+  // ── Location label lookups (for the "Show to buyers" toggle rows) ──
+  const stateRegionLabel = useMemo(
     () =>
-      new Map(stateRegions.map((sr) => [sr.name, String(sr.state_region_id)])),
-    [stateRegions],
+      stateRegions.find(
+        (s) => String(s.state_region_id) === selectedStateRegionId,
+      )?.name ?? "",
+    [stateRegions, selectedStateRegionId],
   );
-  const stateRegionNameById = useMemo(
+  const districtLabel = useMemo(
     () =>
-      new Map(stateRegions.map((sr) => [String(sr.state_region_id), sr.name])),
-    [stateRegions],
+      districts.find((d) => String(d.district_id) === selectedDistrictId)
+        ?.name ?? "",
+    [districts, selectedDistrictId],
   );
-
-  const filteredDistricts = useMemo(
+  const townshipLabel = useMemo(
     () =>
-      selectedStateRegionId
-        ? districts.filter(
-            (d) => String(d.state_region_id) === selectedStateRegionId,
-          )
-        : [],
-    [districts, selectedStateRegionId],
-  );
-  const districtNames = useMemo(
-    () => filteredDistricts.map((d) => d.name),
-    [filteredDistricts],
-  );
-  const districtIdByName = useMemo(
-    () =>
-      new Map(filteredDistricts.map((d) => [d.name, String(d.district_id)])),
-    [filteredDistricts],
-  );
-  const districtNameById = useMemo(
-    () => new Map(districts.map((d) => [String(d.district_id), d.name])),
-    [districts],
-  );
-
-  const filteredTownships = useMemo(
-    () =>
-      selectedDistrictId
-        ? townships.filter((t) => String(t.district_id) === selectedDistrictId)
-        : [],
-    [townships, selectedDistrictId],
-  );
-  const townshipNames = useMemo(
-    () => filteredTownships.map((t) => t.name),
-    [filteredTownships],
-  );
-  const townshipIdByName = useMemo(
-    () =>
-      new Map(filteredTownships.map((t) => [t.name, String(t.township_id)])),
-    [filteredTownships],
+      townships.find((t) => String(t.township_id) === selectedTownshipId)
+        ?.name ?? "",
+    [townships, selectedTownshipId],
   );
 
   // ── Custom fields state ────────────────────────────────────────────────
@@ -2185,158 +2167,67 @@ export function ListingEditor({
               </SubSectionLabel>
 
               <div className="flex flex-col gap-3 rounded-xl border p-4">
-                {/* State / Region */}
+                {/* Township (single search picker) */}
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <p className="flex items-center gap-1.5 text-sm font-medium">
-                      <MapIcon className="size-4 text-muted-foreground" />
-                      State / Region
-                    </p>
-                    <VisibilityToggle
-                      hidden={hideStateRegion}
-                      onChange={setHideStateRegion}
-                    />
-                  </div>
-                  <Combobox
-                    value={stateRegionNameById.get(selectedStateRegionId) ?? ""}
-                    defaultInputValue={
-                      stateRegionNameById.get(
-                        savedState?.selectedStateRegionId ??
-                          initLocation.stateRegionId,
-                      ) ?? ""
-                    }
-                    onValueChange={(val) => {
-                      const id = val
-                        ? (stateRegionIdByName.get(val) ?? "")
-                        : "";
-                      setSelectedStateRegionId(id);
-                      setSelectedDistrictId("");
-                      setSelectedTownshipId("");
-                    }}
-                    items={stateRegionNames}
-                  >
-                    <ComboboxInput
-                      placeholder={"Select state / region\u2026"}
-                      showClear={!!selectedStateRegionId}
-                    />
-                    <ComboboxContent>
-                      <ComboboxList>
-                        <ComboboxEmpty>No state/region found</ComboboxEmpty>
-                        <ComboboxCollection>
-                          {(name) => (
-                            <ComboboxItem key={name} value={name}>
-                              {name}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxCollection>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  <p className="flex items-center gap-1.5 text-sm font-medium">
+                    <MapIcon className="size-4 text-muted-foreground" />
+                    Township
+                  </p>
+                  <TownshipSearchPicker
+                    stateRegions={stateRegions}
+                    districts={districts}
+                    townships={townships}
+                    value={selectedTownshipId}
+                    onSelect={handleTownshipPick}
+                  />
+
+                  {selectedTownshipId && (
+                    <div className="flex flex-col gap-2 rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Show to buyers
+                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm">
+                          State / Region
+                          <span className="text-muted-foreground">
+                            {" \u2014 "}
+                            {stateRegionLabel}
+                          </span>
+                        </span>
+                        <VisibilityToggle
+                          hidden={hideStateRegion}
+                          onChange={setHideStateRegion}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm">
+                          District
+                          <span className="text-muted-foreground">
+                            {" \u2014 "}
+                            {districtLabel}
+                          </span>
+                        </span>
+                        <VisibilityToggle
+                          hidden={hideDistrict}
+                          onChange={setHideDistrict}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm">
+                          Township
+                          <span className="text-muted-foreground">
+                            {" \u2014 "}
+                            {townshipLabel}
+                          </span>
+                        </span>
+                        <VisibilityToggle
+                          hidden={hideTownship}
+                          onChange={setHideTownship}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* District */}
-                {selectedStateRegionId && (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <p className="flex items-center gap-1.5 text-sm font-medium">
-                        <MapPin className="size-4 text-muted-foreground" />
-                        District
-                      </p>
-                      <VisibilityToggle
-                        hidden={hideDistrict}
-                        onChange={setHideDistrict}
-                      />
-                    </div>
-                    <Combobox
-                      value={districtNameById.get(selectedDistrictId) ?? ""}
-                      defaultInputValue={
-                        districtNameById.get(
-                          savedState?.selectedDistrictId ??
-                            initLocation.districtId,
-                        ) ?? ""
-                      }
-                      onValueChange={(val) => {
-                        const id = val ? (districtIdByName.get(val) ?? "") : "";
-                        setSelectedDistrictId(id);
-                        setSelectedTownshipId("");
-                      }}
-                      items={districtNames}
-                    >
-                      <ComboboxInput
-                        placeholder={"Select district\u2026"}
-                        showClear={!!selectedDistrictId}
-                      />
-                      <ComboboxContent>
-                        <ComboboxList>
-                          <ComboboxEmpty>No district found</ComboboxEmpty>
-                          <ComboboxCollection>
-                            {(name) => (
-                              <ComboboxItem key={name} value={name}>
-                                {name}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxCollection>
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
-                )}
-
-                {/* Township */}
-                {selectedDistrictId && (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <p className="flex items-center gap-1.5 text-sm font-medium">
-                        <MapPin className="size-4 text-muted-foreground" />
-                        Township
-                      </p>
-                      <VisibilityToggle
-                        hidden={hideTownship}
-                        onChange={setHideTownship}
-                      />
-                    </div>
-                    <Combobox
-                      value={
-                        filteredTownships.find(
-                          (t) => String(t.township_id) === selectedTownshipId,
-                        )?.name ?? ""
-                      }
-                      defaultInputValue={
-                        savedState
-                          ? (filteredTownships.find(
-                              (t) =>
-                                String(t.township_id) ===
-                                savedState.selectedTownshipId,
-                            )?.name ?? "")
-                          : selectedTownshipId === initLocation.townshipId
-                            ? (sourceData?.township_name ?? "")
-                            : ""
-                      }
-                      onValueChange={(val) => {
-                        const id = val ? (townshipIdByName.get(val) ?? "") : "";
-                        setSelectedTownshipId(id);
-                      }}
-                      items={townshipNames}
-                    >
-                      <ComboboxInput
-                        placeholder={"Select township\u2026"}
-                        showClear={!!selectedTownshipId}
-                      />
-                      <ComboboxContent>
-                        <ComboboxList>
-                          <ComboboxEmpty>No township found</ComboboxEmpty>
-                          <ComboboxCollection>
-                            {(name) => (
-                              <ComboboxItem key={name} value={name}>
-                                {name}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxCollection>
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
-                )}
 
                 {/* Address */}
                 <div className="flex flex-col gap-3">
