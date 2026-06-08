@@ -10,8 +10,6 @@ import {
   getPromotableUsers,
 } from "@/lib/cache";
 import { PartnersClient } from "@/components/features/partners/partners-client";
-import { PartnersTabs } from "@/components/features/partners/partners-tabs";
-import { PartnerTypesClient } from "@/components/features/partner-types/partner-types-client";
 
 
 export const metadata = {
@@ -47,15 +45,10 @@ async function PartnersContent() {
   ]);
 
   return (
-    <PartnersTabs
-      partnersSlot={
-        <PartnersClient
-          partners={partners}
-          partnerTypes={partnerTypes}
-          initialUsers={promotableUsers}
-        />
-      }
-      partnerTypesSlot={<PartnerTypesClient partnerTypes={partnerTypes} />}
+    <PartnersClient
+      partners={partners}
+      partnerTypes={partnerTypes}
+      initialUsers={promotableUsers}
     />
   );
 }

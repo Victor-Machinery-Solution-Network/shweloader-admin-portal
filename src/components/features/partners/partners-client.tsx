@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutList, Handshake, Clock, ShieldX, Plus } from "lucide-react";
+import { LayoutList, Handshake, Tags, Clock, ShieldX, Plus } from "lucide-react";
 import { useHasPermission } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabCount } from "@/components/ui/tabs";
 import { allColumns, approvedColumns, pendingColumns, rejectedColumns } from "./columns";
 import { AddPartnerDialog } from "./add-partner-dialog";
+import { PartnerTypesClient } from "@/components/features/partner-types/partner-types-client";
 import type { PartnerWithDetails } from "@/types/partner";
 import type { AppUser } from "@/types/app-user";
 
@@ -107,6 +108,10 @@ export function PartnersClient({
             <Handshake className="size-4" />
             Partners
           </TabsTrigger>
+          <TabsTrigger value="partner-types">
+            <Tags className="size-4" />
+            Partner Types
+          </TabsTrigger>
           <TabsTrigger value="pending">
             <Clock className="size-4" />
             Pending
@@ -170,6 +175,10 @@ export function PartnersClient({
               action={addPartnerButton}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="partner-types">
+          <PartnerTypesClient partnerTypes={partnerTypes} />
         </TabsContent>
 
         <TabsContent value="pending">
