@@ -33,6 +33,17 @@ export function PostsClient({
   const canCreate = useHasPermission("articles", "create");
   const canDelete = useHasPermission("articles", "delete");
 
+  // One Create-Post action reused across every tab's empty state, so the button
+  // is reachable from any tab when the blog is empty (previously only Drafts had
+  // it, which hid it behind a non-default tab).
+  const createAction = canCreate ? (
+    <Button asChild>
+      <Link href="/articles/posts/new">
+        <Plus /> Create Post
+      </Link>
+    </Button>
+  ) : undefined;
+
   // Split articles by status
   const draftArticles = useMemo(
     () => articles.filter((a) => a.status_name === "Draft"),
@@ -205,15 +216,7 @@ export function PostsClient({
             title="No drafts yet"
             description="Create a new post to start writing."
             fullPage={false}
-            action={
-              canCreate ? (
-                <Button asChild>
-                  <Link href="/articles/posts/new">
-                    <Plus /> Create Post
-                  </Link>
-                </Button>
-              ) : undefined
-            }
+            action={createAction}
           />
         )}
       </TabsContent>
@@ -241,6 +244,7 @@ export function PostsClient({
             title="No published articles yet"
             description="Published articles will appear here."
             fullPage={false}
+            action={createAction}
           />
         )}
       </TabsContent>
@@ -265,6 +269,7 @@ export function PostsClient({
             title="No pending articles"
             description="All articles have been reviewed."
             fullPage={false}
+            action={createAction}
           />
         )}
       </TabsContent>
@@ -292,6 +297,7 @@ export function PostsClient({
             title="No articles need rework"
             description="Articles sent back for rework will appear here."
             fullPage={false}
+            action={createAction}
           />
         )}
       </TabsContent>
