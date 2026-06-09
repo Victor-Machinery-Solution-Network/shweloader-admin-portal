@@ -27,6 +27,19 @@ export function PartnersClient({
 }: PartnersClientProps) {
   const canApprove = useHasPermission("partners", "approve");
   const [showAddPartner, setShowAddPartner] = useState(false);
+  const allCols = useMemo(() => allColumns(partnerTypes), [partnerTypes]);
+  const approvedCols = useMemo(
+    () => approvedColumns(partnerTypes),
+    [partnerTypes],
+  );
+  const pendingCols = useMemo(
+    () => pendingColumns(partnerTypes),
+    [partnerTypes],
+  );
+  const rejectedCols = useMemo(
+    () => rejectedColumns(partnerTypes),
+    [partnerTypes],
+  );
 
   const addPartnerButton = canApprove ? (
     <Button onClick={() => setShowAddPartner(true)} className="ml-auto">
@@ -128,7 +141,7 @@ export function PartnersClient({
         <TabsContent value="all">
           {partners.length > 0 ? (
             <DataTable
-              columns={allColumns}
+              columns={allCols}
               data={partners}
               searchKeys={["user_name", "user_email", "user_company", "user_phone"]}
               searchPlaceholder="Search all partners"
@@ -154,7 +167,7 @@ export function PartnersClient({
         <TabsContent value="partners">
           {approvedPartners.length > 0 ? (
             <DataTable
-              columns={approvedColumns}
+              columns={approvedCols}
               data={approvedPartners}
               searchKeys={["user_name", "user_email", "user_company", "user_phone"]}
               searchPlaceholder="Search partners"
@@ -184,7 +197,7 @@ export function PartnersClient({
         <TabsContent value="pending">
           {pendingPartners.length > 0 ? (
             <DataTable
-              columns={pendingColumns}
+              columns={pendingCols}
               data={pendingPartners}
               searchKeys={["user_name", "user_email", "user_company", "user_phone"]}
               searchPlaceholder="Search pending applications"
@@ -208,7 +221,7 @@ export function PartnersClient({
         <TabsContent value="rejected">
           {rejectedPartners.length > 0 ? (
             <DataTable
-              columns={rejectedColumns}
+              columns={rejectedCols}
               data={rejectedPartners}
               searchKeys={["user_name", "user_email", "user_company", "user_phone"]}
               searchPlaceholder="Search rejected applications"

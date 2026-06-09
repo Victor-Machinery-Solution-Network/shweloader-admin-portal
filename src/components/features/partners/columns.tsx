@@ -198,82 +198,104 @@ function reviewedAtColumn(title: string): ColumnDef<PartnerWithDetails> {
   };
 }
 
-const actionsColumn: ColumnDef<PartnerWithDetails> = {
-  id: "actions",
-  cell: ({ row }) => <RowActions partner={row.original} />,
-};
+function makeActionsColumn(
+  partnerTypes: { id: number; name: string }[],
+): ColumnDef<PartnerWithDetails> {
+  return {
+    id: "actions",
+    cell: ({ row }) => (
+      <RowActions partner={row.original} partnerTypes={partnerTypes} />
+    ),
+  };
+}
 
 // ─── All (Master table) ─────────────────────────────────────────────────────
 
-export const allColumns: ColumnDef<PartnerWithDetails>[] = [
-  partnerColumn("Partner"),
-  companyColumn,
-  phoneColumn,
-  businessTypeColumn,
-  partnerTypeColumn,
-  statusColumn,
-  appliedAtColumn(),
-  actionsColumn,
-];
+export function allColumns(
+  partnerTypes: { id: number; name: string }[],
+): ColumnDef<PartnerWithDetails>[] {
+  return [
+    partnerColumn("Partner"),
+    companyColumn,
+    phoneColumn,
+    businessTypeColumn,
+    partnerTypeColumn,
+    statusColumn,
+    appliedAtColumn(),
+    makeActionsColumn(partnerTypes),
+  ];
+}
 
 // ─── Approved (Partners tab) ────────────────────────────────────────────────
 
-export const approvedColumns: ColumnDef<PartnerWithDetails>[] = [
-  partnerColumn("Partner"),
-  companyColumn,
-  phoneColumn,
-  businessTypeColumn,
-  partnerTypeColumn,
-  reviewedAtColumn("Approved"),
-  actionsColumn,
-];
+export function approvedColumns(
+  partnerTypes: { id: number; name: string }[],
+): ColumnDef<PartnerWithDetails>[] {
+  return [
+    partnerColumn("Partner"),
+    companyColumn,
+    phoneColumn,
+    businessTypeColumn,
+    partnerTypeColumn,
+    reviewedAtColumn("Approved"),
+    makeActionsColumn(partnerTypes),
+  ];
+}
 
 // ─── Pending tab ────────────────────────────────────────────────────────────
 
-export const pendingColumns: ColumnDef<PartnerWithDetails>[] = [
-  partnerColumn("Applicant"),
-  companyColumn,
-  phoneColumn,
-  businessTypeColumn,
-  partnerTypeColumn,
-  appliedAtColumn(),
-  actionsColumn,
-];
+export function pendingColumns(
+  partnerTypes: { id: number; name: string }[],
+): ColumnDef<PartnerWithDetails>[] {
+  return [
+    partnerColumn("Applicant"),
+    companyColumn,
+    phoneColumn,
+    businessTypeColumn,
+    partnerTypeColumn,
+    appliedAtColumn(),
+    makeActionsColumn(partnerTypes),
+  ];
+}
 
 // ─── Rejected tab ───────────────────────────────────────────────────────────
 
-export const rejectedColumns: ColumnDef<PartnerWithDetails>[] = [
-  partnerColumn("Applicant"),
-  companyColumn,
-  partnerTypeColumn,
-  {
-    accessorKey: "rejection_reason",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Reason" />
-    ),
-    cell: ({ row }) => {
-      const reason = row.original.rejection_reason;
-      if (!reason) {
-        return <span className="text-muted-foreground text-sm italic">No reason provided</span>;
-      }
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-sm line-clamp-2 max-w-xs cursor-default">
+export function rejectedColumns(
+  partnerTypes: { id: number; name: string }[],
+): ColumnDef<PartnerWithDetails>[] {
+  return [
+    partnerColumn("Applicant"),
+    companyColumn,
+    partnerTypeColumn,
+    {
+      accessorKey: "rejection_reason",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Reason" />
+      ),
+      cell: ({ row }) => {
+        const reason = row.original.rejection_reason;
+        if (!reason) {
+          return <span className="text-muted-foreground text-sm italic">No reason provided</span>;
+        }
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm line-clamp-2 max-w-xs cursor-default">
+                  {reason}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm">
                 {reason}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-sm">
-              {reason}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
+      minSize: 200,
     },
-    minSize: 200,
-  },
-  appliedAtColumn(),
-  reviewedAtColumn("Rejected"),
-  actionsColumn,
-];
+    appliedAtColumn(),
+    reviewedAtColumn("Rejected"),
+    makeActionsColumn(partnerTypes),
+  ];
+}
