@@ -336,3 +336,55 @@ export async function promoteUserToPartner(
     };
   }
 }
+
+// ─── Partner type change ─────────────────────────────────────────────────────
+
+/**
+ * Admin-initiated change of an existing partner's partner type (reclassify,
+ * e.g. Dealer → Rental Company). Internal correction: updates the record and
+ * writes an audit-log entry only — no push, no in-app notification. Idempotent
+ * no-op when the type is unchanged.
+ */
+export async function updatePartnerType(
+  partnerId: number,
+  partnerTypeId: number,
+) {
+  try {
+    const adminId = await requirePermission("partners", "approve");
+
+    if (!Number.isFinite(partnerTypeId) || partnerTypeId <= 0) {
+      return { success: false, error: "Invalid partner type" };
+    }
+
+    const current = await d1.query<{
+      partner_type_id: number | null;
+      deleted_at: string | null;
+    }>(
+      "SELECT partner_type_id, deleted_at FROM partner WHERE id = ? LIMIT 1",
+      [partnerId],
+    );
+    const row = current.results[0];
+    if (!row || row.deleted_at !== null) {
+      return { success: false, error: "Partner not found" };
+    }
+
+    // Idempotent no-op if the type is unchanged.
+    if (row.partner_type_id === partnerTypeId) {
+      return { success: true };
+    }
+
+    await partnerService.update(partnerId, { partner_type_id: partnerTypeId });
+
+    invalidateTag(CACHE_TAGS.PARTNERS);
+    auditLog(
+      adminId,
+      "updated partner type | id=" + partnerId + " type=" + partnerTypeId,
+    );
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to update partner type"),
+    };
+  }
+}
