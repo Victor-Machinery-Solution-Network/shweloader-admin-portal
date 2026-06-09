@@ -373,6 +373,16 @@ export async function updatePartnerType(
       return { success: true };
     }
 
+    // Verify the target type exists (D1 has no FK enforcement, so an unknown id
+    // would otherwise be stored silently and blank out partner_type_name).
+    const typeCheck = await d1.query<{ id: number }>(
+      "SELECT id FROM partner_type WHERE id = ? AND deleted_at IS NULL LIMIT 1",
+      [partnerTypeId],
+    );
+    if (!typeCheck.results[0]) {
+      return { success: false, error: "Invalid partner type" };
+    }
+
     await partnerService.update(partnerId, { partner_type_id: partnerTypeId });
 
     invalidateTag(CACHE_TAGS.PARTNERS);
