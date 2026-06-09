@@ -243,7 +243,16 @@ export function ArticleEditor({
               : action === "draft"
                 ? "drafts"
                 : "published";
-        router.push(`/articles/posts?tab=${tab}`);
+        // A new article's editor instance lingers in the client router cache,
+        // so a soft nav back would reuse it on the next "New Article" — leaving
+        // a stale title + cover image (the dynamically-loaded content editor
+        // re-inits, which is why only the content looked cleared). Hard-navigate
+        // after a create to fully reset, matching the Discard button.
+        if (isNewArticle) {
+          window.location.href = `/articles/posts?tab=${tab}`;
+        } else {
+          router.push(`/articles/posts?tab=${tab}`);
+        }
       } else {
         toast.error(result.error ?? "Something went wrong");
       }
