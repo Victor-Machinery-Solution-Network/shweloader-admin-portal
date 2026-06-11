@@ -6,6 +6,7 @@ import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
 import { triggerChatEvent, triggerAdminChatEvent } from "@/lib/pusher";
 import { sendPushToUser } from "@/lib/services/push-notification";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { insertUserNotification } from "@/lib/services/user-notification";
 import { assetUrl } from "@/lib/r2-url";
 import { customIdSqlExpr } from "@/lib/utils/custom-id";
@@ -407,6 +408,24 @@ export async function sendMessage(
         ...(imageUrl && { imageUrl }),
         data: { senderName },
       }).catch(() => {}); // Fire and forget
+
+      // Send Web Push to the user's browsers (notifies them when their tab is
+      // closed). Defensive + non-throwing — the admin's reply must succeed even
+      // if push fails. Payload keys (title/body/url/tag) match what the web
+      // service worker reads via event.data.json().
+      const webPushBody = hasMessage
+        ? message!.trim().slice(0, 120)
+        : "📎 Attachment";
+      try {
+        await sendWebPushToUser(appUserId, {
+          title: senderName || "ShweLoader Support",
+          body: webPushBody,
+          url: "/chat",
+          tag: `chat-${sessionId}`,
+        });
+      } catch {
+        // sendWebPushToUser is already non-throwing; this is belt-and-braces.
+      }
     }
 
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
