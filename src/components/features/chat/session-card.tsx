@@ -45,7 +45,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
         isSelected
           ? "border-l-primary bg-primary/10 hover:bg-primary/15"
           : hasUnread
-            ? "border-l-primary bg-primary/50"
+            ? "border-l-primary"
             : isPending
               ? "border-l-primary/60"
               : "border-l-transparent",
@@ -69,16 +69,28 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
 
       {/* Content */}
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-        {/* Top row: name + time */}
+        {/* Top row: name (+ NEW badge for unread) + time */}
         <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "text-sm font-medium truncate",
-              hasUnread && !isSelected ? "text-foreground" : "text-foreground/80",
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className={cn(
+                "text-sm font-medium truncate min-w-0",
+                hasUnread && !isSelected
+                  ? "text-foreground"
+                  : "text-foreground/80",
+              )}
+            >
+              {session.user_name}
+            </span>
+            {hasUnread && (
+              <Badge
+                variant="destructive"
+                className="h-4 px-1.5 text-[10px] font-semibold shrink-0"
+              >
+                NEW
+              </Badge>
             )}
-          >
-            {session.user_name}
-          </span>
+          </div>
           <span className="text-xs text-muted-foreground shrink-0">
             {relativeTime}
           </span>
@@ -96,16 +108,8 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
           >
             {formatPreview(session.last_message_preview)}
           </p>
-          {hasUnread && (
-            <Badge variant="default" className="shrink-0 min-w-[1.25rem] text-xs bg-primary text-primary-foreground">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )}
-          {isPending && (
-            <Badge variant="equipment" className="shrink-0 text-xs">
-              NEW
-            </Badge>
-          )}
+          {/* Unread is signalled by the red NEW badge next to the name (above),
+              so the bottom row no longer repeats a count or a pending NEW. */}
           {isResolved && (
             <Badge variant="secondary" className="shrink-0 text-xs">
               Resolved
