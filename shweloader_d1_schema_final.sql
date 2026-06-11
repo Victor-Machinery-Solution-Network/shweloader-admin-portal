@@ -1217,6 +1217,25 @@ CREATE INDEX idx_device_token_user ON device_token(app_user_id);
 CREATE INDEX idx_device_token_device ON device_token(device_id);
 
 
+-- ─── Web Push Subscriptions (browser push for the public web app) ─────────────
+-- Stores standard browser PushSubscription objects (endpoint + p256dh/auth keys)
+-- sent by the public web app via app-api's POST /chat/push/subscribe. The admin
+-- portal reads these to send Web Push notifications. Upserted by `endpoint`.
+CREATE TABLE web_push_subscription (
+    web_push_subscription_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    app_user_id INTEGER,
+    user_agent TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (app_user_id) REFERENCES app_user(app_user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_web_push_subscription_user ON web_push_subscription(app_user_id);
+
+
 -- ─── App Feedback (Help & Support) ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS app_feedback (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
