@@ -420,7 +420,9 @@ export async function sendMessage(
         await sendWebPushToUser(appUserId, {
           title: senderName || "ShweLoader Support",
           body: webPushBody,
-          url: "/chat",
+          // Deep-link to the specific conversation (the web /chat page reads
+          // ?session= and selects it), matching mobile's notification routing.
+          url: `/chat?session=${sessionId}`,
           tag: `chat-${sessionId}`,
         });
       } catch {
