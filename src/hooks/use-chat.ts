@@ -302,6 +302,9 @@ export function useChatInbox(
     const unsubMessage = handle.subscribe("new-message", (data: unknown) => {
       const raw = data as Record<string, unknown>;
       const sessionId = raw.sessionId as number;
+      // Ignore the system auto-reply ("Thanks for your message…"): it shouldn't
+      // appear in the rail preview or affect the unread count.
+      if (raw.senderType === "system") return;
       // Worker (user messages) doesn't include senderType; admin messages explicitly set senderType: "admin"
       const isUserMessage = raw.senderType !== "admin";
       // Refresh unread count only for user messages

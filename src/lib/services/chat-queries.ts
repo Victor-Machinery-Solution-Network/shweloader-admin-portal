@@ -32,9 +32,23 @@ export async function getChatSessionsWithDetails(): Promise<
     `SELECT
       cs.id, cs.app_user_id, cs.status,
       cs.created_at, cs.updated_at, cs.resolved_at,
-      cs.last_message_at, cs.last_message_preview,
+      cs.last_message_at,
+      -- Preview the last NON-system message: the system auto-reply ("Thanks for
+      -- your message…") overwrites cs.last_message_preview, but we don't want it
+      -- shown in the rail — surface the user's/admin's actual last message.
+      -- Mirrors the card's marker formatting ([Product Reference]/[Attachment]).
+      (SELECT CASE
+                WHEN m.message IS NOT NULL AND TRIM(m.message) != '' THEN m.message
+                WHEN m.sale_listing_id IS NOT NULL OR m.rent_listing_id IS NOT NULL
+                  THEN '[Product Reference]'
+                ELSE '[Attachment]'
+              END
+       FROM chat_message m
+       WHERE m.chat_session_id = cs.id AND m.sender_type != 'system'
+       ORDER BY m.created_at DESC, m.id DESC
+       LIMIT 1) AS last_message_preview,
       (SELECT sender_type FROM chat_message
-         WHERE chat_session_id = cs.id
+         WHERE chat_session_id = cs.id AND sender_type != 'system'
          ORDER BY created_at DESC, id DESC
          LIMIT 1) AS last_message_sender_type,
       cs.unread_admin_count, cs.unread_user_count,
