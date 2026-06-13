@@ -865,6 +865,23 @@ CREATE TABLE IF NOT EXISTS attachment_category (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_attachment_category_name ON attachment_category(name);
 CREATE INDEX IF NOT EXISTS idx_attachment_category_created_by ON attachment_category(created_by);
 
+-- Tags an attachment category to one or more equipment subcategories (many-to-many),
+-- mirroring equipment_sub_category_brand. Lets the public site group attachment
+-- categories under their equipment subcategory (e.g. "Excavator").
+CREATE TABLE IF NOT EXISTS attachment_category_sub_category (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attachment_category_id INTEGER NOT NULL,
+    sub_category_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER,
+    FOREIGN KEY (attachment_category_id) REFERENCES attachment_category(category_id) ON DELETE CASCADE,
+    FOREIGN KEY (sub_category_id) REFERENCES equipment_sub_category(sub_category_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_acsc_attachment_category_id ON attachment_category_sub_category(attachment_category_id);
+CREATE INDEX IF NOT EXISTS idx_acsc_sub_category_id ON attachment_category_sub_category(sub_category_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_acsc_pair ON attachment_category_sub_category(attachment_category_id, sub_category_id);
+
 -- =============================================
 -- ATTACHMENT MODEL
 -- =============================================
