@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { FolderOpen, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { RequiredInput } from "@/components/ui/required-input";
+import { RequiredInput, FieldError } from "@/components/ui/required-input";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { ImageInput } from "@/components/ui/image-input";
 import {
@@ -12,23 +13,51 @@ import {
   updateAttachmentCategory,
 } from "@/lib/actions/attachment";
 import type { AttachmentCategory } from "@/types/attachment";
+import type { EquipmentSubCategory } from "@/types/equipment";
 
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category?: AttachmentCategory;
+  subCategories: EquipmentSubCategory[];
+  /** Current equipment sub-category IDs linked to this category (edit mode) */
+  categorySubCategoryIds?: number[];
 }
 
 export function CategoryForm({
   open,
   onOpenChange,
   category,
+  subCategories,
+  categorySubCategoryIds = [],
 }: CategoryFormProps) {
   const [isPending, startTransition] = useTransition();
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedSubCategoryIds, setSelectedSubCategoryIds] = useState<string[]>(
+    categorySubCategoryIds.map(String),
+  );
   const isEditing = !!category;
 
+  // Reset the multi-select when the dialog opens (the create form stays mounted
+  // across opens; remounting via `key` re-seeds MultiSelect's internal state).
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setSelectedSubCategoryIds(categorySubCategoryIds.map(String));
+    }
+    onOpenChange(nextOpen);
+  };
+
+  const subCategoryOptions = subCategories.map((sc) => ({
+    label: sc.name,
+    value: String(sc.sub_category_id),
+  }));
+
   function handleSubmit(formData: FormData) {
+    formData.set(
+      "subCategoryIds",
+      JSON.stringify(selectedSubCategoryIds.map(Number)),
+    );
+
     startTransition(async () => {
       const result = isEditing
         ? await updateAttachmentCategory(category.category_id, formData)
@@ -36,7 +65,7 @@ export function CategoryForm({
 
       if (result.success) {
         toast.success(isEditing ? "Category updated" : "Category created");
-        onOpenChange(false);
+        handleOpenChange(false);
       } else {
         toast.error(result.error ?? "Something went wrong");
       }
@@ -46,7 +75,7 @@ export function CategoryForm({
   return (
     <FormDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       title={isEditing ? "Edit Category" : "Add Category"}
       description={
         isEditing
@@ -72,6 +101,23 @@ export function CategoryForm({
               defaultValue={category?.name ?? ""}
               errorMessage="Category name is required"
               autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+        <Field orientation="vertical">
+          <FieldLabel>Equipment Sub-Categories</FieldLabel>
+          <FieldContent>
+            <MultiSelect
+              key={open ? "open" : "closed"}
+              options={subCategoryOptions}
+              defaultValue={selectedSubCategoryIds}
+              onValueChange={setSelectedSubCategoryIds}
+              placeholder="Select equipment sub-categories…"
+              maxCount={3}
+            />
+            <FieldError
+              show={selectedSubCategoryIds.length === 0}
+              message="At least one equipment sub-category is required"
             />
           </FieldContent>
         </Field>

@@ -8,15 +8,17 @@ import { RowActions as RowActionsUI } from "@/components/shared/row-actions";
 import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { CategoryForm } from "./category-form";
 import { deleteAttachmentCategory } from "@/lib/actions/attachment";
-import type { AttachmentCategory } from "@/types/attachment";
+import type { AttachmentCategoryWithSubCategories } from "@/types/attachment";
+import type { EquipmentSubCategory } from "@/types/equipment";
 
 interface RowActionsProps {
-  category: AttachmentCategory;
+  category: AttachmentCategoryWithSubCategories;
+  subCategories: EquipmentSubCategory[];
   linkedCount: number;
   linkedSummary: string;
 }
 
-export function RowActions({ category, linkedCount, linkedSummary }: RowActionsProps) {
+export function RowActions({ category, subCategories, linkedCount, linkedSummary }: RowActionsProps) {
   const canEdit = useHasPermission("attachment_categories", "edit");
   const canDelete = useHasPermission("attachment_categories", "delete");
   const [showEdit, setShowEdit] = useState(false);
@@ -56,6 +58,8 @@ export function RowActions({ category, linkedCount, linkedSummary }: RowActionsP
           open={showEdit}
           onOpenChange={setShowEdit}
           category={category}
+          subCategories={subCategories}
+          categorySubCategoryIds={category.subCategoryIds}
         />
       )}
 

@@ -10,6 +10,11 @@ export interface AttachmentCategory {
   deleted_by: number | null;
 }
 
+/** AttachmentCategory extended with its linked equipment sub-category IDs */
+export interface AttachmentCategoryWithSubCategories extends AttachmentCategory {
+  subCategoryIds: number[];
+}
+
 /** Matches the attachment_model table in D1 */
 export interface AttachmentModel {
   model_id: number;

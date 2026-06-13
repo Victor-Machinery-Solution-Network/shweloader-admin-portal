@@ -5,12 +5,14 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { ImageCell } from "@/components/shared/image-cell";
 import { formatDate } from "@/lib/utils";
-import type { AttachmentCategory } from "@/types/attachment";
+import type { AttachmentCategoryWithSubCategories } from "@/types/attachment";
+import type { EquipmentSubCategory } from "@/types/equipment";
 import { RowActions } from "./row-actions";
 
 export function getColumns(
   linkedInfo: Record<number, { total: number; summary: string }>,
-): ColumnDef<AttachmentCategory>[] {
+  subCategories: EquipmentSubCategory[],
+): ColumnDef<AttachmentCategoryWithSubCategories>[] {
   return [
     {
       id: "index",
@@ -74,6 +76,7 @@ export function getColumns(
         return (
           <RowActions
             category={row.original}
+            subCategories={subCategories}
             linkedCount={info?.total ?? 0}
             linkedSummary={info?.summary ?? ""}
           />

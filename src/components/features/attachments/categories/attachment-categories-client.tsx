@@ -23,15 +23,18 @@ import {
   formatAttachmentCategoryLinkedSummary,
 } from "@/lib/actions/attachment";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
-import type { AttachmentCategory } from "@/types/attachment";
+import type { AttachmentCategoryWithSubCategories } from "@/types/attachment";
+import type { EquipmentSubCategory } from "@/types/equipment";
 
 interface AttachmentCategoriesClientProps {
-  categories: AttachmentCategory[];
+  categories: AttachmentCategoryWithSubCategories[];
+  subCategories: EquipmentSubCategory[];
   linkedInfo: Record<number, { total: number; summary: string }>;
 }
 
 export function AttachmentCategoriesClient({
   categories,
+  subCategories,
   linkedInfo,
 }: AttachmentCategoriesClientProps) {
   const canCreate = useHasPermission("attachment_categories", "create");
@@ -45,7 +48,10 @@ export function AttachmentCategoriesClient({
       feature: "attachment_categories",
     },
   );
-  const columns = useMemo(() => getColumns(linkedInfo), [linkedInfo]);
+  const columns = useMemo(
+    () => getColumns(linkedInfo, subCategories),
+    [linkedInfo, subCategories],
+  );
 
   const filterConfig = useMemo<FilterConfig[]>(
     () => [{ columnId: "created_at", label: "Created At", type: "date-range" }],
@@ -53,7 +59,7 @@ export function AttachmentCategoriesClient({
   );
 
   const buildDescription = useCallback(
-    async (selected: AttachmentCategory[]) => {
+    async (selected: AttachmentCategoryWithSubCategories[]) => {
       const ids = selected.map((c) => c.category_id);
       const counts = await getAttachmentCategoryLinkedCounts(ids);
 
@@ -78,7 +84,7 @@ export function AttachmentCategoriesClient({
   );
 
   const handleBulkDelete = useCallback(
-    async (selected: AttachmentCategory[]) => {
+    async (selected: AttachmentCategoryWithSubCategories[]) => {
       const ids = selected.map((c) => c.category_id);
       return deleteAttachmentCategories(ids);
     },
@@ -86,7 +92,7 @@ export function AttachmentCategoriesClient({
   );
 
   const renderToolbar = useCallback(
-    (selected: AttachmentCategory[]) => (
+    (selected: AttachmentCategoryWithSubCategories[]) => (
       <>
         {canDelete && (
           <BulkDeleteButton
@@ -170,7 +176,11 @@ export function AttachmentCategoriesClient({
         />
       )}
 
-      <CategoryForm open={showCreate} onOpenChange={setShowCreate} />
+      <CategoryForm
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        subCategories={subCategories}
+      />
     </>
   );
 }
