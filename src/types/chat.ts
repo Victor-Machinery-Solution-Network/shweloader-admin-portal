@@ -18,6 +18,9 @@ export interface ChatSession {
 
 /** Chat session with JOINed details for display */
 export interface ChatSessionWithDetails extends ChatSession {
+  /** sender_type of the most recent message — drives the "You:" preview prefix
+   *  in the session list. Null when the session has no messages. */
+  last_message_sender_type: "user" | "admin" | "system" | null;
   user_name: string;
   user_username: string;
   user_email: string | null;

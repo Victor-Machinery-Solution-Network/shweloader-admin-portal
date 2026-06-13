@@ -33,6 +33,10 @@ export async function getChatSessionsWithDetails(): Promise<
       cs.id, cs.app_user_id, cs.status,
       cs.created_at, cs.updated_at, cs.resolved_at,
       cs.last_message_at, cs.last_message_preview,
+      (SELECT sender_type FROM chat_message
+         WHERE chat_session_id = cs.id
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1) AS last_message_sender_type,
       cs.unread_admin_count, cs.unread_user_count,
       cs.admin_last_read_at, cs.user_last_read_at,
       cs.deleted_at, cs.deleted_by,

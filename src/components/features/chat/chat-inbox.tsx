@@ -105,6 +105,9 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
           ...prev[idx],
           last_message_preview: preview,
           last_message_at: at,
+          last_message_sender_type: (isUserMessage ? "user" : "admin") as
+            | "user"
+            | "admin",
           unread_admin_count:
             isUserMessage && !isCurrentlyViewing
               ? prev[idx].unread_admin_count + 1

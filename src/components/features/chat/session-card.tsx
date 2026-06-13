@@ -21,11 +21,17 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function formatPreview(preview: string | null): string {
+function formatPreview(
+  preview: string | null,
+  senderType: "user" | "admin" | "system" | null,
+): string {
   if (!preview) return "No messages yet";
-  if (preview.startsWith("[Attachment]")) return "Sent a photo";
-  if (preview === "[Product Reference]") return "Shared a listing";
-  return preview;
+  let text: string;
+  if (preview.startsWith("[Attachment]")) text = "Sent a photo";
+  else if (preview === "[Product Reference]") text = "Shared a listing";
+  else text = preview;
+  // Prefix "You:" when the most recent message was sent by the admin (us).
+  return senderType === "admin" ? `You: ${text}` : text;
 }
 
 export function SessionCard({ session, isSelected, onClick }: SessionCardProps) {
@@ -43,7 +49,7 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
       className={cn(
         "w-full text-left px-4 py-3 flex items-center gap-3 border-l-2 transition-colors",
         isSelected
-          ? "border-l-primary bg-primary/10 hover:bg-primary/15"
+          ? "border-l-transparent bg-primary/10 hover:bg-primary/15"
           : hasUnread
             ? "border-l-primary"
             : isPending
@@ -106,7 +112,10 @@ export function SessionCard({ session, isSelected, onClick }: SessionCardProps) 
                 : "text-muted-foreground",
             )}
           >
-            {formatPreview(session.last_message_preview)}
+            {formatPreview(
+              session.last_message_preview,
+              session.last_message_sender_type,
+            )}
           </p>
           {/* Unread is signalled by the red NEW badge next to the name (above),
               so the bottom row no longer repeats a count or a pending NEW. */}
