@@ -394,7 +394,11 @@ export function ConversationPanel({
           description="Send a message to start the conversation."
         />
       ) : (
-        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
+        <ScrollArea
+          ref={scrollAreaRef}
+          className="flex-1 min-h-0"
+          viewportClassName="[&>div]:!block"
+        >
           <div className="flex flex-col px-4 py-4 overflow-hidden">
             {messages.map((msg, idx) => {
               const prev = messages[idx - 1];

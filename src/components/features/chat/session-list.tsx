@@ -118,7 +118,7 @@ export function SessionList({ sessions, selectedId, onSelect }: SessionListProps
           (tab) => (
             <TabsContent key={tab} value={tab} className="flex-1 min-h-0 mt-0">
               {filtered.length > 0 ? (
-                <ScrollArea className="h-full">
+                <ScrollArea className="h-full" viewportClassName="[&>div]:!block">
                   <div className="py-1">
                     {filtered.map((session) => (
                       <SessionCard
