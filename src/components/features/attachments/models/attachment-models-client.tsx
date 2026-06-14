@@ -160,7 +160,6 @@ export function AttachmentModelsClient({
           searchPlaceholder="Search models"
           filterConfig={filterConfig}
           filterStorageKey="attachment-models-filters"
-          initialColumnVisibility={{ subcategories: false }}
           enableSelection
           enablePagination
           pageSize={10}

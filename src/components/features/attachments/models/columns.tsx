@@ -83,14 +83,30 @@ export function createColumns(
       },
     },
     {
-      // Hidden data column: powers the "Equipment Subcategory" filter only.
-      // A model matches when its category is tagged to the selected
-      // sub-category (model.category_id → attachment_category_sub_category).
+      // Equipment subcategories tagged on the model's attachment category
+      // (model.category_id → attachment_category_sub_category). Also powers the
+      // "Equipment Subcategory" filter.
       id: "subcategories",
       accessorFn: (row) => categorySubCategoryNames.get(row.category_id) ?? [],
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Equipment Subcategory" />
       ),
+      cell: ({ row }) => {
+        const names = (row.getValue("subcategories") as string[]) ?? [];
+        if (names.length === 0) {
+          return <span className="text-muted-foreground text-sm">—</span>;
+        }
+        return (
+          <div className="flex flex-col gap-0.5">
+            {names.map((name) => (
+              <span key={name} className="flex items-center gap-1.5 text-sm">
+                <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                {name}
+              </span>
+            ))}
+          </div>
+        );
+      },
       enableSorting: false,
     },
     {

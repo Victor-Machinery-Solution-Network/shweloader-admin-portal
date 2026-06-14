@@ -1,9 +1,8 @@
 "use client";
 
-import { Box, Layers } from "lucide-react";
+import { Box, Folder } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
 import { ImageCell } from "@/components/shared/image-cell";
 import { formatDate } from "@/lib/utils";
 import type { AttachmentCategoryWithSubCategories } from "@/types/attachment";
@@ -68,16 +67,12 @@ export function getColumns(
           return <span className="text-muted-foreground text-sm">—</span>;
         }
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-col gap-0.5">
             {names.map((name) => (
-              <Badge
-                key={name}
-                variant="secondary"
-                className="gap-1 font-normal"
-              >
-                <Layers className="size-3 text-muted-foreground" />
+              <span key={name} className="flex items-center gap-1.5 text-sm">
+                <Folder className="size-3.5 shrink-0 text-muted-foreground" />
                 {name}
-              </Badge>
+              </span>
             ))}
           </div>
         );
