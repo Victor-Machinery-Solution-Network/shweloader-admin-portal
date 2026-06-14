@@ -15,6 +15,16 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Vercel Image Optimization is OFF — same as the public web app. Uploads are
+    // already re-encoded to WebP via sharp before hitting R2 (see
+    // src/lib/actions/upload-helpers.ts / bulk-upload.ts), so the optimizer was
+    // only re-compressing WebP→WebP. Disabling it stops burning the account's
+    // shared 5k/month transformation quota — admins browse the whole catalog, so
+    // this project generates a lot of unique transformations despite low traffic.
+    // next/image still handles CLS / lazy-load / fill for free while unoptimized.
+    // (sharp below stays — it's the upload pipeline, not the optimizer.)
+    unoptimized: true,
+
     // Explicit R2 asset hosts only (prod + staging). NOT a wildcard: a broad
     // `**.shweloader.com.mm` would let the image optimizer proxy-fetch from the
     // authenticated API subdomains (api./app-api.) too — an SSRF surface.
