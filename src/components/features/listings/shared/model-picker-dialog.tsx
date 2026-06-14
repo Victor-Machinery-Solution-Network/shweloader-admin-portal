@@ -45,6 +45,8 @@ interface ModelPickerDialogProps {
   attachmentModels: AttachmentModel[];
   attachmentCategories: AttachmentCategory[];
   categoryBrandLinks: { category_id: number; brand_id: number }[];
+  // Attachment-category ↔ equipment-subcategory tags (optional cascade filter)
+  attachmentCategorySubCategoryLinks: { category_id: number; sub_category_id: number }[];
   // Selection
   currentModel?: string;
   onSelect: (modelName: string) => void;
@@ -64,6 +66,7 @@ export function ModelPickerDialog({
   attachmentModels,
   attachmentCategories,
   categoryBrandLinks,
+  attachmentCategorySubCategoryLinks,
   currentModel,
   onSelect,
 }: ModelPickerDialogProps) {
@@ -99,10 +102,6 @@ export function ModelPickerDialog({
     () => new Map(attachmentCategories.map((c) => [c.category_id, c.name])),
     [attachmentCategories],
   );
-  const allAttachCategoryNames = useMemo(
-    () => attachmentCategories.map((c) => c.name),
-    [attachmentCategories],
-  );
 
   // ── Bi-directional link maps (equipment) ─────────────────────────────────
   const brandsBySubCategory = useMemo(
@@ -124,10 +123,24 @@ export function ModelPickerDialog({
     [categoryBrandLinks],
   );
 
+  // Optional cascade: equipment-subcategory → set of attachment-category ids.
+  const attachCategoriesBySubCategory = useMemo(
+    () =>
+      buildLinkMap(
+        attachmentCategorySubCategoryLinks,
+        (l) => l.sub_category_id,
+        (l) => l.category_id,
+      ),
+    [attachmentCategorySubCategoryLinks],
+  );
+
   // ── Internal selection state ──────────────────────────────────────────────
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(""); // sub-category for equipment, category for attachment
   const [selectedModel, setSelectedModel] = useState("");
+  // Attachment mode only: optional equipment-subcategory filter that narrows the
+  // attachment-category list. Purely a convenience — never gates selection.
+  const [attachSubCategoryFilter, setAttachSubCategoryFilter] = useState("");
 
   // Pre-populate from current model when dialog opens — prev-state pattern so
   // the form is ready synchronously on the open render (no flash of empty state).
@@ -135,6 +148,9 @@ export function ModelPickerDialog({
   if (prevOpen !== open) {
     setPrevOpen(open);
     if (open) {
+      // The optional attachment-subcategory filter always starts blank (show
+      // all) on open, even when editing an existing attachment listing.
+      setAttachSubCategoryFilter("");
       let matched = false;
       if (currentModel) {
         if (productType === "equipment") {
@@ -191,14 +207,28 @@ export function ModelPickerDialog({
       if (!linked) return [];
       return subCategories.filter((sc) => linked.has(sc.sub_category_id)).map((sc) => sc.name);
     } else {
-      if (!selectedBrand) return allAttachCategoryNames;
-      const brandId = brandMap.get(selectedBrand);
-      if (!brandId) return allAttachCategoryNames;
-      const linked = attachCategoriesByBrand.get(brandId);
-      if (!linked) return [];
-      return attachmentCategories.filter((c) => linked.has(c.category_id)).map((c) => c.name);
+      // Optional equipment-subcategory filter: when set, restrict to the tagged
+      // attachment categories; when blank, show all (current behaviour).
+      const subFilterId = attachSubCategoryFilter
+        ? subCategoryMap.get(attachSubCategoryFilter)
+        : null;
+      const subFilterSet = subFilterId
+        ? attachCategoriesBySubCategory.get(subFilterId)
+        : null;
+      // Brand filter (independent of the subcategory filter).
+      const brandId = selectedBrand ? brandMap.get(selectedBrand) : null;
+      const brandSet = brandId ? attachCategoriesByBrand.get(brandId) : null;
+
+      return attachmentCategories
+        .filter((c) => {
+          if (subFilterId && !(subFilterSet?.has(c.category_id))) return false;
+          if (selectedBrand && brandId && !(brandSet?.has(c.category_id)))
+            return false;
+          return true;
+        })
+        .map((c) => c.name);
     }
-  }, [selectedBrand, productType, allSubCategoryNames, allAttachCategoryNames, brandMap, subCategoriesByBrand, subCategories, attachCategoriesByBrand, attachmentCategories]);
+  }, [selectedBrand, productType, allSubCategoryNames, brandMap, subCategoriesByBrand, subCategories, attachCategoriesByBrand, attachmentCategories, attachSubCategoryFilter, subCategoryMap, attachCategoriesBySubCategory]);
 
   // ── Filtered models (always populated — filters narrow progressively) ─────
   const filteredModelNames = useMemo(() => {
@@ -283,6 +313,26 @@ export function ModelPickerDialog({
     }
   }
 
+  // Attachment mode: change the optional equipment-subcategory filter. Blank =
+  // show all (clears nothing). When a subcategory is chosen and the currently
+  // selected attachment category isn't tagged with it, drop that selection (and
+  // its model) so an out-of-filter category can't linger. Brand is untouched —
+  // the filter only narrows the category list, it never gates anything.
+  function handleAttachSubCategoryFilterChange(val: string | null) {
+    const newFilter = val ?? "";
+    setAttachSubCategoryFilter(newFilter);
+
+    if (!newFilter || !selectedCategory) return;
+    const subCatId = subCategoryMap.get(newFilter);
+    const catId = attachCategoryMap.get(selectedCategory);
+    if (!subCatId || !catId) return;
+    const allowed = attachCategoriesBySubCategory.get(subCatId);
+    if (!allowed || !allowed.has(catId)) {
+      setSelectedCategory("");
+      setSelectedModel("");
+    }
+  }
+
   function handleConfirm() {
     if (selectedModel) {
       onSelect(selectedModel);
@@ -334,6 +384,29 @@ export function ModelPickerDialog({
                 </Combobox>
               </FieldContent>
             </Field>
+
+            {productType === "attachment" && (
+              <Field orientation="vertical">
+                <FieldLabel>
+                  Equipment Subcategory{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </FieldLabel>
+                <FieldContent>
+                  <SubCategoryCombobox
+                    value={attachSubCategoryFilter}
+                    onValueChange={handleAttachSubCategoryFilterChange}
+                    subCategories={subCategories}
+                    mainCategories={mainCategories}
+                    allowedNames={allSubCategoryNames}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Narrows the categories below. Leave blank to show all.
+                  </p>
+                </FieldContent>
+              </Field>
+            )}
 
             <Field orientation="vertical">
               <FieldLabel>{categoryLabel}</FieldLabel>

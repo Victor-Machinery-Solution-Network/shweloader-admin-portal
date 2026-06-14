@@ -14,6 +14,7 @@ import {
   getSubCategoryBrandLinks,
   getAttachmentCategories,
   getCategoryBrandLinks,
+  getCategorySubCategoryLinks,
   getStateRegions,
   getDistricts,
   getTownships,
@@ -67,6 +68,7 @@ async function EditSaleListingContent({
     subCategoryBrandLinks,
     attachmentCategories,
     categoryBrandLinks,
+    categorySubCategoryLinks,
     stateRegions,
     districts,
     townships,
@@ -84,6 +86,7 @@ async function EditSaleListingContent({
     getSubCategoryBrandLinks(),
     getAttachmentCategories(),
     getCategoryBrandLinks(),
+    getCategorySubCategoryLinks(),
     getStateRegions(),
     getDistricts(),
     getTownships(),
@@ -115,6 +118,7 @@ async function EditSaleListingContent({
         subCategoryBrandLinks={subCategoryBrandLinks}
         attachmentCategories={attachmentCategories}
         categoryBrandLinks={categoryBrandLinks}
+        attachmentCategorySubCategoryLinks={categorySubCategoryLinks}
         stateRegions={stateRegions}
         districts={districts}
         townships={townships}

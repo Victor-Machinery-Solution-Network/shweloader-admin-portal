@@ -28,6 +28,7 @@ import {
 import { carouselService } from "@/lib/services/carousel";
 import { conditionTypeService } from "@/lib/services/listing";
 import { getAllSubCategoryBrandLinks, getAllCategoryBrandLinks } from "@/lib/actions/brand";
+import { getAllCategorySubCategoryLinks } from "@/lib/actions/attachment";
 import {
   getApprovedPartners as fetchApprovedPartners,
   getSaleListingsWithDetails,
@@ -84,6 +85,10 @@ export function getSubCategoryBrandLinks() {
 
 export function getCategoryBrandLinks() {
   return getAllCategoryBrandLinks();
+}
+
+export function getCategorySubCategoryLinks() {
+  return getAllCategorySubCategoryLinks();
 }
 
 export function getStateRegions() {

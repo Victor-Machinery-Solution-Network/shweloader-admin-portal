@@ -34,6 +34,21 @@ async function syncAttachmentCategorySubCategories(
   }
 }
 
+/**
+ * Get ALL attachment category ↔ equipment sub-category links (for the optional
+ * "Equipment Subcategory" cascade filter in the listing Model Picker). Mirrors
+ * `getAllCategoryBrandLinks`; aliases attachment_category_id → category_id so
+ * the shape matches the other link arrays.
+ */
+export async function getAllCategorySubCategoryLinks(): Promise<
+  { category_id: number; sub_category_id: number }[]
+> {
+  const result = await d1.query<{ category_id: number; sub_category_id: number }>(
+    "SELECT attachment_category_id AS category_id, sub_category_id FROM attachment_category_sub_category",
+  );
+  return result.results;
+}
+
 // ─── Attachment Category Actions ─────────────────────────────────────────────
 
 export async function createAttachmentCategory(formData: FormData) {

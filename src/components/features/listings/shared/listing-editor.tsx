@@ -147,6 +147,7 @@ interface ListingEditorProps {
   subCategoryBrandLinks: { sub_category_id: number; brand_id: number }[];
   attachmentCategories: AttachmentCategory[];
   categoryBrandLinks: { category_id: number; brand_id: number }[];
+  attachmentCategorySubCategoryLinks: { category_id: number; sub_category_id: number }[];
   stateRegions: StateRegion[];
   districts: District[];
   townships: Township[];
@@ -690,6 +691,7 @@ export function ListingEditor({
   subCategoryBrandLinks,
   attachmentCategories,
   categoryBrandLinks,
+  attachmentCategorySubCategoryLinks,
   stateRegions,
   districts,
   townships,
@@ -1969,6 +1971,7 @@ export function ListingEditor({
                 attachmentModels={attachmentModels}
                 attachmentCategories={attachmentCategories}
                 categoryBrandLinks={categoryBrandLinks}
+                attachmentCategorySubCategoryLinks={attachmentCategorySubCategoryLinks}
                 currentModel={selectedModel}
                 onSelect={(name) => setSelectedModel(name)}
               />

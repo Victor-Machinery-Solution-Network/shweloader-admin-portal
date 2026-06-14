@@ -12,6 +12,7 @@ import {
   getSubCategoryBrandLinks,
   getAttachmentCategories,
   getCategoryBrandLinks,
+  getCategorySubCategoryLinks,
   getStateRegions,
   getDistricts,
   getTownships,
@@ -66,6 +67,7 @@ async function NewListingContent() {
     subCategoryBrandLinks,
     attachmentCategories,
     categoryBrandLinks,
+    categorySubCategoryLinks,
     stateRegions,
     districts,
     townships,
@@ -82,6 +84,7 @@ async function NewListingContent() {
     getSubCategoryBrandLinks(),
     getAttachmentCategories(),
     getCategoryBrandLinks(),
+    getCategorySubCategoryLinks(),
     getStateRegions(),
     getDistricts(),
     getTownships(),
@@ -107,6 +110,7 @@ async function NewListingContent() {
         subCategoryBrandLinks={subCategoryBrandLinks}
         attachmentCategories={attachmentCategories}
         categoryBrandLinks={categoryBrandLinks}
+        attachmentCategorySubCategoryLinks={categorySubCategoryLinks}
         stateRegions={stateRegions}
         districts={districts}
         townships={townships}
