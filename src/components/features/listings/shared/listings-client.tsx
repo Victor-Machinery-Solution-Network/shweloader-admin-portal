@@ -71,7 +71,6 @@ const HIDDEN_FILTER_COLUMNS: VisibilityState = {
   is_featured: false,
   mmk_price: false,
   created_at: false,
-  equipment_category: false,
   equipment_sub_category: false,
   attachment_category: false,
 };
@@ -169,25 +168,6 @@ export function ListingsClient({
 
   // --- Filter configs with grouped sections ---
 
-  // Equipment main-category → its sub-categories, derived from the listings in
-  // view. Drives the Equipment Subcategory filter's cascade: selecting one or
-  // more categories narrows the subcategory options to those categories' children.
-  const categoryCascadeMap = useMemo(() => {
-    const grouped: Record<string, Set<string>> = {};
-    for (const l of approvedListings) {
-      const main = l.main_category_name;
-      const sub = l.sub_category_name;
-      if (!main || !sub) continue;
-      if (!grouped[main]) grouped[main] = new Set();
-      grouped[main].add(sub);
-    }
-    const map: Record<string, string[]> = {};
-    for (const [main, subs] of Object.entries(grouped)) {
-      map[main] = Array.from(subs);
-    }
-    return map;
-  }, [approvedListings]);
-
   const mainFilterConfig = useMemo<FilterConfig[]>(() => {
     const filters: FilterConfig[] = [
       // Status group
@@ -257,24 +237,17 @@ export function ListingsClient({
             },
           ]
         : []),
-      // Category group
-      {
-        columnId: "equipment_category",
-        label: "Equipment Category",
-        type: "multi-select",
-        group: "Category",
-      },
+      // Category group — Equipment lists all equipment sub-categories; Attachment
+      // lists attachment categories. (Options auto-derive from the rows in view.)
       {
         columnId: "equipment_sub_category",
-        label: "Equipment Subcategory",
+        label: "Equipment",
         type: "multi-select",
         group: "Category",
-        cascadeFrom: "equipment_category",
-        cascadeMap: categoryCascadeMap,
       },
       {
         columnId: "attachment_category",
-        label: "Attachment Category",
+        label: "Attachment",
         type: "multi-select",
         group: "Category",
       },
@@ -291,7 +264,7 @@ export function ListingsClient({
       { columnId: "created_at", label: "Created At", type: "date-range", group: "Other" },
     ];
     return filters;
-  }, [pageType, categoryCascadeMap]);
+  }, [pageType]);
 
   const pendingFilterConfig = useMemo<FilterConfig[]>(
     () => [

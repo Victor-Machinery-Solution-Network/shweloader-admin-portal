@@ -731,10 +731,9 @@ function saleFilterColumns(): ColumnDef<SaleListingWithDetails>[] {
     { id: "is_featured", accessorFn: (row) => row.featured_id != null ? "Yes" : "No", enableSorting: false },
     { id: "mmk_price", accessorFn: (row) => row.mmk_price, enableSorting: false },
     { id: "created_at", accessorFn: (row) => row.created_at, enableSorting: false },
-    // Category taxonomy — filter-only. Equipment cats are populated on equipment
-    // rows, the attachment cat on attachment rows; null on the other type (the
-    // filter UI drops null/empty options automatically).
-    { id: "equipment_category", accessorFn: (row) => row.main_category_name, enableSorting: false },
+    // Category taxonomy — filter-only. Equipment subcategory is populated on
+    // equipment rows, the attachment category on attachment rows; null on the
+    // other type (the filter UI drops null/empty options automatically).
     { id: "equipment_sub_category", accessorFn: (row) => row.sub_category_name, enableSorting: false },
     { id: "attachment_category", accessorFn: (row) => row.attachment_category_name, enableSorting: false },
   ];
@@ -747,10 +746,9 @@ function rentFilterColumns(): ColumnDef<RentListingWithDetails>[] {
     { id: "is_featured", accessorFn: (row) => row.featured_id != null ? "Yes" : "No", enableSorting: false },
     { id: "mmk_price", accessorFn: (row) => row.mmk_price, enableSorting: false },
     { id: "created_at", accessorFn: (row) => row.created_at, enableSorting: false },
-    // Category taxonomy — filter-only. Equipment cats are populated on equipment
-    // rows, the attachment cat on attachment rows; null on the other type (the
-    // filter UI drops null/empty options automatically).
-    { id: "equipment_category", accessorFn: (row) => row.main_category_name, enableSorting: false },
+    // Category taxonomy — filter-only. Equipment subcategory is populated on
+    // equipment rows, the attachment category on attachment rows; null on the
+    // other type (the filter UI drops null/empty options automatically).
     { id: "equipment_sub_category", accessorFn: (row) => row.sub_category_name, enableSorting: false },
     { id: "attachment_category", accessorFn: (row) => row.attachment_category_name, enableSorting: false },
   ];

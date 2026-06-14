@@ -172,7 +172,6 @@ export interface SaleListingWithDetails {
   // Featured status
   featured_id: number | null;
   // Joined product taxonomy (drives the category filters)
-  main_category_name: string | null;
   sub_category_name: string | null;
   attachment_category_name: string | null;
 }
@@ -235,7 +234,6 @@ export interface RentListingWithDetails {
   // Featured status
   featured_id: number | null;
   // Joined product taxonomy (drives the category filters)
-  main_category_name: string | null;
   sub_category_name: string | null;
   attachment_category_name: string | null;
 }
