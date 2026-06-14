@@ -154,8 +154,9 @@ export function ModelPickerDialog({
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(""); // sub-category for equipment, category for attachment
   const [selectedModel, setSelectedModel] = useState("");
-  // Attachment mode only: optional equipment-subcategory filter that narrows the
-  // attachment-category list. Purely a convenience — never gates selection.
+  // Attachment mode only: equipment-subcategory filter that drives the picker —
+  // when set it narrows the Category, Brand and Model lists to what's tagged
+  // with / reachable from that subcategory. Blank = show everything.
   const [attachSubCategoryFilter, setAttachSubCategoryFilter] = useState("");
 
   // Pre-populate from current model when dialog opens — prev-state pattern so
@@ -197,24 +198,41 @@ export function ModelPickerDialog({
 
   // ── Filtered brand names ──────────────────────────────────────────────────
   const filteredBrandNames = useMemo(() => {
-    // Base list depends on mode: attachment mode only ever offers brands that
-    // have at least one attachment category.
-    const base = productType === "attachment" ? attachmentBrandNames : allBrandNames;
-    if (!selectedCategory) return base;
     if (productType === "equipment") {
+      if (!selectedCategory) return allBrandNames;
       const subCatId = subCategoryMap.get(selectedCategory);
-      if (!subCatId) return base;
+      if (!subCatId) return allBrandNames;
       const linked = brandsBySubCategory.get(subCatId);
       if (!linked) return [];
       return brands.filter((b) => linked.has(b.brand_id)).map((b) => b.name);
-    } else {
+    }
+
+    // Attachment mode — most specific selection wins:
+    //   1. a chosen Category → brands linked to that category
+    //   2. else an Equipment-Subcategory filter → union of brands across every
+    //      attachment category tagged with that subcategory
+    //   3. else the full attachment-brand base
+    if (selectedCategory) {
       const catId = attachCategoryMap.get(selectedCategory);
-      if (!catId) return base;
+      if (!catId) return attachmentBrandNames;
       const linked = brandsByAttachCategory.get(catId);
       if (!linked) return [];
       return brands.filter((b) => linked.has(b.brand_id)).map((b) => b.name);
     }
-  }, [selectedCategory, productType, allBrandNames, attachmentBrandNames, brands, subCategoryMap, brandsBySubCategory, attachCategoryMap, brandsByAttachCategory]);
+    if (attachSubCategoryFilter) {
+      const subId = subCategoryMap.get(attachSubCategoryFilter);
+      if (!subId) return attachmentBrandNames;
+      const cats = attachCategoriesBySubCategory.get(subId);
+      if (!cats || cats.size === 0) return [];
+      const allowed = new Set<number>();
+      for (const catId of cats) {
+        const linked = brandsByAttachCategory.get(catId);
+        if (linked) for (const bId of linked) allowed.add(bId);
+      }
+      return brands.filter((b) => allowed.has(b.brand_id)).map((b) => b.name);
+    }
+    return attachmentBrandNames;
+  }, [selectedCategory, attachSubCategoryFilter, productType, allBrandNames, attachmentBrandNames, brands, subCategoryMap, brandsBySubCategory, attachCategoryMap, brandsByAttachCategory, attachCategoriesBySubCategory]);
 
   // ── Filtered category names ───────────────────────────────────────────────
   const filteredCategoryNames = useMemo(() => {
@@ -264,15 +282,26 @@ export function ModelPickerDialog({
         .map((m) => m.name);
     } else {
       const catId = selectedCategory ? attachCategoryMap.get(selectedCategory) : null;
+      // When an Equipment-Subcategory filter is active and no explicit category
+      // is chosen, restrict to models whose attachment category is tagged with
+      // that subcategory (same cascade the Brand list uses).
+      let subFilterCats: Set<number> | null = null;
+      if (!catId && attachSubCategoryFilter) {
+        const subId = subCategoryMap.get(attachSubCategoryFilter);
+        subFilterCats = subId
+          ? (attachCategoriesBySubCategory.get(subId) ?? new Set<number>())
+          : null;
+      }
       return attachmentModels
         .filter((m) => {
           if (brandId && m.brand_id !== brandId) return false;
           if (catId && m.category_id !== catId) return false;
+          if (subFilterCats && !subFilterCats.has(m.category_id)) return false;
           return true;
         })
         .map((m) => m.name);
     }
-  }, [selectedBrand, selectedCategory, productType, brandMap, subCategoryMap, attachCategoryMap, equipmentModels, attachmentModels]);
+  }, [selectedBrand, selectedCategory, attachSubCategoryFilter, productType, brandMap, subCategoryMap, attachCategoryMap, attachCategoriesBySubCategory, equipmentModels, attachmentModels]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -332,23 +361,42 @@ export function ModelPickerDialog({
     }
   }
 
-  // Attachment mode: change the optional equipment-subcategory filter. Blank =
-  // show all (clears nothing). When a subcategory is chosen and the currently
-  // selected attachment category isn't tagged with it, drop that selection (and
-  // its model) so an out-of-filter category can't linger. Brand is untouched —
-  // the filter only narrows the category list, it never gates anything.
+  // Attachment mode: change the equipment-subcategory filter. Blank = show all
+  // (clears nothing). When a subcategory is chosen it drives the whole picker,
+  // so drop any currently-selected Category or Brand that isn't reachable from
+  // it: the Category must be tagged with the subcategory, and the Brand must
+  // belong to at least one attachment category tagged with it. Anything dropped
+  // also clears the model.
   function handleAttachSubCategoryFilterChange(val: string | null) {
     const newFilter = val ?? "";
     setAttachSubCategoryFilter(newFilter);
 
-    if (!newFilter || !selectedCategory) return;
+    if (!newFilter) return;
     const subCatId = subCategoryMap.get(newFilter);
-    const catId = attachCategoryMap.get(selectedCategory);
-    if (!subCatId || !catId) return;
-    const allowed = attachCategoriesBySubCategory.get(subCatId);
-    if (!allowed || !allowed.has(catId)) {
-      setSelectedCategory("");
-      setSelectedModel("");
+    if (!subCatId) return;
+    const allowedCats = attachCategoriesBySubCategory.get(subCatId);
+
+    // Drop a selected attachment category that isn't tagged with the subcategory.
+    if (selectedCategory) {
+      const catId = attachCategoryMap.get(selectedCategory);
+      if (catId && !allowedCats?.has(catId)) {
+        setSelectedCategory("");
+        setSelectedModel("");
+      }
+    }
+
+    // Drop a selected brand that doesn't belong to any tagged attachment category.
+    if (selectedBrand) {
+      const brandId = brandMap.get(selectedBrand);
+      const brandCats = brandId ? attachCategoriesByBrand.get(brandId) : null;
+      const stillValid =
+        !!allowedCats &&
+        !!brandCats &&
+        [...brandCats].some((c) => allowedCats.has(c));
+      if (!stillValid) {
+        setSelectedBrand("");
+        setSelectedModel("");
+      }
     }
   }
 
