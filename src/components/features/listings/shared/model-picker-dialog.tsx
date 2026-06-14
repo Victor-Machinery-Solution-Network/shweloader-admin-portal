@@ -387,12 +387,7 @@ export function ModelPickerDialog({
 
             {productType === "attachment" && (
               <Field orientation="vertical">
-                <FieldLabel>
-                  Equipment Subcategory{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </FieldLabel>
+                <FieldLabel>Equipment Subcategory</FieldLabel>
                 <FieldContent>
                   <SubCategoryCombobox
                     value={attachSubCategoryFilter}
@@ -401,9 +396,6 @@ export function ModelPickerDialog({
                     mainCategories={mainCategories}
                     allowedNames={allSubCategoryNames}
                   />
-                  <p className="text-muted-foreground text-xs">
-                    Narrows the categories below. Leave blank to show all.
-                  </p>
                 </FieldContent>
               </Field>
             )}
