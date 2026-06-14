@@ -26,11 +26,23 @@ interface CategoryBrandLink {
   brand_id: number;
 }
 
+interface CategorySubCategoryLink {
+  category_id: number;
+  sub_category_id: number;
+}
+
+interface SubCategoryOption {
+  sub_category_id: number;
+  name: string;
+}
+
 interface AttachmentModelsClientProps {
   models: AttachmentModel[];
   categories: AttachmentCategory[];
   brands: ProductBrand[];
   categoryBrandLinks: CategoryBrandLink[];
+  subCategories: SubCategoryOption[];
+  categorySubCategoryLinks: CategorySubCategoryLink[];
 }
 
 export function AttachmentModelsClient({
@@ -38,14 +50,34 @@ export function AttachmentModelsClient({
   categories,
   brands,
   categoryBrandLinks,
+  subCategories,
+  categorySubCategoryLinks,
 }: AttachmentModelsClientProps) {
   const canCreate = useHasPermission("attachment_models", "create");
   const canDelete = useHasPermission("attachment_models", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
+  // category_id → tagged equipment sub-category names. Drives both the hidden
+  // "subcategories" filter column on each model and the filter option list.
+  const categorySubCategoryNames = useMemo(() => {
+    const subNameMap = new Map(
+      subCategories.map((sc) => [sc.sub_category_id, sc.name]),
+    );
+    const map = new Map<number, string[]>();
+    for (const link of categorySubCategoryLinks) {
+      const name = subNameMap.get(link.sub_category_id);
+      if (!name) continue;
+      const existing = map.get(link.category_id);
+      if (existing) existing.push(name);
+      else map.set(link.category_id, [name]);
+    }
+    return map;
+  }, [subCategories, categorySubCategoryLinks]);
+
   const columns = useMemo(
-    () => createColumns(categories, brands, categoryBrandLinks),
-    [categories, brands, categoryBrandLinks],
+    () =>
+      createColumns(categories, brands, categoryBrandLinks, categorySubCategoryNames),
+    [categories, brands, categoryBrandLinks, categorySubCategoryNames],
   );
 
   const filterConfig = useMemo<FilterConfig[]>(
@@ -62,9 +94,18 @@ export function AttachmentModelsClient({
         type: "multi-select",
         options: categories.map((c) => ({ label: c.name, value: c.name })),
       },
+      {
+        columnId: "subcategories",
+        label: "Equipment Subcategory",
+        type: "multi-select",
+        options: subCategories.map((sc) => ({
+          label: sc.name,
+          value: sc.name,
+        })),
+      },
       { columnId: "created_at", label: "Created At", type: "date-range" },
     ],
-    [brands, categories],
+    [brands, categories, subCategories],
   );
 
   const handleBulkDelete = useCallback(
@@ -119,6 +160,7 @@ export function AttachmentModelsClient({
           searchPlaceholder="Search models"
           filterConfig={filterConfig}
           filterStorageKey="attachment-models-filters"
+          initialColumnVisibility={{ subcategories: false }}
           enableSelection
           enablePagination
           pageSize={10}

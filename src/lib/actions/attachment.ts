@@ -235,6 +235,8 @@ interface AttachmentModelsPageRaw {
   categories: string;
   brands: string;
   category_brand_links: string;
+  sub_categories: string;
+  category_sub_category_links: string;
 }
 
 /** Fetch all data for the Attachment Models page in a single D1 query */
@@ -266,7 +268,20 @@ export async function getAttachmentModelsPageData() {
       (SELECT json_group_array(json_object(
         'category_id', acb.category_id, 'brand_id', acb.brand_id
       )) FROM attachment_category_brand acb
-      ) AS category_brand_links
+      ) AS category_brand_links,
+
+      -- Equipment sub-categories + the attachment-category→sub-category tags,
+      -- so the models table can offer an "Equipment Subcategory" filter
+      -- (model → its category → tagged sub-categories).
+      (SELECT json_group_array(json_object(
+        'sub_category_id', sc.sub_category_id, 'name', sc.name
+      )) FROM (SELECT sub_category_id, name FROM equipment_sub_category WHERE deleted_at IS NULL ORDER BY display_order) sc
+      ) AS sub_categories,
+
+      (SELECT json_group_array(json_object(
+        'category_id', acsc.attachment_category_id, 'sub_category_id', acsc.sub_category_id
+      )) FROM attachment_category_sub_category acsc
+      ) AS category_sub_category_links
   `);
 
   const raw = results[0];
@@ -295,11 +310,22 @@ export async function getAttachmentModelsPageData() {
       }))
     : [];
 
+  const subCategories = raw?.sub_categories
+    ? (JSON.parse(raw.sub_categories) as { sub_category_id: number; name: string }[])
+    : [];
+
   return {
     models,
     categories,
     brands,
     categoryBrandLinks: raw?.category_brand_links ? JSON.parse(raw.category_brand_links) : [],
+    subCategories,
+    categorySubCategoryLinks: raw?.category_sub_category_links
+      ? (JSON.parse(raw.category_sub_category_links) as {
+          category_id: number;
+          sub_category_id: number;
+        }[])
+      : [],
   };
 }
 

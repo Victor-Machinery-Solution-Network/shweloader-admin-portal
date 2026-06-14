@@ -13,6 +13,7 @@ export function createColumns(
   categories: AttachmentCategory[],
   brands: ProductBrand[],
   categoryBrandLinks: { category_id: number; brand_id: number }[],
+  categorySubCategoryNames: Map<number, string[]>,
 ): ColumnDef<AttachmentModel>[] {
   const categoryMap = new Map(categories.map((c) => [c.category_id, c.name]));
   const brandMap = new Map(brands.map((b) => [b.brand_id, b.name]));
@@ -80,6 +81,17 @@ export function createColumns(
           <span className="text-muted-foreground text-sm">—</span>
         );
       },
+    },
+    {
+      // Hidden data column: powers the "Equipment Subcategory" filter only.
+      // A model matches when its category is tagged to the selected
+      // sub-category (model.category_id → attachment_category_sub_category).
+      id: "subcategories",
+      accessorFn: (row) => categorySubCategoryNames.get(row.category_id) ?? [],
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Equipment Subcategory" />
+      ),
+      enableSorting: false,
     },
     {
       accessorKey: "pdf_url",

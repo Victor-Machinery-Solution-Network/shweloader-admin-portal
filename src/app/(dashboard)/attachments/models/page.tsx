@@ -31,10 +31,21 @@ export default function AttachmentModelsPage() {
 async function AttachmentModelsContent() {
   "use cache";
   cacheLife({ stale: 120, revalidate: 120, expire: 1800 });
-  cacheTag(CACHE_TAGS.ATTACHMENT_MODELS, CACHE_TAGS.ATTACHMENT_CATEGORIES, CACHE_TAGS.BRANDS);
+  cacheTag(
+    CACHE_TAGS.ATTACHMENT_MODELS,
+    CACHE_TAGS.ATTACHMENT_CATEGORIES,
+    CACHE_TAGS.BRANDS,
+    CACHE_TAGS.EQUIPMENT_SUB_CATEGORIES,
+  );
 
-  const { models, categories, brands, categoryBrandLinks } =
-    await getAttachmentModelsPageData();
+  const {
+    models,
+    categories,
+    brands,
+    categoryBrandLinks,
+    subCategories,
+    categorySubCategoryLinks,
+  } = await getAttachmentModelsPageData();
 
   return (
     <AttachmentModelsClient
@@ -42,6 +53,8 @@ async function AttachmentModelsContent() {
       categories={categories}
       brands={brands}
       categoryBrandLinks={categoryBrandLinks}
+      subCategories={subCategories}
+      categorySubCategoryLinks={categorySubCategoryLinks}
     />
   );
 }

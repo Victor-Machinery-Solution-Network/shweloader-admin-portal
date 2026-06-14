@@ -1,8 +1,9 @@
 "use client";
 
-import { Box } from "lucide-react";
+import { Box, Layers } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/ui/data-table";
+import { Badge } from "@/components/ui/badge";
 import { ImageCell } from "@/components/shared/image-cell";
 import { formatDate } from "@/lib/utils";
 import type { AttachmentCategoryWithSubCategories } from "@/types/attachment";
@@ -13,6 +14,15 @@ export function getColumns(
   linkedInfo: Record<number, { total: number; summary: string }>,
   subCategories: EquipmentSubCategory[],
 ): ColumnDef<AttachmentCategoryWithSubCategories>[] {
+  const subCategoryNameMap = new Map(
+    subCategories.map((sc) => [sc.sub_category_id, sc.name]),
+  );
+  /** Resolve a category's tagged sub-category IDs to their names (ordered). */
+  const subCategoryNames = (row: AttachmentCategoryWithSubCategories) =>
+    row.subCategoryIds
+      .map((id) => subCategoryNameMap.get(id))
+      .filter((name): name is string => Boolean(name));
+
   return [
     {
       id: "index",
@@ -38,6 +48,40 @@ export function getColumns(
           imageUrl={row.original.image_url}
         />
       ),
+    },
+    {
+      id: "subcategories",
+      // Return the array of tagged sub-category names so the multi-select
+      // filter (array-aware) can match on any selected sub-category.
+      accessorFn: (row) => subCategoryNames(row),
+      enableSorting: false,
+      meta: {
+        exportValue: (row: { original: AttachmentCategoryWithSubCategories }) =>
+          subCategoryNames(row.original).join(", "),
+      },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Equipment Subcategory" />
+      ),
+      cell: ({ row }) => {
+        const names = subCategoryNames(row.original);
+        if (names.length === 0) {
+          return <span className="text-muted-foreground text-sm">—</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {names.map((name) => (
+              <Badge
+                key={name}
+                variant="secondary"
+                className="gap-1 font-normal"
+              >
+                <Layers className="size-3 text-muted-foreground" />
+                {name}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       id: "models",

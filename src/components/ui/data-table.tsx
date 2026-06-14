@@ -261,8 +261,14 @@ const multiSelectFilterFn: FilterFn<unknown> = (
 ) => {
   const selected = filterValue as string[];
   if (!selected || selected.length === 0) return true;
-  const cellValue = String(row.getValue(columnId) ?? "");
-  return selected.includes(cellValue);
+  const cellValue = row.getValue(columnId);
+  // One-to-many columns expose an array of values (e.g. a row tagged with
+  // multiple equipment sub-categories); match when any selected value overlaps.
+  if (Array.isArray(cellValue)) {
+    const cellSet = new Set(cellValue.map((v) => String(v)));
+    return selected.some((s) => cellSet.has(s));
+  }
+  return selected.includes(String(cellValue ?? ""));
 };
 
 const dateRangeFilterFn: FilterFn<unknown> = (

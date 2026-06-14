@@ -54,8 +54,19 @@ export function AttachmentCategoriesClient({
   );
 
   const filterConfig = useMemo<FilterConfig[]>(
-    () => [{ columnId: "created_at", label: "Created At", type: "date-range" }],
-    [],
+    () => [
+      {
+        columnId: "subcategories",
+        label: "Equipment Subcategory",
+        type: "multi-select",
+        options: subCategories.map((sc) => ({
+          label: sc.name,
+          value: sc.name,
+        })),
+      },
+      { columnId: "created_at", label: "Created At", type: "date-range" },
+    ],
+    [subCategories],
   );
 
   const buildDescription = useCallback(
