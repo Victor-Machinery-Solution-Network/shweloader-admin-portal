@@ -171,6 +171,10 @@ export interface SaleListingWithDetails {
   approved_by_name: string | null;
   // Featured status
   featured_id: number | null;
+  // Joined product taxonomy (drives the category filters)
+  main_category_name: string | null;
+  sub_category_name: string | null;
+  attachment_category_name: string | null;
 }
 
 /** JOIN view for rent listings table display */
@@ -230,6 +234,10 @@ export interface RentListingWithDetails {
   approved_by_name: string | null;
   // Featured status
   featured_id: number | null;
+  // Joined product taxonomy (drives the category filters)
+  main_category_name: string | null;
+  sub_category_name: string | null;
+  attachment_category_name: string | null;
 }
 
 /** Raw row from featured listings query (before merging) */

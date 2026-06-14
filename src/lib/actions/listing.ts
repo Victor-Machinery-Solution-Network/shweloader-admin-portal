@@ -1362,13 +1362,19 @@ export async function getSaleListingsWithDetails(): Promise<
       pst.status_name AS partner_status, p.applied_at AS partner_applied_at,
       p.reviewed_at AS partner_reviewed_at, p.app_user_id AS partner_app_user_id,
       ast.status_name AS approve_status_name,
-      fl.id AS featured_id
+      fl.id AS featured_id,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
     LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
@@ -1405,12 +1411,18 @@ export async function getRentListingsWithDetails(): Promise<
       pst.status_name AS partner_status, p.applied_at AS partner_applied_at,
       p.reviewed_at AS partner_reviewed_at, p.app_user_id AS partner_app_user_id,
       ast.status_name AS approve_status_name,
-      fl.id AS featured_id
+      fl.id AS featured_id,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
     LEFT JOIN business_type bt ON c.business_type_id = bt.business_type_id
@@ -1556,13 +1568,19 @@ export async function getSaleListingWithDetailsById(
       t.name AS township_name,
       ast.status_name AS approve_status_name,
       fl.id AS featured_id,
-      approver.username AS approved_by_name
+      approver.username AS approved_by_name,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
     LEFT JOIN township t ON pl.township_id = t.township_id
@@ -1592,12 +1610,18 @@ export async function getRentListingWithDetailsById(
       t.name AS township_name,
       ast.status_name AS approve_status_name,
       fl.id AS featured_id,
-      approver.username AS approved_by_name
+      approver.username AS approved_by_name,
+      emc.name AS main_category_name,
+      esc.name AS sub_category_name,
+      ac.name AS attachment_category_name
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+    LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+    LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+    LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
     LEFT JOIN partner p ON pl.partner_id = p.id
     LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
     LEFT JOIN township t ON pl.township_id = t.township_id
