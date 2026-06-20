@@ -29,6 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { assetUrl } from "@/lib/r2-url";
+import { markdownToHtml } from "@/lib/markdown";
 import type { ListingDetail, ProductImage } from "@/types/listing";
 import type { CustomFieldValue } from "@/types/custom-field";
 
@@ -277,7 +278,12 @@ export function ListingDetailView({ listing, images }: Props) {
       {listing.description && (
         <div>
           <SectionHeader icon={<Layers className="size-3.5" />} title="Description" />
-          <p className="text-muted-foreground mt-2 whitespace-pre-wrap text-sm leading-relaxed">{listing.description}</p>
+          {/* Render the saved Markdown (lists, headings, etc.) instead of the
+              raw source — matches how the public site displays it. */}
+          <div
+            className="prose prose-sm dark:prose-invert text-muted-foreground mt-2 max-w-none leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(listing.description) }}
+          />
         </div>
       )}
 
