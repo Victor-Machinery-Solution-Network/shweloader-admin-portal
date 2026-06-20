@@ -91,16 +91,43 @@ export function MarkdownEditor({
         class: "outline-none",
       },
       handlePaste: (view, event) => {
-        // Extract plain text from paste, ignore HTML formatting
+        // Paste as plain text (ignore source HTML formatting), but preserve
+        // line structure: each line becomes its own paragraph. A single
+        // insertText() of multi-line text collapses every line into one block,
+        // so a pasted list can't be turned into real <ol>/<ul> items. Splitting
+        // into paragraphs lets the user select them and apply a numbered list
+        // (one item per line) — and pasting INTO a list yields one item per line.
         const text = event.clipboardData?.getData("text/plain");
-        if (text) {
-          const { $from } = view.state.selection;
-          view.dispatch(
-            view.state.tr.insertText(text, $from.pos, $from.pos)
+        if (!text) return false;
+
+        const normalized = text.replace(/\r\n?/g, "\n");
+        // Single-line paste: let the default handler run (keeps inline cursor
+        // behavior, e.g. pasting a word mid-sentence).
+        if (!normalized.includes("\n")) return false;
+
+        const { schema, doc, selection, tr } = view.state;
+        const paragraphs = normalized
+          .split("\n")
+          .map((line) =>
+            schema.nodes.paragraph.create(
+              null,
+              line.length ? schema.text(line) : undefined,
+            ),
           );
-          return true;
-        }
-        return false;
+        // Build the Slice via runtime constructors — `@tiptap/pm/model` isn't a
+        // hoisted dependency under pnpm, so the Fragment/Slice classes can't be
+        // imported directly. doc.content is a Fragment; selection.content() is a
+        // Slice — grab their constructors.
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const FragmentCtor = (doc.content as any).constructor;
+        const SliceCtor = (selection.content() as any).constructor;
+        // openStart/openEnd = 1 so the first/last paragraphs merge with the
+        // block at the cursor instead of forcing hard boundaries (this is how a
+        // pasted multi-line block becomes one list item per line inside a list).
+        const slice = new SliceCtor(FragmentCtor.fromArray(paragraphs), 1, 1);
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        view.dispatch(tr.replaceSelection(slice).scrollIntoView());
+        return true;
       },
     },
   });
