@@ -1434,6 +1434,117 @@ export async function getRentListingsWithDetails(): Promise<
   return result.results;
 }
 
+// ─── Master data export ──────────────────────────────────────────────────────
+
+export interface MasterExportRow {
+  no: number;
+  admin_pic: string;
+  data_entry_date: string;
+  product_code: string;
+  main_category: string;
+  sub_category: string;
+  product_description: string;
+  brand: string;
+  model: string;
+  operating_weight: string;
+  condition: string;
+  manufactured_year: string;
+  machine_hours: string;
+  detail_address: string;
+  township: string;
+  district: string;
+}
+
+/**
+ * One flat row per non-draft product (sale, rent, or both) for the master
+ * Excel export. Single joined query — no N+1. Operating Weight / Manufactured
+ * Year / Machine Hours live in product_list.custom_fields (JSON array of
+ * {key,label,type,value}) and are matched by label.
+ */
+export async function getMasterDataExport(): Promise<MasterExportRow[]> {
+  await requirePermission("sale_listings", "read");
+
+  const { results } = await d1.query<{
+    product_code: string;
+    admin_pic: string | null;
+    data_entry_date: string;
+    main_category: string | null;
+    sub_category: string | null;
+    product_description: string | null;
+    brand: string | null;
+    model: string | null;
+    condition: string | null;
+    detail_address: string | null;
+    township: string | null;
+    district: string | null;
+    custom_fields: string | null;
+  }>(
+    `SELECT
+       ${customIdSqlExpr()} AS product_code,
+       au.username                 AS admin_pic,
+       pl.created_at               AS data_entry_date,
+       COALESCE(emc.name, ac.name) AS main_category,
+       esc.name                    AS sub_category,
+       pl.description              AS product_description,
+       pb.name                     AS brand,
+       COALESCE(em.name, am.name)  AS model,
+       ct.name                     AS condition,
+       pl.address                  AS detail_address,
+       t.name                      AS township,
+       d.name                      AS district,
+       pl.custom_fields            AS custom_fields
+     FROM product_list pl
+     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
+     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
+     LEFT JOIN admin_user au ON au.user_id = pl.created_by
+     LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+     LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+     LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
+     LEFT JOIN equipment_main_category emc ON esc.category_id = emc.category_id
+     LEFT JOIN attachment_category ac ON am.category_id = ac.category_id
+     LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
+     LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
+     LEFT JOIN township t ON pl.township_id = t.township_id
+     LEFT JOIN district d ON t.district_id = d.district_id
+     WHERE pl.deleted_at IS NULL AND pl.is_draft = 0
+       AND (sl.id IS NOT NULL OR rl.id IS NOT NULL)
+     ORDER BY pl.created_at DESC`,
+  );
+
+  // Pull a custom-field value by its label (case-insensitive). Blank if absent.
+  const cf = (json: string | null, label: string): string => {
+    if (!json) return "";
+    try {
+      const arr = JSON.parse(json) as { label?: string; value?: string }[];
+      const hit = arr.find((f) => f.label?.toLowerCase() === label.toLowerCase());
+      return hit?.value ?? "";
+    } catch {
+      return "";
+    }
+  };
+
+  return results.map((r, i) => ({
+    no: i + 1,
+    admin_pic: r.admin_pic ?? "",
+    data_entry_date: r.data_entry_date
+      ? new Date(r.data_entry_date).toISOString().slice(0, 10)
+      : "",
+    product_code: r.product_code ?? "",
+    main_category: r.main_category ?? "",
+    sub_category: r.sub_category ?? "",
+    product_description: r.product_description ?? "",
+    brand: r.brand ?? "",
+    model: r.model ?? "",
+    operating_weight: cf(r.custom_fields, "Operating Weight"),
+    condition: r.condition ?? "",
+    manufactured_year: cf(r.custom_fields, "Manufactured Year"),
+    machine_hours: cf(r.custom_fields, "Machine Hours"),
+    detail_address: r.detail_address ?? "",
+    township: r.township ?? "",
+    district: r.district ?? "",
+  }));
+}
+
 export async function getFeaturedListingsWithDetails(): Promise<
   FeaturedListingWithDetails[]
 > {

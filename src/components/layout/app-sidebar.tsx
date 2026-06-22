@@ -65,6 +65,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { usePermissions } from "@/components/providers/permissions-provider";
+import { MasterDataExportDialog } from "@/components/features/listings/master-data-export-dialog";
 import {
   Dialog,
   DialogContent,
@@ -176,6 +177,7 @@ export function AppSidebar() {
   const [isListingsOpen, setIsListingsOpen] = useState(isListingsActive);
   const [isArticlesOpen, setIsArticlesOpen] = useState(isArticlesActive);
   const [showAddListingDialog, setShowAddListingDialog] = useState(false);
+  const [showMasterExport, setShowMasterExport] = useState(false);
 
   // Auto-expand collapsible sections when navigating to their child routes.
   // Track previous pathname and react during render — see
@@ -511,6 +513,17 @@ export function AppSidebar() {
                                 onClick={() => setShowAddListingDialog(true)}
                               >
                                 <span>Add Listing</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )}
+                          {(canRead("sale_listings") ||
+                            canRead("rent_listings")) && (
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                className="cursor-pointer"
+                                onClick={() => setShowMasterExport(true)}
+                              >
+                                <span>Master Data Export</span>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           )}
@@ -915,6 +928,12 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
+
+      {/* Master Data Export confirm dialog */}
+      <MasterDataExportDialog
+        open={showMasterExport}
+        onOpenChange={setShowMasterExport}
+      />
 
       {/* Add Listing Dialog */}
       <Dialog

@@ -5,13 +5,9 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { exportToExcel, type ExportColumn } from "@/lib/export-excel";
 
-export interface ExportColumn {
-  /** Column key / accessor */
-  key: string;
-  /** Display header for Excel */
-  header: string;
-}
+export type { ExportColumn };
 
 interface ExportExcelButtonProps {
   /** Getter for filtered data rows — called at click time so titles are fresh */
@@ -40,73 +36,7 @@ export function ExportExcelButton({
 
     setExporting(true);
     try {
-      // Dynamic import to keep ExcelJS out of the initial bundle
-      const ExcelJS = await import("exceljs");
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("Data");
-
-      // Header row
-      sheet.columns = columns.map((col) => ({
-        header: col.header,
-        key: col.key,
-        width: Math.max(col.header.length + 4, 15),
-      }));
-
-      // Style header row
-      const headerRow = sheet.getRow(1);
-      headerRow.font = { bold: true };
-      headerRow.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE2E8F0" },
-      };
-
-      // Data rows
-      // Sanitize formula-prefix characters on STRING values to prevent CSV/Excel
-      // formula injection. If a stored field (partner name, custom field value,
-      // notes) starts with `=`/`+`/`-`/`@`/tab/CR, Excel evaluates it as a
-      // formula when the file is opened — which can fetch external URLs,
-      // execute DDE commands, etc. Numeric values pass through untouched so
-      // SUM/FILTER still work.
-      const sanitizeForExcel = (val: unknown): unknown => {
-        if (val === null || val === undefined) return "";
-        if (typeof val !== "string") return val;
-        return /^[=+\-@\t\r]/.test(val) ? `'${val}` : val;
-      };
-
-      for (const row of data) {
-        const values: Record<string, unknown> = {};
-        for (const col of columns) {
-          values[col.key] = sanitizeForExcel(row[col.key]);
-        }
-        sheet.addRow(values);
-      }
-
-      // Auto-fit column widths based on content (approximate)
-      for (const col of sheet.columns) {
-        if (!col.eachCell) continue;
-        let maxLength = (col.header as string)?.length ?? 10;
-        col.eachCell({ includeEmpty: false }, (cell) => {
-          const len = String(cell.value ?? "").length;
-          if (len > maxLength) maxLength = len;
-        });
-        col.width = Math.min(maxLength + 2, 50);
-      }
-
-      // Generate and download
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${fileName}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+      await exportToExcel(columns, data, fileName);
       toast.success(`Exported ${data.length} rows`);
     } catch {
       toast.error("Failed to export");
