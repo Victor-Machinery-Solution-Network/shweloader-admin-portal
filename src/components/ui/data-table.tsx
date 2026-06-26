@@ -373,17 +373,24 @@ function DataTable<TData, TValue>({
   // Global search state (for multi-column search)
   const [globalFilter, setGlobalFilter] = React.useState("");
 
-  // Custom global filter: case-insensitive substring match across searchKeys
+  // Custom global filter: case-insensitive substring match across EVERY
+  // column's value, not just searchKeys — typing "caterpillar" matches the
+  // Brand column even though it was never listed as a search key.
+  // ponytail: date columns are skipped (DATE_COL) because a raw date string is
+  // ambiguous to type/match; add per-table overrides only if a date search is
+  // ever requested.
   const globalFilterFn = React.useCallback(
     (row: Row<TData>, _columnId: string, filterValue: string) => {
-      if (!filterValue || !searchKeys) return true;
-      const term = filterValue.toLowerCase();
-      return searchKeys.some((key) => {
-        const val = row.getValue(key);
+      if (!filterValue) return true;
+      const term = String(filterValue).toLowerCase();
+      const DATE_COL = /(^|_)(created|updated|deleted)(_|$)|_at$|date/i;
+      return row.getAllCells().some((cell) => {
+        if (DATE_COL.test(cell.column.id)) return false;
+        const val = cell.getValue();
         return val != null && String(val).toLowerCase().includes(term);
       });
     },
-    [searchKeys],
+    [],
   );
 
   // Filter system hook (always called, no-op when filterConfig is empty)
