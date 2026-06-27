@@ -17,6 +17,7 @@ import { getMasterDataExport } from "@/lib/actions/listing";
 
 // Fixed sheet layout (matches the requested master-data format, left→right).
 const COLUMNS: ExportColumn[] = [
+  // Product info
   { key: "no", header: "No." },
   { key: "admin_pic", header: "Admin - PIC" },
   { key: "data_entry_date", header: "Data Entry Date" },
@@ -30,9 +31,31 @@ const COLUMNS: ExportColumn[] = [
   { key: "condition", header: "Condition" },
   { key: "manufactured_year", header: "Manufactured Year" },
   { key: "machine_hours", header: "Machine Hours" },
+  // Equipment Location
   { key: "detail_address", header: "Detail Address" },
   { key: "township", header: "Township" },
   { key: "district", header: "District" },
+  { key: "region_state", header: "Region/State" },
+  // Pricing & listing
+  { key: "license_status", header: "License Status" },
+  { key: "price_mmk", header: "Price (MMK)" },
+  { key: "price_usd", header: "Price (USD)" },
+  { key: "fx_rate", header: "Ref - Fx-rate" },
+  { key: "listing_type", header: "Listing Type" },
+  { key: "product_type", header: "Product Type" },
+  // Seller / Partner Information
+  { key: "partner_type", header: "Partner Type" },
+  { key: "business_type", header: "Business Type" },
+  { key: "company_name", header: "Company Name" },
+  { key: "contact_person", header: "Contact Person" },
+  { key: "second_contact_person", header: "Second Contact Person" },
+  { key: "contact_no", header: "Contact No." },
+  { key: "email", header: "Email" },
+  // Seller Address
+  { key: "seller_address", header: "Detail Address (Seller)" },
+  { key: "seller_township", header: "Township (Seller)" },
+  { key: "seller_district", header: "District (Seller)" },
+  { key: "seller_region_state", header: "Region/State (Seller)" },
 ];
 
 export function MasterDataExportDialog({

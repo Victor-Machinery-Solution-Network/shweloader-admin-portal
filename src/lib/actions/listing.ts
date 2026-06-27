@@ -1364,7 +1364,8 @@ export async function getSaleListingsWithDetails(): Promise<
       ast.status_name AS approve_status_name,
       fl.id AS featured_id,
       esc.name AS sub_category_name,
-      ac.name AS attachment_category_name
+      ac.name AS attachment_category_name,
+      pb.name AS brand_name
     FROM sale_listing sl
     JOIN product_list pl ON sl.product_list_id = pl.id
     LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
@@ -1381,6 +1382,7 @@ export async function getSaleListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON sl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.sale_listing_id = sl.id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
     WHERE sl.deleted_at IS NULL AND pl.deleted_at IS NULL
     ORDER BY sl.display_order ASC, sl.created_at DESC`,
   );
@@ -1411,7 +1413,8 @@ export async function getRentListingsWithDetails(): Promise<
       ast.status_name AS approve_status_name,
       fl.id AS featured_id,
       esc.name AS sub_category_name,
-      ac.name AS attachment_category_name
+      ac.name AS attachment_category_name,
+      pb.name AS brand_name
     FROM rent_listing rl
     JOIN product_list pl ON rl.product_list_id = pl.id
     LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
@@ -1427,6 +1430,7 @@ export async function getRentListingsWithDetails(): Promise<
     LEFT JOIN township t ON pl.township_id = t.township_id
     LEFT JOIN approval_status_type ast ON rl.approve_status_id = ast.id
     LEFT JOIN featured_listing fl ON fl.rent_listing_id = rl.id
+    LEFT JOIN product_brand pb ON pb.brand_id = COALESCE(em.brand_id, am.brand_id)
     WHERE rl.deleted_at IS NULL AND pl.deleted_at IS NULL
       AND (sl.is_sold_out IS NULL OR sl.is_sold_out = 0)
     ORDER BY rl.display_order ASC, rl.created_at DESC`,
@@ -1450,16 +1454,43 @@ export interface MasterExportRow {
   condition: string;
   manufactured_year: string;
   machine_hours: string;
+  // Equipment location
   detail_address: string;
   township: string;
   district: string;
+  region_state: string;
+  // Pricing & listing
+  license_status: string;
+  price_mmk: number | string;
+  price_usd: number | string;
+  fx_rate: number | string;
+  listing_type: string;
+  product_type: string;
+  // Seller / partner
+  partner_type: string;
+  business_type: string;
+  company_name: string;
+  contact_person: string;
+  second_contact_person: string;
+  contact_no: string;
+  email: string;
+  // Seller address
+  seller_address: string;
+  seller_township: string;
+  seller_district: string;
+  seller_region_state: string;
 }
 
 /**
  * One flat row per non-draft product (sale, rent, or both) for the master
- * Excel export. Single joined query — no N+1. Operating Weight / Manufactured
- * Year / Machine Hours live in product_list.custom_fields (JSON array of
- * {key,label,type,value}) and are matched by label.
+ * Excel export. Single joined query — no N+1.
+ *
+ * Custom fields (Operating Weight, Manufactured Year, Machine Hours, License
+ * Status, Second Contact Person) live in product_list.custom_fields (JSON array
+ * of {key,label,type,value}) and are matched by label.
+ *
+ * ponytail: for a sale+rent product the single Price/Fx columns take the sale
+ * value (COALESCE sale→rent); split into per-type columns only if asked.
  */
 export async function getMasterDataExport(): Promise<MasterExportRow[]> {
   await requirePermission("sale_listings", "read");
@@ -1477,11 +1508,27 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
     detail_address: string | null;
     township: string | null;
     district: string | null;
+    region_state: string | null;
+    price_mmk: number | null;
+    price_usd: number | null;
+    fx_rate: number | null;
+    listing_type: string | null;
+    product_type: string | null;
+    partner_type: string | null;
+    business_type: string | null;
+    company_name: string | null;
+    contact_person: string | null;
+    contact_no: string | null;
+    email: string | null;
+    seller_address: string | null;
+    seller_township: string | null;
+    seller_district: string | null;
+    seller_region_state: string | null;
     custom_fields: string | null;
   }>(
     `SELECT
        ${customIdSqlExpr()} AS product_code,
-       au.username                 AS admin_pic,
+       adm.username                AS admin_pic,
        pl.created_at               AS data_entry_date,
        COALESCE(emc.name, ac.name) AS main_category,
        esc.name                    AS sub_category,
@@ -1492,11 +1539,31 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
        pl.address                  AS detail_address,
        t.name                      AS township,
        d.name                      AS district,
+       sr.name                     AS region_state,
+       COALESCE(sl.mmk_price, rl.mmk_price) AS price_mmk,
+       COALESCE(sl.usd_price, rl.usd_price) AS price_usd,
+       COALESCE(sl.rate_to_usd, rl.rate_to_usd) AS fx_rate,
+       CASE
+         WHEN sl.id IS NOT NULL AND rl.id IS NOT NULL THEN 'Both'
+         WHEN sl.id IS NOT NULL THEN 'Sale'
+         ELSE 'Rent'
+       END                         AS listing_type,
+       CASE WHEN pl.equipment_model_id IS NOT NULL THEN 'Equipment' ELSE 'Attachment' END AS product_type,
+       pt.name                     AS partner_type,
+       bt.name                     AS business_type,
+       seller.company_name         AS company_name,
+       seller.full_name            AS contact_person,
+       seller.phone                AS contact_no,
+       seller.email                AS email,
+       seller.address              AS seller_address,
+       st.name                     AS seller_township,
+       sd.name                     AS seller_district,
+       ssr.name                    AS seller_region_state,
        pl.custom_fields            AS custom_fields
      FROM product_list pl
      LEFT JOIN sale_listing sl ON sl.product_list_id = pl.id AND sl.deleted_at IS NULL
      LEFT JOIN rent_listing rl ON rl.product_list_id = pl.id AND rl.deleted_at IS NULL
-     LEFT JOIN admin_user au ON au.user_id = pl.created_by
+     LEFT JOIN admin_user adm ON adm.user_id = pl.created_by
      LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
      LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
      LEFT JOIN equipment_sub_category esc ON em.sub_category_id = esc.sub_category_id
@@ -1506,6 +1573,14 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
      LEFT JOIN condition_type ct ON sl.condition_type_id = ct.id
      LEFT JOIN township t ON pl.township_id = t.township_id
      LEFT JOIN district d ON t.district_id = d.district_id
+     LEFT JOIN state_region sr ON d.state_region_id = sr.state_region_id
+     LEFT JOIN partner p ON pl.partner_id = p.id
+     LEFT JOIN app_user seller ON seller.app_user_id = p.app_user_id
+     LEFT JOIN partner_type pt ON p.partner_type_id = pt.id
+     LEFT JOIN business_type bt ON seller.business_type_id = bt.business_type_id
+     LEFT JOIN township st ON seller.township_id = st.township_id
+     LEFT JOIN district sd ON st.district_id = sd.district_id
+     LEFT JOIN state_region ssr ON sd.state_region_id = ssr.state_region_id
      WHERE pl.deleted_at IS NULL AND pl.is_draft = 0
        AND (sl.id IS NOT NULL OR rl.id IS NOT NULL)
      ORDER BY pl.created_at DESC`,
@@ -1542,6 +1617,24 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
     detail_address: r.detail_address ?? "",
     township: r.township ?? "",
     district: r.district ?? "",
+    region_state: r.region_state ?? "",
+    license_status: cf(r.custom_fields, "License Status"),
+    price_mmk: r.price_mmk ?? "",
+    price_usd: r.price_usd ?? "",
+    fx_rate: r.fx_rate ?? "",
+    listing_type: r.listing_type ?? "",
+    product_type: r.product_type ?? "",
+    partner_type: r.partner_type ?? "",
+    business_type: r.business_type ?? "",
+    company_name: r.company_name ?? "",
+    contact_person: r.contact_person ?? "",
+    second_contact_person: cf(r.custom_fields, "Second Contact Person"),
+    contact_no: r.contact_no ?? "",
+    email: r.email ?? "",
+    seller_address: r.seller_address ?? "",
+    seller_township: r.seller_township ?? "",
+    seller_district: r.seller_district ?? "",
+    seller_region_state: r.seller_region_state ?? "",
   }));
 }
 

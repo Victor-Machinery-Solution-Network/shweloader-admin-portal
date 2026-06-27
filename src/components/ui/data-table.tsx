@@ -373,21 +373,24 @@ function DataTable<TData, TValue>({
   // Global search state (for multi-column search)
   const [globalFilter, setGlobalFilter] = React.useState("");
 
-  // Custom global filter: case-insensitive substring match across EVERY
-  // column's value, not just searchKeys — typing "caterpillar" matches the
-  // Brand column even though it was never listed as a search key.
-  // ponytail: date columns are skipped (DATE_COL) because a raw date string is
-  // ambiguous to type/match; add per-table overrides only if a date search is
-  // ever requested.
+  // Custom global filter: case-insensitive substring match across every
+  // string/number field of the row's DATA (row.original), not just the visible
+  // columns. So you can search by values that aren't shown as columns — the id,
+  // or the brand on a listing — without adding hidden columns per table.
+  // ponytail: skip date/url/image keys (ambiguous or noise); match strings +
+  // numbers so ids/codes work. Searching "1" can match internal flags — that's
+  // the accepted cost of "search anything"; add a key allowlist only if it bites.
   const globalFilterFn = React.useCallback(
     (row: Row<TData>, _columnId: string, filterValue: string) => {
       if (!filterValue) return true;
       const term = String(filterValue).toLowerCase();
-      const DATE_COL = /(^|_)(created|updated|deleted)(_|$)|_at$|date/i;
-      return row.getAllCells().some((cell) => {
-        if (DATE_COL.test(cell.column.id)) return false;
-        const val = cell.getValue();
-        return val != null && String(val).toLowerCase().includes(term);
+      const SKIP = /(_at$|date|_url$|blurhash|focal)/i;
+      const data = row.original as Record<string, unknown>;
+      return Object.entries(data).some(([key, val]) => {
+        if (val == null || SKIP.test(key)) return false;
+        const t = typeof val;
+        if (t !== "string" && t !== "number") return false;
+        return String(val).toLowerCase().includes(term);
       });
     },
     [],
