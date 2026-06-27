@@ -21,6 +21,7 @@ interface AdminsClientProps {
 
 export function AdminsClient({ admins, roles }: AdminsClientProps) {
   const canCreate = useHasPermission("admin_users", "create");
+  const canExport = useHasPermission("admin_users", "export");
   const canDelete = useHasPermission("admin_users", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -103,7 +104,7 @@ export function AdminsClient({ admins, roles }: AdminsClientProps) {
           pageSize={10}
           getRowId={(row) => row.user_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="admins"
         />
       ) : (

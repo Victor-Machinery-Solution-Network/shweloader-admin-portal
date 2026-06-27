@@ -54,6 +54,7 @@ export function AttachmentModelsClient({
   categorySubCategoryLinks,
 }: AttachmentModelsClientProps) {
   const canCreate = useHasPermission("attachment_models", "create");
+  const canExport = useHasPermission("attachment_models", "export");
   const canDelete = useHasPermission("attachment_models", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -165,7 +166,7 @@ export function AttachmentModelsClient({
           pageSize={10}
           getRowId={(row) => row.model_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="attachment-models"
         />
       ) : (

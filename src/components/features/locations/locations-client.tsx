@@ -68,6 +68,7 @@ export function LocationsClient({
   townshipCounts,
 }: LocationsClientProps) {
   const canCreate = useHasPermission("locations", "create");
+  const canExport = useHasPermission("locations", "export");
   const canDelete = useHasPermission("locations", "delete");
   const [showCreateSR, setShowCreateSR] = useState(false);
   const [showCreateDistrict, setShowCreateDistrict] = useState(false);
@@ -366,7 +367,7 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.state_region_id}
               toolbar={renderSRToolbar}
-              enableExport
+              enableExport={canExport}
               exportFileName="state-regions"
             />
           ) : (
@@ -414,7 +415,7 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.district_id}
               toolbar={renderDistrictToolbar}
-              enableExport
+              enableExport={canExport}
               exportFileName="districts"
             />
           ) : (
@@ -462,7 +463,7 @@ export function LocationsClient({
               pageSize={15}
               getRowId={(row) => row.township_id}
               toolbar={renderTownshipToolbar}
-              enableExport
+              enableExport={canExport}
               exportFileName="townships"
             />
           ) : (

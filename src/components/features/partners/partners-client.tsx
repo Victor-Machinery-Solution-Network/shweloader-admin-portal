@@ -26,6 +26,7 @@ export function PartnersClient({
   initialUsers,
 }: PartnersClientProps) {
   const canApprove = useHasPermission("partners", "approve");
+  const canExport = useHasPermission("partners", "export");
   const [showAddPartner, setShowAddPartner] = useState(false);
   const allCols = useMemo(() => allColumns(partnerTypes), [partnerTypes]);
   const approvedCols = useMemo(
@@ -149,7 +150,7 @@ export function PartnersClient({
               filterStorageKey="partners-all-filters"
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="partners-all"
               toolbar={addPartnerButton}
             />
@@ -175,7 +176,7 @@ export function PartnersClient({
               filterStorageKey="partners-approved-filters"
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="partners-approved"
               toolbar={addPartnerButton}
             />
@@ -205,7 +206,7 @@ export function PartnersClient({
               filterStorageKey="partners-pending-filters"
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="partners-pending"
             />
           ) : (
@@ -229,7 +230,7 @@ export function PartnersClient({
               filterStorageKey="partners-rejected-filters"
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="partners-rejected"
             />
           ) : (

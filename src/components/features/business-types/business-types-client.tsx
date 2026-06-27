@@ -32,6 +32,7 @@ export function BusinessTypesClient({
   businessTypes,
 }: BusinessTypesClientProps) {
   const canCreate = useHasPermission("business_types", "create");
+  const canExport = useHasPermission("business_types", "export");
   const canDelete = useHasPermission("business_types", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -119,7 +120,7 @@ export function BusinessTypesClient({
           pageSize={10}
           getRowId={(row) => row.business_type_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="business-types"
         />
       ) : (

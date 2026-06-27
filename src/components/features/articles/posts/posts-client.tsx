@@ -31,6 +31,7 @@ export function PostsClient({
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get("tab") ?? "published";
   const canCreate = useHasPermission("articles", "create");
+  const canExport = useHasPermission("articles", "export");
   const canDelete = useHasPermission("articles", "delete");
 
   // One Create-Post action reused across every tab's empty state, so the button
@@ -207,7 +208,7 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
-            enableExport
+            enableExport={canExport}
             exportFileName="articles-draft"
           />
         ) : (
@@ -235,7 +236,7 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
-            enableExport
+            enableExport={canExport}
             exportFileName="articles-published"
           />
         ) : (
@@ -260,7 +261,7 @@ export function PostsClient({
             filterStorageKey="articles-pending-filters"
             enablePagination
             pageSize={10}
-            enableExport
+            enableExport={canExport}
             exportFileName="articles-pending"
           />
         ) : (
@@ -288,7 +289,7 @@ export function PostsClient({
             pageSize={10}
             getRowId={(row) => row.article_id}
             toolbar={renderToolbar}
-            enableExport
+            enableExport={canExport}
             exportFileName="articles-rework"
           />
         ) : (

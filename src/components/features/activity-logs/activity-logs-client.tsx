@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useHasPermission } from "@/hooks/use-permissions";
 import { ClipboardList } from "lucide-react";
 import { getColumns } from "./columns";
 import type { ActivityLogEntry } from "@/lib/actions/activity-log";
@@ -14,6 +15,7 @@ interface ActivityLogsClientProps {
 
 export function ActivityLogsClient({ logs }: ActivityLogsClientProps) {
   const columns = useMemo(() => getColumns(), []);
+  const canExport = useHasPermission("admin_users", "export");
 
   const filterConfig = useMemo<FilterConfig[]>(
     () => [
@@ -52,7 +54,7 @@ export function ActivityLogsClient({ logs }: ActivityLogsClientProps) {
       filterStorageKey="activity-logs-filters"
       enablePagination
       pageSize={20}
-      enableExport
+      enableExport={canExport}
       exportFileName="activity-logs"
     />
   );

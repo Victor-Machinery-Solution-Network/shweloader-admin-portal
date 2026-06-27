@@ -38,6 +38,7 @@ export function AttachmentCategoriesClient({
   linkedInfo,
 }: AttachmentCategoriesClientProps) {
   const canCreate = useHasPermission("attachment_categories", "create");
+  const canExport = useHasPermission("attachment_categories", "export");
   const canDelete = useHasPermission("attachment_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const { data, handleReorder, handleMoveToPosition } = useDragReorder(
@@ -155,7 +156,7 @@ export function AttachmentCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="attachment-categories"
         />
       ) : (

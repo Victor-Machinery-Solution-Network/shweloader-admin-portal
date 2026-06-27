@@ -23,6 +23,7 @@ export function ConditionTypesClient({
   conditionTypes,
 }: ConditionTypesClientProps) {
   const canCreate = useHasPermission("condition_types", "create");
+  const canExport = useHasPermission("condition_types", "export");
   const canDelete = useHasPermission("condition_types", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -86,7 +87,7 @@ export function ConditionTypesClient({
           pageSize={10}
           getRowId={(row) => row.id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="condition-types"
         />
       ) : (

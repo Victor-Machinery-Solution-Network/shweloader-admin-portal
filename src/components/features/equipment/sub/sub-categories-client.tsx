@@ -40,6 +40,7 @@ export function SubCategoriesClient({
   linkedInfo,
 }: SubCategoriesClientProps) {
   const canCreate = useHasPermission("equipment_sub_categories", "create");
+  const canExport = useHasPermission("equipment_sub_categories", "export");
   const canDelete = useHasPermission("equipment_sub_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const { data, handleReorder, handleMoveToPosition } = useDragReorder(
@@ -157,7 +158,7 @@ export function SubCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="equipment-sub-categories"
         />
       ) : (

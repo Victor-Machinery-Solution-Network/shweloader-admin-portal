@@ -20,6 +20,7 @@ interface PartnerTypesClientProps {
 
 export function PartnerTypesClient({ partnerTypes }: PartnerTypesClientProps) {
   const canCreate = useHasPermission("partners", "create");
+  const canExport = useHasPermission("partners", "export");
   const canDelete = useHasPermission("partners", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -77,7 +78,7 @@ export function PartnerTypesClient({ partnerTypes }: PartnerTypesClientProps) {
           pageSize={10}
           getRowId={(row) => row.id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="partner-types"
         />
       ) : (

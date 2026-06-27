@@ -18,6 +18,7 @@ interface PromotionClientProps {
 
 export function PromotionClient({ promotions }: PromotionClientProps) {
   const canCreate = useHasPermission("promotions", "create");
+  const canExport = useHasPermission("promotions", "export");
   const canDelete = useHasPermission("promotions", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -66,7 +67,7 @@ export function PromotionClient({ promotions }: PromotionClientProps) {
           getRowId={(row) => row.promotion_push_id}
           pageSize={10}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="promotions"
         />
       ) : (

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { MessageSquare } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useHasPermission } from "@/hooks/use-permissions";
 import {
   ExportExcelButton,
   type ExportColumn,
@@ -64,6 +65,8 @@ export function EnquiriesClient({
   statusTypes,
   businessTypes,
 }: EnquiriesClientProps) {
+  const canExport = useHasPermission("enquiries", "export");
+
   const businessTypeMap = useMemo(
     () =>
       new Map(
@@ -165,11 +168,13 @@ export function EnquiriesClient({
       enablePagination
       pageSize={20}
       toolbar={
-        <ExportExcelButton
-          fileName="enquiries"
-          getColumns={() => EXPORT_COLUMNS}
-          getData={getExportData}
-        />
+        canExport ? (
+          <ExportExcelButton
+            fileName="enquiries"
+            getColumns={() => EXPORT_COLUMNS}
+            getData={getExportData}
+          />
+        ) : undefined
       }
     />
   );

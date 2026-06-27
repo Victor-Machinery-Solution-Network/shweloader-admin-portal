@@ -90,6 +90,7 @@ export function ListingsClient({
   const Icon = config.icon;
   const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
   const canCreate = useHasPermission(feature, "create");
+  const canExport = useHasPermission(feature, "export");
   const canDelete = useHasPermission(feature, "delete");
 
   const columns = useMemo(() => {
@@ -449,7 +450,7 @@ export function ListingsClient({
               getRowId={(row) => row.id}
               onReorder={handleApprovedReorder}
               onMoveToPosition={handleApprovedMoveToPosition}
-              enableExport
+              enableExport={canExport}
               exportFileName={`${pageType}-listings`}
               onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />
@@ -498,7 +499,7 @@ export function ListingsClient({
               getRowId={(row) => row.id}
               onReorder={handleReorder}
               onMoveToPosition={handleMoveToPosition}
-              enableExport
+              enableExport={canExport}
               exportFileName="featured-listings"
             />
           ) : (
@@ -522,7 +523,7 @@ export function ListingsClient({
               filterStorageKey={`listings-${pageType}-pending-filters`}
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="pending-listings"
               onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />
@@ -550,7 +551,7 @@ export function ListingsClient({
               enablePagination
               pageSize={10}
               getRowId={(row) => row.id}
-              enableExport
+              enableExport={canExport}
               exportFileName="draft-listings"
             />
           ) : (
@@ -574,7 +575,7 @@ export function ListingsClient({
               filterStorageKey={`listings-${pageType}-rework-filters`}
               enablePagination
               pageSize={10}
-              enableExport
+              enableExport={canExport}
               exportFileName="rework-listings"
               onRowClick={(row) => router.push(`/listings/${row.product_list_id}`)}
             />

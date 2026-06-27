@@ -257,6 +257,7 @@ const PERMISSIONS = [
   { name: "delete", display_order: 4 },
   { name: "approve", display_order: 5 },
   { name: "restore", display_order: 6 },
+  { name: "export", display_order: 7 },
 ];
 
 const FEATURES = [
@@ -297,7 +298,17 @@ const FEATURES = [
   { name: "roles", group_name: "Administration", display_order: 27 },
   { name: "app_settings", group_name: "Administration", display_order: 28 },
   { name: "trash", group_name: "Administration", display_order: 29 },
+  { name: "master_data_export", group_name: "Administration", display_order: 30 },
 ];
+
+// Features whose list page offers an Excel export — each gets an extra `export`
+// verb on top of its normal perms. (master_data_export is export-only, below.)
+const EXPORTABLE_FEATURES = new Set([
+  "sale_listings", "rent_listings", "enquiries", "users", "partners", "blacklist",
+  "business_types", "locations", "promotions", "listing_templates", "condition_types",
+  "articles", "article_categories", "announcements", "attachment_categories", "attachment_models",
+  "equipment_main_categories", "equipment_sub_categories", "equipment_models", "admin_users", "roles",
+]);
 
 const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   dashboard: ["read"],
@@ -317,6 +328,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   popup_promotions: ["create", "read", "edit", "delete"],
   feedback: ["read", "delete"],
   trash: ["read", "restore", "delete"],
+  master_data_export: ["export"],
 };
 
 const DEFAULT_PERMS = ["create", "read", "edit", "delete"];
@@ -422,7 +434,10 @@ async function seedAdmin() {
   for (const feat of FEATURES) {
     const fid = featureMap.get(feat.name);
     if (!fid) continue;
-    const perms = FEATURE_PERMISSION_MAP[feat.name] ?? DEFAULT_PERMS;
+    const basePerms = FEATURE_PERMISSION_MAP[feat.name] ?? DEFAULT_PERMS;
+    const perms = EXPORTABLE_FEATURES.has(feat.name)
+      ? [...basePerms, "export"]
+      : basePerms;
     for (const permName of perms) {
       const pid = permMap.get(permName);
       if (!pid || existingFPSet.has(`${fid}:${pid}`)) continue;

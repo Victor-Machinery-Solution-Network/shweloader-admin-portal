@@ -21,6 +21,7 @@ interface TemplatesClientProps {
 
 export function TemplatesClient({ templates }: TemplatesClientProps) {
   const canCreate = useHasPermission("listing_templates", "create");
+  const canExport = useHasPermission("listing_templates", "export");
   const canDelete = useHasPermission("listing_templates", "delete");
   const columns = useMemo(() => createColumns(), []);
 
@@ -93,7 +94,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
       pageSize={10}
       getRowId={(row) => row.template_id}
       toolbar={renderToolbar}
-      enableExport
+      enableExport={canExport}
       exportFileName="listing-templates"
     />
   ) : (

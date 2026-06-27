@@ -31,6 +31,7 @@ export function RolesClient({
   rolePermissionMap,
 }: RolesClientProps) {
   const canCreate = useHasPermission("roles", "create");
+  const canExport = useHasPermission("roles", "export");
   const canDelete = useHasPermission("roles", "delete");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -101,7 +102,7 @@ export function RolesClient({
           pageSize={10}
           getRowId={(row) => row.role_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="roles"
         />
       ) : (

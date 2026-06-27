@@ -30,6 +30,7 @@ export function ArticleCategoriesClient({
   linkedCounts,
 }: ArticleCategoriesClientProps) {
   const canCreate = useHasPermission("article_categories", "create");
+  const canExport = useHasPermission("article_categories", "export");
   const canDelete = useHasPermission("article_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const columns = useMemo(() => getColumns(linkedCounts), [linkedCounts]);
@@ -100,7 +101,7 @@ export function ArticleCategoriesClient({
           pageSize={10}
           getRowId={(row) => row.category_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="article-categories"
         />
       ) : (

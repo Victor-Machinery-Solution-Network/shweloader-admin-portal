@@ -42,6 +42,7 @@ export function EquipmentModelsClient({
   subCategoryBrandLinks,
 }: EquipmentModelsClientProps) {
   const canCreate = useHasPermission("equipment_models", "create");
+  const canExport = useHasPermission("equipment_models", "export");
   const canDelete = useHasPermission("equipment_models", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -149,7 +150,7 @@ export function EquipmentModelsClient({
           pageSize={10}
           getRowId={(row) => row.model_id}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="equipment-models"
         />
       ) : (

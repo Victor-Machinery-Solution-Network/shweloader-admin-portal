@@ -53,6 +53,9 @@ export function UsersClient({
 }: UsersClientProps) {
   // Permissions
   const canCreateUser = useHasPermission("users", "create");
+  const canExportUsers = useHasPermission("users", "export");
+  const canExportBT = useHasPermission("business_types", "export");
+  const canExportBlacklist = useHasPermission("blacklist", "export");
   const canEditUser = useHasPermission("users", "edit");
   const canCreateBT = useHasPermission("business_types", "create");
   const canDeleteBT = useHasPermission("business_types", "delete");
@@ -273,7 +276,7 @@ export function UsersClient({
               enablePagination
               pageSize={10}
               toolbar={renderUserToolbar}
-              enableExport
+              enableExport={canExportUsers}
               exportFileName="users"
               fillHeight
             />
@@ -306,7 +309,7 @@ export function UsersClient({
               pageSize={10}
               getRowId={(row) => row.business_type_id}
               toolbar={renderBTToolbar}
-              enableExport
+              enableExport={canExportBT}
               exportFileName="business-types"
               fillHeight
             />
@@ -339,7 +342,7 @@ export function UsersClient({
               pageSize={10}
               getRowId={(row) => row.blacklist_id}
               toolbar={renderBlacklistToolbar}
-              enableExport
+              enableExport={canExportBlacklist}
               exportFileName="blacklist"
               fillHeight
             />

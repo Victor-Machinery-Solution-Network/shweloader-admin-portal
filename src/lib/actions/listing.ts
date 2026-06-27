@@ -1493,7 +1493,7 @@ export interface MasterExportRow {
  * value (COALESCE sale→rent); split into per-type columns only if asked.
  */
 export async function getMasterDataExport(): Promise<MasterExportRow[]> {
-  await requirePermission("sale_listings", "read");
+  await requirePermission("master_data_export", "export");
 
   const { results } = await d1.query<{
     product_code: string;

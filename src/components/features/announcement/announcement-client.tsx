@@ -27,6 +27,7 @@ interface AnnouncementClientProps {
 
 export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
   const canCreate = useHasPermission("announcements", "create");
+  const canExport = useHasPermission("announcements", "export");
   const canDelete = useHasPermission("announcements", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const { data, handleReorder, handleMoveToPosition } = useDragReorder(
@@ -115,7 +116,7 @@ export function AnnouncementClient({ announcements }: AnnouncementClientProps) {
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="announcements"
         />
       ) : (

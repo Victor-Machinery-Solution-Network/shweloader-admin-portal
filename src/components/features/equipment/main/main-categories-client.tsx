@@ -34,6 +34,7 @@ export function MainCategoriesClient({
   linkedCounts,
 }: MainCategoriesClientProps) {
   const canCreate = useHasPermission("equipment_main_categories", "create");
+  const canExport = useHasPermission("equipment_main_categories", "export");
   const canDelete = useHasPermission("equipment_main_categories", "delete");
   const [showCreate, setShowCreate] = useState(false);
   const { data, handleReorder, handleMoveToPosition } = useDragReorder(
@@ -130,7 +131,7 @@ export function MainCategoriesClient({
           onMoveToPosition={handleMoveToPosition}
           pageSize={10}
           toolbar={renderToolbar}
-          enableExport
+          enableExport={canExport}
           exportFileName="equipment-categories"
         />
       ) : (

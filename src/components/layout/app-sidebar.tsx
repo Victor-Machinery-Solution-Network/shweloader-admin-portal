@@ -92,6 +92,12 @@ export function AppSidebar() {
     return permissions.includes(`${feature}:create`);
   }
 
+  /** Check export permission for a feature. */
+  function canExport(feature: string): boolean {
+    if (!permsLoaded) return false;
+    return permissions.includes(`${feature}:export`);
+  }
+
   const userName = session?.user?.name ?? "Admin User";
   const userEmail = session?.user?.email ?? "";
   const avatarSrc = assetUrl(session?.user?.avatar_url) ?? undefined;
@@ -516,8 +522,7 @@ export function AppSidebar() {
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           )}
-                          {(canRead("sale_listings") ||
-                            canRead("rent_listings")) && (
+                          {canExport("master_data_export") && (
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
                                 className="cursor-pointer"
