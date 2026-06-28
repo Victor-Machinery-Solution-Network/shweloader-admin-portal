@@ -438,7 +438,7 @@ export function ListingsClient({
               columns={columns}
               data={approvedData}
               searchKeys={["model_name", "partner_name"]}
-              searchPlaceholder="Search by model or partner"
+              searchPlaceholder="Search"
               filterConfig={mainFilterConfig}
               filterStorageKey={`listings-${pageType}-filters`}
               initialColumnVisibility={HIDDEN_FILTER_COLUMNS}
@@ -492,7 +492,7 @@ export function ListingsClient({
               columns={featuredColumns}
               data={featuredData}
               searchKeys={["model_name", "partner_name"]}
-              searchPlaceholder="Search by model or partner"
+              searchPlaceholder="Search"
               filterConfig={featuredFilterConfig}
               filterStorageKey="listings-featured-filters"
               enableDragSort

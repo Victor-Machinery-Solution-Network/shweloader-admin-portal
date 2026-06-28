@@ -58,6 +58,20 @@ const COLUMNS: ExportColumn[] = [
   { key: "seller_region_state", header: "Region/State (Seller)" },
 ];
 
+/**
+ * Format a price value with thousand separators for the export file only
+ * (e.g. 100000 → "100,000"). Leaves blanks empty and passes through any
+ * non-numeric value (e.g. an already-formatted string) untouched.
+ */
+function formatPrice(value: unknown): unknown {
+  if (value === null || value === undefined || value === "") return "";
+  const n =
+    typeof value === "number"
+      ? value
+      : Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(n) ? n.toLocaleString("en-US") : value;
+}
+
 export function MasterDataExportDialog({
   open,
   onOpenChange,
@@ -76,11 +90,15 @@ export function MasterDataExportDialog({
         onOpenChange(false);
         return;
       }
-      await exportToExcel(
-        COLUMNS,
-        rows as unknown as Record<string, unknown>[],
-        "master-data",
+      // Comma-separate the price columns in the generated file only.
+      const exportRows = (rows as unknown as Record<string, unknown>[]).map(
+        (row) => ({
+          ...row,
+          price_mmk: formatPrice(row.price_mmk),
+          price_usd: formatPrice(row.price_usd),
+        }),
       );
+      await exportToExcel(COLUMNS, exportRows, "master-data");
       toast.success(`Exported ${rows.length} listings`);
       onOpenChange(false);
     } catch {

@@ -25,6 +25,7 @@ import {
   Handshake,
   FileText,
   FileSpreadsheet,
+  FileDown,
   Image as ImageIcon,
   Megaphone,
   Shield,
@@ -130,7 +131,10 @@ export function AppSidebar() {
     canRead("brands") ||
     canRead("locations");
   const showMarketplace =
-    showListings || canRead("chat") || canRead("enquiries");
+    showListings ||
+    canRead("chat") ||
+    canRead("enquiries") ||
+    canExport("master_data_export");
   const showUsers = canRead("users") || canRead("partners");
   const showContent =
     showArticles ||
@@ -522,16 +526,6 @@ export function AppSidebar() {
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           )}
-                          {canExport("master_data_export") && (
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton
-                                className="cursor-pointer"
-                                onClick={() => setShowMasterExport(true)}
-                              >
-                                <span>Master Data Export</span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )}
                           {canRead("listing_templates") && (
                             <SidebarMenuSubItem>
                               <SidebarMenuSubButton
@@ -588,6 +582,18 @@ export function AppSidebar() {
                           <MessageSquare aria-hidden="true" />
                           <span>Enquiries</span>
                         </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+
+                  {canExport("master_data_export") && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className="cursor-pointer"
+                        onClick={() => setShowMasterExport(true)}
+                      >
+                        <FileDown aria-hidden="true" />
+                        <span>Master Data Export</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )}
