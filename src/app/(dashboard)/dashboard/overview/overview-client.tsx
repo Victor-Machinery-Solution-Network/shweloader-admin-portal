@@ -126,13 +126,18 @@ function StatCard({ title, value, exact, change, secondary }: StatCardData) {
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-1">
-        <p className="text-3xl font-bold tracking-tight" title={exact}>
+      <CardContent>
+        <p
+          className="flex flex-wrap items-baseline gap-x-2 text-3xl font-bold tracking-tight"
+          title={exact}
+        >
           {value}
+          {secondary && (
+            <span className="text-sm font-medium text-muted-foreground">
+              {secondary}
+            </span>
+          )}
         </p>
-        {secondary && (
-          <p className="text-sm font-medium text-muted-foreground">{secondary}</p>
-        )}
       </CardContent>
     </Card>
   );
