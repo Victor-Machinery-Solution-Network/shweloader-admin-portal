@@ -113,14 +113,17 @@ function StatCard({ title, value, exact, change, secondary }: StatCardData) {
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {title}
           </CardTitle>
-          <Badge
-            variant={isPositive ? "success" : "destructive"}
-            className="gap-1 text-xs"
-          >
-            <TrendIcon className="size-3" />
-            {isPositive ? "+" : ""}
-            {change}%
-          </Badge>
+          {/* No movement this month → no pill (a +0% badge reads as noise). */}
+          {change !== 0 && (
+            <Badge
+              variant={isPositive ? "success" : "destructive"}
+              className="gap-1 text-xs"
+            >
+              <TrendIcon className="size-3" />
+              {isPositive ? "+" : ""}
+              {change}%
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-1">
