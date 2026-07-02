@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { OverviewStats } from "@/lib/actions/dashboard";
 
 // Recharts is ~370KB — load it only after the stats cards have painted.
 const VisitorsChart = dynamic(() => import("./visitors-chart"), {
@@ -29,48 +30,91 @@ const VisitorsChart = dynamic(() => import("./visitors-chart"), {
   ),
 });
 
-// ---------- Fake data ----------
+// ---------- Formatting ----------
 
-const statsCards = [
-  {
-    title: "Total Revenue",
-    value: "$1,250.00",
-    change: +12.5,
-    trend: "Trending up this month",
-    subtitle: "Visitors for the last 6 months",
-  },
-  {
-    title: "New Users",
-    value: "1,234",
-    change: -20,
-    trend: "Down 20% this period",
-    subtitle: "Acquisition needs attention",
-  },
-  {
-    title: "Active Accounts",
-    value: "45,678",
-    change: +12.5,
-    trend: "Strong user retention",
-    subtitle: "Engagement exceed targets",
-  },
-  {
-    title: "Growth Rate",
-    value: "4.5%",
-    change: +4.5,
-    trend: "Steady performance",
-    subtitle: "Meets growth projections",
-  },
-];
+const compact = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const plain = new Intl.NumberFormat("en");
+
+/** Month-to-date growth: added-this-month vs the total at the start of the month. */
+function monthGrowthPct(monthly: number, total: number): number {
+  const base = total - monthly;
+  if (base <= 0) return monthly > 0 ? 100 : 0;
+  return Math.round((monthly / base) * 1000) / 10;
+}
+
+// ---------- Card model ----------
+
+interface StatCardData {
+  title: string;
+  value: string;
+  /** Full-precision value for the hover tooltip (compact values round). */
+  exact?: string;
+  change: number;
+  trend: string;
+  subtitle: string;
+}
+
+function buildCards(s: OverviewStats): StatCardData[] {
+  return [
+    {
+      title: "Total Sale Product Value",
+      value: `MMK ${compact.format(s.saleValueMmk)}`,
+      exact: `MMK ${plain.format(s.saleValueMmk)} · $${plain.format(s.saleValueUsd)}`,
+      change: monthGrowthPct(s.monthlySaleValueMmk, s.saleValueMmk),
+      trend: `≈ $${compact.format(s.saleValueUsd)} USD`,
+      subtitle: "Approved sale listings, catalog total",
+    },
+    {
+      title: "Total Users",
+      value: plain.format(s.users),
+      change: monthGrowthPct(s.monthlyUsers, s.users),
+      trend: `+${plain.format(s.monthlyUsers)} this month`,
+      subtitle: "Registered app users",
+    },
+    {
+      title: "Total Partners",
+      value: plain.format(s.partners),
+      change: monthGrowthPct(s.monthlyPartners, s.partners),
+      trend: `+${plain.format(s.monthlyPartners)} this month`,
+      subtitle: "Active partner businesses",
+    },
+    {
+      title: "Total Sale Units",
+      value: plain.format(s.saleUnits),
+      change: monthGrowthPct(s.monthlySaleUnits, s.saleUnits),
+      trend: `+${plain.format(s.monthlySaleUnits)} this month`,
+      subtitle: "Approved machines listed for sale",
+    },
+    {
+      title: "Total Rent Units",
+      value: plain.format(s.rentUnits),
+      change: monthGrowthPct(s.monthlyRentUnits, s.rentUnits),
+      trend: `+${plain.format(s.monthlyRentUnits)} this month`,
+      subtitle: "Approved machines listed for rent",
+    },
+    {
+      title: "Product Enquiries",
+      value: plain.format(s.productEnquiries),
+      change: monthGrowthPct(s.monthlyProductEnquiries, s.productEnquiries),
+      trend: `+${plain.format(s.monthlyProductEnquiries)} this month`,
+      subtitle: "Unique products asked about in chat",
+    },
+    {
+      title: "User Enquiries",
+      value: plain.format(s.userEnquiries),
+      change: monthGrowthPct(s.monthlyUserEnquiries, s.userEnquiries),
+      trend: `+${plain.format(s.monthlyUserEnquiries)} this month`,
+      subtitle: "Chat sessions started",
+    },
+  ];
+}
 
 // ---------- Components ----------
 
-function StatCard({
-  title,
-  value,
-  change,
-  trend,
-  subtitle,
-}: (typeof statsCards)[number]) {
+function StatCard({ title, value, exact, change, trend, subtitle }: StatCardData) {
   const isPositive = change >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
@@ -92,7 +136,9 @@ function StatCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-3xl font-bold tracking-tight">{value}</p>
+        <p className="text-3xl font-bold tracking-tight" title={exact}>
+          {value}
+        </p>
         <div className="space-y-0.5">
           <p className="flex items-center gap-1 text-sm font-medium">
             {trend}
@@ -105,14 +151,20 @@ function StatCard({
   );
 }
 
-export default function DashboardOverviewClient() {
+export default function DashboardOverviewClient({
+  stats,
+}: {
+  stats: OverviewStats;
+}) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statsCards.map((card) => (
+        {buildCards(stats).map((card) => (
           <StatCard key={card.title} {...card} />
         ))}
       </div>
+      {/* Chart data is still the placeholder set — real series TBD with
+          stakeholders (next session). */}
       <VisitorsChart />
     </div>
   );
