@@ -119,7 +119,8 @@ function StatCard({ title, value, exact, change, trend, subtitle }: StatCardData
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
   return (
-    <Card>
+    // gap-4 (Card default is 6): tighter space between the metric label and value.
+    <Card className="gap-4">
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground">
