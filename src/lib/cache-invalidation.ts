@@ -84,7 +84,30 @@ const PUBLIC_TAG_FOR: Partial<Record<CacheTag, string>> = {
   [CACHE_TAGS.ARTICLE_CATEGORIES]: "blog-categories",
   [CACHE_TAGS.ANNOUNCEMENTS]: "announcements",
   [CACHE_TAGS.CAROUSELS]: "carousel",
+  [CACHE_TAGS.BUSINESS_TYPES]: "business-types",
+  [CACHE_TAGS.PARTNER_TYPES]: "partner-types",
+  [CACHE_TAGS.SETTINGS]: "app-settings",
 };
+
+/**
+ * Admin tags whose entities render on EVERY public product detail page. Detail
+ * pages carry only their surgical `listing:<id>` tag (so per-listing edits stay
+ * surgical), plus one broad `listing-details` tag fired here when any of THESE
+ * change — a brand/model/location/partner/condition rename must refresh all
+ * detail pages, not just collection views. Deliberately excludes
+ * SALE/RENT/FEATURED_LISTINGS: those fire on every ordinary listing edit, and
+ * mapping them would nuke every warm detail page on each save. The exchange
+ * rate is the other all-pages case — its trigger tags ARE the listing tags, so
+ * it can't be detected here; actions/setting.ts sends `listing-details` itself.
+ */
+const DETAIL_PAGE_TAGS: ReadonlySet<CacheTag> = new Set([
+  CACHE_TAGS.BRANDS,
+  CACHE_TAGS.EQUIPMENT_MODELS,
+  CACHE_TAGS.ATTACHMENT_MODELS,
+  CACHE_TAGS.LOCATIONS,
+  CACHE_TAGS.PARTNERS,
+  CACHE_TAGS.CONDITION_TYPES,
+]);
 
 /**
  * Invalidate one or more cache tags plus all their dependents (recursive).
@@ -111,14 +134,16 @@ export function invalidateTag(...tags: CacheTag[]) {
 
   // 1. Bust the public site (collection-level) for any public-facing tags.
   //    Fire-and-forget; no-ops when no public tags map or the env is unset.
-  const publicTags = [
-    ...new Set(
-      [...all]
-        .map((t) => PUBLIC_TAG_FOR[t])
-        .filter((t): t is string => Boolean(t)),
-    ),
-  ];
-  revalidatePublicSite(publicTags);
+  const publicTags = new Set(
+    [...all]
+      .map((t) => PUBLIC_TAG_FOR[t])
+      .filter((t): t is string => Boolean(t)),
+  );
+  // Detail-page taxonomy changed → also bust ALL product detail pages.
+  if ([...all].some((t) => DETAIL_PAGE_TAGS.has(t))) {
+    publicTags.add("listing-details");
+  }
+  revalidatePublicSite([...publicTags]);
 
   // 2. Bust this admin app's own cache.
   for (const tag of all) updateTag(tag);

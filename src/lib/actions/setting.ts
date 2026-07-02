@@ -4,6 +4,7 @@ import { d1 } from "@/lib/api/d1-client";
 import { CACHE_TAGS } from "@/lib/constants";
 import { getErrorMessage, requirePermission } from "@/lib/actions/utils";
 import { invalidateTag } from "@/lib/cache-invalidation";
+import { revalidatePublicSite } from "@/lib/revalidate-public";
 import { auditLog } from "@/lib/actions/audit";
 import type { AppSetting } from "@/types/setting";
 import { SETTING_KEYS } from "@/types/setting";
@@ -99,6 +100,11 @@ export async function updateSettings(
       invalidateTag(CACHE_TAGS.SALE_LISTINGS);
       invalidateTag(CACHE_TAGS.RENT_LISTINGS);
       invalidateTag(CACHE_TAGS.FEATURED_LISTINGS);
+      // A rate change rewrites the MMK price on every listing, but public
+      // product detail pages carry only their surgical `listing:<id>` tag —
+      // the collection busts above don't reach them. Fire the platform-wide
+      // detail-page tag so they don't show the old price for up to an hour.
+      revalidatePublicSite(["listing-details"]);
     }
 
     invalidateTag(CACHE_TAGS.SETTINGS);
