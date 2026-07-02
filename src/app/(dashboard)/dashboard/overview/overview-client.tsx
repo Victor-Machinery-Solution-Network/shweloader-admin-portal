@@ -53,8 +53,8 @@ interface StatCardData {
   /** Full-precision value for the hover tooltip (compact values round). */
   exact?: string;
   change: number;
-  trend: string;
-  subtitle: string;
+  /** Optional secondary value line (e.g. the USD equivalent). */
+  secondary?: string;
 }
 
 function buildCards(s: OverviewStats): StatCardData[] {
@@ -64,57 +64,44 @@ function buildCards(s: OverviewStats): StatCardData[] {
       value: `MMK ${compact.format(s.saleValueMmk)}`,
       exact: `MMK ${plain.format(s.saleValueMmk)} · $${plain.format(s.saleValueUsd)}`,
       change: monthGrowthPct(s.monthlySaleValueMmk, s.saleValueMmk),
-      trend: `≈ $${compact.format(s.saleValueUsd)} USD`,
-      subtitle: "Approved sale listings, catalog total",
+      secondary: `≈ $${compact.format(s.saleValueUsd)} USD`,
     },
     {
       title: "Total Users",
       value: plain.format(s.users),
       change: monthGrowthPct(s.monthlyUsers, s.users),
-      trend: `+${plain.format(s.monthlyUsers)} this month`,
-      subtitle: "Registered app users",
     },
     {
       title: "Total Partners",
       value: plain.format(s.partners),
       change: monthGrowthPct(s.monthlyPartners, s.partners),
-      trend: `+${plain.format(s.monthlyPartners)} this month`,
-      subtitle: "Active partner businesses",
     },
     {
       title: "Total Sale Units",
       value: plain.format(s.saleUnits),
       change: monthGrowthPct(s.monthlySaleUnits, s.saleUnits),
-      trend: `+${plain.format(s.monthlySaleUnits)} this month`,
-      subtitle: "Approved machines listed for sale",
     },
     {
       title: "Total Rent Units",
       value: plain.format(s.rentUnits),
       change: monthGrowthPct(s.monthlyRentUnits, s.rentUnits),
-      trend: `+${plain.format(s.monthlyRentUnits)} this month`,
-      subtitle: "Approved machines listed for rent",
     },
     {
       title: "Product Enquiries",
       value: plain.format(s.productEnquiries),
       change: monthGrowthPct(s.monthlyProductEnquiries, s.productEnquiries),
-      trend: `+${plain.format(s.monthlyProductEnquiries)} this month`,
-      subtitle: "Unique products asked about in chat",
     },
     {
       title: "User Enquiries",
       value: plain.format(s.userEnquiries),
       change: monthGrowthPct(s.monthlyUserEnquiries, s.userEnquiries),
-      trend: `+${plain.format(s.monthlyUserEnquiries)} this month`,
-      subtitle: "Chat sessions started",
     },
   ];
 }
 
 // ---------- Components ----------
 
-function StatCard({ title, value, exact, change, trend, subtitle }: StatCardData) {
+function StatCard({ title, value, exact, change, secondary }: StatCardData) {
   const isPositive = change >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
@@ -136,17 +123,13 @@ function StatCard({ title, value, exact, change, trend, subtitle }: StatCardData
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1">
         <p className="text-3xl font-bold tracking-tight" title={exact}>
           {value}
         </p>
-        <div className="space-y-0.5">
-          <p className="flex items-center gap-1 text-sm font-medium">
-            {trend}
-            <TrendIcon className="size-4" />
-          </p>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
+        {secondary && (
+          <p className="text-sm font-medium text-muted-foreground">{secondary}</p>
+        )}
       </CardContent>
     </Card>
   );
