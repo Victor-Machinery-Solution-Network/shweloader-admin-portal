@@ -30,6 +30,8 @@ interface UserEditFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   businessTypes: BusinessType[];
+  /** The user's current unlisted ("Other") business type name, if any */
+  initialOtherName?: string;
   stateRegions: StateRegion[];
   districts: District[];
   townships: Township[];
@@ -41,6 +43,7 @@ export function UserEditForm({
   open,
   onOpenChange,
   businessTypes,
+  initialOtherName,
   stateRegions,
   districts,
   townships,
@@ -286,6 +289,7 @@ export function UserEditForm({
             <FieldContent>
               <RequiredInput
                 name="business_type_other"
+                defaultValue={initialOtherName ?? ""}
                 placeholder="e.g. Consulting Firm"
                 errorMessage="Please specify the business type"
                 autoComplete="off"

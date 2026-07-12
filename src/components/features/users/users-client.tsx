@@ -399,6 +399,10 @@ export function UsersClient({
           open={!!editingUser}
           onOpenChange={(open) => { if (!open) setEditingUser(null); }}
           businessTypes={listedBusinessTypes}
+          initialOtherName={(() => {
+            const bt = businessTypeMap.get(editingUser.business_type_id);
+            return bt && !bt.isListed ? bt.name : undefined;
+          })()}
           stateRegions={stateRegions}
           districts={districts}
           townships={townships}
