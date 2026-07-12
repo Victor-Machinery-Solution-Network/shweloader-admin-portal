@@ -1294,3 +1294,13 @@ CREATE INDEX IF NOT EXISTS idx_sale_listing_active_mmk ON sale_listing(approve_s
 CREATE INDEX IF NOT EXISTS idx_sale_listing_active_usd ON sale_listing(approve_status_id, usd_price) WHERE deleted_at IS NULL AND is_hidden = 0;
 CREATE INDEX IF NOT EXISTS idx_rent_listing_active_mmk ON rent_listing(approve_status_id, mmk_price) WHERE deleted_at IS NULL AND is_hidden = 0;
 CREATE INDEX IF NOT EXISTS idx_rent_listing_active_usd ON rent_listing(approve_status_id, usd_price) WHERE deleted_at IS NULL AND is_hidden = 0;
+
+-- Admin chat app: FCM device tokens for admin phones (2026-07-13)
+CREATE TABLE IF NOT EXISTS admin_device (
+    token TEXT PRIMARY KEY,
+    admin_user_id INTEGER NOT NULL,
+    platform TEXT NOT NULL CHECK(platform IN ('ios','android')),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_user_id) REFERENCES admin_user(user_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_admin_device_user ON admin_device(admin_user_id);

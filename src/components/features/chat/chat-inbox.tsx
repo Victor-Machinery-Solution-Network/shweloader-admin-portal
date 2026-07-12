@@ -161,7 +161,23 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
     );
   }, []);
 
-  useChatInbox(handleNewSession, handleSessionUpdate, handleSessionResolved, handleSessionReopened);
+  // Another admin surface (phone app / other tab) read this session — clear
+  // its badge here without a refetch.
+  const handleSessionReadElsewhere = useCallback((sessionId: number) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...s, unread_admin_count: 0 } : s,
+      ),
+    );
+  }, []);
+
+  useChatInbox(
+    handleNewSession,
+    handleSessionUpdate,
+    handleSessionResolved,
+    handleSessionReopened,
+    handleSessionReadElsewhere,
+  );
 
   const selectedSession =
     sessions.find((s) => s.id === selectedId) ?? null;

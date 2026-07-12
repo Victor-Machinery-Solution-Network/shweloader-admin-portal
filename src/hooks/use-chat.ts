@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useCallback, useTransition } from "react";
+import { useSession } from "next-auth/react";
 import { usePusher } from "@/components/providers/pusher-provider";
 import {
   getChatMessages,
@@ -145,11 +146,17 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
   return { messages, isLoading, setMessages, sessionClosed, userLastReadAt };
 }
 
-/** Hook for typing indicator — tracks when a user is typing */
+/**
+ * Hook for typing indicator — tracks when the customer OR another admin
+ * surface (phone app, other portal tab) is typing in this session. The
+ * current admin's own echo is excluded via session.user.id.
+ */
 export function useTypingIndicator(sessionId: number | null) {
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const { subscribeToChannel, isReady } = usePusher();
+  const { data: authSession } = useSession();
+  const selfId = authSession?.user?.id ?? null;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset typing state when the session or readiness changes — prev-state pattern.
@@ -169,7 +176,12 @@ export function useTypingIndicator(sessionId: number | null) {
 
     const unsubTyping = handle.subscribe("typing-start", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      if (raw.sender_type !== "user") return;
+      const isCustomer = raw.sender_type === "user";
+      const isOtherAdmin =
+        raw.sender_type === "admin" &&
+        raw.sender_id != null &&
+        String(raw.sender_id) !== String(selfId ?? "");
+      if (!isCustomer && !isOtherAdmin) return;
 
       setIsTyping(true);
       setTypingUser((raw.sender_name as string) ?? null);
@@ -200,7 +212,7 @@ export function useTypingIndicator(sessionId: number | null) {
       handle.unsubscribe();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [sessionId, subscribeToChannel, isReady]);
+  }, [sessionId, subscribeToChannel, isReady, selfId]);
 
   return { isTyping, typingUser };
 }
@@ -246,6 +258,7 @@ export function useChatInbox(
   onSessionUpdate?: (sessionId: number, preview: string, at: string, isUserMessage: boolean) => void,
   onSessionResolved?: (sessionId: number) => void,
   onSessionReopened?: (sessionId: number) => void,
+  onSessionRead?: (sessionId: number) => void,
 ) {
   const [totalUnread, setTotalUnread] = useState(0);
   const { subscribeToChannel } = usePusher();
@@ -267,6 +280,9 @@ export function useChatInbox(
   });
   const handleSessionReopened = useEffectEvent((sessionId: number) => {
     onSessionReopened?.(sessionId);
+  });
+  const handleSessionRead = useEffectEvent((sessionId: number) => {
+    onSessionRead?.(sessionId);
   });
 
   // Initial fetch
@@ -345,11 +361,22 @@ export function useChatInbox(
       handleSessionReopened(raw.sessionId as number);
     });
 
+    // Another admin surface (phone app / other portal tab) read a session:
+    // clear its badge here too and re-sync the total unread count.
+    const unsubRead = handle.subscribe("session-read", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      handleSessionRead(raw.sessionId as number);
+      getTotalUnreadCount().then((count) => {
+        if (mountedRef.current) setTotalUnread(count);
+      });
+    });
+
     return () => {
       unsubSession();
       unsubMessage();
       unsubResolved();
       unsubReopened();
+      unsubRead();
       handle.unsubscribe();
     };
   }, [subscribeToChannel]);

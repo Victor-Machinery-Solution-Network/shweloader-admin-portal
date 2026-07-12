@@ -516,6 +516,10 @@ export async function markSessionRead(sessionId: number) {
       read_at: readAt,
     }).catch(() => {});
 
+    // Sync other admin surfaces (admin phone app + other portal tabs):
+    // clears the session's unread badge live everywhere.
+    triggerAdminChatEvent("session-read", { sessionId }).catch(() => {});
+
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true };
   } catch (error) {
@@ -712,6 +716,9 @@ export async function sendTypingEvent(sessionId: number) {
   triggerChatEvent(sessionId, "typing-start", {
     sender_type: "admin",
     sender_name: senderName,
+    // Lets other admin surfaces (phone app, other portal tabs) show
+    // "<name> is typing…" while excluding the sender's own echo.
+    sender_id: adminId,
   }).catch(() => {});
 
   return { success: true };
