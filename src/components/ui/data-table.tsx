@@ -370,6 +370,23 @@ function DataTable<TData, TValue>({
     React.useState<VisibilityState>(initialColumnVisibility ?? {});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
+  // Pagination survives detail-page round-trips (remounts) and server-action
+  // data refreshes. sessionStorage keyed per page (filterStorageKey when
+  // provided, else pathname) — restored after mount to avoid SSR mismatch.
+  // ponytail: sessionStorage over URL params — no shared-component router wiring
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize });
+  const pageStorageKey = `dt-page:${filterStorageKey ?? (typeof window !== "undefined" ? window.location.pathname : "")}`;
+  React.useEffect(() => {
+    if (!enablePagination) return;
+    const saved = Number(sessionStorage.getItem(pageStorageKey));
+    if (saved > 0) setPagination((p) => ({ ...p, pageIndex: saved }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    if (!enablePagination) return;
+    sessionStorage.setItem(pageStorageKey, String(pagination.pageIndex));
+  }, [enablePagination, pageStorageKey, pagination.pageIndex]);
+
   // Global search state (for multi-column search)
   const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -533,23 +550,31 @@ function DataTable<TData, TValue>({
     ...(searchKeys && {
       globalFilterFn: globalFilterFn as FilterFn<TData>,
     }),
+    autoResetPageIndex: false,
     onSortingChange: setSorting,
     onColumnFiltersChange: filterConfig ? undefined : setInternalColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination,
       ...(searchKeys && { globalFilter }),
     },
-    initialState: {
-      pagination: {
-        pageSize,
-      },
-    },
   });
+
+  // Clamp: if the (filtered) data shrank below the current page, jump to the
+  // last real page instead of showing an empty table.
+  const pageCount = table.getPageCount();
+  React.useEffect(() => {
+    if (!enablePagination || pageCount === 0) return;
+    if (pagination.pageIndex > pageCount - 1) {
+      setPagination((p) => ({ ...p, pageIndex: pageCount - 1 }));
+    }
+  }, [enablePagination, pageCount, pagination.pageIndex]);
 
   const selectedRows = React.useMemo(
     () => table.getFilteredSelectedRowModel().rows.map((row) => row.original),
