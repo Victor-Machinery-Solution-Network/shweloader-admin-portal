@@ -67,6 +67,7 @@ import { useSession } from "next-auth/react";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { usePermissions } from "@/components/providers/permissions-provider";
 import { MasterDataExportDialog } from "@/components/features/listings/master-data-export-dialog";
+import { ChatUnreadBadge } from "@/components/layout/chat-unread-badge";
 import {
   Dialog,
   DialogContent,
@@ -569,6 +570,7 @@ export function AppSidebar() {
                           <span>Chat</span>
                         </Link>
                       </SidebarMenuButton>
+                      <ChatUnreadBadge />
                     </SidebarMenuItem>
                   )}
 
