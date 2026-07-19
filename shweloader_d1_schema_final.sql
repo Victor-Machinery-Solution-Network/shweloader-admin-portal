@@ -318,8 +318,8 @@ CREATE TABLE IF NOT EXISTS chat_session (
     resolved_at TIMESTAMP,
     last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_message_preview TEXT,
-    unread_admin_count INTEGER NOT NULL DEFAULT 0,
     unread_user_count INTEGER NOT NULL DEFAULT 0,
+    -- admin unread is now per-admin, derived from admin_session_read (see below)
     admin_last_read_at TIMESTAMP,
     user_last_read_at TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
@@ -335,6 +335,16 @@ CREATE INDEX IF NOT EXISTS idx_chat_session_app_user ON chat_session(app_user_id
 CREATE INDEX IF NOT EXISTS idx_chat_session_status ON chat_session(status);
 CREATE INDEX IF NOT EXISTS idx_chat_session_active ON chat_session(deleted_at, status, last_message_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_session_created ON chat_session(created_at DESC);
+
+-- Per-admin read watermark. Absent row = this admin has never opened the
+-- session, so every customer message counts as unread for them. Replaces the
+-- old shared chat_session.unread_admin_count counter.
+CREATE TABLE IF NOT EXISTS admin_session_read (
+    admin_id     INTEGER NOT NULL,   -- admin_user.user_id
+    session_id   INTEGER NOT NULL,   -- chat_session.id
+    last_read_at TEXT    NOT NULL,   -- UTC 'YYYY-MM-DD HH:MM:SS' of last open
+    PRIMARY KEY (admin_id, session_id)
+);
 
 CREATE TABLE IF NOT EXISTS chat_message (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
