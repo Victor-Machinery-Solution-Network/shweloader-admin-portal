@@ -1047,17 +1047,31 @@ export function ListingEditor({
   const convertRentMmkToUsd = (mmk: string) =>
     convertMmkToUsdForInput(mmk, rentActiveRate);
 
-  // Recalculate sale MMK when sale rate changes
+  // When the rate changes, re-derive only the NON-anchor currency so the price
+  // the admin actually entered stays exact. For MMK-priced listings, deriving
+  // MMK from the 2dp-rounded USD round-trips and drifts MMK by a few kyat (the
+  // pricing bug: 130,000,000 -> $30,952.38 -> 129,999,996), so recompute USD
+  // from MMK instead. USD-priced listings keep the old behaviour (MMK follows
+  // the rate). MMK is always the integer source of truth; USD is display-only.
   useEffect(() => {
-    const mmk = convertUsdToMmkForInput(saleUsdPrice, saleActiveRate);
-    if (mmk) setSaleMmkPrice(mmk);
+    if (saleDisplayCurrency === "USD") {
+      const mmk = convertUsdToMmkForInput(saleUsdPrice, saleActiveRate);
+      if (mmk) setSaleMmkPrice(mmk);
+    } else {
+      const usd = convertMmkToUsdForInput(saleMmkPrice, saleActiveRate);
+      if (usd) setSaleUsdPrice(usd);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleActiveRate]);
 
-  // Recalculate rent MMK when rent rate changes
   useEffect(() => {
-    const mmk = convertUsdToMmkForInput(rentUsdPrice, rentActiveRate);
-    if (mmk) setRentMmkPrice(mmk);
+    if (rentDisplayCurrency === "USD") {
+      const mmk = convertUsdToMmkForInput(rentUsdPrice, rentActiveRate);
+      if (mmk) setRentMmkPrice(mmk);
+    } else {
+      const usd = convertMmkToUsdForInput(rentMmkPrice, rentActiveRate);
+      if (usd) setRentUsdPrice(usd);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rentActiveRate]);
 
