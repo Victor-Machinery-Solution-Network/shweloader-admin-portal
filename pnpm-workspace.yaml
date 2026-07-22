@@ -1,0 +1,9 @@
+allowBuilds:
+  # sharp + esbuild were the approved builds before pnpm 11 moved this
+  # setting out of package.json (pnpm.onlyBuiltDependencies is ignored now).
+  '@firebase/util': false
+  esbuild: true
+  msw: false
+  protobufjs: false
+  sharp: true
+  unrs-resolver: false
