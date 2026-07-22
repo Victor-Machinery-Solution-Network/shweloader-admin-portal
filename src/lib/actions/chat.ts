@@ -34,7 +34,7 @@ import type {
 export async function getChatSessionById(
   sessionId: number,
 ): Promise<ChatSessionWithDetails | null> {
-  await requirePermission("chat", "read");
+  const adminId = await requirePermission("chat", "read");
 
   const result = await d1.query<ChatSessionWithDetails>(
     `SELECT
@@ -57,7 +57,12 @@ export async function getChatSessionById(
          WHERE chat_session_id = cs.id AND sender_type != 'system'
          ORDER BY created_at DESC, id DESC
          LIMIT 1) AS last_message_sender_type,
-      cs.unread_admin_count, cs.unread_user_count,
+      -- Per-admin unread (worker parity): customer messages newer than THIS
+      -- admin's last open; never opened => everything counts.
+      (SELECT COUNT(*) FROM chat_message um
+       WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+         AND um.created_at > COALESCE(asr.last_read_at, '0')) AS unread_admin_count,
+      cs.unread_user_count,
       cs.admin_last_read_at, cs.user_last_read_at,
       cs.deleted_at, cs.deleted_by,
       au.full_name AS user_name,
@@ -84,6 +89,7 @@ export async function getChatSessionById(
       pau.company_name AS partner_name
     FROM chat_session cs
     JOIN app_user au ON au.app_user_id = cs.app_user_id
+    LEFT JOIN admin_session_read asr ON asr.session_id = cs.id AND asr.admin_id = ?
     LEFT JOIN business_type bt ON bt.business_type_id = au.business_type_id
     LEFT JOIN chat_message cm_ref ON cm_ref.id = (
       SELECT id FROM chat_message
@@ -101,7 +107,7 @@ export async function getChatSessionById(
     LEFT JOIN partner p ON p.id = pl.partner_id
     LEFT JOIN app_user pau ON pau.app_user_id = p.app_user_id
     WHERE cs.id = ? AND cs.deleted_at IS NULL`,
-    [sessionId],
+    [adminId, sessionId],
   );
   return result.results[0] ?? null;
 }
@@ -184,20 +190,46 @@ export async function getChatMessages(
   }));
 }
 
-/** Get total unread count across all active/pending sessions (for sidebar badge) */
+/** Get total unread count across all active/pending sessions (for sidebar badge).
+ * Per-admin: only messages THIS admin hasn't seen. */
 export async function getTotalUnreadCount(): Promise<number> {
-  await requirePermission("chat", "read");
+  const adminId = await requirePermission("chat", "read");
   const result = await d1.query<{ total: number }>(
-    "SELECT COALESCE(SUM(unread_admin_count), 0) AS total FROM chat_session WHERE status IN ('pending', 'active') AND deleted_at IS NULL",
+    `SELECT COUNT(*) AS total
+     FROM chat_message um
+     JOIN chat_session cs ON cs.id = um.chat_session_id
+     LEFT JOIN admin_session_read asr ON asr.session_id = cs.id AND asr.admin_id = ?
+     WHERE um.sender_type = 'user'
+       AND um.created_at > COALESCE(asr.last_read_at, '0')
+       AND cs.status IN ('pending', 'active') AND cs.deleted_at IS NULL`,
+    [adminId],
   );
   return result.results[0]?.total ?? 0;
+}
+
+/** Per-session unread counts for the CURRENT admin — overlays the shared
+ * cached session list (which can only approximate with the any-admin
+ * watermark) with this admin's true per-admin counts. */
+export async function getMyUnreadCounts(): Promise<Record<number, number>> {
+  const adminId = await requirePermission("chat", "read");
+  const result = await d1.query<{ id: number; unread: number }>(
+    `SELECT cs.id,
+            (SELECT COUNT(*) FROM chat_message um
+             WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+               AND um.created_at > COALESCE(asr.last_read_at, '0')) AS unread
+     FROM chat_session cs
+     LEFT JOIN admin_session_read asr ON asr.session_id = cs.id AND asr.admin_id = ?
+     WHERE cs.status IN ('pending', 'active') AND cs.deleted_at IS NULL`,
+    [adminId],
+  );
+  return Object.fromEntries(result.results.map((r) => [r.id, r.unread]));
 }
 
 /** Get unread chat sessions with user name and preview (for bell notification) */
 export async function getUnreadChatSessions(): Promise<
   { id: number; user_name: string; preview: string; last_message_at: string; unread_count: number }[]
 > {
-  await requirePermission("chat", "read");
+  const adminId = await requirePermission("chat", "read");
   const result = await d1.query<{
     id: number;
     user_name: string;
@@ -208,14 +240,20 @@ export async function getUnreadChatSessions(): Promise<
     `SELECT cs.id, au.full_name AS user_name,
             cs.last_message_preview AS preview,
             cs.last_message_at,
-            cs.unread_admin_count AS unread_count
+            (SELECT COUNT(*) FROM chat_message um
+             WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+               AND um.created_at > COALESCE(asr.last_read_at, '0')) AS unread_count
      FROM chat_session cs
      JOIN app_user au ON au.app_user_id = cs.app_user_id
-     WHERE cs.unread_admin_count > 0
+     LEFT JOIN admin_session_read asr ON asr.session_id = cs.id AND asr.admin_id = ?
+     WHERE (SELECT COUNT(*) FROM chat_message um
+            WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+              AND um.created_at > COALESCE(asr.last_read_at, '0')) > 0
        AND cs.status IN ('pending', 'active')
        AND cs.deleted_at IS NULL
      ORDER BY cs.last_message_at DESC
      LIMIT 10`,
+    [adminId],
   );
   return result.results;
 }
@@ -492,21 +530,36 @@ export async function resolveSession(sessionId: number) {
 /** Mark session as read by admin (only if unread count > 0) */
 export async function markSessionRead(sessionId: number) {
   try {
-    await requirePermission("chat", "read");
+    const adminId = await requirePermission("chat", "read");
 
-    // Only update if there are unread messages (avoids unnecessary cache invalidation)
-    const result = await d1.query<{ unread_admin_count: number }>(
-      "SELECT unread_admin_count FROM chat_session WHERE id = ?",
-      [sessionId],
+    // Only update if THIS admin has unread messages (avoids unnecessary
+    // cache invalidation)
+    const result = await d1.query<{ unread: number }>(
+      `SELECT (SELECT COUNT(*) FROM chat_message um
+               WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+                 AND um.created_at > COALESCE(asr.last_read_at, '0')) AS unread
+       FROM chat_session cs
+       LEFT JOIN admin_session_read asr ON asr.session_id = cs.id AND asr.admin_id = ?
+       WHERE cs.id = ?`,
+      [adminId, sessionId],
     );
-    if (result.results[0]?.unread_admin_count === 0) {
+    if (result.results[0]?.unread === 0) {
       return { success: true };
     }
 
     const readAt = new Date().toISOString();
 
+    // Per-admin read watermark — only this admin's unread clears. The
+    // session-level admin_last_read_at stays: it powers the customer's
+    // "Seen" receipt (fires when ANY admin reads). Mirrors the chat worker.
     await d1.query(
-      "UPDATE chat_session SET unread_admin_count = 0, admin_last_read_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      `INSERT INTO admin_session_read (admin_id, session_id, last_read_at)
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(admin_id, session_id) DO UPDATE SET last_read_at = CURRENT_TIMESTAMP`,
+      [adminId, sessionId],
+    );
+    await d1.query(
+      "UPDATE chat_session SET admin_last_read_at = CURRENT_TIMESTAMP WHERE id = ?",
       [sessionId],
     );
 
@@ -516,9 +569,10 @@ export async function markSessionRead(sessionId: number) {
       read_at: readAt,
     }).catch(() => {});
 
-    // Sync other admin surfaces (admin phone app + other portal tabs):
-    // clears the session's unread badge live everywhere.
-    triggerAdminChatEvent("session-read", { sessionId }).catch(() => {});
+    // Sync THIS admin's other surfaces (their phone app / other portal tabs).
+    // Per-admin unread: listeners ignore reads by other admins, so the
+    // payload identifies the reader (worker sends readBy=username).
+    triggerAdminChatEvent("session-read", { sessionId, adminId }).catch(() => {});
 
     invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
     return { success: true };

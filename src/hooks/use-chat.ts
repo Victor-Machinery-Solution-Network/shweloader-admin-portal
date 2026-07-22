@@ -262,6 +262,7 @@ export function useChatInbox(
 ) {
   const [totalUnread, setTotalUnread] = useState(0);
   const { subscribeToChannel } = usePusher();
+  const { data: authSession } = useSession();
   const mountedRef = useRef(true);
 
   // useEffectEvent gives stable handlers that always see the latest props,
@@ -281,8 +282,14 @@ export function useChatInbox(
   const handleSessionReopened = useEffectEvent((sessionId: number) => {
     onSessionReopened?.(sessionId);
   });
-  const handleSessionRead = useEffectEvent((sessionId: number) => {
-    onSessionRead?.(sessionId);
+  const handleSessionRead = useEffectEvent((raw: Record<string, unknown>) => {
+    // Per-admin unread: only clear the badge when *I* read the session on
+    // another surface (my phone / another tab). Other admins' reads no
+    // longer clear mine. Worker sends readBy=username; portal sends adminId.
+    const mine =
+      (raw.readBy != null && raw.readBy === authSession?.user?.name) ||
+      (raw.adminId != null && String(raw.adminId) === String(authSession?.user?.id ?? ""));
+    if (mine) onSessionRead?.(raw.sessionId as number);
   });
 
   // Initial fetch
@@ -361,11 +368,12 @@ export function useChatInbox(
       handleSessionReopened(raw.sessionId as number);
     });
 
-    // Another admin surface (phone app / other portal tab) read a session:
-    // clear its badge here too and re-sync the total unread count.
+    // An admin surface read a session. The badge clear is gated to MY own
+    // reads inside handleSessionRead; the total refetch is per-admin on the
+    // server, so it's always safe to re-sync.
     const unsubRead = handle.subscribe("session-read", (data: unknown) => {
       const raw = data as Record<string, unknown>;
-      handleSessionRead(raw.sessionId as number);
+      handleSessionRead(raw);
       getTotalUnreadCount().then((count) => {
         if (mountedRef.current) setTotalUnread(count);
       });

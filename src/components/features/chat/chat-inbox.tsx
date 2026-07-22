@@ -6,7 +6,7 @@ import { SessionList } from "./session-list";
 import { ConversationPanel } from "./conversation-panel";
 import { ContextPanel } from "./context-panel";
 import { useChatInbox, markReadAndNotify } from "@/hooks/use-chat";
-import { getSessionProducts, getChatSessionById } from "@/lib/actions/chat";
+import { getSessionProducts, getChatSessionById, getMyUnreadCounts } from "@/lib/actions/chat";
 import type { ChatSessionWithDetails, ProductDiscussed } from "@/types/chat";
 import { useAdminPresence } from "@/hooks/use-admin-presence";
 
@@ -33,6 +33,25 @@ export function ChatInbox({ sessions: initialSessions }: ChatInboxProps) {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+  // The server-rendered list comes from a shared cache that can't know which
+  // admin is looking, so its unread counts are the any-admin approximation.
+  // Overlay MY true per-admin counts once on mount (skip the session being
+  // opened — markReadAndNotify is zeroing it concurrently).
+  useEffect(() => {
+    getMyUnreadCounts()
+      .then((map) => {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === selectedIdRef.current
+              ? s
+              : { ...s, unread_admin_count: map[s.id] ?? 0 },
+          ),
+        );
+      })
+      .catch(() => {});
+     
+  }, []);
+
   const [sessionProducts, setSessionProducts] = useState<ProductDiscussed[]>([]);
   const [productRefreshKey, setProductRefreshKey] = useState(0);
   const pendingSessionRef = useRef<number | null>(null);

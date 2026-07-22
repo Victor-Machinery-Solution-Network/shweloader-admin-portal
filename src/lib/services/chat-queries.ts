@@ -51,7 +51,15 @@ export async function getChatSessionsWithDetails(): Promise<
          WHERE chat_session_id = cs.id AND sender_type != 'system'
          ORDER BY created_at DESC, id DESC
          LIMIT 1) AS last_message_sender_type,
-      cs.unread_admin_count, cs.unread_user_count,
+      -- unread_admin_count column is GONE (per-admin model, see
+      -- admin_session_read). This shared cache can't know which admin is
+      -- looking (no auth() inside "use cache"), so approximate with the
+      -- any-admin watermark; ChatInbox overlays the true per-admin counts
+      -- via getMyUnreadCounts() after mount.
+      (SELECT COUNT(*) FROM chat_message um
+       WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+         AND um.created_at > COALESCE(cs.admin_last_read_at, '0')) AS unread_admin_count,
+      cs.unread_user_count,
       cs.admin_last_read_at, cs.user_last_read_at,
       cs.deleted_at, cs.deleted_by,
       au.full_name AS user_name,
@@ -121,7 +129,9 @@ export async function getRecentChatSessions(): Promise<
     `SELECT cs.id, au.full_name AS user_name,
             cs.last_message_preview AS preview,
             cs.last_message_at,
-            cs.unread_admin_count AS unread_count
+            (SELECT COUNT(*) FROM chat_message um
+             WHERE um.chat_session_id = cs.id AND um.sender_type = 'user'
+               AND um.created_at > COALESCE(cs.admin_last_read_at, '0')) AS unread_count
      FROM chat_session cs
      JOIN app_user au ON au.app_user_id = cs.app_user_id
      WHERE cs.last_message_at IS NOT NULL
