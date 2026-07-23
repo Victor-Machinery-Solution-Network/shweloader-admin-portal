@@ -14,64 +14,36 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import type { TrendPoint } from "@/lib/ga/queries";
 
 type TimePeriod = "3months" | "30days" | "7days";
-
-function generateChartData(period: TimePeriod) {
-  if (period === "7days") {
-    return [
-      { date: "Mar 5", mobile: 320, desktop: 280 },
-      { date: "Mar 6", mobile: 450, desktop: 390 },
-      { date: "Mar 7", mobile: 280, desktop: 320 },
-      { date: "Mar 8", mobile: 510, desktop: 420 },
-      { date: "Mar 9", mobile: 380, desktop: 350 },
-      { date: "Mar 10", mobile: 430, desktop: 480 },
-      { date: "Mar 11", mobile: 530, desktop: 460 },
-    ];
-  }
-
-  if (period === "30days") {
-    return Array.from({ length: 30 }, (_, i) => {
-      const day = i + 1;
-      return {
-        date: `Feb ${day}`,
-        mobile: Math.floor(200 + Math.sin(day * 0.5) * 200 + Math.random() * 100),
-        desktop: Math.floor(180 + Math.cos(day * 0.4) * 180 + Math.random() * 80),
-      };
-    });
-  }
-
-  // 3 months — daily data for Jun (matches screenshot style)
-  return Array.from({ length: 30 }, (_, i) => {
-    const day = i + 1;
-    return {
-      date: `Jun ${day}`,
-      mobile: Math.floor(250 + Math.sin(day * 0.7) * 250 + Math.random() * 80),
-      desktop: Math.floor(200 + Math.cos(day * 0.6) * 200 + Math.random() * 60),
-    };
-  });
-}
-
-const chartConfig = {
-  mobile: {
-    label: "Mobile",
-    color: "var(--color-foreground)",
-  },
-  desktop: {
-    label: "Desktop",
-    color: "var(--color-primary)",
-  },
-} satisfies ChartConfig;
-
+const sliceDays: Record<TimePeriod, number> = {
+  "3months": 90,
+  "30days": 30,
+  "7days": 7,
+};
 const periodLabels: Record<TimePeriod, string> = {
   "3months": "Last 3 months",
   "30days": "Last 30 days",
   "7days": "Last 7 days",
 };
 
-export default function VisitorsChart() {
+const chartConfig = {
+  desktop: { label: "Desktop", color: "var(--color-primary)" },
+  mobile: { label: "Mobile", color: "var(--color-foreground)" },
+  app: { label: "App", color: "var(--chart-3, oklch(0.7 0.15 160))" },
+} satisfies ChartConfig;
+
+export default function VisitorsChart({
+  initialData,
+  errored = false,
+}: {
+  initialData: TrendPoint[];
+  errored?: boolean;
+}) {
   const [period, setPeriod] = useState<TimePeriod>("3months");
-  const data = generateChartData(period);
+  const data = initialData.slice(-sliceDays[period]);
+  const label = (d: string) => d.slice(5); // "07-23"
 
   return (
     <Card>
@@ -79,17 +51,12 @@ export default function VisitorsChart() {
         <div className="space-y-1">
           <CardTitle className="text-xl font-bold">Total Visitors</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Total for the{" "}
-            {period === "3months"
-              ? "last 3 months"
-              : period === "30days"
-                ? "last 30 days"
-                : "last 7 days"}
+            Website (desktop + mobile) and the app, {periodLabels[period].toLowerCase()}
           </p>
         </div>
         <div className="flex gap-1 rounded-lg border p-1">
           {(Object.entries(periodLabels) as [TimePeriod, string][]).map(
-            ([key, label]) => (
+            ([key, l]) => (
               <button
                 key={key}
                 onClick={() => setPeriod(key)}
@@ -99,59 +66,57 @@ export default function VisitorsChart() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {label}
+                {l}
               </button>
-            )
+            ),
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
-          <AreaChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-foreground)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="var(--color-foreground)" stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              interval="preserveStartEnd"
-              tickFormatter={(value) => value}
-            />
-            <YAxis hide />
-            <ChartTooltip
-              content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Area
-              dataKey="desktop"
-              type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-primary)"
-              strokeWidth={2}
-              stackId="a"
-            />
-            <Area
-              dataKey="mobile"
-              type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-foreground)"
-              strokeWidth={2}
-              stackId="b"
-            />
-          </AreaChart>
-        </ChartContainer>
+        {errored ? (
+          <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+            Couldn&apos;t load visitor data from Google Analytics.
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+            No visitor data yet — GA4 collects from the day the tag went live.
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                {(["desktop", "mobile", "app"] as const).map((k) => (
+                  <linearGradient key={k} id={`fill-${k}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartConfig[k].color} stopOpacity={0.35} />
+                    <stop offset="95%" stopColor={chartConfig[k].color} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                interval="preserveStartEnd"
+                tickFormatter={label}
+              />
+              <YAxis hide />
+              <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+              {(["desktop", "mobile", "app"] as const).map((k) => (
+                <Area
+                  key={k}
+                  dataKey={k}
+                  type="natural"
+                  fill={`url(#fill-${k})`}
+                  stroke={chartConfig[k].color}
+                  strokeWidth={2}
+                  stackId="a"
+                />
+              ))}
+            </AreaChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

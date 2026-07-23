@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import {
   Card,
@@ -10,25 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { OverviewStats } from "@/lib/actions/dashboard";
-
-// Recharts is ~370KB — load it only after the stats cards have painted.
-const VisitorsChart = dynamic(() => import("./visitors-chart"), {
-  ssr: false,
-  loading: () => (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between">
-        <div className="space-y-2">
-          <div className="h-6 w-32 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-48 animate-pulse rounded bg-muted/60" />
-        </div>
-        <div className="h-9 w-64 animate-pulse rounded-lg bg-muted/60" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full animate-pulse rounded bg-muted/40" />
-      </CardContent>
-    </Card>
-  ),
-});
 
 // ---------- Formatting ----------
 
@@ -142,15 +122,10 @@ export default function DashboardOverviewClient({
   stats: OverviewStats;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {buildCards(stats).map((card) => (
-          <StatCard key={card.title} {...card} />
-        ))}
-      </div>
-      {/* Chart data is still the placeholder set — real series TBD with
-          stakeholders (next session). */}
-      <VisitorsChart />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {buildCards(stats).map((card) => (
+        <StatCard key={card.title} {...card} />
+      ))}
     </div>
   );
 }
