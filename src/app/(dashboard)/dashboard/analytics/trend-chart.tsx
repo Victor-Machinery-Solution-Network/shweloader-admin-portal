@@ -1,5 +1,5 @@
 import { getVisitorsTrend } from "@/lib/ga/queries";
-import VisitorsChart from "../overview/visitors-chart";
+import VisitorsChart from "./visitors-chart";
 
 export default async function TrendChart({ days = 90 }: { days?: number }) {
   let data: Awaited<ReturnType<typeof getVisitorsTrend>> = [];
