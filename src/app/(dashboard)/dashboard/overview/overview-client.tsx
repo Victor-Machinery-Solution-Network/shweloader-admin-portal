@@ -32,10 +32,6 @@ const VisitorsChart = dynamic(() => import("./visitors-chart"), {
 
 // ---------- Formatting ----------
 
-const compact = new Intl.NumberFormat("en", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 const plain = new Intl.NumberFormat("en");
 
 /** Month-to-date growth: added-this-month vs the total at the start of the month. */
@@ -50,21 +46,21 @@ function monthGrowthPct(monthly: number, total: number): number {
 interface StatCardData {
   title: string;
   value: string;
-  /** Full-precision value for the hover tooltip (compact values round). */
-  exact?: string;
   change: number;
   /** Optional secondary value line (e.g. the USD equivalent). */
   secondary?: string;
+  /** Wide card: spans 2 grid columns. */
+  span2?: boolean;
 }
 
 function buildCards(s: OverviewStats): StatCardData[] {
   return [
     {
       title: "Total Sale Product Value",
-      value: `MMK ${compact.format(s.saleValueMmk)}`,
-      exact: `MMK ${plain.format(s.saleValueMmk)} · $${plain.format(s.saleValueUsd)}`,
+      value: `MMK ${plain.format(s.saleValueMmk)}`,
       change: monthGrowthPct(s.monthlySaleValueMmk, s.saleValueMmk),
-      secondary: `≈ $${compact.format(s.saleValueUsd)} USD`,
+      secondary: `≈ $${plain.format(s.saleValueUsd)} USD`,
+      span2: true,
     },
     {
       title: "Total Users",
@@ -101,13 +97,13 @@ function buildCards(s: OverviewStats): StatCardData[] {
 
 // ---------- Components ----------
 
-function StatCard({ title, value, exact, change, secondary }: StatCardData) {
+function StatCard({ title, value, change, secondary, span2 }: StatCardData) {
   const isPositive = change >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
   return (
     // gap-4 (Card default is 6): tighter space between the metric label and value.
-    <Card className="gap-4">
+    <Card className={span2 ? "gap-4 sm:col-span-2" : "gap-4"}>
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -127,10 +123,7 @@ function StatCard({ title, value, exact, change, secondary }: StatCardData) {
         </div>
       </CardHeader>
       <CardContent>
-        <p
-          className="flex flex-wrap items-baseline gap-x-2 text-3xl font-bold tracking-tight"
-          title={exact}
-        >
+        <p className="flex flex-wrap items-baseline gap-x-2 text-3xl font-bold tracking-tight">
           {value}
           {secondary && (
             <span className="text-sm font-medium text-muted-foreground">
