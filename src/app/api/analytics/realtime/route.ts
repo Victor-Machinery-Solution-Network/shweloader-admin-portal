@@ -17,12 +17,13 @@ export async function GET() {
   }
   try {
     const data = await getRealtimeActive();
-    // 25s shared cache: many admins polling collapse to one upstream call.
+    // Short private cache so a single tab's rapid re-polls don't each hit GA.
     return NextResponse.json(
       { ...data, configured: true },
       { headers: { "Cache-Control": "private, max-age=25" } },
     );
-  } catch {
+  } catch (e) {
+    console.error("[analytics] realtime", e);
     return NextResponse.json({ error: "GA error" }, { status: 502 });
   }
 }

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTopPages } from "@/lib/ga/queries";
+import { getTopPages, type PageRow } from "@/lib/ga/queries";
+import { SectionError } from "./bar-list";
 
 function mmss(s: number) {
   const m = Math.floor(s / 60);
@@ -7,7 +8,15 @@ function mmss(s: number) {
 }
 
 export default async function TopPages({ days = 30 }: { days?: number }) {
-  const rows = await getTopPages(days);
+  let rows: PageRow[] = [];
+  let failed = false;
+  try {
+    rows = await getTopPages(days);
+  } catch (e) {
+    console.error("[analytics] top-pages", e);
+    failed = true;
+  }
+  if (failed) return <SectionError title="Top pages" />;
   return (
     <Card>
       <CardHeader>

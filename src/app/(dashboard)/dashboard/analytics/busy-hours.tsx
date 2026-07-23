@@ -1,10 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBusyHours } from "@/lib/ga/queries";
+import { SectionError } from "./bar-list";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function BusyHours({ days = 30 }: { days?: number }) {
-  const cells = await getBusyHours(days);
+  let cells: Awaited<ReturnType<typeof getBusyHours>> = [];
+  let failed = false;
+  try {
+    cells = await getBusyHours(days);
+  } catch (e) {
+    console.error("[analytics] busy-hours", e);
+    failed = true;
+  }
+  if (failed) return <SectionError title="Busy hours (visitors by hour)" />;
   const max = Math.max(1, ...cells.map((c) => c.value));
   const at = (d: number, h: number) =>
     cells.find((c) => c.day === d && c.hour === h)?.value ?? 0;

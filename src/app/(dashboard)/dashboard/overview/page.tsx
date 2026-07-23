@@ -18,7 +18,8 @@ async function ChartData() {
   let errored = false;
   try {
     data = await getVisitorsTrend(90);
-  } catch {
+  } catch (e) {
+    console.error("[overview] visitors chart", e);
     errored = true;
   }
   return <VisitorsChart initialData={data} errored={errored} />;

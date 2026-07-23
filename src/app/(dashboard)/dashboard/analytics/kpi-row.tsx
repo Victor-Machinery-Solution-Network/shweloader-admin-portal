@@ -1,12 +1,21 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getKpis } from "@/lib/ga/queries";
+import { getKpis, type Kpi } from "@/lib/ga/queries";
+import { SectionError } from "./bar-list";
 
 const plain = new Intl.NumberFormat("en");
 
 export default async function KpiRow({ days = 30 }: { days?: number }) {
-  const kpis = await getKpis(days);
+  let kpis: Kpi[] = [];
+  let failed = false;
+  try {
+    kpis = await getKpis(days);
+  } catch (e) {
+    console.error("[analytics] kpi-row", e);
+    failed = true;
+  }
+  if (failed) return <SectionError title="Analytics" />;
   if (kpis.length === 0) {
     return (
       <Card>

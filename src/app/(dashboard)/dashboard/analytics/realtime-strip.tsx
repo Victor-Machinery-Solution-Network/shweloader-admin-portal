@@ -15,6 +15,11 @@ export default function RealtimeStrip() {
         if (!res.ok) return;
         const d = await res.json();
         if (!alive) return;
+        if (d.configured === false) {
+          setTotal(null);
+          setPerMinute([]);
+          return;
+        }
         setTotal(d.total ?? 0);
         setPerMinute(d.perMinute ?? []);
       } catch {
@@ -23,9 +28,14 @@ export default function RealtimeStrip() {
     }
     poll();
     const id = setInterval(poll, 30_000);
+    function onVisible() {
+      if (!document.hidden) poll();
+    }
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

@@ -82,7 +82,7 @@ async function _kpis(days: number): Promise<Kpi[]> {
   });
   const [cur, prev] = await batchRunReports([
     body(`${days}daysAgo`, "today"),
-    body(`${days * 2}daysAgo`, `${days + 1}daysAgo`),
+    body(`${days * 2 + 1}daysAgo`, `${days + 1}daysAgo`),
   ]);
   const c = cur[0]?.metrics ?? [0, 0, 0, 0];
   const p = prev[0]?.metrics ?? [0, 0, 0, 0];
@@ -106,10 +106,18 @@ async function _kpis(days: number): Promise<Kpi[]> {
 
 async function _realtime(): Promise<{ total: number; perMinute: number[] }> {
   if (!gaConfigured()) return { total: 0, perMinute: [] };
-  const rows = await runRealtimeReport({
-    dimensions: [{ name: "minutesAgo" }],
-    metrics: [{ name: "activeUsers" }],
-  });
+  // total across minute buckets double-counts a user seen in two minutes;
+  // a second no-dimension query gives the true unique count. Run both
+  // concurrently — they're independent GA calls.
+  const [rows, [uniqueRow]] = await Promise.all([
+    runRealtimeReport({
+      dimensions: [{ name: "minutesAgo" }],
+      metrics: [{ name: "activeUsers" }],
+    }),
+    runRealtimeReport({
+      metrics: [{ name: "activeUsers" }],
+    }),
+  ]);
   const perMinute = Array(30).fill(0);
   let total = 0;
   for (const { dims, metrics } of rows) {
@@ -117,11 +125,6 @@ async function _realtime(): Promise<{ total: number; perMinute: number[] }> {
     if (m >= 0 && m < 30) perMinute[29 - m] = metrics[0];
     total += metrics[0];
   }
-  // total across minute buckets double-counts a user seen in two minutes;
-  // a second no-dimension query gives the true unique count.
-  const [uniqueRow] = await runRealtimeReport({
-    metrics: [{ name: "activeUsers" }],
-  });
   return { total: uniqueRow?.metrics[0] ?? total, perMinute };
 }
 

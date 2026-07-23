@@ -36,3 +36,18 @@ export function BarList({
     </Card>
   );
 }
+
+export function SectionError({ title }: { title: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t load this section from Google Analytics.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
