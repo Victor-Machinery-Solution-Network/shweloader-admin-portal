@@ -15,7 +15,7 @@ import type { PartnerType } from "@/types/partner";
 interface PartnerTypeFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  partnerType?: Pick<PartnerType, "id" | "name">;
+  partnerType?: Pick<PartnerType, "id" | "name" | "name_my">;
 }
 
 export function PartnerTypeForm({
@@ -69,6 +69,18 @@ export function PartnerTypeForm({
               placeholder="e.g. Dealer"
               defaultValue={partnerType?.name ?? ""}
               errorMessage="Partner type name is required"
+              autoComplete="off"
+            />
+          </FieldContent>
+        </Field>
+        <Field orientation="vertical">
+          <FieldLabel>Burmese Name</FieldLabel>
+          <FieldContent>
+            <RequiredInput
+              name="name_my"
+              placeholder="e.g. ယာဉ်ရောင်းချသူ"
+              defaultValue={partnerType?.name_my ?? ""}
+              errorMessage="Burmese name is required"
               autoComplete="off"
             />
           </FieldContent>

@@ -14,7 +14,7 @@ import {
 import type { PartnerType } from "@/types/partner";
 
 interface RowActionsProps {
-  partnerType: Pick<PartnerType, "id" | "name">;
+  partnerType: Pick<PartnerType, "id" | "name" | "name_my">;
 }
 
 export function RowActions({ partnerType }: RowActionsProps) {

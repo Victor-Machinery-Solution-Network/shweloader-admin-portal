@@ -16,7 +16,7 @@ import type { AppUser } from "@/types/app-user";
 
 interface PartnersClientProps {
   partners: PartnerWithDetails[];
-  partnerTypes: { id: number; name: string }[];
+  partnerTypes: { id: number; name: string; name_my: string | null }[];
   initialUsers: AppUser[];
 }
 

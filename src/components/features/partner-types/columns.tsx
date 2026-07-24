@@ -6,7 +6,7 @@ import { DataTableColumnHeader } from "@/components/ui/data-table";
 import { RowActions } from "./row-actions";
 import type { PartnerType } from "@/types/partner";
 
-export type PartnerTypeRow = Pick<PartnerType, "id" | "name">;
+export type PartnerTypeRow = Pick<PartnerType, "id" | "name" | "name_my">;
 
 export const columns: ColumnDef<PartnerTypeRow>[] = [
   {
@@ -21,6 +21,17 @@ export const columns: ColumnDef<PartnerTypeRow>[] = [
         </div>
         <span className="font-medium">{row.getValue("name")}</span>
       </div>
+    ),
+  },
+  {
+    accessorKey: "name_my",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Burmese Name" />
+    ),
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm">
+        {(row.getValue("name_my") as string | null) || "—"}
+      </span>
     ),
   },
   {
