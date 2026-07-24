@@ -2,6 +2,7 @@
 export interface EquipmentMainCategory {
   category_id: number;
   name: string;
+  name_my: string | null;
   image_url: string | null;
   display_order: string;
   created_by: number | null;
@@ -15,6 +16,7 @@ export interface EquipmentSubCategory {
   sub_category_id: number;
   category_id: number;
   name: string;
+  name_my: string | null;
   image_url: string | null;
   display_order: string;
   created_by: number | null;

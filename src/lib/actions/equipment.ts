@@ -17,9 +17,13 @@ import { auditLog } from "@/lib/actions/audit";
 
 export async function createMainCategory(formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
+  }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
   }
 
   try {
@@ -32,6 +36,7 @@ export async function createMainCategory(formData: FormData) {
     ]);
     await mainCategoryService.create({
       name: name.trim(),
+      name_my,
       image_url,
       created_by,
       display_order,
@@ -49,9 +54,13 @@ export async function createMainCategory(formData: FormData) {
 
 export async function updateMainCategory(id: number, formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
 
   if (!name?.trim()) {
     return { success: false, error: "Category name is required" };
+  }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
   }
 
   try {
@@ -60,7 +69,7 @@ export async function updateMainCategory(id: number, formData: FormData) {
     const image_url = await processFileField(
       formData, "image_url", "categories/equipments/main/", name.trim(), existing?.image_url,
     );
-    await mainCategoryService.update(id, { name: name.trim(), image_url });
+    await mainCategoryService.update(id, { name: name.trim(), name_my, image_url });
     await cleanupOldFile(existing?.image_url, image_url);
     invalidateTag(CACHE_TAGS.EQUIPMENT_MAIN_CATEGORIES);
     auditLog(userId, "updated equipment main category | id=" + id);
@@ -142,10 +151,14 @@ export async function getSubCategoryCount(
 
 export async function createSubCategory(formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
   const category_id = Number(formData.get("category_id"));
 
   if (!name?.trim()) {
     return { success: false, error: "Sub category name is required" };
+  }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
   }
   if (!category_id) {
     return { success: false, error: "Main category is required" };
@@ -161,6 +174,7 @@ export async function createSubCategory(formData: FormData) {
     ]);
     await subCategoryService.create({
       name: name.trim(),
+      name_my,
       category_id,
       image_url,
       created_by,
@@ -179,10 +193,14 @@ export async function createSubCategory(formData: FormData) {
 
 export async function updateSubCategory(id: number, formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
   const category_id = Number(formData.get("category_id"));
 
   if (!name?.trim()) {
     return { success: false, error: "Sub category name is required" };
+  }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
   }
   if (!category_id) {
     return { success: false, error: "Main category is required" };
@@ -196,6 +214,7 @@ export async function updateSubCategory(id: number, formData: FormData) {
     );
     await subCategoryService.update(id, {
       name: name.trim(),
+      name_my,
       category_id,
       image_url,
     });
@@ -339,7 +358,7 @@ export async function getEquipmentModelsPageData() {
       ) AS models,
 
       (SELECT json_group_array(json_object(
-        'category_id', mc.category_id, 'name', mc.name,
+        'category_id', mc.category_id, 'name', mc.name, 'name_my', mc.name_my,
         'image_url', mc.image_url, 'display_order', mc.display_order,
         'created_by', mc.created_by, 'created_at', mc.created_at
       )) FROM (SELECT * FROM equipment_main_category WHERE deleted_at IS NULL ORDER BY display_order) mc
@@ -347,7 +366,7 @@ export async function getEquipmentModelsPageData() {
 
       (SELECT json_group_array(json_object(
         'sub_category_id', sc.sub_category_id, 'category_id', sc.category_id,
-        'name', sc.name, 'image_url', sc.image_url,
+        'name', sc.name, 'name_my', sc.name_my, 'image_url', sc.image_url,
         'display_order', sc.display_order, 'created_by', sc.created_by,
         'created_at', sc.created_at
       )) FROM (SELECT * FROM equipment_sub_category WHERE deleted_at IS NULL ORDER BY display_order) sc
@@ -382,6 +401,7 @@ interface SubCategoryRow {
   sub_category_id: number;
   category_id: number;
   name: string;
+  name_my: string | null;
   image_url: string | null;
   display_order: string;
   created_by: number | null;
@@ -401,7 +421,7 @@ export async function getSubCategoriesPageData() {
     SELECT
       (SELECT json_group_array(json_object(
         'sub_category_id', sc.sub_category_id, 'category_id', sc.category_id,
-        'name', sc.name, 'image_url', sc.image_url,
+        'name', sc.name, 'name_my', sc.name_my, 'image_url', sc.image_url,
         'display_order', sc.display_order, 'created_by', sc.created_by,
         'created_at', sc.created_at,
         'equipment_model_count',
@@ -412,7 +432,7 @@ export async function getSubCategoriesPageData() {
       ) AS sub_categories,
 
       (SELECT json_group_array(json_object(
-        'category_id', mc.category_id, 'name', mc.name,
+        'category_id', mc.category_id, 'name', mc.name, 'name_my', mc.name_my,
         'image_url', mc.image_url, 'display_order', mc.display_order,
         'created_by', mc.created_by, 'created_at', mc.created_at
       )) FROM (SELECT * FROM equipment_main_category WHERE deleted_at IS NULL ORDER BY display_order) mc
@@ -426,6 +446,7 @@ export async function getSubCategoriesPageData() {
     sub_category_id: sc.sub_category_id,
     category_id: sc.category_id,
     name: sc.name,
+    name_my: sc.name_my,
     image_url: sc.image_url,
     display_order: sc.display_order,
     created_by: sc.created_by,

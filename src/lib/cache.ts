@@ -136,9 +136,9 @@ export function getPartnersWithDetails() {
   return fetchPartnersWithDetails();
 }
 
-export async function getPartnerTypes(): Promise<{ id: number; name: string }[]> {
-  const { results } = await d1.query<{ id: number; name: string }>(
-    "SELECT id, name FROM partner_type WHERE deleted_at IS NULL ORDER BY name ASC",
+export async function getPartnerTypes(): Promise<{ id: number; name: string; name_my: string | null }[]> {
+  const { results } = await d1.query<{ id: number; name: string; name_my: string | null }>(
+    "SELECT id, name, name_my FROM partner_type WHERE deleted_at IS NULL ORDER BY name ASC",
   );
   return results;
 }

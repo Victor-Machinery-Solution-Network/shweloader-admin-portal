@@ -13,6 +13,7 @@ export interface Partner {
 export interface PartnerType {
   id: number;
   name: string;
+  name_my: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;

@@ -21,14 +21,18 @@ function invalidatePartnerTypes() {
 
 export async function createPartnerType(formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
 
   if (!name?.trim()) {
     return { success: false, error: "Partner type name is required" };
   }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
+  }
 
   try {
     const userId = await requirePermission("partners", "create");
-    await partnerTypeService.create({ name: name.trim() });
+    await partnerTypeService.create({ name: name.trim(), name_my });
     invalidatePartnerTypes();
     auditLog(userId, "created partner type | name=" + name.trim());
     return { success: true };
@@ -42,14 +46,18 @@ export async function createPartnerType(formData: FormData) {
 
 export async function updatePartnerType(id: number, formData: FormData) {
   const name = formData.get("name") as string;
+  const name_my = (formData.get("name_my") as string)?.trim();
 
   if (!name?.trim()) {
     return { success: false, error: "Partner type name is required" };
   }
+  if (!name_my) {
+    return { success: false, error: "Burmese name is required" };
+  }
 
   try {
     const userId = await requirePermission("partners", "edit");
-    await partnerTypeService.update(id, { name: name.trim() });
+    await partnerTypeService.update(id, { name: name.trim(), name_my });
     invalidatePartnerTypes();
     auditLog(userId, "updated partner type | id=" + id);
     return { success: true };
