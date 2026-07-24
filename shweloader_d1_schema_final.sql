@@ -68,6 +68,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS partner_type (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_my TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
@@ -774,6 +775,7 @@ CREATE INDEX IF NOT EXISTS idx_product_brand_created_by ON product_brand(created
 CREATE TABLE IF NOT EXISTS equipment_main_category (
     category_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_my TEXT,
     image_url TEXT,
     display_order TEXT DEFAULT '0',
     created_by INTEGER,
@@ -795,6 +797,7 @@ CREATE TABLE IF NOT EXISTS equipment_sub_category (
     sub_category_id INTEGER PRIMARY KEY AUTOINCREMENT,
     category_id INTEGER NOT NULL,
     name TEXT NOT NULL,
+    name_my TEXT,
     image_url TEXT,
     display_order TEXT DEFAULT '0',
     created_by INTEGER,
