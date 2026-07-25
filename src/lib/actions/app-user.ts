@@ -35,17 +35,19 @@ function randomDigits(count: number): string {
  * the D1 unique index is global), retrying up to 5 times on collision.
  */
 async function generateUsername(fullName: string): Promise<string> {
-  const stem = fullName
+  // First word of the full name only ("Phyo Han" → phyo); no space → whole name.
+  const stem = (fullName.trim().split(/\s+/)[0] ?? "")
     .normalize("NFKD")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 16);
-  const useFallbackStem = stem.length < 3;
+  const useFallbackStem = stem.length < 2;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    // 2 digits per product spec; widen to 4 after three collisions.
     const candidate = useFallbackStem
       ? "user" + randomDigits(8)
-      : stem + randomDigits(4);
+      : stem + randomDigits(attempt < 3 ? 2 : 4);
     const existing = await d1.query<{ app_user_id: number }>(
       "SELECT app_user_id FROM app_user WHERE username = ? LIMIT 1",
       [candidate],
