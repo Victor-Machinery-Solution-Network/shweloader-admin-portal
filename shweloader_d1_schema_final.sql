@@ -259,6 +259,7 @@ CREATE TABLE IF NOT EXISTS app_user (
     is_verified INTEGER DEFAULT 0,
     company_name TEXT,
     business_type_id INTEGER,
+    partner_prompted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
