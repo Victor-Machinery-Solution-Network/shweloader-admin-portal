@@ -258,7 +258,6 @@ CREATE TABLE IF NOT EXISTS app_user (
     phone TEXT NOT NULL,
     is_verified INTEGER DEFAULT 0,
     company_name TEXT,
-    address TEXT,
     business_type_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
