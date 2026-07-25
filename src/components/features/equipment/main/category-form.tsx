@@ -80,7 +80,7 @@ export function CategoryForm({
           <FieldContent>
             <RequiredInput
               name="name_my"
-              placeholder="e.g. ယာဉ်ရောင်းချသူ"
+              placeholder="e.g. မြေတူးစက်များ"
               defaultValue={category?.name_my ?? ""}
               errorMessage="Burmese name is required"
               autoComplete="off"

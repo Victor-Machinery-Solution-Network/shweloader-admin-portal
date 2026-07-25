@@ -162,7 +162,7 @@ export function SubCategoryForm({
           <FieldContent>
             <RequiredInput
               name="name_my"
-              placeholder="e.g. ယာဉ်ရောင်းချသူ"
+              placeholder="e.g. အသေးစားမြေတူးစက်များ"
               defaultValue={subCategory?.name_my ?? ""}
               errorMessage="Burmese name is required"
               autoComplete="off"

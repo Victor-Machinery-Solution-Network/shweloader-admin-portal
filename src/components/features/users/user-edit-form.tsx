@@ -185,17 +185,13 @@ export function UserEditForm({
       className="sm:max-w-2xl"
     >
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        {/* Row 1: Identity (required) */}
+        {/* Row 1: Identity — username is system-generated and read-only */}
         <Field orientation="vertical">
           <FieldLabel>Username</FieldLabel>
           <FieldContent>
-            <RequiredInput
-              name="username"
-              defaultValue={user.username}
-              placeholder="e.g. john_doe"
-              errorMessage="Username is required"
-              autoComplete="off"
-            />
+            <p className="text-muted-foreground flex min-h-9 items-center text-sm">
+              {user.username}
+            </p>
           </FieldContent>
         </Field>
 
@@ -299,7 +295,7 @@ export function UserEditForm({
           </Field>
         )}
 
-        {/* Row 4: Company + Address */}
+        {/* Row 4: Company */}
         <Field orientation="vertical">
           <FieldLabel>
             Company Name{" "}
@@ -312,23 +308,6 @@ export function UserEditForm({
               name="company_name"
               defaultValue={user.company_name ?? ""}
               placeholder="e.g. ABC Construction Co."
-              autoComplete="off"
-            />
-          </FieldContent>
-        </Field>
-
-        <Field orientation="vertical">
-          <FieldLabel>
-            Address{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              name="address"
-              defaultValue={user.address ?? ""}
-              placeholder="e.g. No. 123, Main Street, Yangon"
               autoComplete="off"
             />
           </FieldContent>

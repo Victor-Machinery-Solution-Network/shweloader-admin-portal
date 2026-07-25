@@ -21,6 +21,40 @@ function generatePassword(): string {
   return Array.from(bytes, (b) => PASSWORD_CHARSET[b % PASSWORD_CHARSET.length]).join("");
 }
 
+function randomDigits(count: number): string {
+  const bytes = new Uint8Array(count);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => String(b % 10)).join("");
+}
+
+/**
+ * System-generated username (registration-simplification spec, 2026-07-25):
+ * latinized full name + 4 random digits (e.g. "aungkyaw4821"). Burmese-script
+ * names latinize to empty → fallback "user" + 8 digits ("user84213976").
+ * Uniqueness is checked against ALL app_user rows (including soft-deleted —
+ * the D1 unique index is global), retrying up to 5 times on collision.
+ */
+async function generateUsername(fullName: string): Promise<string> {
+  const stem = fullName
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 16);
+  const useFallbackStem = stem.length < 3;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = useFallbackStem
+      ? "user" + randomDigits(8)
+      : stem + randomDigits(4);
+    const existing = await d1.query<{ app_user_id: number }>(
+      "SELECT app_user_id FROM app_user WHERE username = ? LIMIT 1",
+      [candidate],
+    );
+    if (existing.results.length === 0) return candidate;
+  }
+  throw new Error("Could not generate a unique username — please try again");
+}
+
 // ─── Single-record fetch (for cross-feature consumers e.g. enquiries) ───────
 
 import type { AppUser } from "@/types/app-user";
@@ -32,12 +66,10 @@ export async function getAppUserById(id: number): Promise<AppUser | null> {
 // ─── Create App User ──────────────────────────────────────────────────────────
 
 export async function createAppUser(formData: FormData) {
-  const username = formData.get("username") as string;
   const fullName = formData.get("full_name") as string;
   const email = (formData.get("email") as string) || null;
   const phone = formData.get("phone") as string;
   const companyName = (formData.get("company_name") as string) || null;
-  const address = (formData.get("address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
   const townshipId = formData.get("township_id") as string;
@@ -47,9 +79,6 @@ export async function createAppUser(formData: FormData) {
       ? Number(formData.get("partner_type_id"))
       : null;
 
-  if (!username?.trim()) {
-    return { success: false, error: "Username is required" };
-  }
   if (!fullName?.trim()) {
     return { success: false, error: "Full name is required" };
   }
@@ -109,19 +138,20 @@ export async function createAppUser(formData: FormData) {
     const password = generatePassword();
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const trimmedUsername = username.trim();
     const trimmedFullName = fullName.trim();
     const trimmedEmail = email?.trim().toLowerCase() || null;
     const trimmedPhone = phone.trim();
     const trimmedCompany = companyName?.trim() || null;
-    const trimmedAddress = address?.trim() || null;
+
+    // Username is system-owned — generated from the full name, never admin-entered.
+    const generatedUsername = await generateUsername(trimmedFullName);
 
     // Use raw SQL with RETURNING to guarantee app_user_id is in the response
     // (the REST proxy's POST endpoint may not return custom PK columns)
     const userResult = await d1.query<{ app_user_id: number }>(
-      `INSERT INTO app_user (username, full_name, email, password_hash, phone, company_name, address, business_type_id, township_id, is_verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING app_user_id`,
-      [trimmedUsername, trimmedFullName, trimmedEmail, password_hash, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId)],
+      `INSERT INTO app_user (username, full_name, email, password_hash, phone, company_name, business_type_id, township_id, is_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1) RETURNING app_user_id`,
+      [generatedUsername, trimmedFullName, trimmedEmail, password_hash, trimmedPhone, trimmedCompany, resolvedBtId, Number(townshipId)],
     );
     const newUserId = userResult.results[0].app_user_id;
 
@@ -146,7 +176,7 @@ export async function createAppUser(formData: FormData) {
     }
 
     invalidateTag(CACHE_TAGS.USERS);
-    auditLog(actorId, "created app user | username=" + trimmedUsername);
+    auditLog(actorId, "created app user | username=" + generatedUsername);
     return { success: true, password };
   } catch (error) {
     return {
@@ -159,20 +189,15 @@ export async function createAppUser(formData: FormData) {
 // ─── Update App User ──────────────────────────────────────────────────────────
 
 export async function updateAppUser(userId: number, formData: FormData) {
-  const username = formData.get("username") as string;
   const fullName = formData.get("full_name") as string;
   const email = (formData.get("email") as string) || null;
   const phone = formData.get("phone") as string;
   const companyName = (formData.get("company_name") as string) || null;
-  const address = (formData.get("address") as string) || null;
   const businessTypeId = formData.get("business_type_id") as string;
   const businessTypeOther = (formData.get("business_type_other") as string) || null;
   const townshipId = formData.get("township_id") as string;
   const isVerified = formData.get("is_verified") === "1" ? 1 : 0;
 
-  if (!username?.trim()) {
-    return { success: false, error: "Username is required" };
-  }
   if (!fullName?.trim()) {
     return { success: false, error: "Full name is required" };
   }
@@ -189,11 +214,13 @@ export async function updateAppUser(userId: number, formData: FormData) {
   try {
     const actorId = await requirePermission("users", "edit");
 
-    const prior = await d1.query<{ is_verified: number }>(
-      "SELECT is_verified FROM app_user WHERE app_user_id = ? AND deleted_at IS NULL",
+    const prior = await d1.query<{ is_verified: number; username: string }>(
+      "SELECT is_verified, username FROM app_user WHERE app_user_id = ? AND deleted_at IS NULL",
       [userId],
     );
     const priorVerified = prior.results[0]?.is_verified ?? 0;
+    // Username is system-owned and immutable — kept only for audit messages.
+    const existingUsername = prior.results[0]?.username ?? "";
 
     // Resolve business type ID — create an unlisted type if "Other" was specified.
     // Reject malformed values: Number("") and Number("0") both yield 0, and
@@ -224,12 +251,10 @@ export async function updateAppUser(userId: number, formData: FormData) {
       }
     }
 
-    const trimmedUsername = username.trim();
     const trimmedFullName = fullName.trim();
     const trimmedEmail = email?.trim().toLowerCase() || null;
     const trimmedPhone = phone.trim();
     const trimmedCompany = companyName?.trim() || null;
-    const trimmedAddress = address?.trim() || null;
 
     // When an admin manually verifies a stuck user (0 → 1), also stamp
     // last_login_at = NOW() so the worker's OTP-bypass window (is_verified
@@ -240,19 +265,19 @@ export async function updateAppUser(userId: number, formData: FormData) {
 
     await d1.query(
       `UPDATE app_user
-       SET username = ?, full_name = ?, email = ?, phone = ?, company_name = ?, address = ?, business_type_id = ?, township_id = ?, is_verified = ?${stampLogin ? ", last_login_at = ?" : ""}
+       SET full_name = ?, email = ?, phone = ?, company_name = ?, business_type_id = ?, township_id = ?, is_verified = ?${stampLogin ? ", last_login_at = ?" : ""}
        WHERE app_user_id = ? AND deleted_at IS NULL`,
       stampLogin
-        ? [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), isVerified, now, userId]
-        : [trimmedUsername, trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, trimmedAddress, resolvedBtId, Number(townshipId), isVerified, userId],
+        ? [trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, resolvedBtId, Number(townshipId), isVerified, now, userId]
+        : [trimmedFullName, trimmedEmail, trimmedPhone, trimmedCompany, resolvedBtId, Number(townshipId), isVerified, userId],
     );
 
     invalidateTag(CACHE_TAGS.USERS);
-    auditLog(actorId, "updated app user | username=" + trimmedUsername);
+    auditLog(actorId, "updated app user | username=" + existingUsername);
     if (priorVerified !== isVerified) {
       auditLog(
         actorId,
-        `manually ${isVerified ? "verified" : "unverified"} app user | id=${userId} username=${trimmedUsername}${stampLogin ? " (stamped last_login_at)" : ""}`,
+        `manually ${isVerified ? "verified" : "unverified"} app user | id=${userId} username=${existingUsername}${stampLogin ? " (stamped last_login_at)" : ""}`,
       );
     }
     return { success: true };

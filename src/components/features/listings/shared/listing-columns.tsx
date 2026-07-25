@@ -355,7 +355,6 @@ interface PartnerInfo {
   partner_email: string | null;
   partner_phone: string | null;
   partner_company: string | null;
-  partner_address: string | null;
   partner_verified: number | null;
   partner_joined: string | null;
   partner_business_type: string | null;
@@ -449,7 +448,6 @@ function PartnerInfoDialog({
                   <span className="text-muted-foreground text-sm">{"\u2014"}</span>
                 )}
               </div>
-              <DetailRow label="Address" value={data.partner_address} />
             </div>
           </section>
 

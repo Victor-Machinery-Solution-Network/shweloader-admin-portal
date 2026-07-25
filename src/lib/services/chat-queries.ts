@@ -67,7 +67,6 @@ export async function getChatSessionsWithDetails(): Promise<
       au.email AS user_email,
       au.phone AS user_phone,
       au.company_name AS user_company,
-      au.address AS user_address,
       au.is_verified AS user_is_verified,
       bt.name AS user_business_type,
       au.created_at AS user_joined,

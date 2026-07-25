@@ -152,7 +152,6 @@ export function UserDetailDialog({
                   <span className="text-muted-foreground text-sm">—</span>
                 )}
               </div>
-              <DetailRow label="Address" value={user.address} />
             </div>
           </section>
 

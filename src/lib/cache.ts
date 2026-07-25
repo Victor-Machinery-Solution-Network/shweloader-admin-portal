@@ -170,7 +170,7 @@ export async function getUsers() {
   const result = await d1.query<AppUser>(
     // Explicit columns (no password_hash — it must never leave the DB layer).
     `SELECT c.app_user_id, c.username, c.full_name, c.email, c.phone, c.is_verified,
-       c.company_name, c.address, c.business_type_id, c.created_at, c.updated_at,
+       c.company_name, c.business_type_id, c.created_at, c.updated_at,
        c.deleted_at, c.deleted_by, c.last_login_at, c.township_id,
       CASE WHEN p.id IS NOT NULL AND pst.status_name = 'Approved' THEN 1 ELSE 0 END AS is_approved_partner
     FROM app_user c
@@ -220,7 +220,7 @@ export async function getUsersPageData() {
         'app_user_id', t.app_user_id, 'username', t.username,
         'full_name', t.full_name, 'email', t.email,
         'phone', t.phone, 'is_verified', t.is_verified,
-        'company_name', t.company_name, 'address', t.address,
+        'company_name', t.company_name,
         'business_type_id', t.business_type_id,
         'township_id', t.township_id,
         'created_at', t.created_at, 'deleted_at', t.deleted_at,

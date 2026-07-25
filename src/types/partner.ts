@@ -31,7 +31,6 @@ export interface PartnerWithDetails extends Partner {
   user_email: string | null;
   user_phone: string | null;
   user_company: string | null;
-  user_address: string | null;
   user_verified: number | null;
   user_joined: string | null;
   business_type_name: string | null;

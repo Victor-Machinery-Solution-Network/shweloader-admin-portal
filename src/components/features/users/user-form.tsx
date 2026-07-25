@@ -176,19 +176,7 @@ export function UserForm({
       className="sm:max-w-2xl"
     >
       <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        {/* Row 1: Identity (required) */}
-        <Field orientation="vertical">
-          <FieldLabel>Username</FieldLabel>
-          <FieldContent>
-            <RequiredInput
-              name="username"
-              placeholder="e.g. john_doe"
-              errorMessage="Username is required"
-              autoComplete="off"
-            />
-          </FieldContent>
-        </Field>
-
+        {/* Row 1: Identity (required) — username is system-generated server-side */}
         <Field orientation="vertical">
           <FieldLabel>Full Name</FieldLabel>
           <FieldContent>
@@ -285,7 +273,7 @@ export function UserForm({
           </Field>
         )}
 
-        {/* Row 4: Company + Address */}
+        {/* Row 4: Company */}
         <Field orientation="vertical">
           <FieldLabel>
             Company Name{" "}
@@ -297,22 +285,6 @@ export function UserForm({
             <Input
               name="company_name"
               placeholder="e.g. ABC Construction Co."
-              autoComplete="off"
-            />
-          </FieldContent>
-        </Field>
-
-        <Field orientation="vertical">
-          <FieldLabel>
-            Address{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              name="address"
-              placeholder="e.g. No. 123, Main Street, Yangon"
               autoComplete="off"
             />
           </FieldContent>

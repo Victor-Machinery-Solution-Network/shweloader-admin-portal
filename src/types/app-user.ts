@@ -7,7 +7,6 @@ export interface AppUser {
   phone: string;
   is_verified: number;
   company_name: string | null;
-  address: string | null;
   business_type_id: number;
   township_id: number | null;
   /** Computed from partner JOIN — not a real DB column, read-only */

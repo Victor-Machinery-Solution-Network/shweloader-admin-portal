@@ -156,7 +156,6 @@ export interface SaleListingWithDetails {
   partner_email: string | null;
   partner_phone: string | null;
   partner_company: string | null;
-  partner_address: string | null;
   partner_verified: number | null;
   partner_joined: string | null;
   partner_business_type: string | null;
@@ -218,7 +217,6 @@ export interface RentListingWithDetails {
   partner_email: string | null;
   partner_phone: string | null;
   partner_company: string | null;
-  partner_address: string | null;
   partner_verified: number | null;
   partner_joined: string | null;
   partner_business_type: string | null;
@@ -358,7 +356,6 @@ export interface ListingDetail {
   partner_email: string | null;
   partner_phone: string | null;
   partner_company: string | null;
-  partner_address: string | null;
   partner_verified: number | null;
   partner_joined: string | null;
   partner_business_type: string | null;

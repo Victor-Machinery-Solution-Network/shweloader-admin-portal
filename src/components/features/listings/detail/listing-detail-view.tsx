@@ -9,7 +9,6 @@ import {
   Pencil,
   Mail,
   Phone,
-  MapPin,
   Star,
   Eye,
   EyeOff,
@@ -230,7 +229,6 @@ export function ListingDetailView({ listing, images }: Props) {
               <div className="mt-2 space-y-1">
                 {listing.partner_email && <ContactRow icon={<Mail className="size-3" />} text={listing.partner_email} />}
                 {listing.partner_phone && <ContactRow icon={<Phone className="size-3" />} text={listing.partner_phone} />}
-                {listing.partner_address && <ContactRow icon={<MapPin className="size-3" />} text={listing.partner_address} />}
               </div>
               {(listing.partner_type_name || listing.partner_business_type) && (
                 <div className="mt-2 grid grid-cols-2 gap-2 pt-2 border-t">

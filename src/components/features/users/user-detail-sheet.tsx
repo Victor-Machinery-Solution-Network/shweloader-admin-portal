@@ -101,7 +101,6 @@ export function UserDetailSheet({
                       <span className="text-muted-foreground text-sm">—</span>
                     )}
                   </div>
-                  <DetailRow label="Address" value={data.address} />
                 </DetailSection>
 
                 <Separator />

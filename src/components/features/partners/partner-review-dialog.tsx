@@ -154,7 +154,6 @@ export function PartnerReviewDialog({
                   <span className="text-muted-foreground text-sm">—</span>
                 )}
               </div>
-              <DetailRow label="Address" value={partner.user_address} />
             </div>
           </section>
 

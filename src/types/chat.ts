@@ -26,7 +26,6 @@ export interface ChatSessionWithDetails extends ChatSession {
   user_email: string | null;
   user_phone: string;
   user_company: string | null;
-  user_address: string | null;
   user_is_verified: number;
   user_business_type: string | null;
   user_joined: string;

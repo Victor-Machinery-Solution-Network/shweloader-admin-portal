@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Phone, Mail, Building2, MapPin, Briefcase, Calendar, BadgeCheck } from "lucide-react";
+import { Phone, Mail, Building2, Briefcase, Calendar, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { assetUrl } from "@/lib/r2-url";
 import { format } from "date-fns";
@@ -99,12 +99,6 @@ export function ContextPanel({ session, products }: ContextPanelProps) {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Building2 className="size-3 shrink-0" />
               <span className="truncate">{session.user_company}</span>
-            </div>
-          )}
-          {session.user_address && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <MapPin className="size-3 shrink-0" />
-              <span className="truncate">{session.user_address}</span>
             </div>
           )}
           {session.user_business_type && (
