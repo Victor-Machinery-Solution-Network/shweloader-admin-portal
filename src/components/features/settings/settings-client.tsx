@@ -293,7 +293,7 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
       field: "info",
       label: "General Inquiries",
       description: "Shown on the About page for general contact.",
-      placeholder: "info@shweloader.com",
+      placeholder: "info@shweloader.com.mm",
     },
     {
       key: SETTING_KEYS.CONTACT_EMAIL_SUPPORT,
@@ -307,14 +307,14 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
       field: "sales",
       label: "Sales / Parent Company",
       description: "Shown in the VMSN block on the home screen.",
-      placeholder: "sales@shweloader.com",
+      placeholder: "sales@shweloader.com.mm",
     },
     {
       key: SETTING_KEYS.CONTACT_EMAIL_PRIVACY,
       field: "privacy",
       label: "Privacy Requests",
       description: "Shown in the Privacy Policy page.",
-      placeholder: "privacy@shweloader.com",
+      placeholder: "privacy@shweloader.com.mm",
     },
   ];
 
