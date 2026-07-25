@@ -9,6 +9,7 @@ import {
   Phone,
   Mail,
   UserCircle2,
+  Smartphone,
 } from "lucide-react";
 import {
   Select,
@@ -22,11 +23,12 @@ import { useHasPermission } from "@/hooks/use-permissions";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { updateSettings } from "@/lib/actions/setting";
-import { SETTING_KEYS } from "@/types/setting";
+import { SETTING_KEYS, READONLY_SETTING_KEYS } from "@/types/setting";
 
 interface AdminOption {
   user_id: number;
@@ -65,6 +67,42 @@ const TOGGLE_SETTINGS = [
   },
 ] as const;
 
+const APP_VERSION_KEYS = [
+  SETTING_KEYS.IOS_LATEST_BUILD,
+  SETTING_KEYS.IOS_MIN_BUILD,
+  SETTING_KEYS.IOS_STORE_URL,
+  SETTING_KEYS.ANDROID_LATEST_BUILD,
+  SETTING_KEYS.ANDROID_MIN_BUILD,
+  SETTING_KEYS.ANDROID_STORE_URL,
+  SETTING_KEYS.UPDATE_MESSAGE_EN,
+  SETTING_KEYS.UPDATE_MESSAGE_MY,
+] as const;
+
+type AppVersionKey = (typeof APP_VERSION_KEYS)[number];
+
+const APP_VERSION_PLATFORMS: {
+  name: string;
+  latestKey: AppVersionKey;
+  minKey: AppVersionKey;
+  urlKey: AppVersionKey;
+  urlPlaceholder: string;
+}[] = [
+  {
+    name: "iOS",
+    latestKey: SETTING_KEYS.IOS_LATEST_BUILD,
+    minKey: SETTING_KEYS.IOS_MIN_BUILD,
+    urlKey: SETTING_KEYS.IOS_STORE_URL,
+    urlPlaceholder: "https://apps.apple.com/...",
+  },
+  {
+    name: "Android",
+    latestKey: SETTING_KEYS.ANDROID_LATEST_BUILD,
+    minKey: SETTING_KEYS.ANDROID_MIN_BUILD,
+    urlKey: SETTING_KEYS.ANDROID_STORE_URL,
+    urlPlaceholder: "https://play.google.com/store/apps/details?id=...",
+  },
+];
+
 export function SettingsClient({ settings, admins }: SettingsClientProps) {
   const canEdit = useHasPermission("app_settings", "edit");
   const [isPending, startTransition] = useTransition();
@@ -83,6 +121,12 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
   });
   const [welcomeAdminId, setWelcomeAdminId] = useState(
     settings[SETTING_KEYS.CHAT_WELCOME_ADMIN_ID] ?? "",
+  );
+  const [appVersions, setAppVersions] = useState<Record<AppVersionKey, string>>(
+    () =>
+      Object.fromEntries(
+        APP_VERSION_KEYS.map((key) => [key, settings[key] ?? ""]),
+      ) as Record<AppVersionKey, string>,
   );
 
   function handleToggle(key: string, value: boolean) {
@@ -184,10 +228,54 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
     });
   }
 
+  function setAppVersionField(key: AppVersionKey, value: string) {
+    setAppVersions((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function handleAppVersionsSave() {
+    // Build fields: empty = rule off; non-empty must be a positive integer.
+    for (const platform of APP_VERSION_PLATFORMS) {
+      for (const { key, label } of [
+        { key: platform.latestKey, label: `${platform.name} latest build` },
+        { key: platform.minKey, label: `${platform.name} minimum build` },
+      ]) {
+        const value = appVersions[key].trim();
+        if (value && (!/^\d+$/.test(value) || Number(value) <= 0)) {
+          toast.error(`${label} must be a positive whole number`);
+          return;
+        }
+      }
+    }
+
+    setPendingKey("app_versions");
+    startTransition(async () => {
+      const payload = Object.fromEntries(
+        APP_VERSION_KEYS.map((key) => [key, appVersions[key].trim()]),
+      );
+      const result = await updateSettings(payload);
+      if (result.success) {
+        toast.success("App versions updated");
+        setAppVersions(
+          Object.fromEntries(
+            APP_VERSION_KEYS.map((key) => [key, payload[key] ?? ""]),
+          ) as Record<AppVersionKey, string>,
+        );
+      } else {
+        toast.error(result.error ?? "Failed to update app versions");
+      }
+      setPendingKey(null);
+    });
+  }
+
   const exchangeRateChanged =
     exchangeRate !== (settings[SETTING_KEYS.EXCHANGE_RATE] ?? "3200");
   const contactPhoneChanged =
     contactPhone !== (settings[SETTING_KEYS.CONTACT_PHONE] ?? "");
+  const appVersionsChanged = APP_VERSION_KEYS.some(
+    (key) => appVersions[key] !== (settings[key] ?? ""),
+  );
+  const iosStoreVersionName =
+    settings[READONLY_SETTING_KEYS.IOS_STORE_VERSION_NAME];
 
   const EMAIL_FIELDS: {
     key:
@@ -464,6 +552,159 @@ export function SettingsClient({ settings, admins }: SettingsClientProps) {
             {pendingKey === SETTING_KEYS.CHAT_WELCOME_ADMIN_ID ? (
               <Spinner className="size-4" />
             ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* App Versions Section */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          App Versions
+        </p>
+        <div className="rounded-lg border px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/10">
+              <Smartphone className="size-4 text-teal-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">App Versions</p>
+              <p className="text-muted-foreground text-xs">
+                Controls the in-app update prompt. Latest = dismissible nudge,
+                Minimum = forced update. Leave blank to disable.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 ml-11 flex flex-col gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {APP_VERSION_PLATFORMS.map((platform) => (
+                <div key={platform.name} className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {platform.name}
+                  </p>
+                  {platform.name === "iOS" && iosStoreVersionName ? (
+                    <p className="text-muted-foreground text-xs">
+                      App Store is currently serving: {iosStoreVersionName}
+                    </p>
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`${platform.latestKey}-input`}
+                      className="text-xs text-muted-foreground w-24 shrink-0"
+                    >
+                      Latest build
+                    </Label>
+                    <Input
+                      id={`${platform.latestKey}-input`}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g. 12"
+                      value={appVersions[platform.latestKey]}
+                      onChange={(e) =>
+                        setAppVersionField(platform.latestKey, e.target.value)
+                      }
+                      disabled={isPending || !canEdit}
+                      className="w-28"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`${platform.minKey}-input`}
+                      className="text-xs text-muted-foreground w-24 shrink-0"
+                    >
+                      Minimum build
+                    </Label>
+                    <Input
+                      id={`${platform.minKey}-input`}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g. 10"
+                      value={appVersions[platform.minKey]}
+                      onChange={(e) =>
+                        setAppVersionField(platform.minKey, e.target.value)
+                      }
+                      disabled={isPending || !canEdit}
+                      className="w-28"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`${platform.urlKey}-input`}
+                      className="text-xs text-muted-foreground w-24 shrink-0"
+                    >
+                      Store URL
+                    </Label>
+                    <Input
+                      id={`${platform.urlKey}-input`}
+                      type="url"
+                      placeholder={platform.urlPlaceholder}
+                      value={appVersions[platform.urlKey]}
+                      onChange={(e) =>
+                        setAppVersionField(platform.urlKey, e.target.value)
+                      }
+                      disabled={isPending || !canEdit}
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor="update-message-en"
+                  className="text-xs text-muted-foreground"
+                >
+                  Update message (English)
+                </Label>
+                <Textarea
+                  id="update-message-en"
+                  placeholder="Optional — custom prompt copy. Blank uses the app's default."
+                  value={appVersions[SETTING_KEYS.UPDATE_MESSAGE_EN]}
+                  onChange={(e) =>
+                    setAppVersionField(
+                      SETTING_KEYS.UPDATE_MESSAGE_EN,
+                      e.target.value,
+                    )
+                  }
+                  disabled={isPending || !canEdit}
+                  rows={2}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor="update-message-my"
+                  className="text-xs text-muted-foreground"
+                >
+                  Update message (Burmese)
+                </Label>
+                <Textarea
+                  id="update-message-my"
+                  placeholder="Optional — custom prompt copy. Blank uses the app's default."
+                  value={appVersions[SETTING_KEYS.UPDATE_MESSAGE_MY]}
+                  onChange={(e) =>
+                    setAppVersionField(
+                      SETTING_KEYS.UPDATE_MESSAGE_MY,
+                      e.target.value,
+                    )
+                  }
+                  disabled={isPending || !canEdit}
+                  rows={2}
+                />
+              </div>
+            </div>
+            <div>
+              <Button
+                size="xs"
+                onClick={handleAppVersionsSave}
+                disabled={isPending || !appVersionsChanged || !canEdit}
+              >
+                {pendingKey === "app_versions" ? (
+                  <Spinner className="size-3" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
