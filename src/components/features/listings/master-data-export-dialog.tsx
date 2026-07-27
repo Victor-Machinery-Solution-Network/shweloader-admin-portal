@@ -51,8 +51,6 @@ const COLUMNS: ExportColumn[] = [
   { key: "second_contact_person", header: "Second Contact Person" },
   { key: "contact_no", header: "Contact No." },
   { key: "email", header: "Email" },
-  // Seller Address
-  { key: "seller_address", header: "Detail Address (Seller)" },
   { key: "seller_township", header: "Township (Seller)" },
   { key: "seller_district", header: "District (Seller)" },
   { key: "seller_region_state", header: "Region/State (Seller)" },

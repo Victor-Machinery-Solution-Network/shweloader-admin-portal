@@ -1474,8 +1474,6 @@ export interface MasterExportRow {
   second_contact_person: string;
   contact_no: string;
   email: string;
-  // Seller address
-  seller_address: string;
   seller_township: string;
   seller_district: string;
   seller_region_state: string;
@@ -1520,7 +1518,6 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
     contact_person: string | null;
     contact_no: string | null;
     email: string | null;
-    seller_address: string | null;
     seller_township: string | null;
     seller_district: string | null;
     seller_region_state: string | null;
@@ -1555,7 +1552,6 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
        seller.full_name            AS contact_person,
        seller.phone                AS contact_no,
        seller.email                AS email,
-       seller.address              AS seller_address,
        st.name                     AS seller_township,
        sd.name                     AS seller_district,
        ssr.name                    AS seller_region_state,
@@ -1631,7 +1627,6 @@ export async function getMasterDataExport(): Promise<MasterExportRow[]> {
     second_contact_person: cf(r.custom_fields, "Second Contact Person"),
     contact_no: r.contact_no ?? "",
     email: r.email ?? "",
-    seller_address: r.seller_address ?? "",
     seller_township: r.seller_township ?? "",
     seller_district: r.seller_district ?? "",
     seller_region_state: r.seller_region_state ?? "",
