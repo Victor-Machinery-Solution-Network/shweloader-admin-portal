@@ -95,3 +95,83 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     monthlyUserEnquiries: n("monthly_user_enquiries"),
   };
 }
+
+/**
+ * Listing mix by subcategory — feeds the two donuts on Overview.
+ *
+ * Same scope as the KPI cards above (approved + not deleted), so each donut's
+ * centre total equals the "Total Sale/Rent Units" card. Attachment listings have
+ * no subcategory of their own, so they fall back to their attachment category.
+ */
+export interface MixSlice {
+  name: string;
+  sale: number;
+  rent: number;
+}
+export interface ListingMix {
+  slices: MixSlice[];
+  saleTotal: number;
+  rentTotal: number;
+}
+
+// ponytail: top 5 by volume, the tail bucketed into a grey "Other". Dev already
+// has 19 subcategories over 30 listings — past ~6 slices the small ones are
+// unhoverable slivers and the hues stop being tellable apart. Both charts share
+// one slice list so a subcategory keeps its colour across them.
+const TOP_N = 5;
+const OTHER = "Other";
+
+const mixQuery = (table: string, alias: string, kind: string) => `
+  SELECT '${kind}' AS kind, COALESCE(esc.name, ac.name, 'Uncategorised') AS name, COUNT(*) AS total
+  FROM ${table} ${alias}
+  JOIN product_list pl ON pl.id = ${alias}.product_list_id
+  LEFT JOIN equipment_model em ON em.model_id = pl.equipment_model_id
+  LEFT JOIN equipment_sub_category esc ON esc.sub_category_id = em.sub_category_id
+  LEFT JOIN attachment_model am ON am.model_id = pl.attachment_model_id
+  LEFT JOIN attachment_category ac ON ac.category_id = am.category_id
+  WHERE ${scope(alias)}
+  GROUP BY 2`;
+
+export async function getListingMix(): Promise<ListingMix> {
+  await requirePermission("dashboard", "read");
+
+  const { results } = await d1.query<{
+    kind: string;
+    name: string;
+    total: number;
+  }>(
+    `${mixQuery("sale_listing", "sl", "sale")}
+     UNION ALL
+     ${mixQuery("rent_listing", "rl", "rent")}`,
+  );
+
+  const byName = new Map<string, MixSlice>();
+  for (const row of results) {
+    const slice = byName.get(row.name) ?? { name: row.name, sale: 0, rent: 0 };
+    slice[row.kind === "sale" ? "sale" : "rent"] += Number(row.total);
+    byName.set(row.name, slice);
+  }
+
+  // Rank by the bigger of the two, not the sum: on the sale donut a subcategory
+  // must never lose its slice to one with fewer sale listings just because that
+  // one also rents.
+  const rank = (s: MixSlice) => Math.max(s.sale, s.rent);
+  const ranked = [...byName.values()].sort(
+    (a, b) => rank(b) - rank(a) || a.name.localeCompare(b.name),
+  );
+  const top = ranked.slice(0, TOP_N);
+  const rest = ranked.slice(TOP_N);
+  if (rest.length) {
+    top.push({
+      name: OTHER,
+      sale: rest.reduce((t, s) => t + s.sale, 0),
+      rent: rest.reduce((t, s) => t + s.rent, 0),
+    });
+  }
+
+  return {
+    slices: top,
+    saleTotal: ranked.reduce((t, s) => t + s.sale, 0),
+    rentTotal: ranked.reduce((t, s) => t + s.rent, 0),
+  };
+}
