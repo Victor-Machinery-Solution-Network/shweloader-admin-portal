@@ -156,13 +156,16 @@
   --chart-3: #b45309;
   --chart-4: #92400e;
   --chart-5: #78350f;
-  /* Categorical slice colours (donuts etc). Each slice gets its own hue,
-     generated at render time — the count is data-driven, so a fixed list can't
-     cover it. Lightness/chroma are pinned here so the hues stay a matched set,
-     legible on this surface; --chart-* is a single amber ramp and can't carry
-     identity (adjacent steps are the same hue). */
-  --viz-l: 62%;
-  --viz-c: 0.15;
+  /* Categorical slice colours (donuts etc). --chart-* is a single amber ramp —
+     fine for magnitude, unreadable as identity (adjacent steps are the same
+     hue). These 5 hues pass CVD + normal-vision separation in both modes;
+     --viz-other is deliberately grey: "not a category". */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  --viz-other: #6b7280;
   --sidebar: #f9fafb;
   --sidebar-foreground: #262626;
   --sidebar-primary: #fbb811;
@@ -221,9 +224,13 @@
   --chart-3: #f59e0b;
   --chart-4: #d97706;
   --chart-5: #b45309;
-  /* Same hues, lifted for the dark surface (not an automatic flip). */
-  --viz-l: 72%;
-  --viz-c: 0.14;
+  /* Same 5 hues re-stepped for the dark surface (not an automatic flip). */
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-other: #a1a1aa;
   --sidebar: #0A0A0A;
   --sidebar-foreground: #E8E8E8;
   --sidebar-primary: #fbb811;

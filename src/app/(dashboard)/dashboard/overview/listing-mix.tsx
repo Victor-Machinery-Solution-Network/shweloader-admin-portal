@@ -14,17 +14,16 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
 import type { ListingMix, MixSlice } from "@/lib/actions/dashboard";
 
-/**
- * One hue per subcategory. The count is data-driven (25 on prod and growing),
- * so the hues are generated rather than listed: stepped by the golden angle,
- * which keeps slices that land next to each other on the ring far apart in hue.
- * Lightness and chroma come from CSS so light and dark each get their own step.
- */
-const hueFor = (i: number) =>
-  `oklch(var(--viz-l) var(--viz-c) ${(i * 137.508) % 360}deg)`;
+const SLICE_COLORS = [
+  "var(--viz-1)",
+  "var(--viz-2)",
+  "var(--viz-3)",
+  "var(--viz-4)",
+  "var(--viz-5)",
+];
+const OTHER_COLOR = "var(--viz-other)";
 
 const plain = new Intl.NumberFormat("en");
 const pct = (value: number, total: number) =>
@@ -42,7 +41,11 @@ interface Datum {
  */
 function toData(slices: MixSlice[], key: "sale" | "rent"): Datum[] {
   return slices
-    .map((s, i) => ({ name: s.name, value: s[key], fill: hueFor(i) }))
+    .map((s, i) => ({
+      name: s.name,
+      value: s[key],
+      fill: s.name === "Other" ? OTHER_COLOR : SLICE_COLORS[i],
+    }))
     .filter((d) => d.value > 0);
 }
 
@@ -149,19 +152,9 @@ function DonutCard({
               </PieChart>
             </ChartContainer>
 
-            {/* Legend doubles as the table view: every subcategory with its
-                exact count and share, so identity is never colour-alone and the
-                small slivers stay readable. Two columns once the list outgrows
-                the donut, capped at the donut's height so the card can't run
-                away as the catalogue grows. */}
-            <ul
-              className={cn(
-                "w-full min-w-0 text-sm",
-                data.length > 9
-                  ? "grid max-h-[320px] grid-cols-1 gap-x-8 gap-y-1.5 overflow-y-auto sm:grid-cols-2"
-                  : "space-y-1.5",
-              )}
-            >
+            {/* Legend doubles as the table view: every slice with its exact
+                count and share, so identity is never colour-alone. */}
+            <ul className="w-full min-w-0 space-y-1.5 text-sm">
               {data.map((d) => (
                 <li key={d.name} className="flex items-center gap-2">
                   <span

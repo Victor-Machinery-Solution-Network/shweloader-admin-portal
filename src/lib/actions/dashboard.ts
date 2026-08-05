@@ -114,6 +114,13 @@ export interface ListingMix {
   rentTotal: number;
 }
 
+// ponytail: top 5 by volume, the tail bucketed into a grey "Other". Dev already
+// has 19 subcategories over 30 listings — past ~6 slices the small ones are
+// unhoverable slivers and the hues stop being tellable apart. Both charts share
+// one slice list so a subcategory keeps its colour across them.
+const TOP_N = 5;
+const OTHER = "Other";
+
 const mixQuery = (table: string, alias: string, kind: string) => `
   SELECT '${kind}' AS kind, COALESCE(esc.name, ac.name, 'Uncategorised') AS name, COUNT(*) AS total
   FROM ${table} ${alias}
@@ -145,19 +152,26 @@ export async function getListingMix(): Promise<ListingMix> {
     byName.set(row.name, slice);
   }
 
-  // Every subcategory keeps its own named slice — no "Other" bucket, because
-  // the business reads these charts at subcategory level and a merged grey
-  // wedge is exactly the part that can't be analysed. Ranked by the bigger of
-  // the two counts so both donuts share one ordering, which is what keeps a
-  // subcategory the same colour in each.
+  // Rank by the bigger of the two, not the sum: on the sale donut a subcategory
+  // must never lose its slice to one with fewer sale listings just because that
+  // one also rents.
   const rank = (s: MixSlice) => Math.max(s.sale, s.rent);
-  const slices = [...byName.values()].sort(
+  const ranked = [...byName.values()].sort(
     (a, b) => rank(b) - rank(a) || a.name.localeCompare(b.name),
   );
+  const top = ranked.slice(0, TOP_N);
+  const rest = ranked.slice(TOP_N);
+  if (rest.length) {
+    top.push({
+      name: OTHER,
+      sale: rest.reduce((t, s) => t + s.sale, 0),
+      rent: rest.reduce((t, s) => t + s.rent, 0),
+    });
+  }
 
   return {
-    slices,
-    saleTotal: slices.reduce((t, s) => t + s.sale, 0),
-    rentTotal: slices.reduce((t, s) => t + s.rent, 0),
+    slices: top,
+    saleTotal: ranked.reduce((t, s) => t + s.sale, 0),
+    rentTotal: ranked.reduce((t, s) => t + s.rent, 0),
   };
 }
