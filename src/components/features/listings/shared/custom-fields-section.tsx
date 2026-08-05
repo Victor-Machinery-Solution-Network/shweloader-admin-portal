@@ -170,7 +170,16 @@ export function CustomFieldsSection({
         });
       }
 
-      onChange([...templateFields, ...customValues]);
+      // Trim on the way out — labels were already trimmed above, but values
+      // went out raw, and pasted values routinely carry a leading/trailing
+      // space. That reaches the public spec table verbatim (" Yangon",
+      // "169000 Km "). Single choke point: onChange is only called here.
+      onChange(
+        [...templateFields, ...customValues].map((v) => ({
+          ...v,
+          value: v.value.trim(),
+        })),
+      );
     },
     [onChange],
   );
