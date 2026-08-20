@@ -25,6 +25,7 @@ import type {
   FeaturedListingRow,
   FeaturedListingWithDetails,
   DraftListingWithDetails,
+  DraftConflict,
   ProductImage,
   ListingDetail,
   RentalUnit,
@@ -2322,6 +2323,7 @@ export async function saveDraft(formData: FormData) {
       is_draft: 1,
       custom_id_suffix,
       created_by: userId,
+      updated_by: userId,
     });
 
     const productId = (product as unknown as Record<string, unknown>)
@@ -2362,29 +2364,141 @@ export async function saveDraft(formData: FormData) {
   }
 }
 
-/** Update an existing draft. Only the creator can update. */
-export async function updateDraft(productListId: number, formData: FormData) {
-  try {
-    const userId = await requireAuth();
+/** Row shape the two draft mutators need before they touch R2. */
+interface DraftGuardRow {
+  created_by: number | null;
+  is_draft: number;
+  version: number;
+  thumbnail_url: string | null;
+  thumbnail_sm_url: string | null;
+  thumbnail_blurhash: string | null;
+}
 
-    // Verify ownership
-    const existing = await d1.query<{
-      created_by: number | null;
-      is_draft: number;
-      thumbnail_url: string | null;
-      thumbnail_sm_url: string | null;
-      thumbnail_blurhash: string | null;
-    }>(
-      "SELECT created_by, is_draft, thumbnail_url, thumbnail_sm_url, thumbnail_blurhash FROM product_list WHERE id = ?",
-      [productListId],
+/**
+ * Load a draft and check the caller may write to it: their own draft always,
+ * anyone else's only with the matching listing_drafts verb.
+ */
+async function loadWritableDraft(
+  productListId: number,
+  verb: "edit" | "delete",
+): Promise<
+  { ok: true; row: DraftGuardRow; userId: number } | { ok: false; error: string }
+> {
+  const access = await getDraftAccess();
+  if (!access.userId) return { ok: false, error: "Unauthorized" };
+
+  const existing = await d1.query<DraftGuardRow>(
+    `SELECT created_by, is_draft, version, thumbnail_url, thumbnail_sm_url, thumbnail_blurhash
+       FROM product_list WHERE id = ? AND deleted_at IS NULL`,
+    [productListId],
+  );
+  const row = existing.results[0];
+  if (!row || row.is_draft !== 1) return { ok: false, error: "Draft not found" };
+
+  const isOwn = row.created_by === access.userId;
+  const mayTouchOthers =
+    verb === "edit" ? access.canEditOthers : access.canDeleteOthers;
+  if (!isOwn && !mayTouchOthers) {
+    return {
+      ok: false,
+      error: `Not authorized to ${verb} another admin's draft`,
+    };
+  }
+  return { ok: true, row, userId: access.userId };
+}
+
+/**
+ * Compare-and-swap the draft's version — the single thing that makes shared
+ * editing safe. Bumps version and stamps updated_by in one statement; zero rows
+ * back means somebody else moved first, so callers MUST claim before writing to
+ * R2 or child tables. Claiming and then failing later only costs the other
+ * editor a spurious conflict — it can never lose their write.
+ *
+ * The row count from RETURNING is the signal, not meta.changes: d1-client
+ * blanks `meta` on two of its three response shapes (src/lib/api/d1-client.ts),
+ * so a changes-based guard would silently always pass.
+ */
+async function claimDraft(
+  productListId: number,
+  expectedVersion: number,
+  userId: number,
+): Promise<
+  { ok: true; version: number } | { ok: false; conflict: DraftConflict }
+> {
+  const cas = await d1.query<{ version: number }>(
+    `UPDATE product_list
+        SET version = version + 1, updated_by = ?, updated_at = ?
+      WHERE id = ? AND version = ? AND is_draft = 1 AND deleted_at IS NULL
+      RETURNING version`,
+    [userId, new Date().toISOString(), productListId, expectedVersion],
+  );
+  if (cas.results.length > 0) {
+    return { ok: true, version: cas.results[0].version };
+  }
+
+  // Lost the race — read back who won so the dialog can name them.
+  const current = await d1.query<{
+    version: number;
+    is_draft: number;
+    updated_at: string;
+    deleted_at: string | null;
+    updated_by_name: string | null;
+  }>(
+    `SELECT pl.version, pl.is_draft, pl.updated_at, pl.deleted_at,
+            au.username AS updated_by_name
+       FROM product_list pl
+       LEFT JOIN admin_user au ON au.user_id = pl.updated_by
+      WHERE pl.id = ?`,
+    [productListId],
+  );
+  const row = current.results[0];
+  return {
+    ok: false,
+    conflict: {
+      by: row?.updated_by_name ?? null,
+      at: row?.updated_at ?? null,
+      currentVersion: row?.version ?? 0,
+      gone: !row || row.is_draft !== 1 || row.deleted_at !== null,
+    },
+  };
+}
+
+/** Version the editor posted back, or 0 — which can never match a real row. */
+function expectedVersionFrom(formData: FormData): number {
+  return Number(formData.get("draft_version")) || 0;
+}
+
+/**
+ * Update an existing draft. Own draft, or listing_drafts:edit. Guarded by a
+ * version CAS so a concurrent save is rejected instead of silently overwritten.
+ */
+export async function updateDraft(productListId: number, formData: FormData) {
+  // Returned on every path once claimed, so a retry after an unrelated failure
+  // (a flaky R2 upload, say) carries a fresh token instead of a stale one that
+  // would surface a bogus "someone else saved this" dialog.
+  let claimedVersion: number | undefined;
+  try {
+    const guard = await loadWritableDraft(productListId, "edit");
+    if (!guard.ok) return { success: false, error: guard.error };
+    const { row, userId } = guard;
+
+    // Claim the version BEFORE any R2 write, so a rejected save leaves no
+    // orphaned uploads behind.
+    const claim = await claimDraft(
+      productListId,
+      expectedVersionFrom(formData),
+      userId,
     );
-    const row = existing.results[0];
-    if (!row || row.is_draft !== 1) {
-      return { success: false, error: "Draft not found" };
+    if (!claim.ok) {
+      return {
+        success: false,
+        error: claim.conflict.gone
+          ? "This draft was submitted or deleted by someone else."
+          : "Someone else saved this draft while you were editing.",
+        conflict: claim.conflict,
+      };
     }
-    if (row.created_by !== userId) {
-      return { success: false, error: "Not authorized to edit this draft" };
-    }
+    claimedVersion = claim.version;
 
     const productType = formData.get("product_type") as string | null;
     const modelId = formData.get("model_id")
@@ -2441,39 +2555,28 @@ export async function updateDraft(productListId: number, formData: FormData) {
     // Clean up old thumbnail
     await cleanupProductThumbnail(row, thumbnailFields);
 
-    return { success: true };
+    return { success: true, version: claimedVersion };
   } catch (error) {
     return {
       success: false,
       error: getErrorMessage(error, "Failed to update draft"),
+      version: claimedVersion,
     };
   }
 }
 
-/** Submit a draft as a full listing. Validates required fields, creates listing rows. */
+/**
+ * Submit a draft as a full listing. Own draft, or listing_drafts:edit — plus
+ * the usual sale/rent create permission. Validates required fields, creates
+ * listing rows. Version-guarded like updateDraft.
+ */
 export async function submitDraft(productListId: number, formData: FormData) {
   const uploadedKeys: string[] = [];
+  let claimedVersion: number | undefined;
   try {
-    const userId = await requireAuth();
-
-    // Verify ownership + draft status
-    const existing = await d1.query<{
-      created_by: number | null;
-      is_draft: number;
-      thumbnail_url: string | null;
-      thumbnail_sm_url: string | null;
-      thumbnail_blurhash: string | null;
-    }>(
-      "SELECT created_by, is_draft, thumbnail_url, thumbnail_sm_url, thumbnail_blurhash FROM product_list WHERE id = ?",
-      [productListId],
-    );
-    const row = existing.results[0];
-    if (!row || row.is_draft !== 1) {
-      return { success: false, error: "Draft not found" };
-    }
-    if (row.created_by !== userId) {
-      return { success: false, error: "Not authorized to submit this draft" };
-    }
+    const guard = await loadWritableDraft(productListId, "edit");
+    if (!guard.ok) return { success: false, error: guard.error };
+    const { row, userId } = guard;
 
     // Extract and validate required fields
     const productFields = extractProductFields(formData);
@@ -2505,6 +2608,25 @@ export async function submitDraft(productListId: number, formData: FormData) {
       forSale && (await hasApprovePermission("sale_listings"));
     const canApproveRent =
       forRent && (await hasApprovePermission("rent_listings"));
+
+    // Claim the version now — after validation (so a rejected form doesn't burn
+    // a version) and before the first R2 write (so a lost race leaves no
+    // orphaned uploads).
+    const claim = await claimDraft(
+      productListId,
+      expectedVersionFrom(formData),
+      userId,
+    );
+    if (!claim.ok) {
+      return {
+        success: false,
+        error: claim.conflict.gone
+          ? "This draft was already submitted or deleted by someone else."
+          : "Someone else saved this draft while you were editing.",
+        conflict: claim.conflict,
+      };
+    }
+    claimedVersion = claim.version;
 
     // Handle thumbnail
     const thumbnailFields = await uploadProductThumbnail(
@@ -2670,28 +2792,17 @@ export async function submitDraft(productListId: number, formData: FormData) {
     return {
       success: false,
       error: getErrorMessage(error, "Failed to submit draft"),
+      version: claimedVersion,
     };
   }
 }
 
-/** Delete a draft. Only the creator can delete. Cleans up R2 files. */
+/** Delete a draft. Own draft, or listing_drafts:delete. Cleans up R2 files. */
 export async function deleteDraft(productListId: number) {
   try {
-    const userId = await requireAuth();
-
-    const existing = await d1.query<{
-      created_by: number | null;
-      is_draft: number;
-    }>("SELECT created_by, is_draft FROM product_list WHERE id = ?", [
-      productListId,
-    ]);
-    const row = existing.results[0];
-    if (!row || row.is_draft !== 1) {
-      return { success: false, error: "Draft not found" };
-    }
-    if (row.created_by !== userId) {
-      return { success: false, error: "Not authorized to delete this draft" };
-    }
+    const guard = await loadWritableDraft(productListId, "delete");
+    if (!guard.ok) return { success: false, error: guard.error };
+    const { userId } = guard;
 
     // Soft delete the product_list (R2 files cleaned up when permanently deleting from trash)
     await productListService.softDelete(productListId, userId);
@@ -2707,67 +2818,92 @@ export async function deleteDraft(productListId: number) {
   }
 }
 
-/** Get all drafts for the current user */
-export async function getDraftListings(): Promise<DraftListingWithDetails[]> {
+/**
+ * Draft access rules. Your own drafts are always yours — no grant needed, so a
+ * role holding none of these behaves exactly as it did before drafts went
+ * shared. Reaching another admin's draft needs the matching listing_drafts verb.
+ */
+async function getDraftAccess(): Promise<{
+  userId: number | null;
+  canReadOthers: boolean;
+  canEditOthers: boolean;
+  canDeleteOthers: boolean;
+}> {
   const session = await auth();
-  if (!session?.user?.id) return [];
-
-  const result = await d1.query<DraftListingWithDetails>(
-    `SELECT
-      pl.id, pl.equipment_model_id, pl.attachment_model_id,
-      pl.partner_id, pl.township_id, pl.description,
-      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
-      COALESCE(em.name, am.name) AS model_name,
-      CASE
-        WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment'
-        WHEN pl.attachment_model_id IS NOT NULL THEN 'attachment'
-        ELSE NULL
-      END AS product_type,
-      c.username AS partner_name,
-      t.name AS township_name,
-      pl.created_at, pl.updated_at
-    FROM product_list pl
-    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
-    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
-    LEFT JOIN partner p ON pl.partner_id = p.id
-    LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
-    LEFT JOIN township t ON pl.township_id = t.township_id
-    WHERE pl.is_draft = 1 AND pl.created_by = ? AND pl.deleted_at IS NULL
-    ORDER BY pl.updated_at DESC`,
-    [session.user.id],
-  );
-  return result.results;
+  const userId = session?.user?.id ? Number(session.user.id) : null;
+  const roleId = session?.user?.role_id;
+  const perms = roleId ? await getCachedPermissionsForRole(roleId) : [];
+  return {
+    userId,
+    canReadOthers: perms.includes("listing_drafts:read"),
+    canEditOthers: perms.includes("listing_drafts:edit"),
+    canDeleteOthers: perms.includes("listing_drafts:delete"),
+  };
 }
 
-/** Get a single draft by ID (for edit page). Only the creator can view. */
+/** Shared SELECT list for the two draft readers below. */
+const DRAFT_SELECT = `
+  SELECT
+    pl.id, pl.equipment_model_id, pl.attachment_model_id,
+    pl.partner_id, pl.township_id, pl.description,
+    pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
+    COALESCE(em.name, am.name) AS model_name,
+    CASE
+      WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment'
+      WHEN pl.attachment_model_id IS NOT NULL THEN 'attachment'
+      ELSE NULL
+    END AS product_type,
+    c.username AS partner_name,
+    t.name AS township_name,
+    pl.created_at, pl.updated_at,
+    pl.version, pl.created_by, pl.updated_by,
+    cb.username AS created_by_name,
+    ub.username AS updated_by_name
+  FROM product_list pl
+  LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
+  LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
+  LEFT JOIN partner p ON pl.partner_id = p.id
+  LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
+  LEFT JOIN township t ON pl.township_id = t.township_id
+  LEFT JOIN admin_user cb ON cb.user_id = pl.created_by
+  LEFT JOIN admin_user ub ON ub.user_id = pl.updated_by
+`;
+
+type DraftRow = Omit<DraftListingWithDetails, "is_own">;
+
+/**
+ * Drafts visible to the current user: always their own, plus everyone else's
+ * when the role holds listing_drafts:read.
+ */
+export async function getDraftListings(): Promise<DraftListingWithDetails[]> {
+  const { userId, canReadOthers } = await getDraftAccess();
+  if (!userId) return [];
+
+  const scope = canReadOthers ? "" : "AND pl.created_by = ?";
+  const result = await d1.query<DraftRow>(
+    `${DRAFT_SELECT}
+     WHERE pl.is_draft = 1 AND pl.deleted_at IS NULL ${scope}
+     ORDER BY pl.updated_at DESC`,
+    canReadOthers ? [] : [userId],
+  );
+  return result.results.map((r) => ({ ...r, is_own: r.created_by === userId }));
+}
+
+/** Get a single draft by ID (for edit page). Own draft, or listing_drafts:read. */
 export async function getDraftById(
   id: number,
 ): Promise<DraftListingWithDetails | null> {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const { userId, canReadOthers } = await getDraftAccess();
+  if (!userId) return null;
 
-  const result = await d1.query<DraftListingWithDetails>(
-    `SELECT
-      pl.id, pl.equipment_model_id, pl.attachment_model_id,
-      pl.partner_id, pl.township_id, pl.description,
-      pl.thumbnail_url, pl.hide_partner, pl.address, pl.hide_address, pl.hide_state_region, pl.hide_district, pl.hide_township, pl.custom_fields,
-      COALESCE(em.name, am.name) AS model_name,
-      CASE
-        WHEN pl.equipment_model_id IS NOT NULL THEN 'equipment'
-        WHEN pl.attachment_model_id IS NOT NULL THEN 'attachment'
-        ELSE NULL
-      END AS product_type,
-      c.username AS partner_name,
-      t.name AS township_name,
-      pl.created_at, pl.updated_at
-    FROM product_list pl
-    LEFT JOIN equipment_model em ON pl.equipment_model_id = em.model_id
-    LEFT JOIN attachment_model am ON pl.attachment_model_id = am.model_id
-    LEFT JOIN partner p ON pl.partner_id = p.id
-    LEFT JOIN app_user c ON p.app_user_id = c.app_user_id
-    LEFT JOIN township t ON pl.township_id = t.township_id
-    WHERE pl.id = ? AND pl.is_draft = 1 AND pl.created_by = ?`,
-    [id, session.user.id],
+  const result = await d1.query<DraftRow>(
+    `${DRAFT_SELECT}
+     WHERE pl.id = ? AND pl.is_draft = 1 AND pl.deleted_at IS NULL`,
+    [id],
   );
-  return result.results[0] ?? null;
+  const row = result.results[0];
+  if (!row) return null;
+  const isOwn = row.created_by === userId;
+  if (!isOwn && !canReadOthers) return null;
+  return { ...row, is_own: isOwn };
 }

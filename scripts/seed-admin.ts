@@ -280,6 +280,9 @@ const FEATURES = [
   { name: "enquiries", group_name: "Marketplace", display_order: 14 },
   { name: "listing_templates", group_name: "Marketplace", display_order: 15 },
   { name: "condition_types", group_name: "Marketplace", display_order: 16 },
+  // Shared drafts. Grants apply only to OTHER admins' drafts — your own are
+  // always yours. See migrations/2026-08-20-draft-sharing.sql.
+  { name: "listing_drafts", group_name: "Marketplace", display_order: 17 },
   // Users (17–20)
   { name: "users", group_name: "Users", display_order: 17 },
   { name: "partners", group_name: "Users", display_order: 18 },
@@ -317,6 +320,7 @@ const FEATURE_PERMISSION_MAP: Record<string, string[]> = {
   rent_listings: ["create", "read", "edit", "delete", "approve"],
   featured_listings: ["create", "read", "delete"],
   condition_types: ["create", "read", "edit", "delete"],
+  listing_drafts: ["read", "edit", "delete"],
   chat: ["read", "edit", "delete"],
   enquiries: ["read", "edit"],
   users: ["read", "create", "edit", "delete"],

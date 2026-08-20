@@ -41,6 +41,17 @@ import type { LucideIcon } from "lucide-react";
 import { cn, convertUsdToMmk, convertMmkToUsd } from "@/lib/utils";
 import { SESSION_KEYS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -97,6 +108,7 @@ import type {
   SaleListingWithDetails,
   RentListingWithDetails,
   DraftListingWithDetails,
+  DraftConflict,
   ProductImage,
   ApprovedPartner,
   ConditionType,
@@ -715,6 +727,17 @@ export function ListingEditor({
   const submitActionRef = useRef<
     "save-draft" | "submit" | "save" | "resubmit" | "approve"
   >("save");
+
+  // ── Draft concurrency ───────────────────────────────────────────────────
+  // Drafts are shared, so two admins can have the same one open. Every draft
+  // write carries this version; the server rejects the save if the row moved
+  // on. A ref, not state — it must not re-render the form mid-edit.
+  const draftVersionRef = useRef(draft?.version ?? 0);
+  const pendingSubmitRef = useRef<{
+    action: string;
+    formData: FormData;
+  } | null>(null);
+  const [conflict, setConflict] = useState<DraftConflict | null>(null);
 
   // Approval / rework state
   const feature = pageType === "sale" ? "sale_listings" : "rent_listings";
@@ -1471,8 +1494,28 @@ export function ListingEditor({
       if (item.focalY != null) formData.set(`photo_focal_y_${i}`, String(item.focalY));
     });
 
+    runAction(action, formData);
+  }
+
+  /**
+   * Run the chosen server action. Split out of handleSubmit so the conflict
+   * dialog can re-run the exact same submission with a refreshed version token
+   * when the user chooses to overwrite.
+   */
+  function runAction(action: string, formData: FormData) {
+    // Draft writes are compare-and-swap: the server rejects the save if this
+    // token no longer matches the row (someone else saved first).
+    formData.set("draft_version", String(draftVersionRef.current));
+    pendingSubmitRef.current = { action, formData };
+
     startTransition(async () => {
-      let result: { success: boolean; error?: string; draftId?: number };
+      let result: {
+        success: boolean;
+        error?: string;
+        draftId?: number;
+        version?: number;
+        conflict?: DraftConflict;
+      };
 
       switch (action) {
         case "save-draft":
@@ -1522,6 +1565,16 @@ export function ListingEditor({
           break;
       }
 
+      // Keep the token fresh even on failure, so an unrelated retry doesn't
+      // look like a conflict.
+      if (typeof result.version === "number") {
+        draftVersionRef.current = result.version;
+      }
+      if (result.conflict) {
+        setConflict(result.conflict);
+        return;
+      }
+
       if (result.success) {
         const messages: Record<string, string> = {
           "save-draft": "Draft saved",
@@ -1556,6 +1609,19 @@ export function ListingEditor({
         toast.error(result.error ?? "Something went wrong");
       }
     });
+  }
+
+  /**
+   * "Overwrite with mine" — re-run the exact same submission against the
+   * version that won the race. Deliberately explicit: the only way to clobber
+   * a colleague's save is to read who they are and click through it.
+   */
+  function overwriteConflict() {
+    const pending = pendingSubmitRef.current;
+    if (!pending || !conflict) return;
+    draftVersionRef.current = conflict.currentVersion;
+    setConflict(null);
+    runAction(pending.action, pending.formData);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -2596,6 +2662,53 @@ export function ListingEditor({
               </Field>
             </div>
           </FormDialog>
+        )}
+        {/* ── Draft Conflict Dialog ──
+            Shown when a draft write lost the version CAS. The form keeps every
+            field the user typed, so no work is destroyed either way. */}
+        {conflict && (
+          <AlertDialog
+            open
+            onOpenChange={(open) => {
+              if (!open) setConflict(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {conflict.gone
+                    ? "This draft is no longer available"
+                    : "Someone else saved this draft"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {conflict.gone
+                    ? `${conflict.by ?? "Another admin"} submitted or deleted this draft while you were editing, so it can no longer be saved. Your changes are still on screen \u2014 copy anything you need before you leave.`
+                    : `${conflict.by ?? "Another admin"} saved changes${conflict.at ? ` on ${formatDate(conflict.at)}` : ""}. Nothing of yours was lost \u2014 your edits are still in the form. Choose which version to keep.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isPending}>
+                  Keep editing
+                </AlertDialogCancel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => window.location.reload()}
+                >
+                  Discard mine, load theirs
+                </Button>
+                {!conflict.gone && (
+                  <AlertDialogAction
+                    onClick={overwriteConflict}
+                    disabled={isPending}
+                  >
+                    Overwrite with mine
+                  </AlertDialogAction>
+                )}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </FormSubmittedContext>
     </form>

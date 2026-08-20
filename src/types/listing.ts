@@ -21,6 +21,9 @@ export interface ProductList {
   hide_partner: number;
   is_draft: number;
   created_by: number | null;
+  updated_by: number | null;
+  /** Optimistic-concurrency token, bumped on every draft write. */
+  version: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -301,6 +304,28 @@ export interface DraftListingWithDetails {
   township_name: string | null;
   created_at: string;
   updated_at: string;
+  /** Compare-and-swap token — round-trips through the editor to detect a
+   *  concurrent save. See updateDraft/submitDraft in lib/actions/listing.ts. */
+  version: number;
+  created_by: number | null;
+  updated_by: number | null;
+  created_by_name: string | null;
+  updated_by_name: string | null;
+  /** False when this draft belongs to another admin (visible via
+   *  listing_drafts:read). Drives the read-only affordances in the UI. */
+  is_own: boolean;
+}
+
+/** Why a draft write was rejected — drives the conflict dialog in the editor. */
+export interface DraftConflict {
+  /** Who saved over you. */
+  by: string | null;
+  /** When they saved (ISO). */
+  at: string | null;
+  /** The version to re-submit with if the user chooses to overwrite. */
+  currentVersion: number;
+  /** True when the draft is gone — already submitted as a listing, or deleted. */
+  gone: boolean;
 }
 
 /** Unified listing detail view (works for both sale and rent) */

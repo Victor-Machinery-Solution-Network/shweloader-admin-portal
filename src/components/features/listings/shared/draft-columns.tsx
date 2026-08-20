@@ -10,6 +10,33 @@ import { DraftRowActions } from "./draft-row-actions";
 import { ListingThumbnail } from "./listing-thumbnail";
 import type { DraftListingWithDetails } from "@/types/listing";
 
+/**
+ * Admin name for a draft, tagged "You" on your own so a shared list still reads
+ * at a glance. `is_own` comes from the server — the session user never reaches
+ * the client here.
+ */
+function AdminName({
+  draft,
+  field,
+}: {
+  draft: DraftListingWithDetails;
+  field: "created" | "updated";
+}) {
+  const name =
+    field === "created" ? draft.created_by_name : draft.updated_by_name;
+  if (!name) return <span className="text-muted-foreground text-sm">—</span>;
+  return (
+    <span className="flex items-center gap-1.5 text-sm">
+      <span className="truncate">{name}</span>
+      {draft.is_own && field === "created" && (
+        <Badge variant="secondary" className="text-[10px]">
+          You
+        </Badge>
+      )}
+    </span>
+  );
+}
+
 export function createDraftColumns(): ColumnDef<DraftListingWithDetails>[] {
   return [
     {
@@ -62,6 +89,22 @@ export function createDraftColumns(): ColumnDef<DraftListingWithDetails>[] {
           {row.original.partner_name ?? <span className="text-muted-foreground">—</span>}
         </span>
       ),
+    },
+    {
+      id: "created_by_name",
+      accessorFn: (row) => row.created_by_name ?? "",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created By" />
+      ),
+      cell: ({ row }) => <AdminName draft={row.original} field="created" />,
+    },
+    {
+      id: "updated_by_name",
+      accessorFn: (row) => row.updated_by_name ?? "",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Last Modified By" />
+      ),
+      cell: ({ row }) => <AdminName draft={row.original} field="updated" />,
     },
     {
       accessorKey: "updated_at",

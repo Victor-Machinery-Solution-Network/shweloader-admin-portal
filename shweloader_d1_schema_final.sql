@@ -962,6 +962,11 @@ CREATE TABLE IF NOT EXISTS product_list (
     hide_partner INTEGER DEFAULT 0,
     is_draft INTEGER DEFAULT 0,
     created_by INTEGER,
+    updated_by INTEGER,
+    -- Optimistic-concurrency token. Drafts are shared across admins, so every
+    -- draft write is a compare-and-swap on this value (see claimDraft in the
+    -- portal's lib/actions/listing.ts). Never edit it by hand.
+    version INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP DEFAULT NULL,
@@ -976,6 +981,7 @@ CREATE TABLE IF NOT EXISTS product_list (
     FOREIGN KEY (attachment_model_id) REFERENCES attachment_model(model_id) ON DELETE RESTRICT,
     FOREIGN KEY (township_id) REFERENCES township(township_id) ON DELETE RESTRICT,
     FOREIGN KEY (created_by) REFERENCES admin_user(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES admin_user(user_id) ON DELETE SET NULL,
     CHECK (
         is_draft = 1 OR
         (
@@ -990,6 +996,7 @@ CREATE INDEX IF NOT EXISTS idx_product_list_equipment_model ON product_list(equi
 CREATE INDEX IF NOT EXISTS idx_product_list_attachment_model ON product_list(attachment_model_id);
 CREATE INDEX IF NOT EXISTS idx_product_list_township ON product_list(township_id);
 CREATE INDEX IF NOT EXISTS idx_product_list_created_by ON product_list(created_by);
+CREATE INDEX IF NOT EXISTS idx_product_list_updated_by ON product_list(updated_by);
 CREATE INDEX IF NOT EXISTS idx_product_list_active ON product_list(deleted_at, is_draft);
 CREATE INDEX IF NOT EXISTS idx_product_list_drafts ON product_list(created_by, is_draft, deleted_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_list_custom_id_suffix ON product_list(custom_id_suffix);

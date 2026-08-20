@@ -92,6 +92,10 @@ export function ListingsClient({
   const canCreate = useHasPermission(feature, "create");
   const canExport = useHasPermission(feature, "export");
   const canDelete = useHasPermission(feature, "delete");
+  // Drafts are shared: with listing_drafts:read the tab lists every admin's
+  // unfinished work, otherwise just your own. Only changes the wording here —
+  // the scoping itself is enforced server-side in getDraftListings.
+  const canSeeAllDrafts = useHasPermission("listing_drafts", "read");
 
   const columns = useMemo(() => {
     const factory = pageType === "sale" ? createSaleColumns : createRentColumns;
@@ -546,8 +550,8 @@ export function ListingsClient({
             <DataTable
               columns={draftColumns}
               data={drafts}
-              searchKeys={["model_name"]}
-              searchPlaceholder="Search drafts"
+              searchKeys={["model_name", "created_by_name", "updated_by_name"]}
+              searchPlaceholder="Search drafts or people"
               enablePagination
               pageSize={10}
               getRowId={(row) => row.id}
@@ -558,7 +562,11 @@ export function ListingsClient({
             <EmptyState
               icon={FileEdit}
               title="No drafts"
-              description="Save a listing as draft to continue later."
+              description={
+                canSeeAllDrafts
+                  ? "Nobody has an unfinished listing saved right now."
+                  : "Save a listing as draft to continue later."
+              }
               fullPage={false}
             />
           )}

@@ -25,6 +25,10 @@ import { ListingEditor } from "@/components/features/listings/shared/listing-edi
 import { EditorSkeleton } from "@/components/features/listings/shared/editor-skeleton";
 import { EditorHtmlLock } from "@/components/features/listings/shared/editor-html-lock";
 import { PermissionGate } from "@/components/shared/permission-gate";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ShieldAlert } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { getCachedPermissionsForRole } from "@/lib/cache";
 
 export const metadata = {
   title: "Edit Draft",
@@ -94,7 +98,26 @@ async function EditDraftContent({
     getCustomFieldTemplates(),
   ]);
 
+  // getDraftById already hides other admins' drafts from roles without
+  // listing_drafts:read. This second gate is for the read-but-not-edit case —
+  // better a clear message than an editor whose Save always fails.
   if (!draft) notFound();
+
+  if (!draft.is_own) {
+    const session = await auth();
+    const perms = session?.user?.role_id
+      ? await getCachedPermissionsForRole(session.user.role_id)
+      : [];
+    if (!perms.includes("listing_drafts:edit")) {
+      return (
+        <EmptyState
+          icon={ShieldAlert}
+          title="Read-only draft"
+          description={`This draft belongs to ${draft.created_by_name ?? "another admin"}. You need the "Listing Drafts — edit" permission to change it.`}
+        />
+      );
+    }
+  }
 
   const images = await getProductImages(draft.id);
 
