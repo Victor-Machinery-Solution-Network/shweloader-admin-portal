@@ -699,6 +699,10 @@ export async function getPickableListings(): Promise<
     usd_price: number | null;
     display_currency: string | null;
   }>(
+    // No LIMIT: the modal has no pagination and filters by tab client-side, so
+    // any cap over the union silently starves one type (sale/rent ids are
+    // independent sequences, so a global `ORDER BY listing_id DESC LIMIT` cuts
+    // whichever table has the lower ids).
     `SELECT
       sl.id AS listing_id, 'sale' AS listing_type,
       pl.id AS product_list_id,
@@ -740,8 +744,7 @@ export async function getPickableListings(): Promise<
       AND pl.deleted_at IS NULL
       AND pl.is_draft = 0
       AND ast.status_name = 'Approved'
-    ORDER BY listing_id DESC
-    LIMIT 200`,
+    ORDER BY product_list_id DESC, listing_type`,
   );
 
   return result.results.map((row) => ({
