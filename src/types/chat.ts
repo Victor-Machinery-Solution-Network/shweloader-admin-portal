@@ -64,6 +64,14 @@ export interface ChatMessage {
   sale_listing_id: number | null;
   rent_listing_id: number | null;
   created_at: string;
+  /** Set when an admin corrected the text — drives the "Edited" marker. */
+  edited_at: string | null;
+  /** Soft delete. The row survives so the tombstone keeps its place in the
+   *  thread and chat_attachment rows stay referenced for the R2 sweep. */
+  deleted_at: string | null;
+  /** Which admin pressed delete — not necessarily the sender, since any admin
+   *  with the chat 'delete' permission can remove another admin's message. */
+  deleted_by: number | null;
 }
 
 /** Chat message with sender name and attachments */
@@ -80,6 +88,9 @@ export interface ChatMessageWithDetails extends ChatMessage {
   usd_price: number | null;
   display_currency: string | null;
   partner_name: string | null;
+  /** Username of the admin who deleted it, for the "<Admin> deleted this
+   *  message" tombstone. Null unless deleted_by is set. */
+  deleted_by_name: string | null;
 }
 
 /** Matches the chat_attachment table in D1 */

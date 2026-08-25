@@ -105,6 +105,10 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
         usd_price: (raw.usdPrice as number | null) ?? null,
         display_currency: (raw.displayCurrency as string | null) ?? null,
         partner_name: (raw.partnerName as string | null) ?? null,
+        edited_at: null,
+        deleted_at: null,
+        deleted_by: null,
+        deleted_by_name: null,
       };
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
@@ -114,6 +118,48 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
       if (msg.sender_type === "user" && sessionId) {
         markReadAndNotify(sessionId);
       }
+    });
+
+    // An admin edited or deleted a message in this thread. Patch the row in
+    // place rather than refetching — the event carries everything the bubble
+    // needs, and the acting admin gets the same broadcast, so this doubles as
+    // their own confirmation.
+    const unsubUpdated = handle.subscribe("message-updated", (data: unknown) => {
+      const raw = data as Record<string, unknown>;
+      const id = raw.messageId as number;
+      const deletedAt = (raw.deletedAt as string | null) ?? null;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                // A deleted bubble renders from deleted_at, so the text it
+                // carries stops mattering — but null it out anyway so nothing
+                // downstream can leak the original words.
+                message: deletedAt ? null : (raw.message as string | null),
+                edited_at: (raw.editedAt as string | null) ?? m.edited_at,
+                deleted_at: deletedAt,
+                deleted_by: (raw.deletedBy as number | null) ?? m.deleted_by,
+                deleted_by_name:
+                  (raw.deletedByName as string | null) ?? m.deleted_by_name,
+                ...(deletedAt
+                  ? {
+                      attachments: [],
+                      product_name: null,
+                      product_thumbnail: null,
+                      product_list_id: null,
+                      listing_type: null,
+                      custom_id: null,
+                      brand_name: null,
+                      mmk_price: null,
+                      usd_price: null,
+                      display_currency: null,
+                    }
+                  : {}),
+              }
+            : m,
+        ),
+      );
     });
 
     // Listen for session-resolved to update UI in real-time
@@ -136,6 +182,7 @@ export function useChatMessages(sessionId: number | null, initialUnreadCount = 0
 
     return () => {
       unsubMessage();
+      unsubUpdated();
       unsubResolved();
       unsubReopened();
       unsubRead();

@@ -9,6 +9,7 @@ import { sendPushToUser } from "@/lib/services/push-notification";
 import { sendWebPushToUser } from "@/lib/web-push";
 import { insertUserNotification } from "@/lib/services/user-notification";
 import { assetUrl } from "@/lib/r2-url";
+import { auditLog } from "@/lib/actions/audit";
 import { customIdSqlExpr } from "@/lib/utils/custom-id";
 import type {
   ChatSessionWithDetails,
@@ -122,6 +123,8 @@ export async function getChatMessages(
     `SELECT
       cm.id, cm.chat_session_id, cm.sender_type, cm.sender_id, cm.message,
       cm.sale_listing_id, cm.rent_listing_id, cm.created_at,
+      cm.edited_at, cm.deleted_at, cm.deleted_by,
+      dad.username AS deleted_by_name,
       CASE
         WHEN cm.sender_type = 'user' THEN au.full_name
         WHEN cm.sender_type = 'admin' THEN ad.username
@@ -144,6 +147,7 @@ export async function getChatMessages(
     FROM chat_message cm
     LEFT JOIN app_user au ON cm.sender_type = 'user' AND au.app_user_id = cm.sender_id
     LEFT JOIN admin_user ad ON cm.sender_type = 'admin' AND ad.user_id = cm.sender_id
+    LEFT JOIN admin_user dad ON dad.user_id = cm.deleted_by
     LEFT JOIN sale_listing sl ON sl.id = cm.sale_listing_id
     LEFT JOIN rent_listing rl ON rl.id = cm.rent_listing_id
     LEFT JOIN product_list pl ON pl.id = COALESCE(sl.product_list_id, rl.product_list_id)
@@ -182,10 +186,28 @@ export async function getChatMessages(
     (a) => a.chat_message_id,
   );
 
-  // Merge
+  // Merge. A deleted message keeps its slot in the thread but gives up its
+  // payload — attachments and product card go too, otherwise the image the
+  // admin meant to remove stays on screen. The bubble text is left to the
+  // client, which has the viewer's identity and can say "You deleted this
+  // message" rather than naming the admin.
   return messages.map((m) => ({
     ...m,
-    attachments: attachmentsByMessage.get(m.id) ?? [],
+    attachments: m.deleted_at ? [] : (attachmentsByMessage.get(m.id) ?? []),
+    ...(m.deleted_at
+      ? {
+          message: null,
+          product_name: null,
+          product_thumbnail: null,
+          product_list_id: null,
+          listing_type: null,
+          custom_id: null,
+          brand_name: null,
+          mmk_price: null,
+          usd_price: null,
+          display_currency: null,
+        }
+      : {}),
   }));
 }
 
@@ -494,6 +516,168 @@ export async function sendMessage(
 }
 
 /** Resolve a chat session */
+/**
+ * Recompute a session's inbox preview from its newest non-system message.
+ *
+ * One statement rather than "was this the latest message?" branching, so it is
+ * correct whether the admin touched the last message or an older one. Mirrors
+ * refreshSessionPreview() in shweloader-admin-chat-api.
+ */
+async function refreshSessionPreview(sessionId: number) {
+  await d1.query(
+    `UPDATE chat_session
+     SET last_message_preview = COALESCE((
+           SELECT CASE
+             WHEN cm.deleted_at IS NOT NULL THEN 'This message was deleted'
+             WHEN cm.message IS NOT NULL AND TRIM(cm.message) != '' THEN SUBSTR(cm.message, 1, 100)
+             WHEN cm.sale_listing_id IS NOT NULL OR cm.rent_listing_id IS NOT NULL THEN 'Shared a listing'
+             ELSE 'Sent an attachment'
+           END
+           FROM chat_message cm
+           WHERE cm.chat_session_id = ? AND cm.sender_type != 'system'
+           ORDER BY cm.id DESC
+           LIMIT 1
+         ), last_message_preview),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [sessionId, sessionId],
+  );
+}
+
+/**
+ * Edit an admin message.
+ *
+ * Any admin with chat 'edit' may correct any ADMIN message in the thread — a
+ * shared support inbox, so a supervisor fixing a junior's typo is the point.
+ * A customer's own words are never editable; that is enforced in the WHERE
+ * clause rather than trusted from the UI.
+ */
+export async function editMessage(
+  sessionId: number,
+  messageId: number,
+  message: string,
+) {
+  try {
+    const adminId = await requirePermission("chat", "edit");
+
+    const next = message.trim();
+    if (!next) return { success: false, error: "Message cannot be empty" };
+    if (next.length > 5000)
+      return { success: false, error: "Message is too long" };
+
+    const existing = await d1.query<{
+      message: string | null;
+      sender_type: string;
+      deleted_at: string | null;
+    }>(
+      `SELECT message, sender_type, deleted_at FROM chat_message
+       WHERE id = ? AND chat_session_id = ?`,
+      [messageId, sessionId],
+    );
+    const row = existing.results[0];
+    if (!row) return { success: false, error: "Message not found" };
+    if (row.sender_type !== "admin")
+      return { success: false, error: "Only admin messages can be edited" };
+    if (row.deleted_at)
+      return { success: false, error: "This message was deleted" };
+    if (row.message === next) return { success: true };
+
+    const editedAt = new Date().toISOString();
+    await d1.query(
+      "UPDATE chat_message SET message = ?, edited_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [next, messageId],
+    );
+    await refreshSessionPreview(sessionId);
+
+    // Worker logs keep no request bodies, so D1 is the only place the
+    // before/after pair survives a later dispute.
+    auditLog(
+      adminId,
+      `Edited chat message #${messageId} in session #${sessionId}. Before: "${(row.message ?? "").slice(0, 500)}" After: "${next.slice(0, 500)}"`,
+    );
+
+    const payload = {
+      sessionId,
+      messageId,
+      message: next,
+      edited: true,
+      editedAt,
+      deletedAt: null,
+    };
+    triggerChatEvent(sessionId, "message-updated", payload).catch(() => {});
+    triggerAdminChatEvent("message-updated", payload).catch(() => {});
+
+    invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
+    return { success: true, editedAt };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to edit message"),
+    };
+  }
+}
+
+/**
+ * Delete an admin message (soft).
+ *
+ * The row stays so the tombstone holds its place in the thread and the
+ * chat_attachment rows stay referenced — a hard delete would let the
+ * admin-portal-api R2 sweep cron bin the files. Reads strip the text,
+ * attachments and product card.
+ */
+export async function deleteMessage(sessionId: number, messageId: number) {
+  try {
+    const adminId = await requirePermission("chat", "delete");
+
+    const existing = await d1.query<{
+      message: string | null;
+      sender_type: string;
+      deleted_at: string | null;
+    }>(
+      `SELECT message, sender_type, deleted_at FROM chat_message
+       WHERE id = ? AND chat_session_id = ?`,
+      [messageId, sessionId],
+    );
+    const row = existing.results[0];
+    if (!row) return { success: false, error: "Message not found" };
+    if (row.sender_type !== "admin")
+      return { success: false, error: "Only admin messages can be deleted" };
+    if (row.deleted_at) return { success: true };
+
+    const deletedAt = new Date().toISOString();
+    await d1.query(
+      "UPDATE chat_message SET deleted_at = CURRENT_TIMESTAMP, deleted_by = ? WHERE id = ?",
+      [adminId, messageId],
+    );
+    await refreshSessionPreview(sessionId);
+
+    auditLog(
+      adminId,
+      `Deleted chat message #${messageId} in session #${sessionId}. Content: "${(row.message ?? "(attachment only)").slice(0, 500)}"`,
+    );
+
+    const payload = {
+      sessionId,
+      messageId,
+      message: "This message was deleted",
+      edited: false,
+      editedAt: null,
+      deletedAt,
+      deletedBy: adminId,
+    };
+    triggerChatEvent(sessionId, "message-updated", payload).catch(() => {});
+    triggerAdminChatEvent("message-updated", payload).catch(() => {});
+
+    invalidateTag(CACHE_TAGS.CHAT_SESSIONS);
+    return { success: true, deletedAt };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, "Failed to delete message"),
+    };
+  }
+}
+
 export async function resolveSession(sessionId: number) {
   try {
     await requirePermission("chat", "edit");

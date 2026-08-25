@@ -426,6 +426,7 @@ export function ConversationPanel({
                     isGrouped={!isFirstInGroup}
                     userLastReadAt={effectiveUserLastReadAt}
                     isLastAdminMessage={msg.id === lastAdminMessageId}
+                    sessionId={session.id}
                   />
                 </div>
               );
