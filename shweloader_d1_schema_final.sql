@@ -1081,6 +1081,7 @@ CREATE INDEX IF NOT EXISTS idx_sale_listing_product_list ON sale_listing(product
 CREATE INDEX IF NOT EXISTS idx_sale_listing_condition_type ON sale_listing(condition_type_id);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_approve_status ON sale_listing(approve_status_id);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_active ON sale_listing(deleted_at, is_hidden, approve_status_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_sale_listing_pl_active ON sale_listing(product_list_id, deleted_at, is_hidden);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_approved_by ON sale_listing(approved_by);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_created_by ON sale_listing(created_by);
 CREATE INDEX IF NOT EXISTS idx_sale_listing_created_at ON sale_listing(created_at);
@@ -1121,6 +1122,7 @@ CREATE INDEX IF NOT EXISTS idx_rent_listing_product_list ON rent_listing(product
 CREATE INDEX IF NOT EXISTS idx_rent_listing_is_rented ON rent_listing(is_rented);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_approve_status ON rent_listing(approve_status_id);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_active ON rent_listing(deleted_at, is_hidden, approve_status_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_rent_listing_pl_active ON rent_listing(product_list_id, deleted_at, is_hidden);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_approved_by ON rent_listing(approved_by);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_created_by ON rent_listing(created_by);
 CREATE INDEX IF NOT EXISTS idx_rent_listing_created_at ON rent_listing(created_at);

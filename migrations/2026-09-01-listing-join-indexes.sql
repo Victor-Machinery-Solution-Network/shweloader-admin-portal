@@ -1,0 +1,21 @@
+-- Composite indexes for the product_list -> sale_listing / rent_listing joins.
+--
+-- The browse COUNT and page queries LEFT JOIN the sibling listing table on
+-- product_list_id while also filtering deleted_at / is_hidden. The existing
+-- idx_{sale,rent}_listing_active starts at (deleted_at, is_hidden, ...) and does
+-- NOT contain product_list_id, so the planner used it for the constants and then
+-- walked every active sibling row for each outer row:
+--
+--   SEARCH rl USING INDEX idx_rent_listing_active (deleted_at=? AND is_hidden=?) LEFT-JOIN
+--
+-- On prod that is 130 sale rows x 33 active rent rows ~= 4,290 rows read to
+-- return a single COUNT — measured at 4,202 against a 165-row product_list.
+-- Leading with product_list_id turns it into a covering point lookup:
+--
+--   SEARCH rl USING COVERING INDEX idx_rent_listing_pl_active
+--            (product_list_id=? AND deleted_at=? AND is_hidden=?) LEFT-JOIN
+--
+-- Added 2026-09-01, the day Cloudflare began enforcing D1's free-tier 5M
+-- rows/day read limit and the admin portal lost login as a result.
+CREATE INDEX IF NOT EXISTS idx_rent_listing_pl_active ON rent_listing(product_list_id, deleted_at, is_hidden);
+CREATE INDEX IF NOT EXISTS idx_sale_listing_pl_active ON sale_listing(product_list_id, deleted_at, is_hidden);
