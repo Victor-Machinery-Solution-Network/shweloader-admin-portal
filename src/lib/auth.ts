@@ -162,6 +162,27 @@ function isRouteAllowed(pathname: string, permissions: string[]): boolean {
   return true;
 }
 
+/**
+ * Redirect a request that came from a Server Action.
+ *
+ * A 3xx is wrong here. Next posts actions with a plain `fetch()` — no
+ * `redirect: "manual"` — so the browser follows the Location itself and the
+ * client only ever inspects the *final* hop. Our headers are gone by then and
+ * it throws (E715 when the followed hop reports the action missing, E394 when
+ * it is HTML) instead of navigating. Next's own contract for an action
+ * redirect is a 200 with an empty `text/plain` body and the target in
+ * `x-action-redirect`, which is what this returns.
+ */
+function actionRedirect(target: URL, type: "push" | "replace" = "replace") {
+  return new Response("", {
+    status: 200,
+    headers: {
+      "content-type": "text/plain",
+      "x-action-redirect": `${target.pathname}${target.search};${type}`,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Auth.js v5 configuration
 // ---------------------------------------------------------------------------
@@ -390,27 +411,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const isOnLogin = pathname.startsWith("/login");
       const isServerAction = !!request.headers.get("next-action");
 
+      // A Server Action must never be answered with an HTML redirect — see
+      // actionRedirect above.
+      const redirectTo = (target: URL) =>
+        isServerAction ? actionRedirect(target) : Response.redirect(target);
+
       if (isOnLogin) {
         if (isLoggedIn) {
           const landing = getFirstAllowedRoute(auth?.user?.permissions ?? []);
-          return Response.redirect(new URL(landing, nextUrl));
+          return redirectTo(new URL(landing, nextUrl));
         }
         return true;
       }
 
       if (!isLoggedIn) {
-        // Server Actions expect an RSC response. An HTML redirect trips the
-        // RSC client with error E394. Return an RSC-compatible redirect so
-        // the browser navigates cleanly to /login with an "expired" banner.
+        // Send expired Server Actions to /login with a banner rather than the
+        // bare `false` that renders as a hard navigation.
         if (isServerAction) {
-          const target = new URL("/login?reason=expired", nextUrl);
-          return new Response(null, {
-            status: 303,
-            headers: {
-              Location: target.toString(),
-              "x-action-redirect": `${target.pathname}${target.search};replace`,
-            },
-          });
+          return redirectTo(new URL("/login?reason=expired", nextUrl));
         }
         return false;
       }
@@ -420,15 +438,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // /dashboard is a landing route — redirect to the first allowed page
       if (pathname === "/dashboard" || pathname === "/dashboard/") {
-        return Response.redirect(
-          new URL(getFirstAllowedRoute(permissions), nextUrl),
-        );
+        return redirectTo(new URL(getFirstAllowedRoute(permissions), nextUrl));
       }
 
+      // Reachable mid-session: the JWT re-reads permissions every 5 minutes, so
+      // a role change can revoke the page someone is already sitting on.
       if (!isRouteAllowed(pathname, permissions)) {
-        return Response.redirect(
-          new URL(getFirstAllowedRoute(permissions), nextUrl),
-        );
+        return redirectTo(new URL(getFirstAllowedRoute(permissions), nextUrl));
       }
 
       return true;
