@@ -50,22 +50,35 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
     [hasImages],
   );
 
-  const currentStep = (searchParams.get("step") ?? "download") as Step;
+  // Which step the wizard is on is client-only state: the route's page component
+  // reads only `params.entity`, never searchParams, and the wizard's data lives
+  // in React state below. router.replace() therefore cost an RSC round-trip per
+  // step for nothing.
+  //
+  // The deep-link guard that used to run in an effect is folded into the
+  // initialiser instead: parsedRows/importResult are always empty on mount, so
+  // landing on a data-dependent step can only ever mean "start at upload".
+  const [currentStep, setCurrentStep] = useState<Step>(() => {
+    const fromUrl = (searchParams.get("step") ?? "download") as Step;
+    return fromUrl === "images" || fromUrl === "review" ? "upload" : fromUrl;
+  });
   const stepIndex = steps.indexOf(currentStep);
 
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
 
-  useEffect(() => {
-    // If users land on deeper steps without parsed data, route back to upload safely.
-    if (parsedRows.length > 0 || importResult) return;
-    if (currentStep !== "images" && currentStep !== "review") return;
+  const goToStep = useCallback((step: Step) => setCurrentStep(step), []);
 
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("step", "upload");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [currentStep, importResult, parsedRows.length, router, searchParams]);
+  // Keep `?step=` in sync so the URL stays shareable, including when the guard
+  // above rewrote a deep link. History API only — no state update, so this does
+  // not feed back into render.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if ((params.get("step") ?? "download") === currentStep) return;
+    params.set("step", currentStep);
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, [currentStep]);
 
   const clearWizardState = useCallback(() => {
     setParsedRows([]);
@@ -75,19 +88,8 @@ export function BulkUploadWizard({ config }: BulkUploadWizardProps) {
 
   const resetWizard = useCallback(() => {
     clearWizardState();
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("step", "upload");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [clearWizardState, searchParams, router]);
-
-  const goToStep = useCallback(
-    (step: Step) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("step", step);
-      router.replace(`?${params.toString()}`, { scroll: false });
-    },
-    [searchParams, router],
-  );
+    goToStep("upload");
+  }, [clearWizardState, goToStep]);
 
   const afterUpload = hasImages ? "images" : "review";
 
