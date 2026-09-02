@@ -34,7 +34,7 @@ import { featuredColumns } from "./featured-columns";
 import { createDraftColumns } from "./draft-columns";
 import { useDragReorder } from "@/hooks/use-drag-reorder";
 import { getDraftListings } from "@/lib/actions/listing";
-import { Spinner } from "@/components/ui/spinner";
+import { DataTableSkeleton } from "@/components/shared/loading-skeleton";
 import type {
   SaleListingWithDetails,
   RentListingWithDetails,
@@ -80,6 +80,8 @@ interface ListingsClientProps {
   listings: ListingRow[];
   featured: FeaturedListingWithDetails[];
 }
+
+type TabValue = "listings" | "pending" | "rework" | "featured" | "drafts";
 
 export function ListingsClient({
   pageType,
@@ -155,21 +157,34 @@ export function ListingsClient({
 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tab = (searchParams.get("tab") ?? "listings") as "listings" | "pending" | "rework" | "featured" | "drafts";
-
-  const setTab = useCallback(
-    (v: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (v === "listings") {
-        params.delete("tab");
-      } else {
-        params.set("tab", v);
-      }
-      const qs = params.toString();
-      router.replace(qs ? `?${qs}` : "?", { scroll: false });
-    },
-    [searchParams, router],
+  const [tab, setTabState] = useState<TabValue>(
+    () => (searchParams.get("tab") ?? "listings") as TabValue,
   );
+
+  // Which tab is open is client-only state: no server component on this route
+  // reads `?tab` (the page takes no searchParams at all), and every tab's rows
+  // are already filtered out of the `listings` prop in memory.
+  //
+  // router.replace() still costs a full RSC round-trip, and when the cached
+  // page entry is stale that re-runs getSaleListings() — a 1,783-row query —
+  // so switching tabs took 1-3s to redisplay data the browser already had.
+  // Updating the URL through the History API keeps it deep-linkable and
+  // shareable while making the switch instant.
+  const setTab = useCallback((v: string) => {
+    setTabState(v as TabValue);
+    const params = new URLSearchParams(window.location.search);
+    if (v === "listings") {
+      params.delete("tab");
+    } else {
+      params.set("tab", v);
+    }
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `?${qs}` : window.location.pathname,
+    );
+  }, []);
 
   // --- Filter configs with grouped sections ---
 
@@ -543,9 +558,7 @@ export function ListingsClient({
 
         <TabsContent value="drafts">
           {!draftsLoaded ? (
-            <div className="flex items-center justify-center py-16">
-              <Spinner className="size-5" />
-            </div>
+            <DataTableSkeleton rows={5} />
           ) : drafts.length > 0 ? (
             <DataTable
               columns={draftColumns}
