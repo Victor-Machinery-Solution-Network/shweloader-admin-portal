@@ -50,6 +50,9 @@ export interface CustomFieldDefinition {
   type: CustomFieldType;
   required: boolean;
   defaultValue?: string;
+  /** Example value shown as grey hint text in the listing form ("e.g. 30kg").
+   *  Never saved onto a listing — it only guides whoever fills the form. */
+  placeholder?: string;
   /** Options for dropdown type only */
   options?: string[];
   /** Sort position (0-based index) */

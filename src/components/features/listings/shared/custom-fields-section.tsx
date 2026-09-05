@@ -123,11 +123,6 @@ export function CustomFieldsSection({
     lostFields: string[];
   } | null>(null);
 
-  // Track dropdown options from template definitions
-  const [fieldOptionsMap, setFieldOptionsMap] = useState<
-    Record<string, string[]>
-  >({});
-
   // Ad-hoc custom rows (always text type, user provides name + value)
   const [customRows, setCustomRows] = useState<CustomRow[]>([
     { id: crypto.randomUUID(), label: "", value: "" },
@@ -150,6 +145,15 @@ export function CustomFieldsSection({
     }
     return inferTemplateLabel(merged, templates);
   }, [fields, customRows, templates]);
+
+  // Definitions (dropdown options, example hint) for the matched template.
+  // Derived rather than stored: a state map is only written by applyTemplate,
+  // so editing a saved listing showed no dropdown options until you re-applied
+  // the template. Deriving from selectedTemplate covers create and edit alike.
+  const fieldDefs = useMemo(() => {
+    const template = templates.find((t) => t.name === selectedTemplate);
+    return new Map((template?.fields ?? []).map((f) => [f.key, f]));
+  }, [templates, selectedTemplate]);
 
   // ─── Merge & report ─────────────────────────────────────────────────
 
@@ -209,15 +213,6 @@ export function CustomFieldsSection({
 
   function applyTemplate(template: CustomFieldTemplateWithFields) {
     const newFields = fieldsFromTemplate(template, fields);
-
-    const optMap: Record<string, string[]> = {};
-    for (const def of template.fields) {
-      if (def.type === "dropdown" && def.options) {
-        optMap[def.key] = def.options;
-      }
-    }
-    setFieldOptionsMap(optMap);
-
     setFields(newFields);
     reportChange(newFields, customRows);
     setConfirmSwitch(null);
@@ -320,7 +315,8 @@ export function CustomFieldsSection({
             <div className="min-w-0 flex-1">
               <FieldValueInput
                 field={field}
-                options={fieldOptionsMap[field.key]}
+                options={fieldDefs.get(field.key)?.options}
+                placeholder={fieldDefs.get(field.key)?.placeholder}
                 onChange={(value) => handleFieldChange(field.key, value)}
               />
             </div>

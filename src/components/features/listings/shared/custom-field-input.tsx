@@ -25,6 +25,8 @@ import type { CustomFieldValue } from "@/types/custom-field";
 interface FieldValueInputProps {
   field: CustomFieldValue;
   options?: string[];
+  /** Example hint from the template definition, e.g. "e.g. 30kg". */
+  placeholder?: string;
   onChange: (value: string) => void;
 }
 
@@ -32,6 +34,7 @@ interface FieldValueInputProps {
 export function FieldValueInput({
   field,
   options,
+  placeholder,
   onChange,
 }: FieldValueInputProps) {
   switch (field.type) {
@@ -40,7 +43,7 @@ export function FieldValueInput({
         <Input
           value={field.value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Value"
+          placeholder={placeholder || "Value"}
           autoComplete="off"
         />
       );
@@ -51,7 +54,7 @@ export function FieldValueInput({
           type="number"
           value={field.value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Value"
+          placeholder={placeholder || "Value"}
         />
       );
 
@@ -61,7 +64,7 @@ export function FieldValueInput({
           type="url"
           value={field.value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://..."
+          placeholder={placeholder || "https://..."}
           autoComplete="off"
         />
       );
@@ -74,7 +77,7 @@ export function FieldValueInput({
           items={options ?? []}
         >
           <ComboboxInput
-            placeholder="Search..."
+            placeholder={placeholder || "Search..."}
             showClear={!!field.value}
           />
           <ComboboxContent>
@@ -140,7 +143,7 @@ export function FieldValueInput({
         <Input
           value={field.value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Value"
+          placeholder={placeholder || "Value"}
           autoComplete="off"
         />
       );

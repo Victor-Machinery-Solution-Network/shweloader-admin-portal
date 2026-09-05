@@ -283,6 +283,27 @@ export function TemplateFieldCard({
               </div>
             )}
 
+            {/* Example hint (boolean is a switch, date a calendar button —
+                neither has a text box to show grey hint text in) */}
+            {field.type !== "boolean" && field.type !== "date" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  Example{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional — shown as a hint when filling the listing)
+                  </span>
+                </Label>
+                <Input
+                  value={field.placeholder ?? ""}
+                  onChange={(e) =>
+                    updateField({ placeholder: e.target.value || undefined })
+                  }
+                  placeholder="e.g. 30kg"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
             {/* Default value */}
             {field.type !== "boolean" && (
               <div className="space-y-1.5">
